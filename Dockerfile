@@ -10,7 +10,7 @@ COPY gradle ./gradle
 RUN sed -i 's/\r$//' gradlew && chmod +x gradlew
 
 # Download dependencies trước để tận dụng Docker cache
-RUN ./gradlew dependencies --no-daemon || true
+RUN ./gradlew build -x test --no-daemon || true
 
 # Copy source code và tiến hành build
 COPY src ./src
@@ -25,10 +25,14 @@ RUN addgroup -S spring && adduser -S spring -G spring
 USER spring:spring
 
 # Copy file jar từ bước builder sang
-COPY --from=builder /app/build/libs/MathClass-0.0.1-SNAPSHOT.jar app.jar
+COPY --from=builder /app/build/libs/*.jar app.jar
 
 # Expose port mặc định của Spring Boot
 EXPOSE 8080
+
+# Healthcheck để kiểm tra ứng dụng có sống không
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
+  CMD curl -f http://localhost:8080/actuator/health || exit 1
 
 # Lệnh chạy ứng dụng
 ENTRYPOINT ["java", "-jar", "app.jar"]
