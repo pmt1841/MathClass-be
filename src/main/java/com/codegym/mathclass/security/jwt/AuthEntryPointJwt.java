@@ -1,4 +1,4 @@
-package com.codegym.mathclass.auth.security.jwt;
+package com.codegym.mathclass.security.jwt;
 
 import java.io.IOException;
 

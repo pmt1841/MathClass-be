@@ -1,4 +1,4 @@
-package com.codegym.mathclass.auth.security.services;
+package com.codegym.mathclass.security.services;
 
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;

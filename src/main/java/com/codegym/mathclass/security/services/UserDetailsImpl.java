@@ -1,4 +1,4 @@
-package com.codegym.mathclass.auth.security.services;
+package com.codegym.mathclass.security.services;
 
 import java.io.Serial;
 import java.util.Collection;
@@ -39,8 +39,7 @@ public class UserDetailsImpl implements UserDetails {
                 user.getEmail(),
                 user.getPassword(),
                 user.isActive(),
-                Collections.singletonList(authority)
-        );
+                Collections.singletonList(authority));
     }
 
     @Override

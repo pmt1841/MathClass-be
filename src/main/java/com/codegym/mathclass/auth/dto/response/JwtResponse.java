@@ -12,10 +12,12 @@ public class JwtResponse {
     private String type = "Bearer";
     private Long id;
     private String userName;
+    private String userRole;
 
-    public JwtResponse(String accessToken, Long id, String userName) {
+    public JwtResponse(String accessToken, Long id, String userName, String role) {
         this.token = accessToken;
         this.id = id;
         this.userName = userName;
+        this.userRole = role;
     }
 }

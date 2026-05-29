@@ -1,4 +1,4 @@
-package com.codegym.mathclass.auth.security.jwt;
+package com.codegym.mathclass.security.jwt;
 
 import java.io.IOException;
 
@@ -10,7 +10,7 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.codegym.mathclass.auth.security.services.UserDetailsServiceImpl;
+import com.codegym.mathclass.security.services.UserDetailsServiceImpl;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

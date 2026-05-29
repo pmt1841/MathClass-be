@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     build:
@@ -16,26 +14,31 @@ services:
       - ./gradle:/app/gradle
     command: ./gradlew bootRun --continuous
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/${MYSQL_DATABASE}?useUnicode=true&characterEncoding=utf-8&serverTimezone=UTC
-      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      # 1. Đổi url kết nối sang jdbc:postgresql, dùng cổng 5432 và đúng tên DB biến môi trường
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}?useUnicode=true&characterEncoding=utf-8
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
     depends_on:
       db:
         condition: service_healthy
     restart: unless-stopped
 
   db:
-    image: mysql:8
+    # 2. Đổi image sang postgresql
+    image: postgres:16-alpine
     container_name: math-class-db
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      # 3. Đổi tên các biến môi trường tương ứng của Postgres
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "3307:3306"
+      - "5433:5432" # Postgres mặc định dùng cổng 5432 ở cả máy thật và container
     volumes:
-      - db_data:/var/lib/mysql
+      - db_data:/var/lib/postgresql/data # Đổi đường dẫn lưu data của Postgres
+    # 4. Sửa lại lệnh kiểm tra trạng thái (Healthcheck) phù hợp với Postgres
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
       interval: 10s
       timeout: 5s
       retries: 5

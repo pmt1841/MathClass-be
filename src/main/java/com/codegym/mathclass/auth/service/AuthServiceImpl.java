@@ -4,16 +4,20 @@ import com.codegym.mathclass.auth.dto.request.LoginRequest;
 import com.codegym.mathclass.auth.dto.request.SignupRequest;
 import com.codegym.mathclass.auth.dto.response.JwtResponse;
 import com.codegym.mathclass.auth.dto.response.MessageResponse;
-import com.codegym.mathclass.auth.security.jwt.JwtUtils;
-import com.codegym.mathclass.auth.security.services.UserDetailsImpl;
+import com.codegym.mathclass.security.jwt.JwtUtils;
+import com.codegym.mathclass.security.services.UserDetailsImpl;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.EmailService;
 import lombok.RequiredArgsConstructor;
+
+import java.util.Optional;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -39,7 +43,12 @@ public class AuthServiceImpl implements AuthService {
 
         return ResponseEntity.ok(new JwtResponse(jwt,
                 userDetails.getId(),
-                userDetails.getEmail()));
+                userDetails.getEmail(),
+                userDetails.getAuthorities().stream()
+                        .map(GrantedAuthority::getAuthority)
+                        .findFirst()
+                        .map(r -> r.replace("ROLE_", ""))
+                        .orElse("")));
     }
 
     @Override
@@ -57,7 +66,7 @@ public class AuthServiceImpl implements AuthService {
         if (userRepository.existsByEmail(signUpRequest.getEmail())) {
             return ResponseEntity
                     .badRequest()
-                    .body(new MessageResponse("Lỗi: Tên đăng nhập đã tồn tại!"));
+                    .body(new MessageResponse("Lỗi: Email đã tồn tại!"));
         }
 
         // Tạo user mới
@@ -77,12 +86,13 @@ public class AuthServiceImpl implements AuthService {
         String content = "Vui lòng click vào đường link sau để xác nhận đăng ký tài khoản: " + verifyLink;
         emailService.sendMail(user.getEmail(), "Xác nhận đăng ký tài khoản MathClass", content);
 
-        return ResponseEntity.ok(new MessageResponse("Đăng ký tài khoản thành công! Vui lòng kiểm tra email để xác nhận."));
+        return ResponseEntity
+                .ok(new MessageResponse("Đăng ký tài khoản thành công! Vui lòng kiểm tra email để xác nhận."));
     }
 
     @Override
     public ResponseEntity<?> verifyUser(String token) {
-        java.util.Optional<User> userOptional = userRepository.findByVerificationCode(token);
+        Optional<User> userOptional = userRepository.findByVerificationCode(token);
         if (userOptional.isEmpty()) {
             return ResponseEntity.badRequest().body(new MessageResponse("Lỗi: Mã xác nhận không hợp lệ!"));
         }
@@ -93,7 +103,21 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
 
         String role = user.getRole() != null ? user.getRole().name() : "";
-        String successMsg = "Tài khoản " + role + " " + user.getEmail() + " trên hệ thống MathClass của bạn đã được tạo và kích hoạt thành công!";
+        String roleName = "";
+        switch (role) {
+            case "ADMIN":
+                roleName = "Quản trị viên";
+                break;
+            case "TEACHER":
+                roleName = "Giáo viên";
+                break;
+            case "STUDENT":
+                roleName = "Học sinh";
+                break;
+        }
+
+        String successMsg = "Tài khoản " + roleName + " " + user.getEmail()
+                + " trên hệ thống MathClass của bạn đã được tạo và kích hoạt thành công!";
         emailService.sendMail(user.getEmail(), "Kích hoạt tài khoản thành công", successMsg);
 
         return ResponseEntity.ok(new MessageResponse("Tài khoản đã được kích hoạt thành công!"));
