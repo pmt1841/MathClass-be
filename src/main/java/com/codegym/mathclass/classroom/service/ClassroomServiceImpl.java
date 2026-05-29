@@ -11,7 +11,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -46,5 +48,18 @@ public class ClassroomServiceImpl implements ClassroomService {
         Classroom savedClassroom = classroomRepository.save(classroom);
 
         return ClassroomResponse.fromEntity(savedClassroom);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ClassroomResponse> getClassroomsByTeacher(String teacherEmail) {
+        User teacher = userRepository.findByEmail(teacherEmail)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+        if (teacher.getRole() != Role.TEACHER) {
+            throw new RuntimeException("Chỉ giáo viên mới có quyền xem danh sách lớp học");
+        }
+        return classroomRepository.findByTeacherEmail(teacherEmail).stream()
+                .map(ClassroomResponse::fromEntity)
+                .collect(Collectors.toList());
     }
 }

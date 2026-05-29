@@ -15,6 +15,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -162,5 +164,82 @@ class ClassroomServiceImplTest {
         assertNotNull(response);
         verify(classroomRepository, times(2)).existsByClassCode(anyString());
         verify(classroomRepository, times(1)).save(any(Classroom.class));
+    }
+
+    @Test
+    @DisplayName("should return classroom list successfully when user is a teacher")
+    void getClassroomsByTeacher_Success() {
+        // Arrange
+        when(userRepository.findByEmail(currentUserEmail)).thenReturn(Optional.of(teacher));
+
+        Classroom class1 = new Classroom();
+        class1.setId(101L);
+        class1.setClassName("Math A");
+        class1.setClassCode("CODE1234");
+        class1.setTeacher(teacher);
+
+        Classroom class2 = new Classroom();
+        class2.setId(102L);
+        class2.setClassName("Math B");
+        class2.setClassCode("CODE5678");
+        class2.setTeacher(teacher);
+
+        when(classroomRepository.findByTeacherEmail(currentUserEmail)).thenReturn(Arrays.asList(class1, class2));
+
+        // Act
+        List<ClassroomResponse> responses = classroomService.getClassroomsByTeacher(currentUserEmail);
+
+        // Assert
+        assertNotNull(responses);
+        assertEquals(2, responses.size());
+        assertEquals(101L, responses.get(0).getId());
+        assertEquals("Math A", responses.get(0).getClassName());
+        assertEquals("CODE1234", responses.get(0).getClassCode());
+        assertEquals(teacher.getId(), responses.get(0).getTeacherId());
+
+        assertEquals(102L, responses.get(1).getId());
+        assertEquals("Math B", responses.get(1).getClassName());
+        assertEquals("CODE5678", responses.get(1).getClassCode());
+        assertEquals(teacher.getId(), responses.get(1).getTeacherId());
+
+        verify(userRepository, times(1)).findByEmail(currentUserEmail);
+        verify(classroomRepository, times(1)).findByTeacherEmail(currentUserEmail);
+    }
+
+    @Test
+    @DisplayName("should throw Exception when getting classrooms and user is not found")
+    void getClassroomsByTeacher_UserNotFound_ThrowsException() {
+        // Arrange
+        when(userRepository.findByEmail(currentUserEmail)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        RuntimeException exception = assertThrows(RuntimeException.class, () ->
+                classroomService.getClassroomsByTeacher(currentUserEmail)
+        );
+
+        assertEquals("Không tìm thấy người dùng", exception.getMessage());
+        verify(userRepository, times(1)).findByEmail(currentUserEmail);
+        verify(classroomRepository, never()).findByTeacherEmail(anyString());
+    }
+
+    @Test
+    @DisplayName("should throw Exception when getting classrooms and user is not a teacher")
+    void getClassroomsByTeacher_UserNotTeacher_ThrowsException() {
+        // Arrange
+        User student = new User();
+        student.setId(2L);
+        student.setEmail(currentUserEmail);
+        student.setRole(Role.STUDENT);
+
+        when(userRepository.findByEmail(currentUserEmail)).thenReturn(Optional.of(student));
+
+        // Act & Assert
+        RuntimeException exception = assertThrows(RuntimeException.class, () ->
+                classroomService.getClassroomsByTeacher(currentUserEmail)
+        );
+
+        assertEquals("Chỉ giáo viên mới có quyền xem danh sách lớp học", exception.getMessage());
+        verify(userRepository, times(1)).findByEmail(currentUserEmail);
+        verify(classroomRepository, never()).findByTeacherEmail(anyString());
     }
 }

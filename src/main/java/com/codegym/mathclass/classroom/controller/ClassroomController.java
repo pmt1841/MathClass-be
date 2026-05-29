@@ -5,10 +5,15 @@ import com.codegym.mathclass.classroom.dto.CreateClassroomRequest;
 import com.codegym.mathclass.classroom.service.ClassroomService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,5 +36,13 @@ public class ClassroomController {
         ClassroomResponse response = classroomService.createClassroom(request, currentUserEmail);
 
         return new ResponseEntity<>(response, HttpStatus.CREATED);
+    }
+
+    @GetMapping
+    @PreAuthorize("hasRole('TEACHER')")
+    public ResponseEntity<List<ClassroomResponse>> getClassroomsByTeacher(Authentication authentication) {
+        String currentUserEmail = authentication.getName();
+        List<ClassroomResponse> responses = classroomService.getClassroomsByTeacher(currentUserEmail);
+        return new ResponseEntity<>(responses, HttpStatus.OK);
     }
 }
