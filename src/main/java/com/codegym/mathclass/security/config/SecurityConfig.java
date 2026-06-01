@@ -15,7 +15,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 import com.codegym.mathclass.security.jwt.AuthEntryPointJwt;
 import com.codegym.mathclass.security.jwt.AuthTokenFilter;
-import com.codegym.mathclass.security.services.UserDetailsServiceImpl;
+import com.codegym.mathclass.security.services.CustomUserDetailsService;
 
 import java.util.List;
 
@@ -29,7 +29,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final UserDetailsServiceImpl userDetailsService;
+    private final CustomUserDetailsService userDetailsService;
     private final AuthEntryPointJwt unauthorizedHandler;
 
     @Bean
