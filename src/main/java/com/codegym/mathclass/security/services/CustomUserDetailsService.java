@@ -13,7 +13,7 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class UserDetailsServiceImpl implements UserDetailsService {
+public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
 
@@ -24,7 +24,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 .orElseThrow(
                         () -> new UsernameNotFoundException("Không tìm thấy tài khoản: " + login));
 
-        return UserDetailsImpl.build(user);
+        return CustomUserDetails.build(user);
     }
 
 }

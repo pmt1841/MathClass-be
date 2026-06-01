@@ -16,7 +16,7 @@ import lombok.Getter;
 
 @AllArgsConstructor
 @Getter
-public class UserDetailsImpl implements UserDetails {
+public class CustomUserDetails implements UserDetails {
     @Serial
     private static final long serialVersionUID = 1L;
 
@@ -31,10 +31,10 @@ public class UserDetailsImpl implements UserDetails {
 
     private Collection<? extends GrantedAuthority> authorities;
 
-    public static UserDetailsImpl build(User user) {
+    public static CustomUserDetails build(User user) {
         GrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + user.getRole().name());
 
-        return new UserDetailsImpl(
+        return new CustomUserDetails(
                 user.getId(),
                 user.getEmail(),
                 user.getPassword(),
@@ -74,7 +74,7 @@ public class UserDetailsImpl implements UserDetails {
             return true;
         if (o == null || getClass() != o.getClass())
             return false;
-        UserDetailsImpl user = (UserDetailsImpl) o;
+        CustomUserDetails user = (CustomUserDetails) o;
         return java.util.Objects.equals(id, user.id);
     }
 }

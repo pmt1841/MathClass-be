@@ -3,6 +3,8 @@ package com.codegym.mathclass.classroom.controller;
 import com.codegym.mathclass.classroom.dto.ClassroomResponse;
 import com.codegym.mathclass.classroom.dto.CreateClassroomRequest;
 import com.codegym.mathclass.classroom.service.ClassroomService;
+import com.codegym.mathclass.security.services.CustomUserDetails;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -11,9 +13,9 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
-
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,19 +32,28 @@ public class ClassroomController {
     @PreAuthorize("hasRole('TEACHER')")
     public ResponseEntity<ClassroomResponse> createClassroom(
             @Valid @RequestBody CreateClassroomRequest request,
-            Authentication authentication) {
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        String currentUserEmail = authentication.getName();
-        ClassroomResponse response = classroomService.createClassroom(request, currentUserEmail);
+        Long currentUserId = userDetails.getId();
+        ClassroomResponse response = classroomService.createClassroom(request, currentUserId);
 
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
-    @GetMapping
-    @PreAuthorize("hasRole('TEACHER')")
-    public ResponseEntity<List<ClassroomResponse>> getClassroomsByTeacher(Authentication authentication) {
-        String currentUserEmail = authentication.getName();
-        List<ClassroomResponse> responses = classroomService.getClassroomsByTeacher(currentUserEmail);
+    @GetMapping("/my-classroom")
+    public ResponseEntity<List<ClassroomResponse>> getClassroomsList(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long currentUserId = userDetails.getId();
+        List<ClassroomResponse> responses = classroomService.getClassroomsListById(currentUserId);
         return new ResponseEntity<>(responses, HttpStatus.OK);
+    }
+
+    @GetMapping("/{classCode}")
+    public ResponseEntity<ClassroomResponse> getClassroomByClassCode(
+            @PathVariable String classCode,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long currentUserId = userDetails.getId();
+        ClassroomResponse response = classroomService.getClassroomByClassCode(classCode, currentUserId);
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 }

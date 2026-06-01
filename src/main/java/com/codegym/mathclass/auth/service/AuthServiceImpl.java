@@ -5,7 +5,7 @@ import com.codegym.mathclass.auth.dto.request.SignupRequest;
 import com.codegym.mathclass.auth.dto.response.JwtResponse;
 import com.codegym.mathclass.auth.dto.response.MessageResponse;
 import com.codegym.mathclass.security.jwt.JwtUtils;
-import com.codegym.mathclass.security.services.UserDetailsImpl;
+import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.EmailService;
@@ -39,7 +39,7 @@ public class AuthServiceImpl implements AuthService {
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = jwtUtils.generateJwtToken(authentication);
 
-        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
 
         return ResponseEntity.ok(new JwtResponse(jwt,
                 userDetails.getId(),
