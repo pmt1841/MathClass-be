@@ -2,6 +2,7 @@ package com.codegym.mathclass.classroom.service;
 
 import com.codegym.mathclass.classroom.dto.ClassroomResponse;
 import com.codegym.mathclass.classroom.dto.CreateClassroomRequest;
+import com.codegym.mathclass.classroom.dto.UpdateClassroomRequest;
 import com.codegym.mathclass.classroom.dto.StudentResponse;
 import com.codegym.mathclass.classroom.entity.Classroom;
 import com.codegym.mathclass.classroom.repository.ClassroomRepository;
@@ -13,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -114,7 +117,7 @@ public class ClassroomServiceImpl implements ClassroomService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<StudentResponse> getStudentsByClassCode(String classCode, Long currentUserId) {
+    public Page<StudentResponse> getStudentsByClassCode(String classCode, Long currentUserId, Pageable pageable) {
         Classroom classroom = classroomRepository.findByClassCode(classCode)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy lớp học"));
 
@@ -125,9 +128,8 @@ public class ClassroomServiceImpl implements ClassroomService {
             throw new RuntimeException("Bạn không có quyền xem danh sách học sinh lớp học này");
         }
 
-        return classroom.getStudents().stream()
-                .map(StudentResponse::fromEntity)
-                .collect(Collectors.toList());
+        Page<User> studentPage = userRepository.findStudentsByClassCode(classCode, pageable);
+        return studentPage.map(StudentResponse::fromEntity);
     }
 
     @Override
@@ -144,5 +146,56 @@ public class ClassroomServiceImpl implements ClassroomService {
         }
 
         return ClassroomResponse.fromEntity(classroom);
+    }
+
+    @Override
+    @Transactional
+    public void removeStudentFromClass(String classCode, Long studentId, Long teacherId) {
+        Classroom classroom = classroomRepository.findByClassCode(classCode)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy lớp học"));
+
+        if (!classroom.getTeacher().getId().equals(teacherId)) {
+            throw new RuntimeException("Bạn không phải là giáo viên phụ trách lớp học này");
+        }
+
+        User studentToRemove = classroom.getStudents().stream()
+                .filter(s -> s.getId().equals(studentId))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Học sinh không tồn tại trong lớp học này"));
+
+        classroom.getStudents().remove(studentToRemove);
+        classroomRepository.save(classroom);
+
+        String subject = "Bạn đã bị xóa khỏi lớp học " + classroom.getClassName();
+        String content = String.format(
+                "Xin chào %s,\n\nBạn đã bị giáo viên %s xóa khỏi lớp học: %s (%s) trên hệ thống MathClass.",
+                studentToRemove.getFullName(),
+                classroom.getTeacher().getFullName(),
+                classroom.getClassName(),
+                classroom.getClassCode());
+        emailService.sendMail(studentToRemove.getEmail(), subject, content);
+    }
+
+    @Override
+    @Transactional
+    public ClassroomResponse updateClassroom(String classCode, UpdateClassroomRequest request, Long currentUserId) {
+        Classroom classroom = classroomRepository.findByClassCode(classCode)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy lớp học"));
+
+        if (!classroom.getTeacher().getId().equals(currentUserId)) {
+            throw new RuntimeException("Bạn không có quyền chỉnh sửa lớp học này");
+        }
+
+        int currentStudentCount = classroom.getStudents().size();
+        if (request.getMaxStudents() != null && request.getMaxStudents() < currentStudentCount) {
+            throw new RuntimeException("Sĩ số tối đa không được nhỏ hơn sĩ số học sinh hiện tại (" + currentStudentCount + ")");
+        }
+
+        classroom.setClassName(request.getClassName());
+        classroom.setDescription(request.getDescription());
+        classroom.setMaxStudents(request.getMaxStudents());
+
+        Classroom savedClassroom = classroomRepository.save(classroom);
+        return ClassroomResponse.fromEntity(savedClassroom);
     }
 }

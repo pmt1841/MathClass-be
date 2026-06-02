@@ -16,6 +16,7 @@ public class ClassroomResponse {
     private String teacherName;
     private int studentCount;
     private Integer maxStudents;
+    private String description;
 
     public static ClassroomResponse fromEntity(Classroom classroom) {
         if (classroom == null) {
@@ -29,6 +30,7 @@ public class ClassroomResponse {
         response.setTeacherName(classroom.getTeacher() != null ? classroom.getTeacher().getFullName() : null);
         response.setStudentCount(classroom.getStudents() != null ? classroom.getStudents().size() : 0);
         response.setMaxStudents(classroom.getMaxStudents());
+        response.setDescription(classroom.getDescription());
         return response;
     }
 }

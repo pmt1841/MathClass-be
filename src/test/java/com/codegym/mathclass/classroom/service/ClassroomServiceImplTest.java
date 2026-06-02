@@ -3,6 +3,7 @@ package com.codegym.mathclass.classroom.service;
 import com.codegym.mathclass.classroom.dto.ClassroomResponse;
 import com.codegym.mathclass.classroom.dto.CreateClassroomRequest;
 import com.codegym.mathclass.classroom.dto.StudentResponse;
+import com.codegym.mathclass.classroom.dto.UpdateClassroomRequest;
 import com.codegym.mathclass.classroom.entity.Classroom;
 import com.codegym.mathclass.classroom.repository.ClassroomRepository;
 import com.codegym.mathclass.user.entity.Role;
@@ -16,10 +17,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.util.HashSet;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -373,37 +378,66 @@ class ClassroomServiceImplTest {
     @DisplayName("should get students by class code successfully for teacher")
     void getStudentsByClassCode_Success_Teacher() {
         classroom.getStudents().add(student);
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<User> studentPage = new PageImpl<>(Collections.singletonList(student));
+
         when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
+        when(userRepository.findStudentsByClassCode("ABC12345", pageable)).thenReturn(studentPage);
 
-        List<StudentResponse> students = classroomService.getStudentsByClassCode("ABC12345", currentUserId);
+        Page<StudentResponse> result = classroomService.getStudentsByClassCode("ABC12345", currentUserId, pageable);
 
-        assertNotNull(students);
-        assertEquals(1, students.size());
-        assertEquals(student.getId(), students.get(0).getId());
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        assertEquals(student.getId(), result.getContent().get(0).getId());
+
+        verify(classroomRepository, times(1)).findByClassCode("ABC12345");
+        verify(userRepository, times(1)).findStudentsByClassCode("ABC12345", pageable);
     }
 
     @Test
     @DisplayName("should get students by class code successfully for student in the class")
     void getStudentsByClassCode_Success_Student() {
         classroom.getStudents().add(student);
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<User> studentPage = new PageImpl<>(Collections.singletonList(student));
+
         when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
+        when(userRepository.findStudentsByClassCode("ABC12345", pageable)).thenReturn(studentPage);
 
-        List<StudentResponse> students = classroomService.getStudentsByClassCode("ABC12345", student.getId());
+        Page<StudentResponse> result = classroomService.getStudentsByClassCode("ABC12345", student.getId(), pageable);
 
-        assertNotNull(students);
-        assertEquals(1, students.size());
-        assertEquals(student.getId(), students.get(0).getId());
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        assertEquals(student.getId(), result.getContent().get(0).getId());
+
+        verify(classroomRepository, times(1)).findByClassCode("ABC12345");
+        verify(userRepository, times(1)).findStudentsByClassCode("ABC12345", pageable);
+    }
+
+    @Test
+    @DisplayName("should throw Exception when classroom not found for getStudentsByClassCode")
+    void getStudentsByClassCode_ClassroomNotFound_ThrowsException() {
+        Pageable pageable = PageRequest.of(0, 10);
+        when(classroomRepository.findByClassCode("NOTEXIST")).thenReturn(Optional.empty());
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> classroomService.getStudentsByClassCode("NOTEXIST", currentUserId, pageable));
+
+        assertEquals("Không tìm thấy lớp học", exception.getMessage());
+        verify(userRepository, never()).findStudentsByClassCode(anyString(), any(Pageable.class));
     }
 
     @Test
     @DisplayName("should throw Exception when getting students and user not authorized")
     void getStudentsByClassCode_NotAuthorized_ThrowsException() {
+        Pageable pageable = PageRequest.of(0, 10);
         when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
 
         RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> classroomService.getStudentsByClassCode("ABC12345", 999L));
+                () -> classroomService.getStudentsByClassCode("ABC12345", 999L, pageable));
 
         assertEquals("Bạn không có quyền xem danh sách học sinh lớp học này", exception.getMessage());
+        verify(userRepository, never()).findStudentsByClassCode(anyString(), any(Pageable.class));
     }
 
     // =====================================================
@@ -443,5 +477,160 @@ class ClassroomServiceImplTest {
                 () -> classroomService.getClassroomByClassCode("ABC12345", 999L));
 
         assertEquals("Bạn không có quyền xem thông tin lớp học này", exception.getMessage());
+    }
+
+    // =====================================================
+    // Tests for removeStudentFromClass
+    // =====================================================
+
+    @Test
+    @DisplayName("should remove student from class successfully and send notification email")
+    void removeStudentFromClass_Success() {
+        classroom.getStudents().add(student);
+        when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
+        when(classroomRepository.save(any(Classroom.class))).thenReturn(classroom);
+        doNothing().when(emailService).sendMail(anyString(), anyString(), anyString());
+
+        classroomService.removeStudentFromClass("ABC12345", student.getId(), currentUserId);
+
+        assertFalse(classroom.getStudents().contains(student));
+        verify(classroomRepository, times(1)).save(classroom);
+        verify(emailService, times(1)).sendMail(
+                eq(student.getEmail()),
+                contains("Math 101"),
+                anyString());
+    }
+
+    @Test
+    @DisplayName("should throw Exception when classroom not found for removeStudentFromClass")
+    void removeStudentFromClass_ClassroomNotFound_ThrowsException() {
+        when(classroomRepository.findByClassCode("NOTEXIST")).thenReturn(Optional.empty());
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> classroomService.removeStudentFromClass("NOTEXIST", student.getId(), currentUserId));
+
+        assertEquals("Không tìm thấy lớp học", exception.getMessage());
+        verify(classroomRepository, never()).save(any());
+        verify(emailService, never()).sendMail(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("should throw Exception when requester is not the classroom teacher for removeStudentFromClass")
+    void removeStudentFromClass_NotClassroomTeacher_ThrowsException() {
+        classroom.getStudents().add(student);
+        when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> classroomService.removeStudentFromClass("ABC12345", student.getId(), 999L));
+
+        assertEquals("Bạn không phải là giáo viên phụ trách lớp học này", exception.getMessage());
+        verify(classroomRepository, never()).save(any());
+        verify(emailService, never()).sendMail(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("should throw Exception when student is not in the classroom for removeStudentFromClass")
+    void removeStudentFromClass_StudentNotInClass_ThrowsException() {
+        // classroom.getStudents() is empty — student not in class
+        when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> classroomService.removeStudentFromClass("ABC12345", student.getId(), currentUserId));
+
+        assertEquals("Học sinh không tồn tại trong lớp học này", exception.getMessage());
+        verify(classroomRepository, never()).save(any());
+        verify(emailService, never()).sendMail(anyString(), anyString(), anyString());
+    }
+
+    // =====================================================
+    // Tests for updateClassroom
+    // =====================================================
+
+    @Test
+    @DisplayName("should update classroom successfully when teacher updates own classroom")
+    void updateClassroom_Success() {
+        UpdateClassroomRequest updateRequest = UpdateClassroomRequest.builder()
+                .className("Math 101 Advanced")
+                .description("Updated description")
+                .maxStudents(50)
+                .build();
+
+        Classroom updatedClassroom = new Classroom();
+        updatedClassroom.setId(10L);
+        updatedClassroom.setClassCode("ABC12345");
+        updatedClassroom.setClassName("Math 101 Advanced");
+        updatedClassroom.setDescription("Updated description");
+        updatedClassroom.setMaxStudents(50);
+        updatedClassroom.setTeacher(teacher);
+        updatedClassroom.setStudents(new HashSet<>());
+
+        when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
+        when(classroomRepository.save(any(Classroom.class))).thenReturn(updatedClassroom);
+
+        ClassroomResponse response = classroomService.updateClassroom("ABC12345", updateRequest, currentUserId);
+
+        assertNotNull(response);
+        assertEquals("Math 101 Advanced", response.getClassName());
+        assertEquals(50, response.getMaxStudents());
+        verify(classroomRepository, times(1)).save(any(Classroom.class));
+    }
+
+    @Test
+    @DisplayName("should throw Exception when classroom not found for updateClassroom")
+    void updateClassroom_ClassroomNotFound_ThrowsException() {
+        UpdateClassroomRequest updateRequest = UpdateClassroomRequest.builder()
+                .className("New Name")
+                .maxStudents(30)
+                .build();
+
+        when(classroomRepository.findByClassCode("NOTEXIST")).thenReturn(Optional.empty());
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> classroomService.updateClassroom("NOTEXIST", updateRequest, currentUserId));
+
+        assertEquals("Không tìm thấy lớp học", exception.getMessage());
+        verify(classroomRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("should throw Exception when requester is not the classroom teacher for updateClassroom")
+    void updateClassroom_NotClassroomTeacher_ThrowsException() {
+        UpdateClassroomRequest updateRequest = UpdateClassroomRequest.builder()
+                .className("New Name")
+                .maxStudents(30)
+                .build();
+
+        when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> classroomService.updateClassroom("ABC12345", updateRequest, 999L));
+
+        assertEquals("Bạn không có quyền chỉnh sửa lớp học này", exception.getMessage());
+        verify(classroomRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("should throw Exception when new maxStudents is less than current student count")
+    void updateClassroom_MaxStudentsBelowCurrentCount_ThrowsException() {
+        // Add 2 students to the classroom
+        User student2 = new User();
+        student2.setId(3L);
+        student2.setEmail("student2@codegym.com");
+        student2.setRole(Role.STUDENT);
+        classroom.getStudents().add(student);
+        classroom.getStudents().add(student2);
+
+        UpdateClassroomRequest updateRequest = UpdateClassroomRequest.builder()
+                .className("Math 101")
+                .maxStudents(1)  // less than the 2 current students
+                .build();
+
+        when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> classroomService.updateClassroom("ABC12345", updateRequest, currentUserId));
+
+        assertTrue(exception.getMessage().startsWith("Sĩ số tối đa không được nhỏ hơn sĩ số học sinh hiện tại"));
+        verify(classroomRepository, never()).save(any());
     }
 }
