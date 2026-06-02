@@ -17,9 +17,11 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.codegym.mathclass.classroom.dto.UpdateClassroomRequest;
 
 @RestController
 @RequestMapping("/api/classrooms")
@@ -54,6 +56,17 @@ public class ClassroomController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long currentUserId = userDetails.getId();
         ClassroomResponse response = classroomService.getClassroomByClassCode(classCode, currentUserId);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @PutMapping("/{classCode}")
+    @PreAuthorize("hasRole('TEACHER')")
+    public ResponseEntity<ClassroomResponse> updateClassroom(
+            @PathVariable String classCode,
+            @Valid @RequestBody UpdateClassroomRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long currentUserId = userDetails.getId();
+        ClassroomResponse response = classroomService.updateClassroom(classCode, request, currentUserId);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 }
