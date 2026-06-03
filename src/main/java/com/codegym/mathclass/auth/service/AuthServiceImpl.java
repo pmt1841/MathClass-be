@@ -44,6 +44,7 @@ public class AuthServiceImpl implements AuthService {
         return ResponseEntity.ok(new JwtResponse(jwt,
                 userDetails.getId(),
                 userDetails.getEmail(),
+                userDetails.getFullName(),
                 userDetails.getAuthorities().stream()
                         .map(GrantedAuthority::getAuthority)
                         .findFirst()

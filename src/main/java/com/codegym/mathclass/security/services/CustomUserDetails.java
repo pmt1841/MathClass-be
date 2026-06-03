@@ -22,6 +22,8 @@ public class CustomUserDetails implements UserDetails {
 
     private Long id;
 
+    private String fullName;
+
     private String email;
 
     @JsonIgnore
@@ -36,6 +38,7 @@ public class CustomUserDetails implements UserDetails {
 
         return new CustomUserDetails(
                 user.getId(),
+                user.getFullName(),
                 user.getEmail(),
                 user.getPassword(),
                 user.isActive(),
