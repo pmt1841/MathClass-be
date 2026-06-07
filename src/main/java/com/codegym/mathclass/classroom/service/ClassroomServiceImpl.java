@@ -10,6 +10,9 @@ import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.EmailService;
+import com.codegym.mathclass.exception.AccessDeniedException;
+import com.codegym.mathclass.exception.BadRequestException;
+import com.codegym.mathclass.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,10 +35,10 @@ public class ClassroomServiceImpl implements ClassroomService {
     @Transactional
     public ClassroomResponse createClassroom(CreateClassroomRequest request, Long currentUserId) {
         User teacher = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
         if (teacher.getRole() != Role.TEACHER) {
-            throw new RuntimeException("Chỉ giáo viên mới có quyền tạo lớp học");
+            throw new AccessDeniedException("Chỉ giáo viên mới có quyền tạo lớp học");
         }
 
         String generatedClassCode;
@@ -60,7 +63,7 @@ public class ClassroomServiceImpl implements ClassroomService {
     @Transactional(readOnly = true)
     public List<ClassroomResponse> getClassroomsListById(Long currentUserId) {
         User user = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
         List<Classroom> classrooms;
 
@@ -69,7 +72,7 @@ public class ClassroomServiceImpl implements ClassroomService {
         } else if (user.getRole() == Role.STUDENT) {
             classrooms = classroomRepository.findByStudentsId(currentUserId);
         } else {
-            throw new RuntimeException("Vai trò người dùng không hợp lệ để xem danh sách lớp");
+            throw new AccessDeniedException("Vai trò người dùng không hợp lệ để xem danh sách lớp");
         }
 
         return classrooms.stream()
@@ -81,25 +84,25 @@ public class ClassroomServiceImpl implements ClassroomService {
     @Transactional
     public void addStudentToClass(String classCode, String studentEmail, Long teacherId) {
         Classroom classroom = classroomRepository.findByClassCode(classCode)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy lớp học"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lớp học"));
 
         if (classroom.getTeacher().getId() != teacherId) {
-            throw new RuntimeException("Bạn không phải là giáo viên phụ trách lớp học này");
+            throw new AccessDeniedException("Bạn không phải là giáo viên phụ trách lớp học này");
         }
 
         User student = userRepository.findByEmail(studentEmail)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy học sinh với email đã cung cấp"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy học sinh với email đã cung cấp"));
 
         if (student.getRole() != Role.STUDENT) {
-            throw new RuntimeException("Người dùng được thêm phải là học sinh");
+            throw new BadRequestException("Người dùng được thêm phải là học sinh");
         }
 
         if (classroom.getStudents().stream().anyMatch(s -> s.getEmail().equalsIgnoreCase(studentEmail))) {
-            throw new RuntimeException("Học sinh này đã tham gia lớp học");
+            throw new BadRequestException("Học sinh này đã tham gia lớp học");
         }
 
         if (classroom.getMaxStudents() != null && classroom.getStudents().size() >= classroom.getMaxStudents()) {
-            throw new RuntimeException("Lớp học đã đạt số lượng tối đa");
+            throw new BadRequestException("Lớp học đã đạt số lượng tối đa");
         }
 
         classroom.getStudents().add(student);
@@ -119,13 +122,13 @@ public class ClassroomServiceImpl implements ClassroomService {
     @Transactional(readOnly = true)
     public Page<StudentResponse> getStudentsByClassCode(String classCode, Long currentUserId, Pageable pageable) {
         Classroom classroom = classroomRepository.findByClassCode(classCode)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy lớp học"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lớp học"));
 
         boolean isTeacher = classroom.getTeacher().getId().equals(currentUserId);
         boolean isStudent = classroom.getStudents().stream().anyMatch(s -> s.getId().equals(currentUserId));
 
         if (!isTeacher && !isStudent) {
-            throw new RuntimeException("Bạn không có quyền xem danh sách học sinh lớp học này");
+            throw new AccessDeniedException("Bạn không có quyền xem danh sách học sinh lớp học này");
         }
 
         Page<User> studentPage = userRepository.findStudentsByClassCode(classCode, pageable);
@@ -136,13 +139,13 @@ public class ClassroomServiceImpl implements ClassroomService {
     @Transactional(readOnly = true)
     public ClassroomResponse getClassroomByClassCode(String classCode, Long currentUserId) {
         Classroom classroom = classroomRepository.findByClassCode(classCode)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy lớp học"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lớp học"));
 
         boolean isTeacher = classroom.getTeacher().getId().equals(currentUserId);
         boolean isStudent = classroom.getStudents().stream().anyMatch(s -> s.getId().equals(currentUserId));
 
         if (!isTeacher && !isStudent) {
-            throw new RuntimeException("Bạn không có quyền xem thông tin lớp học này");
+            throw new AccessDeniedException("Bạn không có quyền xem thông tin lớp học này");
         }
 
         return ClassroomResponse.fromEntity(classroom);
@@ -152,16 +155,16 @@ public class ClassroomServiceImpl implements ClassroomService {
     @Transactional
     public void removeStudentFromClass(String classCode, Long studentId, Long teacherId) {
         Classroom classroom = classroomRepository.findByClassCode(classCode)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy lớp học"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lớp học"));
 
         if (!classroom.getTeacher().getId().equals(teacherId)) {
-            throw new RuntimeException("Bạn không phải là giáo viên phụ trách lớp học này");
+            throw new AccessDeniedException("Bạn không phải là giáo viên phụ trách lớp học này");
         }
 
         User studentToRemove = classroom.getStudents().stream()
                 .filter(s -> s.getId().equals(studentId))
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("Học sinh không tồn tại trong lớp học này"));
+                .orElseThrow(() -> new ResourceNotFoundException("Học sinh không tồn tại trong lớp học này"));
 
         classroom.getStudents().remove(studentToRemove);
         classroomRepository.save(classroom);
@@ -180,15 +183,15 @@ public class ClassroomServiceImpl implements ClassroomService {
     @Transactional
     public ClassroomResponse updateClassroom(String classCode, UpdateClassroomRequest request, Long currentUserId) {
         Classroom classroom = classroomRepository.findByClassCode(classCode)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy lớp học"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lớp học"));
 
         if (!classroom.getTeacher().getId().equals(currentUserId)) {
-            throw new RuntimeException("Bạn không có quyền chỉnh sửa lớp học này");
+            throw new AccessDeniedException("Bạn không có quyền chỉnh sửa lớp học này");
         }
 
         int currentStudentCount = classroom.getStudents().size();
         if (request.getMaxStudents() != null && request.getMaxStudents() < currentStudentCount) {
-            throw new RuntimeException("Sĩ số tối đa không được nhỏ hơn sĩ số học sinh hiện tại (" + currentStudentCount + ")");
+            throw new BadRequestException("Sĩ số tối đa không được nhỏ hơn sĩ số học sinh hiện tại (" + currentStudentCount + ")");
         }
 
         classroom.setClassName(request.getClassName());

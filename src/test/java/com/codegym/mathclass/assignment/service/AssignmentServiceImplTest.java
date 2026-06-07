@@ -23,7 +23,6 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -82,17 +81,17 @@ class AssignmentServiceImplTest {
         // Không có deadline khi tạo DRAFT
 
         publishRequest = new PublishAssignmentRequest();
-        publishRequest.setClassCodes(List.of("MATH2024"));
-        publishRequest.setDeadline(LocalDateTime.now().plusDays(7));  // deadline đặt lúc publish
+        publishRequest.setTargets(
+                List.of(new PublishAssignmentRequest.TargetClass("MATH2024", LocalDateTime.now().plusDays(7))));
 
         draftAssignment = new Assignment();
         draftAssignment.setId(assignmentId);
         draftAssignment.setTitle("Bài tập tích phân");
         draftAssignment.setDescription("Tính $\\int_0^1 x^2 dx$");
-        draftAssignment.setDeadline(null);   // deadline = null khi còn là DRAFT
+        draftAssignment.setDeadline(null); // deadline = null khi còn là DRAFT
         draftAssignment.setStatus(AssignmentStatus.DRAFT);
         draftAssignment.setTeacher(teacher);
-        draftAssignment.setClassrooms(new HashSet<>());
+        draftAssignment.setClassroom(null);
     }
 
     // =====================================================
@@ -118,7 +117,7 @@ class AssignmentServiceImplTest {
         // DRAFT → chưa có deadline, isOpen luôn là false
         assertFalse(response.isOpen());
         assertNull(response.getDeadline());
-        assertTrue(response.getClassCodes().isEmpty());
+        assertNull(response.getClassCode());
         assertEquals(teacherId, response.getTeacherId());
 
         verify(userRepository, times(1)).findById(teacherId);
@@ -208,18 +207,21 @@ class AssignmentServiceImplTest {
     void publishAssignment_Success() {
         when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(draftAssignment));
         when(classroomRepository.findByClassCode("MATH2024")).thenReturn(Optional.of(classroom));
-        when(assignmentRepository.save(any(Assignment.class))).thenAnswer(invocation ->
-                invocation.getArgument(0));
 
-        AssignmentResponse response = assignmentService.publishAssignment(assignmentId, publishRequest, teacherId);
+        assignmentService.publishAssignment(assignmentId, publishRequest, teacherId);
 
-        assertNotNull(response);
-        assertEquals(AssignmentStatus.PUBLISHED, response.getStatus());
-        assertNotNull(response.getDeadline(), "Deadline phải được gán sau khi publish");
-        assertTrue(response.isOpen(), "Bài tập mới publish với deadline trong tương lai phải isOpen = true");
-        assertTrue(response.getClassCodes().contains("MATH2024"));
+        assertEquals(AssignmentStatus.ARCHIVED, draftAssignment.getStatus());
+        verify(assignmentRepository, times(1)).save(draftAssignment);
 
-        verify(assignmentRepository, times(1)).save(any(Assignment.class));
+        org.mockito.ArgumentCaptor<List<Assignment>> listCaptor = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(assignmentRepository, times(1)).saveAll(listCaptor.capture());
+
+        List<Assignment> savedClones = listCaptor.getValue();
+        assertEquals(1, savedClones.size());
+        Assignment clone = savedClones.get(0);
+        assertEquals(AssignmentStatus.PUBLISHED, clone.getStatus());
+        assertEquals("MATH2024", clone.getClassroom().getClassCode());
+        assertNotNull(clone.getDeadline(), "Deadline phải được gán sau khi publish");
     }
 
     @Test
@@ -232,20 +234,25 @@ class AssignmentServiceImplTest {
         classroom2.setTeacher(teacher);
         classroom2.setStudents(new HashSet<>());
 
-        publishRequest.setClassCodes(List.of("MATH2024", "MATH2025"));
+        PublishAssignmentRequest.TargetClass target1 = new PublishAssignmentRequest.TargetClass("MATH2024",
+                LocalDateTime.now().plusDays(7));
+        PublishAssignmentRequest.TargetClass target2 = new PublishAssignmentRequest.TargetClass("MATH2025",
+                LocalDateTime.now().plusDays(7));
+        publishRequest.setTargets(List.of(target1, target2));
 
         when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(draftAssignment));
         when(classroomRepository.findByClassCode("MATH2024")).thenReturn(Optional.of(classroom));
         when(classroomRepository.findByClassCode("MATH2025")).thenReturn(Optional.of(classroom2));
-        when(assignmentRepository.save(any(Assignment.class))).thenAnswer(invocation ->
-                invocation.getArgument(0));
 
-        AssignmentResponse response = assignmentService.publishAssignment(assignmentId, publishRequest, teacherId);
+        assignmentService.publishAssignment(assignmentId, publishRequest, teacherId);
 
-        assertNotNull(response);
-        assertEquals(AssignmentStatus.PUBLISHED, response.getStatus());
-        assertEquals(2, response.getClassCodes().size());
-        assertTrue(response.getClassCodes().containsAll(List.of("MATH2024", "MATH2025")));
+        org.mockito.ArgumentCaptor<List<Assignment>> listCaptor = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(assignmentRepository, times(1)).saveAll(listCaptor.capture());
+
+        List<Assignment> savedClones = listCaptor.getValue();
+        assertEquals(2, savedClones.size());
+        assertTrue(savedClones.stream().anyMatch(c -> c.getClassroom().getClassCode().equals("MATH2024")));
+        assertTrue(savedClones.stream().anyMatch(c -> c.getClassroom().getClassCode().equals("MATH2025")));
     }
 
     @Test
@@ -277,14 +284,14 @@ class AssignmentServiceImplTest {
     @DisplayName("should throw RuntimeException when assignment is already published")
     void publishAssignment_AlreadyPublished_ThrowsException() {
         draftAssignment.setStatus(AssignmentStatus.PUBLISHED);
-        draftAssignment.setClassrooms(new HashSet<>(Set.of(classroom)));
+        draftAssignment.setClassroom(classroom);
 
         when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(draftAssignment));
 
         RuntimeException ex = assertThrows(RuntimeException.class,
                 () -> assignmentService.publishAssignment(assignmentId, publishRequest, teacherId));
 
-        assertEquals("Bài tập đã được publish trước đó", ex.getMessage());
+        assertEquals("Bài tập đã được publish hoặc archive trước đó", ex.getMessage());
         verify(assignmentRepository, never()).save(any());
     }
 

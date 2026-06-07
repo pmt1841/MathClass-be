@@ -17,6 +17,14 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import com.codegym.mathclass.assignment.entity.AssignmentStatus;
+import org.springframework.security.core.GrantedAuthority;
 
 @RestController
 @RequestMapping("/api/assignments")
@@ -57,7 +65,35 @@ public class AssignmentController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         Long teacherId = userDetails.getId();
-        AssignmentResponse response = assignmentService.publishAssignment(id, request, teacherId);
-        return new ResponseEntity<>(response, HttpStatus.OK);
+        assignmentService.publishAssignment(id, request, teacherId);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * 
+     * Lấy danh sách bài tập theo người dùng hiện tại (Giáo viên hoặc Học sinh).
+     * Hỗ trợ tìm kiếm theo từ khóa (tiêu đề), lọc theo mã lớp, lọc theo trạng thái
+     * và phân trang.
+     */
+    @GetMapping
+    public ResponseEntity<Page<AssignmentResponse>> getAllAssignmentsForCurrentUser(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String classCode,
+            @RequestParam(required = false) AssignmentStatus status,
+            @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        Long userId = userDetails.getId();
+        // Lấy role đầu tiên (TEACHER hoặc STUDENT)
+        String role = userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .map(r -> r.replace("ROLE_", ""))
+                .findFirst()
+                .orElse("");
+
+        Page<AssignmentResponse> assignments = assignmentService.getAssignmentsForCurrentUser(
+                userId, role, keyword, classCode, status, pageable);
+
+        return ResponseEntity.ok(assignments);
     }
 }

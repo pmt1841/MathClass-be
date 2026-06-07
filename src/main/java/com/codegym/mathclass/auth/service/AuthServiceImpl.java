@@ -9,6 +9,7 @@ import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.EmailService;
+import com.codegym.mathclass.exception.BadRequestException;
 import lombok.RequiredArgsConstructor;
 
 import java.util.Optional;
@@ -65,9 +66,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public ResponseEntity<?> registerUser(SignupRequest signUpRequest) {
         if (userRepository.existsByEmail(signUpRequest.getEmail())) {
-            return ResponseEntity
-                    .badRequest()
-                    .body(new MessageResponse("Lỗi: Email đã tồn tại!"));
+            throw new BadRequestException("Lỗi: Email đã tồn tại!");
         }
 
         // Tạo user mới
@@ -95,7 +94,7 @@ public class AuthServiceImpl implements AuthService {
     public ResponseEntity<?> verifyUser(String token) {
         Optional<User> userOptional = userRepository.findByVerificationCode(token);
         if (userOptional.isEmpty()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Lỗi: Mã xác nhận không hợp lệ!"));
+            throw new BadRequestException("Lỗi: Mã xác nhận không hợp lệ!");
         }
 
         User user = userOptional.get();
