@@ -12,13 +12,19 @@ import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.LaTeXSanitizer;
+import com.codegym.mathclass.assignment.repository.AssignmentSpecification;
+import org.springframework.data.jpa.domain.Specification;
+import com.codegym.mathclass.exception.AccessDeniedException;
+import com.codegym.mathclass.exception.BadRequestException;
+import com.codegym.mathclass.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -33,11 +39,11 @@ public class AssignmentServiceImpl implements AssignmentService {
     public AssignmentResponse createAssignment(CreateAssignmentRequest request, Long teacherId) {
         // 1. Tìm giáo viên
         User teacher = userRepository.findById(teacherId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
         // 2. Kiểm tra vai trò
         if (teacher.getRole() != Role.TEACHER) {
-            throw new RuntimeException("Chỉ giáo viên mới có quyền tạo bài tập");
+            throw new AccessDeniedException("Chỉ giáo viên mới có quyền tạo bài tập");
         }
 
         // 3. Validate LaTeX trong mô tả
@@ -53,7 +59,7 @@ public class AssignmentServiceImpl implements AssignmentService {
         assignment.setDescription(request.getDescription());
         assignment.setStatus(AssignmentStatus.DRAFT);
         assignment.setTeacher(teacher);
-        assignment.setClassrooms(new HashSet<>());
+        assignment.setClassroom(null);
         // deadline = null cho đến khi giáo viên publish
 
         Assignment saved = assignmentRepository.save(assignment);
@@ -62,44 +68,150 @@ public class AssignmentServiceImpl implements AssignmentService {
 
     @Override
     @Transactional
-    public AssignmentResponse publishAssignment(Long assignmentId, PublishAssignmentRequest request, Long teacherId) {
+    public void publishAssignment(Long assignmentId, PublishAssignmentRequest request, Long teacherId) {
         // 1. Tìm bài tập
-        Assignment assignment = assignmentRepository.findById(assignmentId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy bài tập"));
+        Assignment originalAssignment = assignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập"));
 
         // 2. Kiểm tra quyền sở hữu
-        if (!assignment.getTeacher().getId().equals(teacherId)) {
-            throw new RuntimeException("Bạn không có quyền publish bài tập này");
+        if (!originalAssignment.getTeacher().getId().equals(teacherId)) {
+            throw new AccessDeniedException("Bạn không có quyền publish bài tập này");
         }
 
         // 3. Kiểm tra trạng thái – chỉ publish được khi đang là DRAFT
-        if (assignment.getStatus() != AssignmentStatus.DRAFT) {
-            throw new RuntimeException("Bài tập đã được publish trước đó");
+        if (originalAssignment.getStatus() != AssignmentStatus.DRAFT) {
+            throw new BadRequestException("Bài tập đã được publish hoặc archive trước đó");
         }
 
-        // 4. Tìm và kiểm tra các lớp được chọn – phải thuộc về giáo viên này
-        List<String> classCodes = request.getClassCodes();
-        Set<Classroom> classrooms = new HashSet<>();
+        List<Assignment> clones = new ArrayList<>();
 
-        for (String classCode : classCodes) {
+        // 4. Lặp qua các lớp đích và clone bài tập
+        for (PublishAssignmentRequest.TargetClass target : request.getTargets()) {
+            String classCode = target.getClassCode();
             Classroom classroom = classroomRepository.findByClassCode(classCode)
-                    .orElseThrow(() -> new RuntimeException(
+                    .orElseThrow(() -> new ResourceNotFoundException(
                             "Không tìm thấy lớp học với mã: " + classCode));
 
             if (!classroom.getTeacher().getId().equals(teacherId)) {
-                throw new RuntimeException(
+                throw new AccessDeniedException(
                         "Bạn không có quyền giao bài tập cho lớp: " + classCode);
             }
 
-            classrooms.add(classroom);
+            Assignment clone = new Assignment();
+            clone.setTitle(originalAssignment.getTitle());
+            clone.setDescription(originalAssignment.getDescription());
+            clone.setTeacher(originalAssignment.getTeacher());
+            clone.setParentId(originalAssignment.getId());
+            clone.setClassroom(classroom);
+            clone.setDeadline(target.getDeadline());
+            clone.setStatus(AssignmentStatus.PUBLISHED);
+
+            clones.add(clone);
         }
 
-        // 5. Gán lớp, đặt deadline, chuyển trạng thái PUBLISHED, lưu DB
-        assignment.setClassrooms(classrooms);
-        assignment.setDeadline(request.getDeadline());
-        assignment.setStatus(AssignmentStatus.PUBLISHED);
+        // 5. Lưu tất cả bản clone
+        assignmentRepository.saveAll(clones);
 
-        Assignment saved = assignmentRepository.save(assignment);
-        return AssignmentResponse.fromEntity(saved);
+        // 6. Cập nhật trạng thái bản nháp thành ARCHIVED nếu như đang là DRAFT
+        if (originalAssignment.getStatus() == AssignmentStatus.DRAFT) {
+            originalAssignment.setStatus(AssignmentStatus.ARCHIVED);
+        }
+        assignmentRepository.save(originalAssignment);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<AssignmentResponse> getAssignmentsByClassCode(String classCode, Long userId, String keyword,
+            AssignmentStatus status, Pageable pageable) {
+        // 1. Tìm lớp học
+        Classroom classroom = classroomRepository.findByClassCode(classCode)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lớp học với mã: " + classCode));
+
+        // 2. Kiểm tra quyền truy cập (giáo viên hoặc học sinh của lớp)
+        boolean isTeacher = classroom.getTeacher().getId().equals(userId);
+        boolean isStudent = classroom.getStudents().stream().anyMatch(student -> student.getId().equals(userId));
+
+        if (!isTeacher && !isStudent) {
+            throw new AccessDeniedException("Bạn không có quyền xem bài tập của lớp này");
+        }
+
+        Specification<Assignment> spec = Specification.where((root, query, cb) -> {
+            jakarta.persistence.criteria.Join<Assignment, Classroom> classroomJoin = root.join("classroom",
+                    jakarta.persistence.criteria.JoinType.LEFT);
+            // Lấy các bài tập của lớp này
+            jakarta.persistence.criteria.Predicate isClassCode = cb.equal(classroomJoin.get("classCode"), classCode);
+
+            if (isTeacher) {
+                // Giáo viên thấy bài tập của lớp HOẶC các bản nháp của chính họ
+                jakarta.persistence.criteria.Predicate isDraftAndMyTeacher = cb.and(
+                        cb.equal(root.get("status"), AssignmentStatus.DRAFT),
+                        cb.equal(root.get("teacher").get("id"), userId));
+                return cb.or(isClassCode, isDraftAndMyTeacher);
+            } else {
+                // Học sinh chỉ thấy bài tập của lớp đó
+                return isClassCode;
+            }
+        });
+
+        // Lọc theo keyword (tiêu đề)
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            spec = spec.and(AssignmentSpecification.hasTitleContaining(keyword));
+        }
+
+        // Lọc theo status
+        if (status != null) {
+            if (isStudent && status != AssignmentStatus.PUBLISHED) {
+                return Page.empty(pageable);
+            }
+            spec = spec.and(AssignmentSpecification.hasStatus(status));
+        } else {
+            if (isStudent) {
+                spec = spec.and(AssignmentSpecification.hasStatus(AssignmentStatus.PUBLISHED));
+            }
+        }
+
+        Page<Assignment> assignments = assignmentRepository.findAll(spec, pageable);
+        return assignments.map(AssignmentResponse::fromEntity);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<AssignmentResponse> getAssignmentsForCurrentUser(Long userId, String role, String keyword,
+            String classCode, AssignmentStatus status, Pageable pageable) {
+        Specification<Assignment> spec = Specification.where((root, query, cb) -> cb.conjunction());
+
+        // 1. Phân quyền truy cập cơ bản theo Role
+        if (Role.TEACHER.name().equals(role)) {
+            spec = spec.and(AssignmentSpecification.isTeacher(userId));
+        } else if (Role.STUDENT.name().equals(role)) {
+            // Học sinh chỉ xem được bài tập PUBLISHED
+            if (status != null && status != AssignmentStatus.PUBLISHED) {
+                // Trả về rỗng nếu cố tình lọc các trạng thái không được phép
+                return Page.empty(pageable);
+            }
+            spec = spec.and(AssignmentSpecification.isStudent(userId))
+                    .and(AssignmentSpecification.hasStatus(AssignmentStatus.PUBLISHED));
+        } else {
+            throw new AccessDeniedException("Role không hợp lệ");
+        }
+
+        // 2. Lọc theo keyword (tiêu đề)
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            spec = spec.and(AssignmentSpecification.hasTitleContaining(keyword));
+        }
+
+        // 3. Lọc theo classCode
+        if (classCode != null && !classCode.trim().isEmpty()) {
+            spec = spec.and(AssignmentSpecification.hasClassCode(classCode));
+        }
+
+        // 4. Lọc theo status (nếu là TEACHER thì có thể filter tùy ý, STUDENT thì
+        // status luôn là PUBLISHED đã set ở trên)
+        if (status != null && Role.TEACHER.name().equals(role)) {
+            spec = spec.and(AssignmentSpecification.hasStatus(status));
+        }
+
+        Page<Assignment> assignments = assignmentRepository.findAll(spec, pageable);
+        return assignments.map(AssignmentResponse::fromEntity);
     }
 }

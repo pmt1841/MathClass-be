@@ -10,8 +10,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -19,8 +17,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
 
 @Entity
 @Table(name = "assignments")
@@ -53,12 +49,10 @@ public class Assignment {
     @JoinColumn(name = "teacher_id", nullable = false)
     private User teacher;
 
-    // Bảng trung gian assignment_classrooms, chỉ được gán khi PUBLISH
-    @ManyToMany
-    @JoinTable(
-            name = "assignment_classrooms",
-            joinColumns = @JoinColumn(name = "assignment_id"),
-            inverseJoinColumns = @JoinColumn(name = "classroom_id")
-    )
-    private Set<Classroom> classrooms = new HashSet<>();
+    @Column(name = "parent_id")
+    private Long parentId;
+
+    @ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
+    @JoinColumn(name = "classroom_id")
+    private Classroom classroom;
 }

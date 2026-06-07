@@ -7,8 +7,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Data
 @NoArgsConstructor
@@ -22,15 +20,16 @@ public class AssignmentResponse {
     private AssignmentStatus status;
 
     // isOpen: tính tự động theo deadline, không lưu vào DB
-    // true  → PUBLISHED và còn trong hạn nộp
+    // true → PUBLISHED và còn trong hạn nộp
     // false → DRAFT hoặc đã quá hạn
     private boolean isOpen;
 
     private Long teacherId;
     private String teacherName;
 
-    // Danh sách classCode đã được giao (rỗng nếu còn là DRAFT)
-    private List<String> classCodes;
+    // Lớp đã giao (null nếu còn là DRAFT)
+    private String classCode;
+    private String className;
 
     public static AssignmentResponse fromEntity(Assignment assignment) {
         if (assignment == null) {
@@ -55,12 +54,10 @@ public class AssignmentResponse {
             response.setTeacherName(assignment.getTeacher().getFullName());
         }
 
-        List<String> classCodes = assignment.getClassrooms() != null
-                ? assignment.getClassrooms().stream()
-                        .map(c -> c.getClassCode())
-                        .collect(Collectors.toList())
-                : List.of();
-        response.setClassCodes(classCodes);
+        if (assignment.getClassroom() != null) {
+            response.setClassCode(assignment.getClassroom().getClassCode());
+            response.setClassName(assignment.getClassroom().getClassName());
+        }
 
         return response;
     }
