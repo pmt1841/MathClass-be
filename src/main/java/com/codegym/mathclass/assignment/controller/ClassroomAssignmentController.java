@@ -34,19 +34,10 @@ public class ClassroomAssignmentController {
             @RequestParam(defaultValue = "10") int size,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        try {
-            Long userId = userDetails.getId();
-            Pageable pageable = PageRequest.of(page, size);
-            Page<AssignmentResponse> responses = assignmentService.getAssignmentsByClassCode(classCode, userId, keyword,
-                    status, pageable);
-            return ResponseEntity.ok(responses);
-        } catch (RuntimeException e) {
-            if (e.getMessage().contains("Không tìm thấy")) {
-                return ResponseEntity.notFound().build();
-            } else if (e.getMessage().contains("không có quyền")) {
-                return ResponseEntity.status(403).body(e.getMessage());
-            }
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        Long userId = userDetails.getId();
+        Pageable pageable = PageRequest.of(page, size);
+        Page<AssignmentResponse> responses = assignmentService.getAssignmentsByClassCode(classCode, userId, keyword,
+                status, pageable);
+        return ResponseEntity.ok(responses);
     }
 }
