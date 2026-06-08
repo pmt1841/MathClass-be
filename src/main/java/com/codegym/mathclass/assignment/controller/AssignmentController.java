@@ -3,6 +3,7 @@ package com.codegym.mathclass.assignment.controller;
 import com.codegym.mathclass.assignment.dto.AssignmentResponse;
 import com.codegym.mathclass.assignment.dto.CreateAssignmentRequest;
 import com.codegym.mathclass.assignment.dto.PublishAssignmentRequest;
+import com.codegym.mathclass.assignment.dto.UpdateAssignmentRequest;
 import com.codegym.mathclass.assignment.service.AssignmentService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import jakarta.validation.Valid;
@@ -35,7 +36,7 @@ public class AssignmentController {
     private final AssignmentService assignmentService;
 
     /**
-     * Bước 1: Giáo viên tạo bài tập mới (trạng thái DRAFT).
+     * Giáo viên tạo bài tập mới (trạng thái DRAFT).
      * Chưa giao cho lớp nào.
      */
     @PostMapping("/create")
@@ -55,7 +56,7 @@ public class AssignmentController {
     }
 
     /**
-     * Bước 2: Giáo viên publish bài tập và chọn các lớp để giao.
+     * Giáo viên publish bài tập và chọn các lớp để giao.
      * Chuyển trạng thái từ DRAFT → PUBLISHED.
      */
     @PutMapping("/{id}/publish")
@@ -78,7 +79,7 @@ public class AssignmentController {
     public ResponseEntity<?> deleteAssignment(
             @PathVariable Long id,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        
+
         Long teacherId = userDetails.getId();
         assignmentService.deleteAssignment(id, teacherId);
         return ResponseEntity.ok().build();
@@ -110,5 +111,46 @@ public class AssignmentController {
                 userId, role, keyword, classCode, status, pageable);
 
         return ResponseEntity.ok(assignments);
+    }
+
+    /**
+     * Lấy chi tiết bài tập theo ID
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<AssignmentResponse> getAssignmentById(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        
+        Long userId = userDetails.getId();
+        String role = userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .map(r -> r.replace("ROLE_", ""))
+                .findFirst()
+                .orElse("");
+                
+        AssignmentResponse response = assignmentService.getAssignmentById(id, userId, role);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Giáo viên sửa bài tập nếu chưa có học sinh nộp bài.
+     * - DRAFT: sửa title + description tự do.
+     * - ARCHIVED: sửa title + description, đồng bộ sang tất cả PUBLISHED con.
+     * - PUBLISHED: sửa title + description + deadline.
+     */
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('TEACHER')")
+    public ResponseEntity<?> updateAssignment(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateAssignmentRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        try {
+            Long teacherId = userDetails.getId();
+            AssignmentResponse response = assignmentService.updateAssignment(id, request, teacherId);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            // Bắt lỗi từ validate LaTeX → trả 400 Bad Request
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 }

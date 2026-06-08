@@ -24,6 +24,9 @@ public class AssignmentResponse {
     // false → DRAFT hoặc đã quá hạn
     private boolean isOpen;
 
+    // Giả lập (mock) kiểm tra xem bài tập đã có học sinh nộp chưa
+    private boolean hasSubmissions;
+
     private Long teacherId;
     private String teacherName;
 
@@ -48,6 +51,9 @@ public class AssignmentResponse {
                 && assignment.getDeadline() != null
                 && LocalDateTime.now().isBefore(assignment.getDeadline());
         response.setOpen(open);
+
+        // Giả lập: Nếu là PUBLISHED thì mặc định là đã có người nộp (true)
+        response.setHasSubmissions(assignment.getStatus() == AssignmentStatus.PUBLISHED);
 
         if (assignment.getTeacher() != null) {
             response.setTeacherId(assignment.getTeacher().getId());
