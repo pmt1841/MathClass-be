@@ -16,4 +16,6 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long>, J
     List<Assignment> findByTeacherId(Long teacherId);
 
     Page<Assignment> findByClassroom_ClassCodeAndStatus(String classCode, AssignmentStatus status, Pageable pageable);
+
+    List<Assignment> findByParentId(Long parentId);
 }
