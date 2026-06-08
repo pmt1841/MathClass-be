@@ -14,6 +14,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -66,6 +67,20 @@ public class AssignmentController {
 
         Long teacherId = userDetails.getId();
         assignmentService.publishAssignment(id, request, teacherId);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Giáo viên xóa bài tập.
+     */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('TEACHER')")
+    public ResponseEntity<?> deleteAssignment(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        
+        Long teacherId = userDetails.getId();
+        assignmentService.deleteAssignment(id, teacherId);
         return ResponseEntity.ok().build();
     }
 

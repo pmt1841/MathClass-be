@@ -21,6 +21,11 @@ public interface AssignmentService {
     void publishAssignment(Long assignmentId, PublishAssignmentRequest request, Long teacherId);
 
     /**
+     * Giáo viên xóa bài tập.
+     */
+    void deleteAssignment(Long assignmentId, Long teacherId);
+
+    /**
      * Lấy danh sách bài tập của một lớp (hỗ trợ lọc theo từ khóa và trạng thái).
      */
     Page<AssignmentResponse> getAssignmentsByClassCode(String classCode, Long userId, String keyword, com.codegym.mathclass.assignment.entity.AssignmentStatus status, Pageable pageable);

@@ -214,4 +214,38 @@ public class AssignmentServiceImpl implements AssignmentService {
         Page<Assignment> assignments = assignmentRepository.findAll(spec, pageable);
         return assignments.map(AssignmentResponse::fromEntity);
     }
+
+    @Override
+    @Transactional
+    public void deleteAssignment(Long assignmentId, Long teacherId) {
+        // 1. Tìm bài tập
+        Assignment assignment = assignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập"));
+
+        // 2. Kiểm tra quyền sở hữu
+        if (!assignment.getTeacher().getId().equals(teacherId)) {
+            throw new AccessDeniedException("Bạn không có quyền xóa bài tập này");
+        }
+
+        // TODO: Kiểm tra xem đã có submission hay chưa (hiện tại chưa có chức năng nộp bài)
+
+        // 3. Xử lý theo trạng thái
+        if (assignment.getStatus() == AssignmentStatus.DRAFT) {
+            // Bản nháp -> xóa cứng
+            assignmentRepository.delete(assignment);
+        } else {
+            // Không phải nháp -> xóa mềm
+            // Nếu là bài gốc (ARCHIVED), các bản clone không bị xóa/ẩn mà đổi parentId = null
+            if (assignment.getStatus() == AssignmentStatus.ARCHIVED) {
+                List<Assignment> clones = assignmentRepository.findByParentId(assignment.getId());
+                for (Assignment clone : clones) {
+                    clone.setParentId(null);
+                }
+                assignmentRepository.saveAll(clones);
+            }
+            
+            assignment.setStatus(AssignmentStatus.DELETED);
+            assignmentRepository.save(assignment);
+        }
+    }
 }
