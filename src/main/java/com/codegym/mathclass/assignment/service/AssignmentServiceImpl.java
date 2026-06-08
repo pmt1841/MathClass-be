@@ -3,6 +3,7 @@ package com.codegym.mathclass.assignment.service;
 import com.codegym.mathclass.assignment.dto.AssignmentResponse;
 import com.codegym.mathclass.assignment.dto.CreateAssignmentRequest;
 import com.codegym.mathclass.assignment.dto.PublishAssignmentRequest;
+import com.codegym.mathclass.assignment.dto.UpdateAssignmentRequest;
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.entity.AssignmentStatus;
 import com.codegym.mathclass.assignment.repository.AssignmentRepository;
@@ -247,5 +248,98 @@ public class AssignmentServiceImpl implements AssignmentService {
             assignment.setStatus(AssignmentStatus.DELETED);
             assignmentRepository.save(assignment);
         }
+    }
+
+    @Override
+    @Transactional
+    public AssignmentResponse updateAssignment(Long assignmentId, UpdateAssignmentRequest request, Long teacherId) {
+        // 1. Tìm bài tập
+        Assignment assignment = assignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập"));
+
+        // 2. Kiểm tra quyền sở hữu
+        if (!assignment.getTeacher().getId().equals(teacherId)) {
+            throw new AccessDeniedException("Bạn không có quyền sửa bài tập này");
+        }
+
+        // 3. Từ chối nếu đã bị xóa
+        if (assignment.getStatus() == AssignmentStatus.DELETED) {
+            throw new BadRequestException("Không thể sửa bài tập đã bị xóa");
+        }
+
+        // 4. Validate LaTeX trong mô tả mới
+        if (!LaTeXSanitizer.isSafe(request.getDescription())) {
+            String dangerous = LaTeXSanitizer.findDangerousCommand(request.getDescription());
+            throw new IllegalArgumentException(
+                    "Mô tả chứa lệnh LaTeX không được phép: " + dangerous);
+        }
+
+        // 5. Xử lý theo trạng thái
+        if (assignment.getStatus() == AssignmentStatus.DRAFT) {
+            // DRAFT: sửa tự do, không có deadline
+            assignment.setTitle(request.getTitle());
+            assignment.setDescription(request.getDescription());
+            assignmentRepository.save(assignment);
+
+        } else if (assignment.getStatus() == AssignmentStatus.ARCHIVED) {
+            // ARCHIVED (bản gốc): cập nhật bản gốc
+            assignment.setTitle(request.getTitle());
+            assignment.setDescription(request.getDescription());
+            assignmentRepository.save(assignment);
+
+            // Đồng bộ sang tất cả bản PUBLISHED con
+            List<Assignment> publishedClones = assignmentRepository.findByParentId(assignment.getId());
+            for (Assignment clone : publishedClones) {
+                // TODO: Bỏ qua bản clone đã có submission khi Submission module được xây dựng.
+                //       Ví dụ: if (submissionRepository.existsByAssignmentId(clone.getId())) continue;
+                clone.setTitle(request.getTitle());
+                clone.setDescription(request.getDescription());
+            }
+            assignmentRepository.saveAll(publishedClones);
+
+        } else if (assignment.getStatus() == AssignmentStatus.PUBLISHED) {
+            // PUBLISHED: sửa title + description + deadline (nếu chưa có submission)
+            // TODO: Kiểm tra submission khi Submission module được xây dựng.
+            //       Ví dụ: if (submissionRepository.existsByAssignmentId(assignmentId))
+            //                  throw new BadRequestException("Đã có học sinh nộp bài, không thể sửa");
+            assignment.setTitle(request.getTitle());
+            assignment.setDescription(request.getDescription());
+            if (request.getDeadline() != null) {
+                assignment.setDeadline(request.getDeadline());
+            }
+            assignmentRepository.save(assignment);
+        }
+
+        return AssignmentResponse.fromEntity(assignment);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AssignmentResponse getAssignmentById(Long assignmentId, Long userId, String role) {
+        Assignment assignment = assignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập"));
+
+        if (Role.TEACHER.name().equals(role)) {
+            if (!assignment.getTeacher().getId().equals(userId)) {
+                throw new AccessDeniedException("Bạn không có quyền xem bài tập này");
+            }
+        } else if (Role.STUDENT.name().equals(role)) {
+            if (assignment.getStatus() != AssignmentStatus.PUBLISHED) {
+                throw new AccessDeniedException("Bạn không thể xem bài tập này");
+            }
+            if (assignment.getClassroom() != null) {
+                boolean isStudentInClass = assignment.getClassroom().getStudents().stream()
+                        .anyMatch(student -> student.getId().equals(userId));
+                if (!isStudentInClass) {
+                    throw new AccessDeniedException("Bạn không thuộc lớp của bài tập này");
+                }
+            } else {
+                throw new AccessDeniedException("Bài tập chưa được giao cho lớp nào");
+            }
+        } else {
+            throw new AccessDeniedException("Role không hợp lệ");
+        }
+
+        return AssignmentResponse.fromEntity(assignment);
     }
 }
