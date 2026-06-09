@@ -13,28 +13,28 @@ public interface AssignmentService {
      * Bước 1: Giáo viên tạo bài tập mới với trạng thái DRAFT.
      * Chưa giao cho lớp nào.
      */
-    AssignmentResponse createAssignment(CreateAssignmentRequest request, Long teacherId);
+    AssignmentResponse createAssignment(CreateAssignmentRequest request, long teacherId);
 
     /**
      * Bước 2: Giáo viên publish bài tập và chọn các lớp để giao.
      * Chuyển trạng thái bản nháp thành ARCHIVED, tạo các bản clone cho mỗi lớp.
      */
-    void publishAssignment(Long assignmentId, PublishAssignmentRequest request, Long teacherId);
+    void publishAssignment(long assignmentId, PublishAssignmentRequest request, long teacherId);
 
     /**
      * Giáo viên xóa bài tập.
      */
-    void deleteAssignment(Long assignmentId, Long teacherId);
+    void deleteAssignment(long assignmentId, long teacherId);
 
     /**
      * Lấy danh sách bài tập của một lớp (hỗ trợ lọc theo từ khóa và trạng thái).
      */
-    Page<AssignmentResponse> getAssignmentsByClassCode(String classCode, Long userId, String keyword, com.codegym.mathclass.assignment.entity.AssignmentStatus status, Pageable pageable);
+    Page<AssignmentResponse> getAssignmentsByClassCode(String classCode, long userId, String keyword, com.codegym.mathclass.assignment.entity.AssignmentStatus status, Pageable pageable);
 
     /**
      * Lấy danh sách bài tập theo người dùng hiện tại (Giáo viên/Học sinh) kèm bộ lọc
      */
-    Page<AssignmentResponse> getAssignmentsForCurrentUser(Long userId, String role, String keyword, String classCode, com.codegym.mathclass.assignment.entity.AssignmentStatus status, Pageable pageable);
+    Page<AssignmentResponse> getAssignmentsForCurrentUser(long userId, String role, String keyword, String classCode, com.codegym.mathclass.assignment.entity.AssignmentStatus status, Pageable pageable);
 
     /**
      * Giáo viên sửa bài tập nếu chưa có học sinh nộp bài.
@@ -43,10 +43,10 @@ public interface AssignmentService {
      * - PUBLISHED: sửa title + description + deadline.
      * - DELETED: từ chối.
      */
-    AssignmentResponse updateAssignment(Long assignmentId, UpdateAssignmentRequest request, Long teacherId);
+    AssignmentResponse updateAssignment(long assignmentId, UpdateAssignmentRequest request, long teacherId);
 
     /**
      * Lấy chi tiết bài tập theo ID
      */
-    AssignmentResponse getAssignmentById(Long assignmentId, Long userId, String role);
+    AssignmentResponse getAssignmentById(long assignmentId, long userId, String role);
 }

@@ -38,18 +38,18 @@ public class AssignmentSpecification {
         };
     }
 
-    public static Specification<Assignment> isTeacher(Long teacherId) {
+    public static Specification<Assignment> isTeacher(long teacherId) {
         return (root, query, cb) -> {
-            if (teacherId == null) {
+            if (teacherId == 0L) {
                 return null;
             }
             return cb.equal(root.get("teacher").get("id"), teacherId);
         };
     }
 
-    public static Specification<Assignment> isStudent(Long studentId) {
+    public static Specification<Assignment> isStudent(long studentId) {
         return (root, query, cb) -> {
-            if (studentId == null) {
+            if (studentId == 0L) {
                 return null;
             }
             Join<Assignment, Classroom> classroomJoin = root.join("classroom", JoinType.INNER);

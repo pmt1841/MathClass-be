@@ -34,10 +34,34 @@ public class ClassroomAssignmentController {
             @RequestParam(defaultValue = "10") int size,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        Long userId = userDetails.getId();
+        long userId = userDetails.getId();
         Pageable pageable = PageRequest.of(page, size);
         Page<AssignmentResponse> responses = assignmentService.getAssignmentsByClassCode(classCode, userId, keyword,
                 status, pageable);
         return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/{id}/detail")
+    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+    public ResponseEntity<?> getAssignmentDetail(
+            @PathVariable String classCode,
+            @PathVariable long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        long userId = userDetails.getId();
+        String role = userDetails.getAuthorities().stream()
+                .map(org.springframework.security.core.GrantedAuthority::getAuthority)
+                .map(r -> r.replace("ROLE_", ""))
+                .findFirst()
+                .orElse("");
+
+        AssignmentResponse response = assignmentService.getAssignmentById(id, userId, role);
+
+        if (response.getClassCode() == null || !response.getClassCode().equals(classCode)) {
+            throw new com.codegym.mathclass.exception.AccessDeniedException(
+                    "Bài tập này không thuộc lớp học này");
+        }
+
+        return ResponseEntity.ok(response);
     }
 }

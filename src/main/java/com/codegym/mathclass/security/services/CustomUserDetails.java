@@ -20,7 +20,7 @@ public class CustomUserDetails implements UserDetails {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    private Long id;
+    private long id;
 
     private String fullName;
 

@@ -65,7 +65,7 @@ public class ClassroomMemberController {
     @PreAuthorize("hasRole('TEACHER')")
     public ResponseEntity<Void> removeStudentFromClass(
             @PathVariable String classCode,
-            @PathVariable Long studentId,
+            @PathVariable long studentId,
             @AuthenticationPrincipal CustomUserDetails customUserDetails) {
 
         classroomService.removeStudentFromClass(classCode, studentId, customUserDetails.getId());

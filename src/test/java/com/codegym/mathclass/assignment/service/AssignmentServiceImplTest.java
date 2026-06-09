@@ -49,8 +49,8 @@ class AssignmentServiceImplTest {
     private CreateAssignmentRequest createRequest;
     private PublishAssignmentRequest publishRequest;
     private Assignment draftAssignment;
-    private final Long teacherId = 1L;
-    private final Long assignmentId = 10L;
+    private final long teacherId = 1L;
+    private final long assignmentId = 10L;
 
     @BeforeEach
     void setUp() {
@@ -270,7 +270,7 @@ class AssignmentServiceImplTest {
     @Test
     @DisplayName("should throw RuntimeException when teacher does not own the assignment")
     void publishAssignment_NotOwner_ThrowsException() {
-        Long otherTeacherId = 999L;
+        long otherTeacherId = 999L;
         when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(draftAssignment));
 
         RuntimeException ex = assertThrows(RuntimeException.class,

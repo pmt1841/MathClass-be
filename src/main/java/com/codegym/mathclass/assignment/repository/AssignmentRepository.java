@@ -13,7 +13,7 @@ import java.util.List;
 @Repository
 public interface AssignmentRepository extends JpaRepository<Assignment, Long>, JpaSpecificationExecutor<Assignment> {
 
-    List<Assignment> findByTeacherId(Long teacherId);
+    List<Assignment> findByTeacherId(long teacherId);
 
     Page<Assignment> findByClassroom_ClassCodeAndStatus(String classCode, AssignmentStatus status, Pageable pageable);
 

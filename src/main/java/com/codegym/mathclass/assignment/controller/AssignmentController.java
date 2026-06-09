@@ -46,7 +46,7 @@ public class AssignmentController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         try {
-            Long teacherId = userDetails.getId();
+            long teacherId = userDetails.getId();
             AssignmentResponse response = assignmentService.createAssignment(request, teacherId);
             return new ResponseEntity<>(response, HttpStatus.CREATED);
         } catch (IllegalArgumentException e) {
@@ -62,11 +62,11 @@ public class AssignmentController {
     @PutMapping("/{id}/publish")
     @PreAuthorize("hasRole('TEACHER')")
     public ResponseEntity<?> publishAssignment(
-            @PathVariable Long id,
+            @PathVariable long id,
             @Valid @RequestBody PublishAssignmentRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        Long teacherId = userDetails.getId();
+        long teacherId = userDetails.getId();
         assignmentService.publishAssignment(id, request, teacherId);
         return ResponseEntity.ok().build();
     }
@@ -77,10 +77,10 @@ public class AssignmentController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('TEACHER')")
     public ResponseEntity<?> deleteAssignment(
-            @PathVariable Long id,
+            @PathVariable long id,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        Long teacherId = userDetails.getId();
+        long teacherId = userDetails.getId();
         assignmentService.deleteAssignment(id, teacherId);
         return ResponseEntity.ok().build();
     }
@@ -99,7 +99,7 @@ public class AssignmentController {
             @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        Long userId = userDetails.getId();
+        long userId = userDetails.getId();
         // Lấy role đầu tiên (TEACHER hoặc STUDENT)
         String role = userDetails.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
@@ -118,10 +118,10 @@ public class AssignmentController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<AssignmentResponse> getAssignmentById(
-            @PathVariable Long id,
+            @PathVariable long id,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         
-        Long userId = userDetails.getId();
+        long userId = userDetails.getId();
         String role = userDetails.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .map(r -> r.replace("ROLE_", ""))
@@ -141,11 +141,11 @@ public class AssignmentController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('TEACHER')")
     public ResponseEntity<?> updateAssignment(
-            @PathVariable Long id,
+            @PathVariable long id,
             @Valid @RequestBody UpdateAssignmentRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         try {
-            Long teacherId = userDetails.getId();
+            long teacherId = userDetails.getId();
             AssignmentResponse response = assignmentService.updateAssignment(id, request, teacherId);
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
