@@ -10,17 +10,17 @@ import com.codegym.mathclass.classroom.dto.StudentResponse;
 import com.codegym.mathclass.classroom.dto.UpdateClassroomRequest;
 
 public interface ClassroomService {
-    ClassroomResponse createClassroom(CreateClassroomRequest request, Long currentUserId);
+    ClassroomResponse createClassroom(CreateClassroomRequest request, long currentUserId);
 
-    List<ClassroomResponse> getClassroomsListById(Long currentUserId);
+    List<ClassroomResponse> getClassroomsListById(long currentUserId);
 
-    void addStudentToClass(String classCode, String studentEmail, Long teacherId);
+    void addStudentToClass(String classCode, String studentEmail, long teacherId);
 
-    Page<StudentResponse> getStudentsByClassCode(String classCode, Long currentUserId, Pageable pageable);
+    Page<StudentResponse> getStudentsByClassCode(String classCode, long currentUserId, Pageable pageable);
 
-    ClassroomResponse getClassroomByClassCode(String classCode, Long currentUserId);
+    ClassroomResponse getClassroomByClassCode(String classCode, long currentUserId);
 
-    void removeStudentFromClass(String classCode, Long studentId, Long teacherId);
+    void removeStudentFromClass(String classCode, long studentId, long teacherId);
 
-    ClassroomResponse updateClassroom(String classCode, UpdateClassroomRequest request, Long currentUserId);
+    ClassroomResponse updateClassroom(String classCode, UpdateClassroomRequest request, long currentUserId);
 }

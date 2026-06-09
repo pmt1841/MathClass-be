@@ -1,5 +1,7 @@
 package com.codegym.mathclass.classroom.dto;
 
+import java.time.LocalDateTime;
+
 import com.codegym.mathclass.classroom.entity.Classroom;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,14 +11,16 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ClassroomResponse {
-    private Long id;
+    private long id;
     private String classCode;
     private String className;
-    private Long teacherId;
+    private long teacherId;
     private String teacherName;
     private int studentCount;
     private Integer maxStudents;
     private String description;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     public static ClassroomResponse fromEntity(Classroom classroom) {
         if (classroom == null) {
@@ -31,6 +35,8 @@ public class ClassroomResponse {
         response.setStudentCount(classroom.getStudents() != null ? classroom.getStudents().size() : 0);
         response.setMaxStudents(classroom.getMaxStudents());
         response.setDescription(classroom.getDescription());
+        response.setCreatedAt(classroom.getCreatedAt());
+        response.setUpdatedAt(classroom.getUpdatedAt());
         return response;
     }
 }

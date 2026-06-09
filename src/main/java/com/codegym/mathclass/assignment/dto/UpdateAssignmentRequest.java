@@ -18,6 +18,9 @@ public class UpdateAssignmentRequest {
     @NotBlank(message = "Mô tả bài tập không được để trống")
     private String description;
 
+    @NotBlank(message = "Nội dung bài tập không được để trống")
+    private String content;
+
     /**
      * Chỉ áp dụng khi sửa bài tập PUBLISHED (có lớp cụ thể).
      * Với bài DRAFT/ARCHIVED thì bỏ qua trường này.

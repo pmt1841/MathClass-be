@@ -13,7 +13,7 @@ public interface ClassroomRepository extends JpaRepository<Classroom, Long> {
 
     boolean existsByClassCode(String classCode);
 
-    List<Classroom> findByTeacherId(Long id);
+    List<Classroom> findByTeacherId(long id);
 
-    List<Classroom> findByStudentsId(Long studentId);
+    List<Classroom> findByStudentsId(long studentId);
 }

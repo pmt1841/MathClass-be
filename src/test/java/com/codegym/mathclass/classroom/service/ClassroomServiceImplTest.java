@@ -55,7 +55,7 @@ class ClassroomServiceImplTest {
     private User student;
     private Classroom classroom;
     private CreateClassroomRequest request;
-    private Long currentUserId;
+    private long currentUserId;
 
     @BeforeEach
     void setUp() {
@@ -221,7 +221,7 @@ class ClassroomServiceImplTest {
     @Test
     @DisplayName("should return classroom list successfully when user is a student")
     void getClassroomsListById_Student_Success() {
-        Long studentId = 2L;
+        long studentId = 2L;
         when(userRepository.findById(studentId)).thenReturn(Optional.of(student));
 
         Classroom class1 = new Classroom();

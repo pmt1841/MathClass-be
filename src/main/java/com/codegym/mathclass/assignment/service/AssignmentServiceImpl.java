@@ -37,7 +37,7 @@ public class AssignmentServiceImpl implements AssignmentService {
 
     @Override
     @Transactional
-    public AssignmentResponse createAssignment(CreateAssignmentRequest request, Long teacherId) {
+    public AssignmentResponse createAssignment(CreateAssignmentRequest request, long teacherId) {
         // 1. Tìm giáo viên
         User teacher = userRepository.findById(teacherId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
@@ -47,17 +47,18 @@ public class AssignmentServiceImpl implements AssignmentService {
             throw new AccessDeniedException("Chỉ giáo viên mới có quyền tạo bài tập");
         }
 
-        // 3. Validate LaTeX trong mô tả
-        if (!LaTeXSanitizer.isSafe(request.getDescription())) {
-            String dangerous = LaTeXSanitizer.findDangerousCommand(request.getDescription());
+        // 3. Validate LaTeX trong nội dung bài tập
+        if (!LaTeXSanitizer.isSafe(request.getContent())) {
+            String dangerous = LaTeXSanitizer.findDangerousCommand(request.getContent());
             throw new IllegalArgumentException(
-                    "Mô tả chứa lệnh LaTeX không được phép: " + dangerous);
+                    "Nội dung chứa lệnh LaTeX không được phép: " + dangerous);
         }
 
         // 4. Tạo bài tập với trạng thái DRAFT, chưa gán lớp và chưa có deadline
         Assignment assignment = new Assignment();
         assignment.setTitle(request.getTitle());
         assignment.setDescription(request.getDescription());
+        assignment.setContent(request.getContent());
         assignment.setStatus(AssignmentStatus.DRAFT);
         assignment.setTeacher(teacher);
         assignment.setClassroom(null);
@@ -69,13 +70,13 @@ public class AssignmentServiceImpl implements AssignmentService {
 
     @Override
     @Transactional
-    public void publishAssignment(Long assignmentId, PublishAssignmentRequest request, Long teacherId) {
+    public void publishAssignment(long assignmentId, PublishAssignmentRequest request, long teacherId) {
         // 1. Tìm bài tập
         Assignment originalAssignment = assignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập"));
 
         // 2. Kiểm tra quyền sở hữu
-        if (!originalAssignment.getTeacher().getId().equals(teacherId)) {
+        if (originalAssignment.getTeacher().getId() != teacherId) {
             throw new AccessDeniedException("Bạn không có quyền publish bài tập này");
         }
 
@@ -93,7 +94,7 @@ public class AssignmentServiceImpl implements AssignmentService {
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Không tìm thấy lớp học với mã: " + classCode));
 
-            if (!classroom.getTeacher().getId().equals(teacherId)) {
+            if (classroom.getTeacher().getId() != teacherId) {
                 throw new AccessDeniedException(
                         "Bạn không có quyền giao bài tập cho lớp: " + classCode);
             }
@@ -101,6 +102,7 @@ public class AssignmentServiceImpl implements AssignmentService {
             Assignment clone = new Assignment();
             clone.setTitle(originalAssignment.getTitle());
             clone.setDescription(originalAssignment.getDescription());
+            clone.setContent(originalAssignment.getContent());
             clone.setTeacher(originalAssignment.getTeacher());
             clone.setParentId(originalAssignment.getId());
             clone.setClassroom(classroom);
@@ -122,15 +124,15 @@ public class AssignmentServiceImpl implements AssignmentService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<AssignmentResponse> getAssignmentsByClassCode(String classCode, Long userId, String keyword,
+    public Page<AssignmentResponse> getAssignmentsByClassCode(String classCode, long userId, String keyword,
             AssignmentStatus status, Pageable pageable) {
         // 1. Tìm lớp học
         Classroom classroom = classroomRepository.findByClassCode(classCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lớp học với mã: " + classCode));
 
         // 2. Kiểm tra quyền truy cập (giáo viên hoặc học sinh của lớp)
-        boolean isTeacher = classroom.getTeacher().getId().equals(userId);
-        boolean isStudent = classroom.getStudents().stream().anyMatch(student -> student.getId().equals(userId));
+        boolean isTeacher = classroom.getTeacher().getId() == userId;
+        boolean isStudent = classroom.getStudents().stream().anyMatch(student -> student.getId() == userId);
 
         if (!isTeacher && !isStudent) {
             throw new AccessDeniedException("Bạn không có quyền xem bài tập của lớp này");
@@ -171,13 +173,20 @@ public class AssignmentServiceImpl implements AssignmentService {
             }
         }
 
-        Page<Assignment> assignments = assignmentRepository.findAll(spec, pageable);
-        return assignments.map(AssignmentResponse::fromEntity);
+        org.springframework.data.domain.Sort customSort = org.springframework.data.domain.Sort.by(
+                org.springframework.data.domain.Sort.Order.desc("updatedAt"),
+                org.springframework.data.domain.Sort.Order.desc("createdAt"),
+                org.springframework.data.domain.Sort.Order.asc("title")
+        );
+        Pageable sortedPageable = org.springframework.data.domain.PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), customSort);
+
+        Page<Assignment> assignments = assignmentRepository.findAll(spec, sortedPageable);
+        return assignments.map(AssignmentResponse::fromEntityWithoutContent);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<AssignmentResponse> getAssignmentsForCurrentUser(Long userId, String role, String keyword,
+    public Page<AssignmentResponse> getAssignmentsForCurrentUser(long userId, String role, String keyword,
             String classCode, AssignmentStatus status, Pageable pageable) {
         Specification<Assignment> spec = Specification.where((root, query, cb) -> cb.conjunction());
 
@@ -212,19 +221,26 @@ public class AssignmentServiceImpl implements AssignmentService {
             spec = spec.and(AssignmentSpecification.hasStatus(status));
         }
 
-        Page<Assignment> assignments = assignmentRepository.findAll(spec, pageable);
-        return assignments.map(AssignmentResponse::fromEntity);
+        org.springframework.data.domain.Sort customSort = org.springframework.data.domain.Sort.by(
+                org.springframework.data.domain.Sort.Order.desc("updatedAt"),
+                org.springframework.data.domain.Sort.Order.desc("createdAt"),
+                org.springframework.data.domain.Sort.Order.asc("title")
+        );
+        Pageable sortedPageable = org.springframework.data.domain.PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), customSort);
+
+        Page<Assignment> assignments = assignmentRepository.findAll(spec, sortedPageable);
+        return assignments.map(AssignmentResponse::fromEntityWithoutContent);
     }
 
     @Override
     @Transactional
-    public void deleteAssignment(Long assignmentId, Long teacherId) {
+    public void deleteAssignment(long assignmentId, long teacherId) {
         // 1. Tìm bài tập
         Assignment assignment = assignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập"));
 
         // 2. Kiểm tra quyền sở hữu
-        if (!assignment.getTeacher().getId().equals(teacherId)) {
+        if (assignment.getTeacher().getId() != teacherId) {
             throw new AccessDeniedException("Bạn không có quyền xóa bài tập này");
         }
 
@@ -252,13 +268,13 @@ public class AssignmentServiceImpl implements AssignmentService {
 
     @Override
     @Transactional
-    public AssignmentResponse updateAssignment(Long assignmentId, UpdateAssignmentRequest request, Long teacherId) {
+    public AssignmentResponse updateAssignment(long assignmentId, UpdateAssignmentRequest request, long teacherId) {
         // 1. Tìm bài tập
         Assignment assignment = assignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập"));
 
         // 2. Kiểm tra quyền sở hữu
-        if (!assignment.getTeacher().getId().equals(teacherId)) {
+        if (assignment.getTeacher().getId() != teacherId) {
             throw new AccessDeniedException("Bạn không có quyền sửa bài tập này");
         }
 
@@ -267,11 +283,11 @@ public class AssignmentServiceImpl implements AssignmentService {
             throw new BadRequestException("Không thể sửa bài tập đã bị xóa");
         }
 
-        // 4. Validate LaTeX trong mô tả mới
-        if (!LaTeXSanitizer.isSafe(request.getDescription())) {
-            String dangerous = LaTeXSanitizer.findDangerousCommand(request.getDescription());
+        // 4. Validate LaTeX trong nội dung mới
+        if (!LaTeXSanitizer.isSafe(request.getContent())) {
+            String dangerous = LaTeXSanitizer.findDangerousCommand(request.getContent());
             throw new IllegalArgumentException(
-                    "Mô tả chứa lệnh LaTeX không được phép: " + dangerous);
+                    "Nội dung chứa lệnh LaTeX không được phép: " + dangerous);
         }
 
         // 5. Xử lý theo trạng thái
@@ -279,12 +295,14 @@ public class AssignmentServiceImpl implements AssignmentService {
             // DRAFT: sửa tự do, không có deadline
             assignment.setTitle(request.getTitle());
             assignment.setDescription(request.getDescription());
+            assignment.setContent(request.getContent());
             assignmentRepository.save(assignment);
 
         } else if (assignment.getStatus() == AssignmentStatus.ARCHIVED) {
             // ARCHIVED (bản gốc): cập nhật bản gốc
             assignment.setTitle(request.getTitle());
             assignment.setDescription(request.getDescription());
+            assignment.setContent(request.getContent());
             assignmentRepository.save(assignment);
 
             // Đồng bộ sang tất cả bản PUBLISHED con
@@ -294,6 +312,7 @@ public class AssignmentServiceImpl implements AssignmentService {
                 //       Ví dụ: if (submissionRepository.existsByAssignmentId(clone.getId())) continue;
                 clone.setTitle(request.getTitle());
                 clone.setDescription(request.getDescription());
+                clone.setContent(request.getContent());
             }
             assignmentRepository.saveAll(publishedClones);
 
@@ -304,6 +323,7 @@ public class AssignmentServiceImpl implements AssignmentService {
             //                  throw new BadRequestException("Đã có học sinh nộp bài, không thể sửa");
             assignment.setTitle(request.getTitle());
             assignment.setDescription(request.getDescription());
+            assignment.setContent(request.getContent());
             if (request.getDeadline() != null) {
                 assignment.setDeadline(request.getDeadline());
             }
@@ -315,12 +335,12 @@ public class AssignmentServiceImpl implements AssignmentService {
 
     @Override
     @Transactional(readOnly = true)
-    public AssignmentResponse getAssignmentById(Long assignmentId, Long userId, String role) {
+    public AssignmentResponse getAssignmentById(long assignmentId, long userId, String role) {
         Assignment assignment = assignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập"));
 
         if (Role.TEACHER.name().equals(role)) {
-            if (!assignment.getTeacher().getId().equals(userId)) {
+            if (assignment.getTeacher().getId() != userId) {
                 throw new AccessDeniedException("Bạn không có quyền xem bài tập này");
             }
         } else if (Role.STUDENT.name().equals(role)) {
@@ -329,7 +349,7 @@ public class AssignmentServiceImpl implements AssignmentService {
             }
             if (assignment.getClassroom() != null) {
                 boolean isStudentInClass = assignment.getClassroom().getStudents().stream()
-                        .anyMatch(student -> student.getId().equals(userId));
+                        .anyMatch(student -> student.getId() == userId);
                 if (!isStudentInClass) {
                     throw new AccessDeniedException("Bạn không thuộc lớp của bài tập này");
                 }

@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class StudentResponse {
-    private Long id;
+    private long id;
     private String fullName;
     private String email;
     private String phoneNumber;

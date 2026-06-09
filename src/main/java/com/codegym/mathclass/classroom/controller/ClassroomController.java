@@ -36,7 +36,7 @@ public class ClassroomController {
             @Valid @RequestBody CreateClassroomRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        Long currentUserId = userDetails.getId();
+        long currentUserId = userDetails.getId();
         ClassroomResponse response = classroomService.createClassroom(request, currentUserId);
 
         return new ResponseEntity<>(response, HttpStatus.CREATED);
@@ -45,7 +45,7 @@ public class ClassroomController {
     @GetMapping("/my-classroom")
     public ResponseEntity<List<ClassroomResponse>> getClassroomsList(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        Long currentUserId = userDetails.getId();
+        long currentUserId = userDetails.getId();
         List<ClassroomResponse> responses = classroomService.getClassroomsListById(currentUserId);
         return new ResponseEntity<>(responses, HttpStatus.OK);
     }
@@ -54,7 +54,7 @@ public class ClassroomController {
     public ResponseEntity<ClassroomResponse> getClassroomByClassCode(
             @PathVariable String classCode,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        Long currentUserId = userDetails.getId();
+        long currentUserId = userDetails.getId();
         ClassroomResponse response = classroomService.getClassroomByClassCode(classCode, currentUserId);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
@@ -65,7 +65,7 @@ public class ClassroomController {
             @PathVariable String classCode,
             @Valid @RequestBody UpdateClassroomRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        Long currentUserId = userDetails.getId();
+        long currentUserId = userDetails.getId();
         ClassroomResponse response = classroomService.updateClassroom(classCode, request, currentUserId);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }

@@ -33,7 +33,7 @@ public class ClassroomServiceImpl implements ClassroomService {
 
     @Override
     @Transactional
-    public ClassroomResponse createClassroom(CreateClassroomRequest request, Long currentUserId) {
+    public ClassroomResponse createClassroom(CreateClassroomRequest request, long currentUserId) {
         User teacher = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
@@ -61,7 +61,7 @@ public class ClassroomServiceImpl implements ClassroomService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ClassroomResponse> getClassroomsListById(Long currentUserId) {
+    public List<ClassroomResponse> getClassroomsListById(long currentUserId) {
         User user = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
@@ -76,13 +76,37 @@ public class ClassroomServiceImpl implements ClassroomService {
         }
 
         return classrooms.stream()
+                .sorted((c1, c2) -> {
+                    if (c1.getUpdatedAt() != null && c2.getUpdatedAt() != null) {
+                        int cmp = c2.getUpdatedAt().compareTo(c1.getUpdatedAt());
+                        if (cmp != 0)
+                            return cmp;
+                    } else if (c1.getUpdatedAt() != null)
+                        return -1;
+                    else if (c2.getUpdatedAt() != null)
+                        return 1;
+
+                    if (c1.getCreatedAt() != null && c2.getCreatedAt() != null) {
+                        int cmp = c2.getCreatedAt().compareTo(c1.getCreatedAt());
+                        if (cmp != 0)
+                            return cmp;
+                    } else if (c1.getCreatedAt() != null)
+                        return -1;
+                    else if (c2.getCreatedAt() != null)
+                        return 1;
+
+                    if (c1.getClassName() != null && c2.getClassName() != null) {
+                        return c1.getClassName().compareToIgnoreCase(c2.getClassName());
+                    }
+                    return 0;
+                })
                 .map(ClassroomResponse::fromEntity)
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional
-    public void addStudentToClass(String classCode, String studentEmail, Long teacherId) {
+    public void addStudentToClass(String classCode, String studentEmail, long teacherId) {
         Classroom classroom = classroomRepository.findByClassCode(classCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lớp học"));
 
@@ -120,12 +144,12 @@ public class ClassroomServiceImpl implements ClassroomService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<StudentResponse> getStudentsByClassCode(String classCode, Long currentUserId, Pageable pageable) {
+    public Page<StudentResponse> getStudentsByClassCode(String classCode, long currentUserId, Pageable pageable) {
         Classroom classroom = classroomRepository.findByClassCode(classCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lớp học"));
 
-        boolean isTeacher = classroom.getTeacher().getId().equals(currentUserId);
-        boolean isStudent = classroom.getStudents().stream().anyMatch(s -> s.getId().equals(currentUserId));
+        boolean isTeacher = classroom.getTeacher().getId() == currentUserId;
+        boolean isStudent = classroom.getStudents().stream().anyMatch(s -> s.getId() == currentUserId);
 
         if (!isTeacher && !isStudent) {
             throw new AccessDeniedException("Bạn không có quyền xem danh sách học sinh lớp học này");
@@ -137,12 +161,12 @@ public class ClassroomServiceImpl implements ClassroomService {
 
     @Override
     @Transactional(readOnly = true)
-    public ClassroomResponse getClassroomByClassCode(String classCode, Long currentUserId) {
+    public ClassroomResponse getClassroomByClassCode(String classCode, long currentUserId) {
         Classroom classroom = classroomRepository.findByClassCode(classCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lớp học"));
 
-        boolean isTeacher = classroom.getTeacher().getId().equals(currentUserId);
-        boolean isStudent = classroom.getStudents().stream().anyMatch(s -> s.getId().equals(currentUserId));
+        boolean isTeacher = classroom.getTeacher().getId() == currentUserId;
+        boolean isStudent = classroom.getStudents().stream().anyMatch(s -> s.getId() == currentUserId);
 
         if (!isTeacher && !isStudent) {
             throw new AccessDeniedException("Bạn không có quyền xem thông tin lớp học này");
@@ -153,16 +177,17 @@ public class ClassroomServiceImpl implements ClassroomService {
 
     @Override
     @Transactional
-    public void removeStudentFromClass(String classCode, Long studentId, Long teacherId) {
+    public void removeStudentFromClass(String classCode, long studentId, long teacherId) {
         Classroom classroom = classroomRepository.findByClassCode(classCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lớp học"));
 
-        if (!classroom.getTeacher().getId().equals(teacherId)) {
+        if (classroom.getTeacher().getId() != teacherId) {
+
             throw new AccessDeniedException("Bạn không phải là giáo viên phụ trách lớp học này");
         }
 
         User studentToRemove = classroom.getStudents().stream()
-                .filter(s -> s.getId().equals(studentId))
+                .filter(s -> s.getId() == studentId)
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Học sinh không tồn tại trong lớp học này"));
 
@@ -181,17 +206,18 @@ public class ClassroomServiceImpl implements ClassroomService {
 
     @Override
     @Transactional
-    public ClassroomResponse updateClassroom(String classCode, UpdateClassroomRequest request, Long currentUserId) {
+    public ClassroomResponse updateClassroom(String classCode, UpdateClassroomRequest request, long currentUserId) {
         Classroom classroom = classroomRepository.findByClassCode(classCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lớp học"));
 
-        if (!classroom.getTeacher().getId().equals(currentUserId)) {
+        if (classroom.getTeacher().getId() != currentUserId) {
             throw new AccessDeniedException("Bạn không có quyền chỉnh sửa lớp học này");
         }
 
         int currentStudentCount = classroom.getStudents().size();
         if (request.getMaxStudents() != null && request.getMaxStudents() < currentStudentCount) {
-            throw new BadRequestException("Sĩ số tối đa không được nhỏ hơn sĩ số học sinh hiện tại (" + currentStudentCount + ")");
+            throw new BadRequestException(
+                    "Sĩ số tối đa không được nhỏ hơn sĩ số học sinh hiện tại (" + currentStudentCount + ")");
         }
 
         classroom.setClassName(request.getClassName());

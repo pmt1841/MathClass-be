@@ -15,4 +15,7 @@ public class CreateAssignmentRequest {
 
     @NotBlank(message = "Mô tả bài tập không được để trống")
     private String description;
+
+    @NotBlank(message = "Nội dung bài tập không được để trống")
+    private String content;
 }
