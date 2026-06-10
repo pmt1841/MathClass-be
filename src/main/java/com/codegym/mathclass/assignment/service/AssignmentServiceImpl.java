@@ -50,7 +50,7 @@ public class AssignmentServiceImpl implements AssignmentService {
         }
 
         // 3. Validate LaTeX trong nội dung bài tập
-        if (!LaTeXSanitizer.isSafe(request.getContent())) {
+        if (request.getContent() != null && !LaTeXSanitizer.isSafe(request.getContent())) {
             String dangerous = LaTeXSanitizer.findDangerousCommand(request.getContent());
             throw new IllegalArgumentException(
                     "Nội dung chứa lệnh LaTeX không được phép: " + dangerous);
@@ -58,9 +58,9 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         // 4. Tạo bài tập với trạng thái DRAFT, chưa gán lớp và chưa có deadline
         Assignment assignment = new Assignment();
-        assignment.setTitle(request.getTitle());
-        assignment.setDescription(request.getDescription());
-        assignment.setContent(request.getContent());
+        assignment.setTitle(request.getTitle() != null ? request.getTitle() : "");
+        assignment.setDescription(request.getDescription() != null ? request.getDescription() : "");
+        assignment.setContent(request.getContent() != null ? request.getContent() : "");
         assignment.setStatus(AssignmentStatus.DRAFT);
         assignment.setTeacher(teacher);
         assignment.setClassroom(null);
@@ -85,6 +85,13 @@ public class AssignmentServiceImpl implements AssignmentService {
         // 3. Kiểm tra trạng thái – chỉ publish được khi đang là DRAFT
         if (originalAssignment.getStatus() != AssignmentStatus.DRAFT) {
             throw new BadRequestException("Bài tập đã được publish hoặc archive trước đó");
+        }
+
+        // 3.1 Validate đầy đủ thông tin trước khi publish
+        if (originalAssignment.getTitle() == null || originalAssignment.getTitle().trim().isEmpty() ||
+            originalAssignment.getDescription() == null || originalAssignment.getDescription().trim().isEmpty() ||
+            originalAssignment.getContent() == null || originalAssignment.getContent().trim().isEmpty()) {
+            throw new BadRequestException("Vui lòng điền đầy đủ Tiêu đề, Mô tả và Nội dung trước khi Giao bài");
         }
 
         List<Assignment> clones = new ArrayList<>();
@@ -300,18 +307,27 @@ public class AssignmentServiceImpl implements AssignmentService {
         }
 
         // 4. Validate LaTeX trong nội dung mới
-        if (!LaTeXSanitizer.isSafe(request.getContent())) {
+        if (request.getContent() != null && !LaTeXSanitizer.isSafe(request.getContent())) {
             String dangerous = LaTeXSanitizer.findDangerousCommand(request.getContent());
             throw new IllegalArgumentException(
                     "Nội dung chứa lệnh LaTeX không được phép: " + dangerous);
         }
 
+        // 4.1 Validate bắt buộc nếu không phải DRAFT
+        if (assignment.getStatus() != AssignmentStatus.DRAFT) {
+            if (request.getTitle() == null || request.getTitle().trim().isEmpty() ||
+                request.getDescription() == null || request.getDescription().trim().isEmpty() ||
+                request.getContent() == null || request.getContent().trim().isEmpty()) {
+                throw new BadRequestException("Tiêu đề, Mô tả và Nội dung không được để trống khi bài tập đã được Giao");
+            }
+        }
+
         // 5. Xử lý theo trạng thái
         if (assignment.getStatus() == AssignmentStatus.DRAFT) {
             // DRAFT: sửa tự do, không có deadline
-            assignment.setTitle(request.getTitle());
-            assignment.setDescription(request.getDescription());
-            assignment.setContent(request.getContent());
+            assignment.setTitle(request.getTitle() != null ? request.getTitle() : "");
+            assignment.setDescription(request.getDescription() != null ? request.getDescription() : "");
+            assignment.setContent(request.getContent() != null ? request.getContent() : "");
             assignmentRepository.save(assignment);
 
         } else if (assignment.getStatus() == AssignmentStatus.ARCHIVED) {
