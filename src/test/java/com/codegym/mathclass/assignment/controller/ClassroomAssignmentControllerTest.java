@@ -7,8 +7,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -16,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Collections;
@@ -29,8 +30,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.springframework.context.annotation.Import;
+
 @WebMvcTest(controllers = ClassroomAssignmentController.class)
 @AutoConfigureMockMvc(addFilters = false)
+@Import(com.codegym.mathclass.config.TestSecurityConfig.class)
 class ClassroomAssignmentControllerTest {
 
     @Autowired
@@ -47,6 +51,7 @@ class ClassroomAssignmentControllerTest {
         List<GrantedAuthority> authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_STUDENT"));
         studentDetails = new CustomUserDetails(2L, "Student", "student@gmail.com", "password", true, authorities);
         authPrincipal = new UsernamePasswordAuthenticationToken(studentDetails, null, studentDetails.getAuthorities());
+        SecurityContextHolder.getContext().setAuthentication(authPrincipal);
     }
 
     @Test

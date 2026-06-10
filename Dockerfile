@@ -1,5 +1,5 @@
 # ---- Stage 1: Build ứng dụng ----
-FROM eclipse-temurin:17-jdk AS builder
+FROM eclipse-temurin:21-jdk AS builder
 WORKDIR /app
 
 # Copy cấu hình Gradle
@@ -17,7 +17,7 @@ COPY src ./src
 RUN ./gradlew clean bootJar -x test --no-daemon
 
 # ---- Stage 2: Chạy ứng dụng ----
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 # (Khuyến nghị) Tạo non-root user để chạy ứng dụng an toàn hơn

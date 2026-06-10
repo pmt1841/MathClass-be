@@ -151,7 +151,7 @@ class AssignmentServiceImplTest {
     @Test
     @DisplayName("should throw IllegalArgumentException when description contains dangerous LaTeX command \\input")
     void createAssignment_DangerousLaTeX_input_ThrowsException() {
-        createRequest.setDescription("Xem file này: \\input{/etc/passwd}");
+        createRequest.setContent("Xem file này: \\input{/etc/passwd}");
 
         when(userRepository.findById(teacherId)).thenReturn(Optional.of(teacher));
 
@@ -166,7 +166,7 @@ class AssignmentServiceImplTest {
     @Test
     @DisplayName("should throw IllegalArgumentException when description contains dangerous LaTeX command \\write")
     void createAssignment_DangerousLaTeX_write_ThrowsException() {
-        createRequest.setDescription("\\write18{rm -rf /}");
+        createRequest.setContent("\\write18{rm -rf /}");
 
         when(userRepository.findById(teacherId)).thenReturn(Optional.of(teacher));
 

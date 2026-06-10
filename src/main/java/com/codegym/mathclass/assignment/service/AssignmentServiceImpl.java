@@ -14,6 +14,7 @@ import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.LaTeXSanitizer;
 import com.codegym.mathclass.assignment.repository.AssignmentSpecification;
+import com.codegym.mathclass.submission.repository.SubmissionRepository;
 import org.springframework.data.jpa.domain.Specification;
 import com.codegym.mathclass.exception.AccessDeniedException;
 import com.codegym.mathclass.exception.BadRequestException;
@@ -34,6 +35,7 @@ public class AssignmentServiceImpl implements AssignmentService {
     private final AssignmentRepository assignmentRepository;
     private final UserRepository userRepository;
     private final ClassroomRepository classroomRepository;
+    private final SubmissionRepository submissionRepository;
 
     @Override
     @Transactional
@@ -181,7 +183,14 @@ public class AssignmentServiceImpl implements AssignmentService {
         Pageable sortedPageable = org.springframework.data.domain.PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), customSort);
 
         Page<Assignment> assignments = assignmentRepository.findAll(spec, sortedPageable);
-        return assignments.map(AssignmentResponse::fromEntityWithoutContent);
+        return assignments.map(assignment -> {
+            AssignmentResponse response = AssignmentResponse.fromEntityWithoutContent(assignment);
+            if (isStudent) {
+                submissionRepository.findFirstByAssignmentIdAndStudentId(assignment.getId(), userId)
+                        .ifPresent(sub -> response.setSubmissionStatus(sub.getStatus().name()));
+            }
+            return response;
+        });
     }
 
     @Override
@@ -229,7 +238,14 @@ public class AssignmentServiceImpl implements AssignmentService {
         Pageable sortedPageable = org.springframework.data.domain.PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), customSort);
 
         Page<Assignment> assignments = assignmentRepository.findAll(spec, sortedPageable);
-        return assignments.map(AssignmentResponse::fromEntityWithoutContent);
+        return assignments.map(assignment -> {
+            AssignmentResponse response = AssignmentResponse.fromEntityWithoutContent(assignment);
+            if (Role.STUDENT.name().equals(role)) {
+                submissionRepository.findFirstByAssignmentIdAndStudentId(assignment.getId(), userId)
+                        .ifPresent(sub -> response.setSubmissionStatus(sub.getStatus().name()));
+            }
+            return response;
+        });
     }
 
     @Override
@@ -360,6 +376,11 @@ public class AssignmentServiceImpl implements AssignmentService {
             throw new AccessDeniedException("Role không hợp lệ");
         }
 
-        return AssignmentResponse.fromEntity(assignment);
+        AssignmentResponse response = AssignmentResponse.fromEntity(assignment);
+        if (Role.STUDENT.name().equals(role)) {
+            submissionRepository.findFirstByAssignmentIdAndStudentId(assignmentId, userId)
+                    .ifPresent(sub -> response.setSubmissionStatus(sub.getStatus().name()));
+        }
+        return response;
     }
 }
