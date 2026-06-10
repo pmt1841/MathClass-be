@@ -47,12 +47,23 @@ public class SubmissionServiceImpl implements SubmissionService {
 
         submission.setAssignment(assignment);
         submission.setStudent(student);
-        submission.setContent(requestDto.getContent());
-        submission.setStatus(requestDto.getStatus());
-        
-        if (requestDto.getStatus() == SubmissionStatus.SUBMITTED && submission.getSubmittedAt() == null) {
-            submission.setSubmittedAt(LocalDateTime.now());
+
+        String content = requestDto.getContent();
+        if (content == null) {
+            content = "";
         }
+
+        if (requestDto.getStatus() == SubmissionStatus.SUBMITTED) {
+            if (content.trim().isEmpty()) {
+                throw new BadRequestException("Nội dung bài làm không được để trống khi nộp bài");
+            }
+            if (submission.getSubmittedAt() == null) {
+                submission.setSubmittedAt(LocalDateTime.now());
+            }
+        }
+
+        submission.setContent(content);
+        submission.setStatus(requestDto.getStatus());
 
         Submission savedSubmission = submissionRepository.save(submission);
         return mapToDto(savedSubmission);
