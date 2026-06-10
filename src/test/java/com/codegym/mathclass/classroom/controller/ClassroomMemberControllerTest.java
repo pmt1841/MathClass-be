@@ -9,8 +9,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -19,6 +19,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Collections;
@@ -34,8 +35,11 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import org.springframework.context.annotation.Import;
+
 @WebMvcTest(controllers = ClassroomMemberController.class)
 @AutoConfigureMockMvc(addFilters = false)
+@Import(com.codegym.mathclass.config.TestSecurityConfig.class)
 class ClassroomMemberControllerTest {
 
     @Autowired
@@ -44,8 +48,7 @@ class ClassroomMemberControllerTest {
     @MockitoBean
     private ClassroomService classroomService;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    private ObjectMapper objectMapper = new ObjectMapper();
 
     private CustomUserDetails teacherDetails;
     private UsernamePasswordAuthenticationToken authPrincipal;
@@ -55,6 +58,7 @@ class ClassroomMemberControllerTest {
         List<GrantedAuthority> authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_TEACHER"));
         teacherDetails = new CustomUserDetails(1L, "Teacher", "teacher@gmail.com", "password", true, authorities);
         authPrincipal = new UsernamePasswordAuthenticationToken(teacherDetails, null, teacherDetails.getAuthorities());
+        SecurityContextHolder.getContext().setAuthentication(authPrincipal);
     }
 
     @Test
@@ -66,9 +70,9 @@ class ClassroomMemberControllerTest {
         doNothing().when(classroomService).addStudentToClass("MATH101", "student@gmail.com", 1L);
 
         mockMvc.perform(post("/api/classrooms/MATH101/students/add")
-                        .with(authentication(authPrincipal))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                .with(authentication(authPrincipal))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
 
         verify(classroomService, times(1)).addStudentToClass("MATH101", "student@gmail.com", 1L);
@@ -81,9 +85,9 @@ class ClassroomMemberControllerTest {
         request.setStudentEmail(null); // Invalid: email cannot be null
 
         mockMvc.perform(post("/api/classrooms/MATH101/students/add")
-                        .with(authentication(authPrincipal))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                .with(authentication(authPrincipal))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -98,7 +102,7 @@ class ClassroomMemberControllerTest {
         when(classroomService.getStudentsByClassCode(eq("MATH101"), eq(1L), any(Pageable.class))).thenReturn(page);
 
         mockMvc.perform(get("/api/classrooms/MATH101/students")
-                        .with(authentication(authPrincipal)))
+                .with(authentication(authPrincipal)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].id").value(2L))
                 .andExpect(jsonPath("$.content[0].email").value("student@gmail.com"));
@@ -110,7 +114,7 @@ class ClassroomMemberControllerTest {
         doNothing().when(classroomService).removeStudentFromClass("MATH101", 2L, 1L);
 
         mockMvc.perform(delete("/api/classrooms/MATH101/students/2")
-                        .with(authentication(authPrincipal)))
+                .with(authentication(authPrincipal)))
                 .andExpect(status().isOk());
 
         verify(classroomService, times(1)).removeStudentFromClass("MATH101", 2L, 1L);
