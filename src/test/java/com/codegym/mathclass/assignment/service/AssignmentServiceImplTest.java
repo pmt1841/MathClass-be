@@ -88,6 +88,7 @@ class AssignmentServiceImplTest {
         draftAssignment.setId(assignmentId);
         draftAssignment.setTitle("Bài tập tích phân");
         draftAssignment.setDescription("Tính $\\int_0^1 x^2 dx$");
+        draftAssignment.setContent("Nội dung bài tập");
         draftAssignment.setDeadline(null); // deadline = null khi còn là DRAFT
         draftAssignment.setStatus(AssignmentStatus.DRAFT);
         draftAssignment.setTeacher(teacher);
