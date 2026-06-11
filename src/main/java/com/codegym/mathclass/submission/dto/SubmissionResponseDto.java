@@ -15,6 +15,7 @@ public class SubmissionResponseDto {
     private String studentName; 
     private String content;
     private SubmissionStatus status;
+    private Double score;
     private LocalDateTime submittedAt;
     private LocalDateTime updatedAt;
 }

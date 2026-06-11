@@ -89,8 +89,8 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         // 3.1 Validate đầy đủ thông tin trước khi publish
         if (originalAssignment.getTitle() == null || originalAssignment.getTitle().trim().isEmpty() ||
-            originalAssignment.getDescription() == null || originalAssignment.getDescription().trim().isEmpty() ||
-            originalAssignment.getContent() == null || originalAssignment.getContent().trim().isEmpty()) {
+                originalAssignment.getDescription() == null || originalAssignment.getDescription().trim().isEmpty() ||
+                originalAssignment.getContent() == null || originalAssignment.getContent().trim().isEmpty()) {
             throw new BadRequestException("Vui lòng điền đầy đủ Tiêu đề, Mô tả và Nội dung trước khi Giao bài");
         }
 
@@ -185,9 +185,9 @@ public class AssignmentServiceImpl implements AssignmentService {
         org.springframework.data.domain.Sort customSort = org.springframework.data.domain.Sort.by(
                 org.springframework.data.domain.Sort.Order.desc("updatedAt"),
                 org.springframework.data.domain.Sort.Order.desc("createdAt"),
-                org.springframework.data.domain.Sort.Order.asc("title")
-        );
-        Pageable sortedPageable = org.springframework.data.domain.PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), customSort);
+                org.springframework.data.domain.Sort.Order.asc("title"));
+        Pageable sortedPageable = org.springframework.data.domain.PageRequest.of(pageable.getPageNumber(),
+                pageable.getPageSize(), customSort);
 
         Page<Assignment> assignments = assignmentRepository.findAll(spec, sortedPageable);
         return assignments.map(assignment -> {
@@ -240,9 +240,9 @@ public class AssignmentServiceImpl implements AssignmentService {
         org.springframework.data.domain.Sort customSort = org.springframework.data.domain.Sort.by(
                 org.springframework.data.domain.Sort.Order.desc("updatedAt"),
                 org.springframework.data.domain.Sort.Order.desc("createdAt"),
-                org.springframework.data.domain.Sort.Order.asc("title")
-        );
-        Pageable sortedPageable = org.springframework.data.domain.PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), customSort);
+                org.springframework.data.domain.Sort.Order.asc("title"));
+        Pageable sortedPageable = org.springframework.data.domain.PageRequest.of(pageable.getPageNumber(),
+                pageable.getPageSize(), customSort);
 
         Page<Assignment> assignments = assignmentRepository.findAll(spec, sortedPageable);
         return assignments.map(assignment -> {
@@ -267,7 +267,10 @@ public class AssignmentServiceImpl implements AssignmentService {
             throw new AccessDeniedException("Bạn không có quyền xóa bài tập này");
         }
 
-        // TODO: Kiểm tra xem đã có submission hay chưa (hiện tại chưa có chức năng nộp bài)
+        // Kiểm tra xem đã có submission hay chưa
+        if (submissionRepository.existsByAssignmentId(assignmentId)) {
+            throw new BadRequestException("Đã có học sinh nộp bài, không thể xóa bài tập này");
+        }
 
         // 3. Xử lý theo trạng thái
         if (assignment.getStatus() == AssignmentStatus.DRAFT) {
@@ -275,7 +278,8 @@ public class AssignmentServiceImpl implements AssignmentService {
             assignmentRepository.delete(assignment);
         } else {
             // Không phải nháp -> xóa mềm
-            // Nếu là bài gốc (ARCHIVED), các bản clone không bị xóa/ẩn mà đổi parentId = null
+            // Nếu là bài gốc (ARCHIVED), các bản clone không bị xóa/ẩn mà đổi parentId =
+            // null
             if (assignment.getStatus() == AssignmentStatus.ARCHIVED) {
                 List<Assignment> clones = assignmentRepository.findByParentId(assignment.getId());
                 for (Assignment clone : clones) {
@@ -283,7 +287,7 @@ public class AssignmentServiceImpl implements AssignmentService {
                 }
                 assignmentRepository.saveAll(clones);
             }
-            
+
             assignment.setStatus(AssignmentStatus.DELETED);
             assignmentRepository.save(assignment);
         }
@@ -316,9 +320,10 @@ public class AssignmentServiceImpl implements AssignmentService {
         // 4.1 Validate bắt buộc nếu không phải DRAFT
         if (assignment.getStatus() != AssignmentStatus.DRAFT) {
             if (request.getTitle() == null || request.getTitle().trim().isEmpty() ||
-                request.getDescription() == null || request.getDescription().trim().isEmpty() ||
-                request.getContent() == null || request.getContent().trim().isEmpty()) {
-                throw new BadRequestException("Tiêu đề, Mô tả và Nội dung không được để trống khi bài tập đã được Giao");
+                    request.getDescription() == null || request.getDescription().trim().isEmpty() ||
+                    request.getContent() == null || request.getContent().trim().isEmpty()) {
+                throw new BadRequestException(
+                        "Tiêu đề, Mô tả và Nội dung không được để trống khi bài tập đã được Giao");
             }
         }
 
@@ -340,8 +345,10 @@ public class AssignmentServiceImpl implements AssignmentService {
             // Đồng bộ sang tất cả bản PUBLISHED con
             List<Assignment> publishedClones = assignmentRepository.findByParentId(assignment.getId());
             for (Assignment clone : publishedClones) {
-                // TODO: Bỏ qua bản clone đã có submission khi Submission module được xây dựng.
-                //       Ví dụ: if (submissionRepository.existsByAssignmentId(clone.getId())) continue;
+                // Bỏ qua bản clone đã có submission
+                if (submissionRepository.existsByAssignmentId(clone.getId())) {
+                    continue;
+                }
                 clone.setTitle(request.getTitle());
                 clone.setDescription(request.getDescription());
                 clone.setContent(request.getContent());
@@ -349,15 +356,29 @@ public class AssignmentServiceImpl implements AssignmentService {
             assignmentRepository.saveAll(publishedClones);
 
         } else if (assignment.getStatus() == AssignmentStatus.PUBLISHED) {
-            // PUBLISHED: sửa title + description + deadline (nếu chưa có submission)
-            // TODO: Kiểm tra submission khi Submission module được xây dựng.
-            //       Ví dụ: if (submissionRepository.existsByAssignmentId(assignmentId))
-            //                  throw new BadRequestException("Đã có học sinh nộp bài, không thể sửa");
-            assignment.setTitle(request.getTitle());
-            assignment.setDescription(request.getDescription());
-            assignment.setContent(request.getContent());
-            if (request.getDeadline() != null) {
-                assignment.setDeadline(request.getDeadline());
+            boolean hasSubmissions = submissionRepository.existsByAssignmentId(assignmentId);
+
+            if (hasSubmissions) {
+                // Nếu đã có bài nộp, chỉ cho phép cập nhật deadline
+                // Ném lỗi nếu cố tình thay đổi title, description hoặc content
+                if (!assignment.getTitle().equals(request.getTitle()) ||
+                        !assignment.getDescription().equals(request.getDescription()) ||
+                        !assignment.getContent().equals(request.getContent())) {
+                    throw new BadRequestException(
+                            "Bài tập đã có học sinh nộp bài, bạn chỉ có thể thay đổi hạn nộp");
+                }
+
+                if (request.getDeadline() != null) {
+                    assignment.setDeadline(request.getDeadline());
+                }
+            } else {
+                // Nếu chưa có bài nộp, cho phép sửa tất cả
+                assignment.setTitle(request.getTitle());
+                assignment.setDescription(request.getDescription());
+                assignment.setContent(request.getContent());
+                if (request.getDeadline() != null) {
+                    assignment.setDeadline(request.getDeadline());
+                }
             }
             assignmentRepository.save(assignment);
         }

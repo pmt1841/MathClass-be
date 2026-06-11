@@ -37,6 +37,9 @@ public class Submission {
     @Column(nullable = false)
     private SubmissionStatus status = SubmissionStatus.DRAFT;
 
+    @Column(name = "score")
+    private Double score;
+
     @Column(name = "submitted_at")
     private LocalDateTime submittedAt;
 
