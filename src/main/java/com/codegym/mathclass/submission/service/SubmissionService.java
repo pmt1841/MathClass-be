@@ -1,15 +1,15 @@
 package com.codegym.mathclass.submission.service;
 
-import com.codegym.mathclass.submission.dto.SubmissionRequestDto;
-import com.codegym.mathclass.submission.dto.SubmissionResponseDto;
+import com.codegym.mathclass.submission.dto.SubmissionRequest;
+import com.codegym.mathclass.submission.dto.SubmissionResponse;
 
 import java.util.List;
 
 public interface SubmissionService {
-    SubmissionResponseDto createSubmission(long studentId, SubmissionRequestDto requestDto);
-    SubmissionResponseDto updateSubmission(long submissionId, long studentId, SubmissionRequestDto requestDto);
-    SubmissionResponseDto unsubmitSubmission(long submissionId, long studentId);
-    SubmissionResponseDto gradeSubmission(long submissionId, long teacherId, com.codegym.mathclass.submission.dto.GradeRequestDto requestDto);
-    SubmissionResponseDto getMySubmission(long assignmentId, long studentId);
-    List<SubmissionResponseDto> getSubmissionsByAssignment(long assignmentId, long teacherId);
+    SubmissionResponse createSubmission(long studentId, SubmissionRequest requestDto);
+    SubmissionResponse updateSubmission(long submissionId, long studentId, SubmissionRequest requestDto);
+    SubmissionResponse unsubmitSubmission(long submissionId, long studentId);
+    SubmissionResponse gradeSubmission(long submissionId, long teacherId, com.codegym.mathclass.submission.dto.GradeRequest requestDto);
+    SubmissionResponse getMySubmission(long assignmentId, long studentId);
+    List<SubmissionResponse> getSubmissionsByAssignment(long assignmentId, long teacherId);
 }

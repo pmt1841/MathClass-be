@@ -5,9 +5,9 @@ import com.codegym.mathclass.assignment.repository.AssignmentRepository;
 import com.codegym.mathclass.exception.AccessDeniedException;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.ResourceNotFoundException;
-import com.codegym.mathclass.submission.dto.GradeRequestDto;
-import com.codegym.mathclass.submission.dto.SubmissionRequestDto;
-import com.codegym.mathclass.submission.dto.SubmissionResponseDto;
+import com.codegym.mathclass.submission.dto.GradeRequest;
+import com.codegym.mathclass.submission.dto.SubmissionRequest;
+import com.codegym.mathclass.submission.dto.SubmissionResponse;
 import com.codegym.mathclass.submission.entity.Submission;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
@@ -31,7 +31,7 @@ public class SubmissionServiceImpl implements SubmissionService {
 
     @Override
     @Transactional
-    public SubmissionResponseDto createSubmission(long studentId, SubmissionRequestDto requestDto) {
+    public SubmissionResponse createSubmission(long studentId, SubmissionRequest requestDto) {
         if (requestDto.getAssignmentId() == null) {
             throw new BadRequestException("Thiếu assignmentId");
         }
@@ -72,7 +72,7 @@ public class SubmissionServiceImpl implements SubmissionService {
 
     @Override
     @Transactional
-    public SubmissionResponseDto updateSubmission(long submissionId, long studentId, SubmissionRequestDto requestDto) {
+    public SubmissionResponse updateSubmission(long submissionId, long studentId, SubmissionRequest requestDto) {
         Submission submission = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài nộp"));
 
@@ -109,7 +109,7 @@ public class SubmissionServiceImpl implements SubmissionService {
 
     @Override
     @Transactional
-    public SubmissionResponseDto unsubmitSubmission(long submissionId, long studentId) {
+    public SubmissionResponse unsubmitSubmission(long submissionId, long studentId) {
         Submission submission = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài nộp"));
 
@@ -139,7 +139,7 @@ public class SubmissionServiceImpl implements SubmissionService {
 
     @Override
     @Transactional
-    public SubmissionResponseDto gradeSubmission(long submissionId, long teacherId, GradeRequestDto requestDto) {
+    public SubmissionResponse gradeSubmission(long submissionId, long teacherId, GradeRequest requestDto) {
         Submission submission = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài nộp"));
 
@@ -159,14 +159,14 @@ public class SubmissionServiceImpl implements SubmissionService {
     }
 
     @Override
-    public SubmissionResponseDto getMySubmission(long assignmentId, long studentId) {
+    public SubmissionResponse getMySubmission(long assignmentId, long studentId) {
         return submissionRepository.findFirstByAssignmentIdAndStudentId(assignmentId, studentId)
                 .map(this::mapToDto)
                 .orElse(null);
     }
 
     @Override
-    public List<SubmissionResponseDto> getSubmissionsByAssignment(long assignmentId, long teacherId) {
+    public List<SubmissionResponse> getSubmissionsByAssignment(long assignmentId, long teacherId) {
         Assignment assignment = assignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập"));
                 
@@ -179,8 +179,8 @@ public class SubmissionServiceImpl implements SubmissionService {
         return submissions.stream().map(this::mapToDto).collect(Collectors.toList());
     }
 
-    private SubmissionResponseDto mapToDto(Submission submission) {
-        return SubmissionResponseDto.builder()
+    private SubmissionResponse mapToDto(Submission submission) {
+        return SubmissionResponse.builder()
                 .id(submission.getId())
                 .assignmentId(submission.getAssignment().getId())
                 .studentId(submission.getStudent().getId())
