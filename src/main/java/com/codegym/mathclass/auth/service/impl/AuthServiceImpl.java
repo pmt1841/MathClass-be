@@ -1,5 +1,6 @@
-package com.codegym.mathclass.auth.service;
+package com.codegym.mathclass.auth.service.impl;
 
+import com.codegym.mathclass.auth.service.AuthService;
 import com.codegym.mathclass.auth.dto.request.LoginRequest;
 import com.codegym.mathclass.auth.dto.request.SignupRequest;
 import com.codegym.mathclass.auth.dto.response.JwtResponse;

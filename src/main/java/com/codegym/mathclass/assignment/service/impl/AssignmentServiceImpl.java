@@ -1,5 +1,6 @@
-package com.codegym.mathclass.assignment.service;
+package com.codegym.mathclass.assignment.service.impl;
 
+import com.codegym.mathclass.assignment.service.AssignmentService;
 import com.codegym.mathclass.assignment.dto.AssignmentResponse;
 import com.codegym.mathclass.assignment.dto.CreateAssignmentRequest;
 import com.codegym.mathclass.assignment.dto.PublishAssignmentRequest;
@@ -28,6 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.codegym.mathclass.assignment.mapper.AssignmentMapper;
+
 @Service
 @RequiredArgsConstructor
 public class AssignmentServiceImpl implements AssignmentService {
@@ -36,6 +39,7 @@ public class AssignmentServiceImpl implements AssignmentService {
     private final UserRepository userRepository;
     private final ClassroomRepository classroomRepository;
     private final SubmissionRepository submissionRepository;
+    private final AssignmentMapper assignmentMapper;
 
     @Override
     @Transactional
@@ -67,7 +71,7 @@ public class AssignmentServiceImpl implements AssignmentService {
         // deadline = null cho đến khi giáo viên publish
 
         Assignment saved = assignmentRepository.save(assignment);
-        return AssignmentResponse.fromEntity(saved);
+        return assignmentMapper.toAssignmentResponse(saved);
     }
 
     @Override
@@ -191,7 +195,7 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         Page<Assignment> assignments = assignmentRepository.findAll(spec, sortedPageable);
         return assignments.map(assignment -> {
-            AssignmentResponse response = AssignmentResponse.fromEntityWithoutContent(assignment);
+            AssignmentResponse response = assignmentMapper.toAssignmentResponseWithoutContent(assignment);
             if (isStudent) {
                 submissionRepository.findFirstByAssignmentIdAndStudentId(assignment.getId(), userId)
                         .ifPresent(sub -> response.setSubmissionStatus(sub.getStatus().name()));
@@ -246,7 +250,7 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         Page<Assignment> assignments = assignmentRepository.findAll(spec, sortedPageable);
         return assignments.map(assignment -> {
-            AssignmentResponse response = AssignmentResponse.fromEntityWithoutContent(assignment);
+            AssignmentResponse response = assignmentMapper.toAssignmentResponseWithoutContent(assignment);
             if (Role.STUDENT.name().equals(role)) {
                 submissionRepository.findFirstByAssignmentIdAndStudentId(assignment.getId(), userId)
                         .ifPresent(sub -> response.setSubmissionStatus(sub.getStatus().name()));
@@ -383,7 +387,7 @@ public class AssignmentServiceImpl implements AssignmentService {
             assignmentRepository.save(assignment);
         }
 
-        return AssignmentResponse.fromEntity(assignment);
+        return assignmentMapper.toAssignmentResponse(assignment);
     }
 
     @Override
@@ -400,24 +404,15 @@ public class AssignmentServiceImpl implements AssignmentService {
             if (assignment.getStatus() != AssignmentStatus.PUBLISHED) {
                 throw new AccessDeniedException("Bạn không thể xem bài tập này");
             }
-            if (assignment.getClassroom() != null) {
-                boolean isStudentInClass = assignment.getClassroom().getStudents().stream()
-                        .anyMatch(student -> student.getId() == userId);
-                if (!isStudentInClass) {
-                    throw new AccessDeniedException("Bạn không thuộc lớp của bài tập này");
-                }
-            } else {
-                throw new AccessDeniedException("Bài tập chưa được giao cho lớp nào");
+            if (assignment.getClassroom() == null) {
+                throw new BadRequestException("Bài tập chưa được giao cho lớp nào");
             }
         } else {
-            throw new AccessDeniedException("Role không hợp lệ");
+            throw new AccessDeniedException("Vai trò không hợp lệ");
         }
 
-        AssignmentResponse response = AssignmentResponse.fromEntity(assignment);
-        if (Role.STUDENT.name().equals(role)) {
-            submissionRepository.findFirstByAssignmentIdAndStudentId(assignmentId, userId)
-                    .ifPresent(sub -> response.setSubmissionStatus(sub.getStatus().name()));
-        }
+        AssignmentResponse response = assignmentMapper.toAssignmentResponse(assignment);
+
         return response;
     }
 }
