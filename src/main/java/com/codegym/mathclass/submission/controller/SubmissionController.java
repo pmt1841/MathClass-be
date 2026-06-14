@@ -85,15 +85,19 @@ public class SubmissionController {
         return ResponseEntity.ok(response);
     }
 
-    // Lấy danh sách bài làm theo id bài tập
+    // Lấy danh sách bài làm theo id bài tập (dành cho giáo viên)
     @GetMapping
     @PreAuthorize("hasRole('TEACHER')")
-    public ResponseEntity<List<SubmissionResponse>> getSubmissionsByAssignment(
+    public ResponseEntity<org.springframework.data.domain.Page<SubmissionResponse>> getSubmissionsByAssignment(
             @RequestParam long assignmentId,
+            @RequestParam(required = false) com.codegym.mathclass.submission.entity.SubmissionStatus status,
+            @RequestParam(required = false) String keyword,
+            @org.springframework.data.web.PageableDefault(size = 10, sort = "updatedAt", direction = org.springframework.data.domain.Sort.Direction.DESC) org.springframework.data.domain.Pageable pageable,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         long teacherId = userDetails.getId();
-        List<SubmissionResponse> responses = submissionService.getSubmissionsByAssignment(assignmentId, teacherId);
+        org.springframework.data.domain.Page<SubmissionResponse> responses = submissionService.getSubmissionsByAssignment(
+                assignmentId, teacherId, status, keyword, pageable);
         return ResponseEntity.ok(responses);
     }
 }

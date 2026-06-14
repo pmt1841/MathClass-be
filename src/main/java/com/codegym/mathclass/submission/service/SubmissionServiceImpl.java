@@ -166,7 +166,14 @@ public class SubmissionServiceImpl implements SubmissionService {
     }
 
     @Override
-    public List<SubmissionResponse> getSubmissionsByAssignment(long assignmentId, long teacherId) {
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<SubmissionResponse> getSubmissionsByAssignment(
+            long assignmentId, 
+            long teacherId, 
+            SubmissionStatus status, 
+            String keyword, 
+            org.springframework.data.domain.Pageable pageable) {
+        
         Assignment assignment = assignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập"));
                 
@@ -174,9 +181,10 @@ public class SubmissionServiceImpl implements SubmissionService {
             throw new AccessDeniedException("Bạn không có quyền xem danh sách bài nộp này");
         }
 
-        // Theo yêu cầu: giáo viên chỉ thấy bài ĐÃ NỘP (SUBMITTED)
-        List<Submission> submissions = submissionRepository.findAllByAssignmentIdAndStatusOrderByUpdatedAtDesc(assignmentId, SubmissionStatus.SUBMITTED);
-        return submissions.stream().map(this::mapToDto).collect(Collectors.toList());
+        org.springframework.data.domain.Page<Submission> submissionPage = submissionRepository.findSubmissionsByAssignment(
+                assignmentId, status, keyword, pageable);
+                
+        return submissionPage.map(this::mapToDto);
     }
 
     private SubmissionResponse mapToDto(Submission submission) {

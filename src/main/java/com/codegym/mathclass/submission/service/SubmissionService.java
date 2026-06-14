@@ -11,5 +11,5 @@ public interface SubmissionService {
     SubmissionResponse unsubmitSubmission(long submissionId, long studentId);
     SubmissionResponse gradeSubmission(long submissionId, long teacherId, com.codegym.mathclass.submission.dto.GradeRequest requestDto);
     SubmissionResponse getMySubmission(long assignmentId, long studentId);
-    List<SubmissionResponse> getSubmissionsByAssignment(long assignmentId, long teacherId);
+    org.springframework.data.domain.Page<SubmissionResponse> getSubmissionsByAssignment(long assignmentId, long teacherId, com.codegym.mathclass.submission.entity.SubmissionStatus status, String keyword, org.springframework.data.domain.Pageable pageable);
 }
