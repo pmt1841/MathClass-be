@@ -19,7 +19,7 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     @org.springframework.data.jpa.repository.Query("SELECT s FROM Submission s WHERE s.assignment.id = :assignmentId " +
             "AND s.status <> com.codegym.mathclass.submission.entity.SubmissionStatus.DRAFT " +
             "AND (:status IS NULL OR s.status = :status) " +
-            "AND (:keyword IS NULL OR LOWER(s.student.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+            "AND LOWER(s.student.fullName) LIKE LOWER(CONCAT('%', :keyword, '%'))")
     org.springframework.data.domain.Page<Submission> findSubmissionsByAssignment(
             @org.springframework.data.repository.query.Param("assignmentId") long assignmentId,
             @org.springframework.data.repository.query.Param("status") com.codegym.mathclass.submission.entity.SubmissionStatus status,

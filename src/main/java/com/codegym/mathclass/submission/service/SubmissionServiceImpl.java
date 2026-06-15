@@ -181,8 +181,10 @@ public class SubmissionServiceImpl implements SubmissionService {
             throw new AccessDeniedException("Bạn không có quyền xem danh sách bài nộp này");
         }
 
+        String searchKeyword = (keyword == null) ? "" : keyword;
+
         org.springframework.data.domain.Page<Submission> submissionPage = submissionRepository.findSubmissionsByAssignment(
-                assignmentId, status, keyword, pageable);
+                assignmentId, status, searchKeyword, pageable);
                 
         return submissionPage.map(this::mapToDto);
     }
