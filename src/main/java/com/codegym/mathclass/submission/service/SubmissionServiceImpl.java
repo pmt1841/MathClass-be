@@ -148,11 +148,13 @@ public class SubmissionServiceImpl implements SubmissionService {
             throw new AccessDeniedException("Bạn không có quyền chấm bài nộp này");
         }
 
-        if (submission.getStatus() != SubmissionStatus.SUBMITTED) {
+        if (submission.getStatus() == SubmissionStatus.DRAFT) {
             throw new BadRequestException("Học sinh chưa nộp bài");
         }
 
         submission.setScore(requestDto.getScore());
+        submission.setTeacherFeedback(requestDto.getTeacherFeedback());
+        submission.setStatus(SubmissionStatus.GRADED);
         
         Submission savedSubmission = submissionRepository.save(submission);
         return mapToDto(savedSubmission);
