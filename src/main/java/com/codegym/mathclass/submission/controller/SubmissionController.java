@@ -62,7 +62,7 @@ public class SubmissionController {
     @PreAuthorize("hasRole('TEACHER')")
     public ResponseEntity<SubmissionResponse> gradeSubmission(
             @PathVariable long submissionId,
-            @RequestBody GradeRequest requestDto,
+            @jakarta.validation.Valid @RequestBody GradeRequest requestDto,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         long teacherId = userDetails.getId();

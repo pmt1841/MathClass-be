@@ -132,4 +132,37 @@ public class SubmissionServiceImplTest {
         assertThrows(AccessDeniedException.class, () ->
             submissionService.getSubmissionDetail(100L, 99L));
     }
+
+    @Test
+    void testGradeSubmission_Success() {
+        com.codegym.mathclass.submission.dto.GradeRequest gradeRequest = new com.codegym.mathclass.submission.dto.GradeRequest(9.5, "Good job!");
+        when(submissionRepository.findById(100L)).thenReturn(Optional.of(submission));
+        when(submissionRepository.save(any(Submission.class))).thenReturn(submission);
+
+        SubmissionResponse result = submissionService.gradeSubmission(100L, 1L, gradeRequest);
+
+        assertNotNull(result);
+        assertEquals(SubmissionStatus.GRADED, submission.getStatus());
+        assertEquals(9.5, submission.getScore());
+        assertEquals("Good job!", submission.getTeacherFeedback());
+    }
+
+    @Test
+    void testGradeSubmission_AccessDenied() {
+        com.codegym.mathclass.submission.dto.GradeRequest gradeRequest = new com.codegym.mathclass.submission.dto.GradeRequest(9.5, "Good job!");
+        when(submissionRepository.findById(100L)).thenReturn(Optional.of(submission));
+
+        assertThrows(AccessDeniedException.class, () ->
+            submissionService.gradeSubmission(100L, 99L, gradeRequest));
+    }
+
+    @Test
+    void testGradeSubmission_DraftSubmission() {
+        submission.setStatus(SubmissionStatus.DRAFT);
+        com.codegym.mathclass.submission.dto.GradeRequest gradeRequest = new com.codegym.mathclass.submission.dto.GradeRequest(9.5, "Good job!");
+        when(submissionRepository.findById(100L)).thenReturn(Optional.of(submission));
+
+        assertThrows(com.codegym.mathclass.exception.BadRequestException.class, () ->
+            submissionService.gradeSubmission(100L, 1L, gradeRequest));
+    }
 }
