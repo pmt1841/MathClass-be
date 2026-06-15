@@ -105,4 +105,31 @@ public class SubmissionServiceImplTest {
         assertThrows(AccessDeniedException.class, () -> 
             submissionService.getSubmissionsByAssignment(10L, 99L, null, null, pageable));
     }
+
+    @Test
+    void testGetSubmissionDetail_Success() {
+        when(submissionRepository.findById(100L)).thenReturn(Optional.of(submission));
+
+        SubmissionResponse result = submissionService.getSubmissionDetail(100L, 1L);
+
+        assertNotNull(result);
+        assertEquals(100L, result.getId());
+        assertEquals(10L, result.getAssignmentId());
+    }
+
+    @Test
+    void testGetSubmissionDetail_NotFound() {
+        when(submissionRepository.findById(100L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () ->
+            submissionService.getSubmissionDetail(100L, 1L));
+    }
+
+    @Test
+    void testGetSubmissionDetail_AccessDenied() {
+        when(submissionRepository.findById(100L)).thenReturn(Optional.of(submission));
+
+        assertThrows(AccessDeniedException.class, () ->
+            submissionService.getSubmissionDetail(100L, 99L));
+    }
 }
