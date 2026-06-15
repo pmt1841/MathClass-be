@@ -189,6 +189,20 @@ public class SubmissionServiceImpl implements SubmissionService {
         return submissionPage.map(this::mapToDto);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public SubmissionResponse getSubmissionDetail(long submissionId, long teacherId) {
+        Submission submission = submissionRepository.findById(submissionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài nộp"));
+
+        Assignment assignment = submission.getAssignment();
+        if (assignment.getTeacher().getId() != teacherId) {
+            throw new AccessDeniedException("Bạn không có quyền xem bài nộp này");
+        }
+
+        return mapToDto(submission);
+    }
+
     private SubmissionResponse mapToDto(Submission submission) {
         return SubmissionResponse.builder()
                 .id(submission.getId())
@@ -196,6 +210,7 @@ public class SubmissionServiceImpl implements SubmissionService {
                 .studentId(submission.getStudent().getId())
                 .studentName(submission.getStudent().getFullName())
                 .content(submission.getContent())
+                .teacherFeedback(submission.getTeacherFeedback())
                 .status(submission.getStatus())
                 .score(submission.getScore())
                 .submittedAt(submission.getSubmittedAt())

@@ -19,6 +19,7 @@ public class SubmissionResponse {
     private long studentId;
     private String studentName; 
     private String content;
+    private String teacherFeedback;
     private SubmissionStatus status;
     private Double score;
     private LocalDateTime submittedAt;
@@ -35,6 +36,7 @@ public class SubmissionResponse {
                 .studentId(submission.getStudent() != null ? submission.getStudent().getId() : 0)
                 .studentName(submission.getStudent() != null ? submission.getStudent().getFullName() : null)
                 .content(submission.getContent())
+                .teacherFeedback(submission.getTeacherFeedback())
                 .status(submission.getStatus())
                 .score(submission.getScore())
                 .submittedAt(submission.getSubmittedAt())

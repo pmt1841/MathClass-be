@@ -42,4 +42,7 @@ public class Submission extends BaseEntity {
     @Column(name = "submitted_at")
     private LocalDateTime submittedAt;
 
+    @Column(name = "teacher_feedback", columnDefinition = "TEXT")
+    private String teacherFeedback;
+
 }

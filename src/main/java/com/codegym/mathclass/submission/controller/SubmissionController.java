@@ -100,4 +100,16 @@ public class SubmissionController {
                 assignmentId, teacherId, status, keyword, pageable);
         return ResponseEntity.ok(responses);
     }
+
+    // Lấy chi tiết một bài nộp (dành cho giáo viên)
+    @GetMapping("/{submissionId}")
+    @PreAuthorize("hasRole('TEACHER')")
+    public ResponseEntity<SubmissionResponse> getSubmissionDetail(
+            @PathVariable long submissionId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        long teacherId = userDetails.getId();
+        SubmissionResponse response = submissionService.getSubmissionDetail(submissionId, teacherId);
+        return ResponseEntity.ok(response);
+    }
 }
