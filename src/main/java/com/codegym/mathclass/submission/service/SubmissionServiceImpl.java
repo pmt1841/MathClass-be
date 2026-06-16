@@ -18,8 +18,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -38,7 +36,7 @@ public class SubmissionServiceImpl implements SubmissionService {
 
         Assignment assignment = assignmentRepository.findById(requestDto.getAssignmentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập"));
-        
+
         if (assignment.getDeadline() != null && LocalDateTime.now().isAfter(assignment.getDeadline())) {
             throw new BadRequestException("Đã hết hạn nộp bài tập");
         }
@@ -131,8 +129,9 @@ public class SubmissionServiceImpl implements SubmissionService {
         }
 
         submission.setStatus(SubmissionStatus.DRAFT);
-        // Có thể reset submittedAt nếu muốn, nhưng giữ lại cũng không sao để biết lần nộp gần nhất
-        
+        // Có thể reset submittedAt nếu muốn, nhưng giữ lại cũng không sao để biết lần
+        // nộp gần nhất
+
         Submission savedSubmission = submissionRepository.save(submission);
         return mapToDto(savedSubmission);
     }
@@ -155,7 +154,7 @@ public class SubmissionServiceImpl implements SubmissionService {
         submission.setScore(requestDto.getScore());
         submission.setTeacherFeedback(requestDto.getTeacherFeedback());
         submission.setStatus(SubmissionStatus.GRADED);
-        
+
         Submission savedSubmission = submissionRepository.save(submission);
         return mapToDto(savedSubmission);
     }
@@ -170,24 +169,25 @@ public class SubmissionServiceImpl implements SubmissionService {
     @Override
     @Transactional(readOnly = true)
     public org.springframework.data.domain.Page<SubmissionResponse> getSubmissionsByAssignment(
-            long assignmentId, 
-            long teacherId, 
-            SubmissionStatus status, 
-            String keyword, 
+            long assignmentId,
+            long teacherId,
+            SubmissionStatus status,
+            String keyword,
             org.springframework.data.domain.Pageable pageable) {
-        
+
         Assignment assignment = assignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập"));
-                
+
         if (assignment.getTeacher().getId() != teacherId) {
             throw new AccessDeniedException("Bạn không có quyền xem danh sách bài nộp này");
         }
 
         String searchKeyword = (keyword == null) ? "" : keyword;
 
-        org.springframework.data.domain.Page<Submission> submissionPage = submissionRepository.findSubmissionsByAssignment(
-                assignmentId, status, searchKeyword, pageable);
-                
+        org.springframework.data.domain.Page<Submission> submissionPage = submissionRepository
+                .findSubmissionsByAssignment(
+                        assignmentId, status, searchKeyword, pageable);
+
         return submissionPage.map(this::mapToDto);
     }
 
