@@ -6,6 +6,7 @@ import com.codegym.mathclass.assignment.dto.CreateAssignmentRequest;
 import com.codegym.mathclass.assignment.dto.PublishAssignmentRequest;
 import com.codegym.mathclass.assignment.dto.UpdateAssignmentRequest;
 import com.codegym.mathclass.assignment.entity.Assignment;
+import com.codegym.mathclass.assignment.entity.AssignmentDrawing;
 import com.codegym.mathclass.assignment.entity.AssignmentStatus;
 import com.codegym.mathclass.assignment.repository.AssignmentRepository;
 import com.codegym.mathclass.classroom.entity.Classroom;
@@ -70,6 +71,18 @@ public class AssignmentServiceImpl implements AssignmentService {
         assignment.setClassroom(null);
         // deadline = null cho đến khi giáo viên publish
 
+        if (request.getDrawings() != null && !request.getDrawings().isEmpty()) {
+            List<AssignmentDrawing> drawings = new ArrayList<>();
+            for (var drawingReq : request.getDrawings()) {
+                AssignmentDrawing drawing = new AssignmentDrawing();
+                drawing.setShapeCode(drawingReq.getShapeCode());
+                drawing.setJsxGraphData(drawingReq.getJsxGraphData());
+                drawing.setAssignment(assignment);
+                drawings.add(drawing);
+            }
+            assignment.setDrawings(drawings);
+        }
+
         Assignment saved = assignmentRepository.save(assignment);
         return assignmentMapper.toAssignmentResponse(saved);
     }
@@ -121,6 +134,16 @@ public class AssignmentServiceImpl implements AssignmentService {
             clone.setClassroom(classroom);
             clone.setDeadline(target.getDeadline());
             clone.setStatus(AssignmentStatus.PUBLISHED);
+
+            if (originalAssignment.getDrawings() != null) {
+                for (AssignmentDrawing originalDrawing : originalAssignment.getDrawings()) {
+                    AssignmentDrawing drawing = new AssignmentDrawing();
+                    drawing.setShapeCode(originalDrawing.getShapeCode());
+                    drawing.setJsxGraphData(originalDrawing.getJsxGraphData());
+                    drawing.setAssignment(clone);
+                    clone.getDrawings().add(drawing);
+                }
+            }
 
             clones.add(clone);
         }
@@ -337,6 +360,18 @@ public class AssignmentServiceImpl implements AssignmentService {
             assignment.setTitle(request.getTitle() != null ? request.getTitle() : "");
             assignment.setDescription(request.getDescription() != null ? request.getDescription() : "");
             assignment.setContent(request.getContent() != null ? request.getContent() : "");
+
+            if (request.getDrawings() != null) {
+                assignment.getDrawings().clear();
+                for (var drawingReq : request.getDrawings()) {
+                    AssignmentDrawing drawing = new AssignmentDrawing();
+                    drawing.setShapeCode(drawingReq.getShapeCode());
+                    drawing.setJsxGraphData(drawingReq.getJsxGraphData());
+                    drawing.setAssignment(assignment);
+                    assignment.getDrawings().add(drawing);
+                }
+            }
+
             assignmentRepository.save(assignment);
 
         } else if (assignment.getStatus() == AssignmentStatus.ARCHIVED) {
@@ -344,6 +379,16 @@ public class AssignmentServiceImpl implements AssignmentService {
             assignment.setTitle(request.getTitle());
             assignment.setDescription(request.getDescription());
             assignment.setContent(request.getContent());
+
+            if (request.getDrawings() != null) {
+                assignment.getDrawings().clear();
+                for (var drawingReq : request.getDrawings()) {
+                    AssignmentDrawing drawing = new AssignmentDrawing();
+                    drawing.setJsxGraphData(drawingReq.getJsxGraphData());
+                    drawing.setAssignment(assignment);
+                    assignment.getDrawings().add(drawing);
+                }
+            }
             assignmentRepository.save(assignment);
 
             // Đồng bộ sang tất cả bản PUBLISHED con
@@ -356,6 +401,17 @@ public class AssignmentServiceImpl implements AssignmentService {
                 clone.setTitle(request.getTitle());
                 clone.setDescription(request.getDescription());
                 clone.setContent(request.getContent());
+
+                if (request.getDrawings() != null) {
+                    clone.getDrawings().clear();
+                    for (var drawingReq : request.getDrawings()) {
+                        AssignmentDrawing drawing = new AssignmentDrawing();
+                        drawing.setShapeCode(drawingReq.getShapeCode());
+                        drawing.setJsxGraphData(drawingReq.getJsxGraphData());
+                        drawing.setAssignment(clone);
+                        clone.getDrawings().add(drawing);
+                    }
+                }
             }
             assignmentRepository.saveAll(publishedClones);
 
@@ -382,6 +438,17 @@ public class AssignmentServiceImpl implements AssignmentService {
                 assignment.setContent(request.getContent());
                 if (request.getDeadline() != null) {
                     assignment.setDeadline(request.getDeadline());
+                }
+
+                if (request.getDrawings() != null) {
+                    assignment.getDrawings().clear();
+                    for (var drawingReq : request.getDrawings()) {
+                        AssignmentDrawing drawing = new AssignmentDrawing();
+                        drawing.setShapeCode(drawingReq.getShapeCode());
+                        drawing.setJsxGraphData(drawingReq.getJsxGraphData());
+                        drawing.setAssignment(assignment);
+                        assignment.getDrawings().add(drawing);
+                    }
                 }
             }
             assignmentRepository.save(assignment);

@@ -7,6 +7,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Data
 @NoArgsConstructor
@@ -40,6 +42,8 @@ public class AssignmentResponse {
     private String classCode;
     private String className;
 
+    private List<AssignmentDrawingResponse> drawings;
+
     public static AssignmentResponse fromEntity(Assignment assignment) {
         if (assignment == null) {
             return null;
@@ -72,6 +76,17 @@ public class AssignmentResponse {
         if (assignment.getClassroom() != null) {
             response.setClassCode(assignment.getClassroom().getClassCode());
             response.setClassName(assignment.getClassroom().getClassName());
+        }
+
+        if (assignment.getDrawings() != null && !assignment.getDrawings().isEmpty()) {
+            List<AssignmentDrawingResponse> drawingResponses = assignment.getDrawings().stream().map(drawing -> {
+                AssignmentDrawingResponse dr = new AssignmentDrawingResponse();
+                dr.setId(drawing.getId());
+                dr.setShapeCode(drawing.getShapeCode());
+                dr.setJsxGraphData(drawing.getJsxGraphData());
+                return dr;
+            }).collect(Collectors.toList());
+            response.setDrawings(drawingResponses);
         }
 
         return response;

@@ -11,8 +11,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/submissions")
 @RequiredArgsConstructor
@@ -96,8 +94,9 @@ public class SubmissionController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         long teacherId = userDetails.getId();
-        org.springframework.data.domain.Page<SubmissionResponse> responses = submissionService.getSubmissionsByAssignment(
-                assignmentId, teacherId, status, keyword, pageable);
+        org.springframework.data.domain.Page<SubmissionResponse> responses = submissionService
+                .getSubmissionsByAssignment(
+                        assignmentId, teacherId, status, keyword, pageable);
         return ResponseEntity.ok(responses);
     }
 

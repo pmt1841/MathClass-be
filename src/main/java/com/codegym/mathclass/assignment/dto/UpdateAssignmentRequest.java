@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -23,4 +24,6 @@ public class UpdateAssignmentRequest {
      * Với bài DRAFT/ARCHIVED thì bỏ qua trường này.
      */
     private LocalDateTime deadline;
+
+    private List<AssignmentDrawingRequest> drawings;
 }

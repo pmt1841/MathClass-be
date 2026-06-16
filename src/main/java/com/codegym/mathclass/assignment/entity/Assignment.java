@@ -16,6 +16,10 @@ import lombok.NoArgsConstructor;
 
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.OneToMany;
 
 import com.codegym.mathclass.common.entity.BaseEntity;
 import lombok.EqualsAndHashCode;
@@ -58,4 +62,6 @@ public class Assignment extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String content;
 
+    @OneToMany(mappedBy = "assignment", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<AssignmentDrawing> drawings = new ArrayList<>();
 }
