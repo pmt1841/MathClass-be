@@ -22,7 +22,8 @@ public class SubmissionDrawingServiceImpl implements SubmissionDrawingService {
 
     @Override
     @Transactional
-    public SubmissionDrawingResponse saveOrUpdateDrawing(long submissionId, SubmissionDrawingRequest request, String currentUserUsername) {
+    public SubmissionDrawingResponse saveOrUpdateDrawing(long submissionId, SubmissionDrawingRequest request,
+            String currentUserUsername) {
         Submission submission = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Submission not found with id: " + submissionId));
 
@@ -56,11 +57,14 @@ public class SubmissionDrawingServiceImpl implements SubmissionDrawingService {
         Submission submission = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Submission not found with id: " + submissionId));
 
-        // In a real application, you might want to allow teachers to view the drawing as well.
-        // Assuming there is a role check or similar logic. For now, we just ensure it exists.
+        // In a real application, you might want to allow teachers to view the drawing
+        // as well.
+        // Assuming there is a role check or similar logic. For now, we just ensure it
+        // exists.
 
-        SubmissionDrawing drawing = submissionDrawingRepository.findBySubmissionId(submissionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Drawing not found for submission id: " + submissionId));
+        SubmissionDrawing drawing = submissionDrawingRepository.findBySubmissionId(submission.getId())
+                .orElseThrow(
+                        () -> new ResourceNotFoundException("Drawing not found for submission id: " + submissionId));
 
         return mapToResponse(drawing);
     }
