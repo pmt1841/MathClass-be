@@ -14,6 +14,8 @@ import com.codegym.mathclass.submission.repository.SubmissionRepository;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -168,12 +170,12 @@ public class SubmissionServiceImpl implements SubmissionService {
 
     @Override
     @Transactional(readOnly = true)
-    public org.springframework.data.domain.Page<SubmissionResponse> getSubmissionsByAssignment(
+    public Page<SubmissionResponse> getSubmissionsByAssignment(
             long assignmentId,
             long teacherId,
             SubmissionStatus status,
             String keyword,
-            org.springframework.data.domain.Pageable pageable) {
+            Pageable pageable) {
 
         Assignment assignment = assignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập"));
@@ -184,7 +186,7 @@ public class SubmissionServiceImpl implements SubmissionService {
 
         String searchKeyword = (keyword == null) ? "" : keyword;
 
-        org.springframework.data.domain.Page<Submission> submissionPage = submissionRepository
+        Page<Submission> submissionPage = submissionRepository
                 .findSubmissionsByAssignment(
                         assignmentId, status, searchKeyword, pageable);
 

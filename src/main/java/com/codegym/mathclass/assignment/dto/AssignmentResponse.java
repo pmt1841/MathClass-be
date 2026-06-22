@@ -43,6 +43,7 @@ public class AssignmentResponse {
     private String className;
 
     private List<AssignmentDrawingResponse> drawings;
+    private List<AssignmentImageDto> images;
 
     public static AssignmentResponse fromEntity(Assignment assignment) {
         if (assignment == null) {
