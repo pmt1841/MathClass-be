@@ -24,6 +24,11 @@ import com.codegym.mathclass.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.PageRequest;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +36,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.codegym.mathclass.assignment.mapper.AssignmentMapper;
+import com.codegym.mathclass.assignment.entity.AssignmentImage;
+import com.codegym.mathclass.utils.SupabaseStorageService;
+import com.codegym.mathclass.assignment.dto.AssignmentImageDto;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +49,7 @@ public class AssignmentServiceImpl implements AssignmentService {
     private final ClassroomRepository classroomRepository;
     private final SubmissionRepository submissionRepository;
     private final AssignmentMapper assignmentMapper;
+    private final SupabaseStorageService supabaseStorageService;
 
     @Override
     @Transactional
@@ -81,6 +90,18 @@ public class AssignmentServiceImpl implements AssignmentService {
                 drawings.add(drawing);
             }
             assignment.setDrawings(drawings);
+        }
+
+        if (request.getImages() != null && !request.getImages().isEmpty()) {
+            List<AssignmentImage> images = new ArrayList<>();
+            for (var imageReq : request.getImages()) {
+                AssignmentImage img = new AssignmentImage();
+                img.setImageCode(imageReq.getImageCode());
+                img.setImageUrl(imageReq.getImageUrl());
+                img.setAssignment(assignment);
+                images.add(img);
+            }
+            assignment.setImages(images);
         }
 
         Assignment saved = assignmentRepository.save(assignment);
@@ -145,6 +166,16 @@ public class AssignmentServiceImpl implements AssignmentService {
                 }
             }
 
+            if (originalAssignment.getImages() != null) {
+                for (AssignmentImage originalImage : originalAssignment.getImages()) {
+                    AssignmentImage image = new AssignmentImage();
+                    image.setImageCode(originalImage.getImageCode());
+                    image.setImageUrl(originalImage.getImageUrl());
+                    image.setAssignment(clone);
+                    clone.getImages().add(image);
+                }
+            }
+
             clones.add(clone);
         }
 
@@ -175,14 +206,14 @@ public class AssignmentServiceImpl implements AssignmentService {
         }
 
         Specification<Assignment> spec = Specification.where((root, query, cb) -> {
-            jakarta.persistence.criteria.Join<Assignment, Classroom> classroomJoin = root.join("classroom",
-                    jakarta.persistence.criteria.JoinType.LEFT);
+            Join<Assignment, Classroom> classroomJoin = root.join("classroom",
+                    JoinType.LEFT);
             // Lấy các bài tập của lớp này
-            jakarta.persistence.criteria.Predicate isClassCode = cb.equal(classroomJoin.get("classCode"), classCode);
+            Predicate isClassCode = cb.equal(classroomJoin.get("classCode"), classCode);
 
             if (isTeacher) {
                 // Giáo viên thấy bài tập của lớp HOẶC các bản nháp của chính họ
-                jakarta.persistence.criteria.Predicate isDraftAndMyTeacher = cb.and(
+                Predicate isDraftAndMyTeacher = cb.and(
                         cb.equal(root.get("status"), AssignmentStatus.DRAFT),
                         cb.equal(root.get("teacher").get("id"), userId));
                 return cb.or(isClassCode, isDraftAndMyTeacher);
@@ -209,11 +240,11 @@ public class AssignmentServiceImpl implements AssignmentService {
             }
         }
 
-        org.springframework.data.domain.Sort customSort = org.springframework.data.domain.Sort.by(
-                org.springframework.data.domain.Sort.Order.desc("updatedAt"),
-                org.springframework.data.domain.Sort.Order.desc("createdAt"),
-                org.springframework.data.domain.Sort.Order.asc("title"));
-        Pageable sortedPageable = org.springframework.data.domain.PageRequest.of(pageable.getPageNumber(),
+        Sort customSort = Sort.by(
+                Sort.Order.desc("updatedAt"),
+                Sort.Order.desc("createdAt"),
+                Sort.Order.asc("title"));
+        Pageable sortedPageable = PageRequest.of(pageable.getPageNumber(),
                 pageable.getPageSize(), customSort);
 
         Page<Assignment> assignments = assignmentRepository.findAll(spec, sortedPageable);
@@ -264,11 +295,11 @@ public class AssignmentServiceImpl implements AssignmentService {
             spec = spec.and(AssignmentSpecification.hasStatus(status));
         }
 
-        org.springframework.data.domain.Sort customSort = org.springframework.data.domain.Sort.by(
-                org.springframework.data.domain.Sort.Order.desc("updatedAt"),
-                org.springframework.data.domain.Sort.Order.desc("createdAt"),
-                org.springframework.data.domain.Sort.Order.asc("title"));
-        Pageable sortedPageable = org.springframework.data.domain.PageRequest.of(pageable.getPageNumber(),
+        Sort customSort = Sort.by(
+                Sort.Order.desc("updatedAt"),
+                Sort.Order.desc("createdAt"),
+                Sort.Order.asc("title"));
+        Pageable sortedPageable = PageRequest.of(pageable.getPageNumber(),
                 pageable.getPageSize(), customSort);
 
         Page<Assignment> assignments = assignmentRepository.findAll(spec, sortedPageable);
@@ -372,6 +403,17 @@ public class AssignmentServiceImpl implements AssignmentService {
                 }
             }
 
+            if (request.getImages() != null) {
+                assignment.getImages().clear();
+                for (var imageReq : request.getImages()) {
+                    AssignmentImage img = new AssignmentImage();
+                    img.setImageCode(imageReq.getImageCode());
+                    img.setImageUrl(imageReq.getImageUrl());
+                    img.setAssignment(assignment);
+                    assignment.getImages().add(img);
+                }
+            }
+
             assignmentRepository.save(assignment);
 
         } else if (assignment.getStatus() == AssignmentStatus.ARCHIVED) {
@@ -387,6 +429,17 @@ public class AssignmentServiceImpl implements AssignmentService {
                     drawing.setJsxGraphData(drawingReq.getJsxGraphData());
                     drawing.setAssignment(assignment);
                     assignment.getDrawings().add(drawing);
+                }
+            }
+
+            if (request.getImages() != null) {
+                assignment.getImages().clear();
+                for (var imageReq : request.getImages()) {
+                    AssignmentImage img = new AssignmentImage();
+                    img.setImageCode(imageReq.getImageCode());
+                    img.setImageUrl(imageReq.getImageUrl());
+                    img.setAssignment(assignment);
+                    assignment.getImages().add(img);
                 }
             }
             assignmentRepository.save(assignment);
@@ -410,6 +463,17 @@ public class AssignmentServiceImpl implements AssignmentService {
                         drawing.setJsxGraphData(drawingReq.getJsxGraphData());
                         drawing.setAssignment(clone);
                         clone.getDrawings().add(drawing);
+                    }
+                }
+
+                if (request.getImages() != null) {
+                    clone.getImages().clear();
+                    for (var imageReq : request.getImages()) {
+                        AssignmentImage img = new AssignmentImage();
+                        img.setImageCode(imageReq.getImageCode());
+                        img.setImageUrl(imageReq.getImageUrl());
+                        img.setAssignment(clone);
+                        clone.getImages().add(img);
                     }
                 }
             }
@@ -450,11 +514,27 @@ public class AssignmentServiceImpl implements AssignmentService {
                         assignment.getDrawings().add(drawing);
                     }
                 }
+
+                if (request.getImages() != null) {
+                    assignment.getImages().clear();
+                    for (var imageReq : request.getImages()) {
+                        AssignmentImage img = new AssignmentImage();
+                        img.setImageCode(imageReq.getImageCode());
+                        img.setImageUrl(imageReq.getImageUrl());
+                        img.setAssignment(assignment);
+                        assignment.getImages().add(img);
+                    }
+                }
             }
             assignmentRepository.save(assignment);
         }
 
         return assignmentMapper.toAssignmentResponse(assignment);
+    }
+
+    @Override
+    public AssignmentImageDto uploadImageForAssignment(org.springframework.web.multipart.MultipartFile file) throws java.io.IOException {
+        return supabaseStorageService.uploadImage(file);
     }
 
     @Override

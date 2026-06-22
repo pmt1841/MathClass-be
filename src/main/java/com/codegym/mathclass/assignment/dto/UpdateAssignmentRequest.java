@@ -1,6 +1,5 @@
 package com.codegym.mathclass.assignment.dto;
 
-
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -26,4 +25,5 @@ public class UpdateAssignmentRequest {
     private LocalDateTime deadline;
 
     private List<AssignmentDrawingRequest> drawings;
+    private List<AssignmentImageRequest> images;
 }

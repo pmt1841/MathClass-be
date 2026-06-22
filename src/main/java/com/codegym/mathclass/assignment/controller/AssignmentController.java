@@ -6,6 +6,9 @@ import com.codegym.mathclass.assignment.dto.PublishAssignmentRequest;
 import com.codegym.mathclass.assignment.dto.UpdateAssignmentRequest;
 import com.codegym.mathclass.assignment.service.AssignmentService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
+import com.codegym.mathclass.assignment.dto.AssignmentImageDto;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -120,14 +123,14 @@ public class AssignmentController {
     public ResponseEntity<AssignmentResponse> getAssignmentById(
             @PathVariable long id,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        
+
         long userId = userDetails.getId();
         String role = userDetails.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .map(r -> r.replace("ROLE_", ""))
                 .findFirst()
                 .orElse("");
-                
+
         AssignmentResponse response = assignmentService.getAssignmentById(id, userId, role);
         return ResponseEntity.ok(response);
     }
@@ -151,6 +154,21 @@ public class AssignmentController {
         } catch (IllegalArgumentException e) {
             // Bắt lỗi từ validate LaTeX → trả 400 Bad Request
             return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/images/upload")
+    @PreAuthorize("hasRole('TEACHER')")
+    public ResponseEntity<?> uploadImage(
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        try {
+            AssignmentImageDto imageDto = assignmentService.uploadImageForAssignment(file);
+            return ResponseEntity.ok(imageDto);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Lỗi upload ảnh: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Lỗi: " + e.getMessage());
         }
     }
 }

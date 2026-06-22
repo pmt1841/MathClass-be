@@ -10,6 +10,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import com.codegym.mathclass.submission.entity.SubmissionStatus;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/submissions")
@@ -60,7 +66,7 @@ public class SubmissionController {
     @PreAuthorize("hasRole('TEACHER')")
     public ResponseEntity<SubmissionResponse> gradeSubmission(
             @PathVariable long submissionId,
-            @jakarta.validation.Valid @RequestBody GradeRequest requestDto,
+            @Valid @RequestBody GradeRequest requestDto,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         long teacherId = userDetails.getId();
@@ -86,15 +92,15 @@ public class SubmissionController {
     // Lấy danh sách bài làm theo id bài tập (dành cho giáo viên)
     @GetMapping
     @PreAuthorize("hasRole('TEACHER')")
-    public ResponseEntity<org.springframework.data.domain.Page<SubmissionResponse>> getSubmissionsByAssignment(
+    public ResponseEntity<Page<SubmissionResponse>> getSubmissionsByAssignment(
             @RequestParam long assignmentId,
-            @RequestParam(required = false) com.codegym.mathclass.submission.entity.SubmissionStatus status,
+            @RequestParam(required = false) SubmissionStatus status,
             @RequestParam(required = false) String keyword,
-            @org.springframework.data.web.PageableDefault(size = 10, sort = "updatedAt", direction = org.springframework.data.domain.Sort.Direction.DESC) org.springframework.data.domain.Pageable pageable,
+            @PageableDefault(size = 10, sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         long teacherId = userDetails.getId();
-        org.springframework.data.domain.Page<SubmissionResponse> responses = submissionService
+        Page<SubmissionResponse> responses = submissionService
                 .getSubmissionsByAssignment(
                         assignmentId, teacherId, status, keyword, pageable);
         return ResponseEntity.ok(responses);
