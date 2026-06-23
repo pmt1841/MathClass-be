@@ -27,6 +27,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-json'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'io.github.cdimascio:dotenv-java:3.2.0'
 
     // Dev
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
