@@ -31,7 +31,6 @@ public class ClassroomJoinRequestServiceImpl implements ClassroomJoinRequestServ
     private final ClassroomRepository classroomRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
-    private final ClassroomService classroomService;
 
     @Override
     @Transactional
@@ -90,7 +89,8 @@ public class ClassroomJoinRequestServiceImpl implements ClassroomJoinRequestServ
             throw new AccessDeniedException("Bạn không phải là giáo viên phụ trách lớp học này");
         }
 
-        List<ClassroomJoinRequest> requests = joinRequestRepository.findByClassroomClassCodeAndStatus(classCode, JoinRequestStatus.PENDING);
+        List<ClassroomJoinRequest> requests = joinRequestRepository.findByClassroomClassCodeAndStatus(classCode,
+                JoinRequestStatus.PENDING);
         return requests.stream()
                 .map(JoinRequestResponse::fromEntity)
                 .collect(Collectors.toList());
@@ -128,8 +128,9 @@ public class ClassroomJoinRequestServiceImpl implements ClassroomJoinRequestServ
             }
             classroom.getStudents().add(student);
             classroomRepository.save(classroom);
-            
-            // Email is already sent by classroomService if we used that, but we add directly here to avoid sending the standard add email. 
+
+            // Email is already sent by classroomService if we used that, but we add
+            // directly here to avoid sending the standard add email.
             // Better to use custom email here since they requested it.
             String subject = "Yêu cầu tham gia lớp học " + classroom.getClassName() + " đã được DUYỆT";
             String content = String.format(
