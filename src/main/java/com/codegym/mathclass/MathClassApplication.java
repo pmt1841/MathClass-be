@@ -3,11 +3,17 @@ package com.codegym.mathclass;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import com.codegym.mathclass.config.DotenvInitializer;
+
 @SpringBootApplication
 public class MathClassApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(MathClassApplication.class, args);
+        SpringApplication application = new SpringApplication(MathClassApplication.class);
+
+        application.addInitializers(new DotenvInitializer());
+
+        application.run(args);
     }
 
 }
