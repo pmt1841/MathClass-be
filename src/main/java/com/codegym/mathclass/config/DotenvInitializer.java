@@ -10,16 +10,23 @@ import java.util.Map;
 public class DotenvInitializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
     @Override
     public void initialize(ConfigurableApplicationContext applicationContext) {
-        // Đọc file .env, tự động bỏ qua nếu không thấy file (để khi lên Production dùng
-        // biến môi trường thật không bị lỗi)
-        Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
+        try {
+            // Đọc file .env từ thư mục làm việc hiện tại (Working Directory)
+            Dotenv dotenv = Dotenv.configure()
+                    .directory(System.getProperty("user.dir"))
+                    .load();
 
-        Map<String, Object> envProps = new HashMap<>();
-        dotenv.entries().forEach(entry -> envProps.put(entry.getKey(), entry.getValue()));
+            Map<String, Object> envProps = new HashMap<>();
+            dotenv.entries().forEach(entry -> envProps.put(entry.getKey(), entry.getValue()));
 
-        // Bơm toàn bộ các biến từ file .env vào Hệ thống quản lý thuộc tính của
-        // SpringBoot
-        applicationContext.getEnvironment().getPropertySources()
-                .addFirst(new MapPropertySource("dotenvProperties", envProps));
+            // Bơm các biến môi trường vào Spring Environment
+            applicationContext.getEnvironment().getPropertySources()
+                    .addFirst(new MapPropertySource("dotenvProperties", envProps));
+
+        } catch (Exception e) {
+            // Giữ lại một dòng cảnh báo ngắn gọn phòng trường hợp file .env bị mất khi chạy
+            // môi trường khác
+            System.err.println("[Dotenv] Không thể nạp file .env: " + e.getMessage());
+        }
     }
 }
