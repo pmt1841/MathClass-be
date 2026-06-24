@@ -41,6 +41,12 @@ class AssignmentServiceImplTest {
     @Mock
     private ClassroomRepository classroomRepository;
 
+    @Mock
+    private com.codegym.mathclass.assignment.mapper.AssignmentMapper assignmentMapper;
+
+    @Mock
+    private com.codegym.mathclass.utils.SupabaseStorageService supabaseStorageService;
+
     @InjectMocks
     private AssignmentServiceImpl assignmentService;
 
@@ -109,6 +115,13 @@ class AssignmentServiceImplTest {
             a.setId(assignmentId);
             return a;
         });
+        
+        AssignmentResponse mockResponse = new AssignmentResponse();
+        mockResponse.setId(assignmentId);
+        mockResponse.setTitle("Bài tập tích phân");
+        mockResponse.setStatus(AssignmentStatus.DRAFT);
+        mockResponse.setTeacherId(teacherId);
+        when(assignmentMapper.toAssignmentResponse(any(Assignment.class))).thenReturn(mockResponse);
 
         AssignmentResponse response = assignmentService.createAssignment(createRequest, teacherId);
 
@@ -192,6 +205,10 @@ class AssignmentServiceImplTest {
             a.setId(assignmentId);
             return a;
         });
+
+        AssignmentResponse mockResponse = new AssignmentResponse();
+        mockResponse.setStatus(AssignmentStatus.DRAFT);
+        when(assignmentMapper.toAssignmentResponse(any(Assignment.class))).thenReturn(mockResponse);
 
         AssignmentResponse response = assignmentService.createAssignment(createRequest, teacherId);
 
