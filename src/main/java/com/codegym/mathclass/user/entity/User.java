@@ -9,6 +9,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+
 import com.codegym.mathclass.common.entity.BaseEntity;
 import lombok.EqualsAndHashCode;
 
@@ -40,4 +42,13 @@ public class User extends BaseEntity {
     @Column(name = "verification_code")
     private String verificationCode;
 
+    @Column(name = "avatar_url")
+    private String avatarUrl;
+
+    @Column(name = "date_of_birth")
+    private LocalDate dateOfBirth;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "gender")
+    private Gender gender;
 }

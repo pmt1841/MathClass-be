@@ -17,4 +17,8 @@ public class UserResponse {
     private String phoneNumber;
     private Role role;
     private boolean isActive;
+    private String avatarUrl;
+    @com.fasterxml.jackson.annotation.JsonFormat(pattern = "dd-MM-yyyy")
+    private java.time.LocalDate dateOfBirth;
+    private com.codegym.mathclass.user.entity.Gender gender;
 }
