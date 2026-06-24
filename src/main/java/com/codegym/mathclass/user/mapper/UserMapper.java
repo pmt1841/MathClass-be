@@ -19,6 +19,9 @@ public class UserMapper {
                 .phoneNumber(user.getPhoneNumber())
                 .role(user.getRole())
                 .isActive(user.isActive())
+                .avatarUrl(user.getAvatarUrl())
+                .dateOfBirth(user.getDateOfBirth())
+                .gender(user.getGender())
                 .build();
     }
 }

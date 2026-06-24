@@ -1,6 +1,5 @@
 package com.codegym.mathclass.utils;
 
-import com.codegym.mathclass.assignment.dto.AssignmentImageDto;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -19,9 +18,22 @@ public class SupabaseStorageService {
     @Value("${supabase.key}")
     private String supabaseKey;
 
-    private final String BUCKET_NAME = "assignment_image";
+    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    private static final java.util.List<String> ALLOWED_TYPES = java.util.Arrays.asList(
+            "image/png", "image/jpeg", "image/jpg", "image/webp"
+    );
 
-    public AssignmentImageDto uploadImage(MultipartFile file) throws IOException {
+
+    public String uploadImage(MultipartFile file, String bucketName) throws IOException {
+        if (file.getSize() > MAX_FILE_SIZE) {
+            throw new IllegalArgumentException("Kích thước file không được vượt quá 5MB");
+        }
+        
+        String contentType = file.getContentType();
+        if (contentType == null || !ALLOWED_TYPES.contains(contentType)) {
+            throw new IllegalArgumentException("Chỉ chấp nhận file định dạng: png, jpeg, jpg, webp");
+        }
+
         String originalFilename = file.getOriginalFilename();
         String extension = "";
         if (originalFilename != null && originalFilename.contains(".")) {
@@ -30,15 +42,14 @@ public class SupabaseStorageService {
 
         String uniqueFileName = UUID.randomUUID().toString() + extension;
         String objectPath = "images/" + uniqueFileName;
-        String apiUrl = supabaseUrl + "/storage/v1/object/" + BUCKET_NAME + "/" + objectPath;
+        String apiUrl = supabaseUrl + "/storage/v1/object/" + bucketName + "/" + objectPath;
 
         RestTemplate restTemplate = new RestTemplate();
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", "Bearer " + supabaseKey);
         headers.set("apikey", supabaseKey);
-        headers.setContentType(
-                MediaType.valueOf(file.getContentType() != null ? file.getContentType() : "application/octet-stream"));
+        headers.setContentType(MediaType.valueOf(contentType));
 
         HttpEntity<byte[]> requestEntity = new HttpEntity<>(file.getBytes(), headers);
 
@@ -48,10 +59,6 @@ public class SupabaseStorageService {
             throw new RuntimeException("Lỗi khi upload ảnh lên Supabase: " + response.getBody());
         }
 
-        String publicUrl = supabaseUrl + "/storage/v1/object/public/" + BUCKET_NAME + "/" + objectPath;
-
-        String imageCode = "[IMAGE_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase() + "]";
-
-        return new AssignmentImageDto(imageCode, publicUrl);
+        return supabaseUrl + "/storage/v1/object/public/" + bucketName + "/" + objectPath;
     }
 }

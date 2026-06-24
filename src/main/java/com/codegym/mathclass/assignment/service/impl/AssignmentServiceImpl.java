@@ -542,7 +542,9 @@ public class AssignmentServiceImpl implements AssignmentService {
 
     @Override
     public AssignmentImageDto uploadImageForAssignment(org.springframework.web.multipart.MultipartFile file) throws java.io.IOException {
-        return supabaseStorageService.uploadImage(file);
+        String publicUrl = supabaseStorageService.uploadImage(file, "assignment_image");
+        String imageCode = "[IMAGE_" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase() + "]";
+        return new AssignmentImageDto(imageCode, publicUrl);
     }
 
     @Override
