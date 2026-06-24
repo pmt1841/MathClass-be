@@ -32,8 +32,10 @@ public class AssignmentResponse {
     // Giả lập (mock) kiểm tra xem bài tập đã có học sinh nộp chưa
     private boolean hasSubmissions;
 
-    // Trạng thái nộp bài của học sinh hiện tại (DRAFT, SUBMITTED, hoặc null)
+    // Trạng thái nộp bài của học sinh hiện tại (DRAFT, SUBMITTED, GRADED hoặc null)
     private String submissionStatus;
+    private LocalDateTime submissionCreatedAt;
+    private LocalDateTime submissionUpdatedAt;
 
     private long teacherId;
     private String teacherName;
