@@ -252,7 +252,11 @@ public class AssignmentServiceImpl implements AssignmentService {
             AssignmentResponse response = assignmentMapper.toAssignmentResponseWithoutContent(assignment);
             if (isStudent) {
                 submissionRepository.findFirstByAssignmentIdAndStudentId(assignment.getId(), userId)
-                        .ifPresent(sub -> response.setSubmissionStatus(sub.getStatus().name()));
+                        .ifPresent(sub -> {
+                            response.setSubmissionStatus(sub.getStatus().name());
+                            response.setSubmissionCreatedAt(sub.getCreatedAt());
+                            response.setSubmissionUpdatedAt(sub.getUpdatedAt());
+                        });
             }
             return response;
         });
@@ -307,7 +311,11 @@ public class AssignmentServiceImpl implements AssignmentService {
             AssignmentResponse response = assignmentMapper.toAssignmentResponseWithoutContent(assignment);
             if (Role.STUDENT.name().equals(role)) {
                 submissionRepository.findFirstByAssignmentIdAndStudentId(assignment.getId(), userId)
-                        .ifPresent(sub -> response.setSubmissionStatus(sub.getStatus().name()));
+                        .ifPresent(sub -> {
+                            response.setSubmissionStatus(sub.getStatus().name());
+                            response.setSubmissionCreatedAt(sub.getCreatedAt());
+                            response.setSubmissionUpdatedAt(sub.getUpdatedAt());
+                        });
             }
             return response;
         });
@@ -559,6 +567,15 @@ public class AssignmentServiceImpl implements AssignmentService {
         }
 
         AssignmentResponse response = assignmentMapper.toAssignmentResponse(assignment);
+
+        if (Role.STUDENT.name().equals(role)) {
+            submissionRepository.findFirstByAssignmentIdAndStudentId(assignment.getId(), userId)
+                    .ifPresent(sub -> {
+                        response.setSubmissionStatus(sub.getStatus().name());
+                        response.setSubmissionCreatedAt(sub.getCreatedAt());
+                        response.setSubmissionUpdatedAt(sub.getUpdatedAt());
+                    });
+        }
 
         return response;
     }
