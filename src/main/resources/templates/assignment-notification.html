@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{email-layout :: html}">
+<body>
+    <th:block th:fragment="content">
+        <h2>Xin chào <span th:text="${studentName}">Học sinh</span>,</h2>
+        <p>Giáo viên vừa giao một bài tập mới cho bạn với tên gọi: <strong th:text="${assignmentName}">Tên bài tập</strong>.</p>
+        <p>Vui lòng nhấp vào nút bên dưới để xem chi tiết và làm bài tập nhé.</p>
+        <div style="text-align: center;">
+            <a th:href="${link}" class="btn" style="color: #ffffff;">Xem bài tập ngay</a>
+        </div>
+    </th:block>
+</body>
+</html>

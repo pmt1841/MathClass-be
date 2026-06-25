@@ -39,6 +39,9 @@ import com.codegym.mathclass.assignment.mapper.AssignmentMapper;
 import com.codegym.mathclass.assignment.entity.AssignmentImage;
 import com.codegym.mathclass.utils.SupabaseStorageService;
 import com.codegym.mathclass.assignment.dto.AssignmentImageDto;
+import com.codegym.mathclass.utils.EmailService;
+import org.thymeleaf.context.Context;
+import org.springframework.beans.factory.annotation.Value;
 
 @Service
 @RequiredArgsConstructor
@@ -50,6 +53,10 @@ public class AssignmentServiceImpl implements AssignmentService {
     private final SubmissionRepository submissionRepository;
     private final AssignmentMapper assignmentMapper;
     private final SupabaseStorageService supabaseStorageService;
+    private final EmailService emailService;
+
+    @Value("${FRONTEND_URL:http://localhost:5173}")
+    private String frontendUrl;
 
     @Override
     @Transactional
@@ -181,6 +188,26 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         // 5. Lưu tất cả bản clone
         assignmentRepository.saveAll(clones);
+
+        // Gửi email cho từng học sinh trong lớp học
+        for (Assignment clone : clones) {
+            Classroom classroom = clone.getClassroom();
+            if (classroom != null && classroom.getStudents() != null) {
+                for (User student : classroom.getStudents()) {
+                    Context context = new Context();
+                    context.setVariable("studentName", student.getFullName());
+                    context.setVariable("assignmentName", clone.getTitle());
+                    context.setVariable("link", frontendUrl + "/assignments/" + clone.getId());
+                    
+                    emailService.sendHtmlMailAsync(
+                        student.getEmail(),
+                        "Bài tập mới: " + clone.getTitle(),
+                        "assignment-notification",
+                        context
+                    );
+                }
+            }
+        }
 
         // 6. Cập nhật trạng thái bản nháp thành ARCHIVED nếu như đang là DRAFT
         if (originalAssignment.getStatus() == AssignmentStatus.DRAFT) {

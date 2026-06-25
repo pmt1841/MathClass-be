@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{email-layout :: html}">
+<body>
+    <th:block th:fragment="content">
+        <h2>Xin chào <span th:text="${studentName}">Bạn</span>,</h2>
+        
+        <div th:if="${isApproved}">
+            <p>Yêu cầu tham gia lớp học <strong th:text="${className}">Tên lớp</strong> (<span th:text="${classCode}">Mã lớp</span>) của bạn đã được giáo viên <strong th:text="${teacherName}">Giáo viên</strong> <strong>PHÊ DUYỆT</strong>.</p>
+            <p>Chào mừng bạn đến với lớp học!</p>
+            <div style="text-align: center;">
+                <a th:href="${classroomLink}" class="btn" style="color: #ffffff;">Vào lớp học ngay</a>
+            </div>
+        </div>
+
+        <div th:unless="${isApproved}">
+            <p>Rất tiếc, yêu cầu tham gia lớp học <strong th:text="${className}">Tên lớp</strong> (<span th:text="${classCode}">Mã lớp</span>) của bạn đã <strong>BỊ TỪ CHỐI</strong> bởi giáo viên <strong th:text="${teacherName}">Giáo viên</strong>.</p>
+            <p>Vui lòng liên hệ với giáo viên nếu bạn cần thêm thông tin.</p>
+        </div>
+    </th:block>
+</body>
+</html>

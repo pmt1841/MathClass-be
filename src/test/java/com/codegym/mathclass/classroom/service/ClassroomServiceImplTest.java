@@ -262,16 +262,17 @@ class ClassroomServiceImplTest {
         when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
         when(userRepository.findByEmail("student@codegym.com")).thenReturn(Optional.of(student));
         when(classroomRepository.save(any(Classroom.class))).thenReturn(classroom);
-        doNothing().when(emailService).sendMail(anyString(), anyString(), anyString());
+        doNothing().when(emailService).sendHtmlMailAsync(anyString(), anyString(), anyString(), any());
 
         classroomService.addStudentToClass("ABC12345", "student@codegym.com", currentUserId);
 
         assertTrue(classroom.getStudents().contains(student));
         verify(classroomRepository, times(1)).save(classroom);
-        verify(emailService, times(1)).sendMail(
+        verify(emailService, times(1)).sendHtmlMailAsync(
                 eq("student@codegym.com"),
                 contains("Math 101"),
-                anyString());
+                anyString(),
+                any());
     }
 
     @Test
@@ -284,7 +285,7 @@ class ClassroomServiceImplTest {
 
         assertEquals("Không tìm thấy lớp học", exception.getMessage());
         verify(classroomRepository, never()).save(any());
-        verify(emailService, never()).sendMail(anyString(), anyString(), anyString());
+        verify(emailService, never()).sendHtmlMailAsync(anyString(), anyString(), anyString(), any());
     }
 
     @Test
@@ -297,7 +298,7 @@ class ClassroomServiceImplTest {
 
         assertEquals("Bạn không phải là giáo viên phụ trách lớp học này", exception.getMessage());
         verify(classroomRepository, never()).save(any());
-        verify(emailService, never()).sendMail(anyString(), anyString(), anyString());
+        verify(emailService, never()).sendHtmlMailAsync(anyString(), anyString(), anyString(), any());
     }
 
     @Test
@@ -311,7 +312,7 @@ class ClassroomServiceImplTest {
 
         assertEquals("Không tìm thấy học sinh với email đã cung cấp", exception.getMessage());
         verify(classroomRepository, never()).save(any());
-        verify(emailService, never()).sendMail(anyString(), anyString(), anyString());
+        verify(emailService, never()).sendHtmlMailAsync(anyString(), anyString(), anyString(), any());
     }
 
     @Test
@@ -330,7 +331,7 @@ class ClassroomServiceImplTest {
 
         assertEquals("Người dùng được thêm phải là học sinh", exception.getMessage());
         verify(classroomRepository, never()).save(any());
-        verify(emailService, never()).sendMail(anyString(), anyString(), anyString());
+        verify(emailService, never()).sendHtmlMailAsync(anyString(), anyString(), anyString(), any());
     }
 
     @Test
@@ -345,7 +346,7 @@ class ClassroomServiceImplTest {
 
         assertEquals("Học sinh này đã tham gia lớp học", exception.getMessage());
         verify(classroomRepository, never()).save(any());
-        verify(emailService, never()).sendMail(anyString(), anyString(), anyString());
+        verify(emailService, never()).sendHtmlMailAsync(anyString(), anyString(), anyString(), any());
     }
 
     @Test
@@ -367,7 +368,7 @@ class ClassroomServiceImplTest {
 
         assertEquals("Lớp học đã đạt số lượng tối đa", exception.getMessage());
         verify(classroomRepository, never()).save(any());
-        verify(emailService, never()).sendMail(anyString(), anyString(), anyString());
+        verify(emailService, never()).sendHtmlMailAsync(anyString(), anyString(), anyString(), any());
     }
 
     // =====================================================
@@ -489,16 +490,17 @@ class ClassroomServiceImplTest {
         classroom.getStudents().add(student);
         when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
         when(classroomRepository.save(any(Classroom.class))).thenReturn(classroom);
-        doNothing().when(emailService).sendMail(anyString(), anyString(), anyString());
+        doNothing().when(emailService).sendHtmlMailAsync(anyString(), anyString(), anyString(), any());
 
         classroomService.removeStudentFromClass("ABC12345", student.getId(), currentUserId);
 
         assertFalse(classroom.getStudents().contains(student));
         verify(classroomRepository, times(1)).save(classroom);
-        verify(emailService, times(1)).sendMail(
+        verify(emailService, times(1)).sendHtmlMailAsync(
                 eq(student.getEmail()),
                 contains("Math 101"),
-                anyString());
+                anyString(),
+                any());
     }
 
     @Test
@@ -511,7 +513,7 @@ class ClassroomServiceImplTest {
 
         assertEquals("Không tìm thấy lớp học", exception.getMessage());
         verify(classroomRepository, never()).save(any());
-        verify(emailService, never()).sendMail(anyString(), anyString(), anyString());
+        verify(emailService, never()).sendHtmlMailAsync(anyString(), anyString(), anyString(), any());
     }
 
     @Test
@@ -525,7 +527,7 @@ class ClassroomServiceImplTest {
 
         assertEquals("Bạn không phải là giáo viên phụ trách lớp học này", exception.getMessage());
         verify(classroomRepository, never()).save(any());
-        verify(emailService, never()).sendMail(anyString(), anyString(), anyString());
+        verify(emailService, never()).sendHtmlMailAsync(anyString(), anyString(), anyString(), any());
     }
 
     @Test
@@ -539,7 +541,7 @@ class ClassroomServiceImplTest {
 
         assertEquals("Học sinh không tồn tại trong lớp học này", exception.getMessage());
         verify(classroomRepository, never()).save(any());
-        verify(emailService, never()).sendMail(anyString(), anyString(), anyString());
+        verify(emailService, never()).sendHtmlMailAsync(anyString(), anyString(), anyString(), any());
     }
 
     // =====================================================

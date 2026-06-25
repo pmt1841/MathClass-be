@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{email-layout :: html}">
+<body>
+    <th:block th:fragment="content">
+        <h2>Xin chào <span th:text="${fullName}">Bạn</span>,</h2>
+        <p>Cảm ơn bạn đã đăng ký tài khoản trên hệ thống MathClass.</p>
+        <p>Vui lòng click vào nút bên dưới để xác nhận địa chỉ email và kích hoạt tài khoản của bạn:</p>
+        <div style="text-align: center;">
+            <a th:href="${verifyLink}" class="btn" style="color: #ffffff;">Xác nhận tài khoản</a>
+        </div>
+        <p>Nếu bạn không thực hiện đăng ký này, vui lòng bỏ qua email này.</p>
+    </th:block>
+</body>
+</html>

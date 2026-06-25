@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.Optional;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -23,6 +24,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.thymeleaf.context.Context;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +34,9 @@ public class AuthServiceImpl implements AuthService {
     private final JwtUtils jwtUtils;
     private final PasswordEncoder encoder;
     private final EmailService emailService;
+
+    @Value("${FRONTEND_URL:http://localhost:5173}")
+    private String frontendUrl;
 
     @Override
     public ResponseEntity<?> authenticateUser(LoginRequest loginRequest) {
@@ -83,9 +88,11 @@ public class AuthServiceImpl implements AuthService {
 
         userRepository.save(user);
 
-        String verifyLink = "http://localhost:3000/verify?token=" + token;
-        String content = "Vui lòng click vào đường link sau để xác nhận đăng ký tài khoản: " + verifyLink;
-        emailService.sendMail(user.getEmail(), "Xác nhận đăng ký tài khoản MathClass", content);
+        String verifyLink = frontendUrl + "/verify?token=" + token;
+        Context context = new Context();
+        context.setVariable("fullName", user.getFullName());
+        context.setVariable("verifyLink", verifyLink);
+        emailService.sendHtmlMailAsync(user.getEmail(), "Xác nhận đăng ký tài khoản MathClass", "auth-verify", context);
 
         return ResponseEntity
                 .ok(new MessageResponse("Đăng ký tài khoản thành công! Vui lòng kiểm tra email để xác nhận."));
@@ -117,9 +124,13 @@ public class AuthServiceImpl implements AuthService {
                 break;
         }
 
-        String successMsg = "Tài khoản " + roleName + " " + user.getEmail()
-                + " trên hệ thống MathClass của bạn đã được tạo và kích hoạt thành công!";
-        emailService.sendMail(user.getEmail(), "Kích hoạt tài khoản thành công", successMsg);
+        String loginLink = frontendUrl + "/login";
+        Context context = new Context();
+        context.setVariable("fullName", user.getFullName());
+        context.setVariable("roleName", roleName);
+        context.setVariable("email", user.getEmail());
+        context.setVariable("loginLink", loginLink);
+        emailService.sendHtmlMailAsync(user.getEmail(), "Kích hoạt tài khoản thành công", "auth-welcome", context);
 
         return ResponseEntity.ok(new MessageResponse("Tài khoản đã được kích hoạt thành công!"));
     }

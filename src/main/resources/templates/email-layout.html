@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Thông báo từ MathClass</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; }
+        .container { background-color: #ffffff; max-width: 600px; margin: 0 auto; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .header { text-align: center; border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-bottom: 20px; }
+        .header h1 { color: #007bff; margin: 0; font-size: 24px; }
+        .content { color: #555555; line-height: 1.5; font-size: 16px; }
+        h2 { color: #333333; margin-top: 0; }
+        .btn { display: inline-block; margin-top: 20px; padding: 12px 24px; background-color: #007bff; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 4px; text-align: center; }
+        .btn:hover { background-color: #0056b3; }
+        .footer { margin-top: 30px; font-size: 14px; color: #888888; text-align: center; border-top: 1px solid #eeeeee; padding-top: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>MathClass</h1>
+        </div>
+        <div class="content" th:insert="~{::content}">
+            <!-- Nội dung sẽ được chèn vào đây -->
+        </div>
+        <div class="footer">
+            Đây là email tự động, vui lòng không phản hồi.<br/>Hệ thống bài tập Toán THPT trực tuyến MathClass
+        </div>
+    </div>
+</body>
+</html>

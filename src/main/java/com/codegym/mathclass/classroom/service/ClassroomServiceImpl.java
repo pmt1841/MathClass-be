@@ -19,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.beans.factory.annotation.Value;
+import org.thymeleaf.context.Context;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -30,6 +32,9 @@ public class ClassroomServiceImpl implements ClassroomService {
     private final ClassroomRepository classroomRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+
+    @Value("${FRONTEND_URL:http://localhost:5173}")
+    private String frontendUrl;
 
     @Override
     @Transactional
@@ -133,13 +138,15 @@ public class ClassroomServiceImpl implements ClassroomService {
         classroomRepository.save(classroom);
 
         String subject = "Bạn đã được thêm vào lớp học " + classroom.getClassName();
-        String content = String.format(
-                "Xin chào %s,\n\nBạn đã được giáo viên %s thêm vào lớp học: %s (%s) trên hệ thống MathClass.\n\nChúc bạn học tập tốt!",
-                student.getFullName(),
-                classroom.getTeacher().getFullName(),
-                classroom.getClassName(),
-                classroom.getClassCode());
-        emailService.sendMail(studentEmail, subject, content);
+        String classroomLink = frontendUrl + "/classrooms/" + classroom.getClassCode();
+        Context context = new Context();
+        context.setVariable("studentName", student.getFullName());
+        context.setVariable("isAdded", true);
+        context.setVariable("teacherName", classroom.getTeacher().getFullName());
+        context.setVariable("className", classroom.getClassName());
+        context.setVariable("classCode", classroom.getClassCode());
+        context.setVariable("classroomLink", classroomLink);
+        emailService.sendHtmlMailAsync(studentEmail, subject, "classroom-action", context);
     }
 
     @Override
@@ -195,13 +202,13 @@ public class ClassroomServiceImpl implements ClassroomService {
         classroomRepository.save(classroom);
 
         String subject = "Bạn đã bị xóa khỏi lớp học " + classroom.getClassName();
-        String content = String.format(
-                "Xin chào %s,\n\nBạn đã bị giáo viên %s xóa khỏi lớp học: %s (%s) trên hệ thống MathClass.",
-                studentToRemove.getFullName(),
-                classroom.getTeacher().getFullName(),
-                classroom.getClassName(),
-                classroom.getClassCode());
-        emailService.sendMail(studentToRemove.getEmail(), subject, content);
+        Context context = new Context();
+        context.setVariable("studentName", studentToRemove.getFullName());
+        context.setVariable("isAdded", false);
+        context.setVariable("teacherName", classroom.getTeacher().getFullName());
+        context.setVariable("className", classroom.getClassName());
+        context.setVariable("classCode", classroom.getClassCode());
+        emailService.sendHtmlMailAsync(studentToRemove.getEmail(), subject, "classroom-action", context);
     }
 
     @Override

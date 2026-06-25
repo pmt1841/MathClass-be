@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{email-layout :: html}">
+<body>
+    <th:block th:fragment="content">
+        <h2>Xin chào <span th:text="${studentName}">Bạn</span>,</h2>
+        
+        <div th:if="${isAdded}">
+            <p>Bạn đã được giáo viên <strong th:text="${teacherName}">Giáo viên</strong> thêm vào lớp học: <strong th:text="${className}">Tên lớp</strong> (<span th:text="${classCode}">Mã lớp</span>) trên hệ thống MathClass.</p>
+            <p>Chúc bạn học tập tốt!</p>
+            <div style="text-align: center;">
+                <a th:href="${classroomLink}" class="btn" style="color: #ffffff;">Vào lớp học ngay</a>
+            </div>
+        </div>
+
+        <div th:unless="${isAdded}">
+            <p>Bạn đã bị giáo viên <strong th:text="${teacherName}">Giáo viên</strong> xóa khỏi lớp học: <strong th:text="${className}">Tên lớp</strong> (<span th:text="${classCode}">Mã lớp</span>) trên hệ thống MathClass.</p>
+            <p>Nếu bạn có thắc mắc, vui lòng liên hệ trực tiếp với giáo viên.</p>
+        </div>
+    </th:block>
+</body>
+</html>

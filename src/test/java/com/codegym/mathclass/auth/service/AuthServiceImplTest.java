@@ -122,7 +122,7 @@ class AuthServiceImplTest {
         assertTrue(response.getMessage().contains("Đăng ký tài khoản thành công"));
 
         verify(userRepository, times(1)).save(any(User.class));
-        verify(emailService, times(1)).sendMail(eq("newuser@gmail.com"), anyString(), anyString());
+        verify(emailService, times(1)).sendHtmlMailAsync(eq("newuser@gmail.com"), anyString(), anyString(), any());
     }
 
     @Test
@@ -134,7 +134,7 @@ class AuthServiceImplTest {
         assertEquals("Lỗi: Email đã tồn tại!", exception.getMessage());
 
         verify(userRepository, never()).save(any(User.class));
-        verify(emailService, never()).sendMail(anyString(), anyString(), anyString());
+        verify(emailService, never()).sendHtmlMailAsync(anyString(), anyString(), anyString(), any());
     }
 
     @Test
@@ -168,7 +168,7 @@ class AuthServiceImplTest {
         assertNull(testUser.getVerificationCode());
 
         verify(userRepository, times(1)).save(testUser);
-        verify(emailService, times(1)).sendMail(eq(testUser.getEmail()), anyString(), anyString());
+        verify(emailService, times(1)).sendHtmlMailAsync(eq(testUser.getEmail()), anyString(), anyString(), any());
     }
 
     @Test
@@ -181,6 +181,6 @@ class AuthServiceImplTest {
         assertEquals("Lỗi: Mã xác nhận không hợp lệ!", exception.getMessage());
 
         verify(userRepository, never()).save(any(User.class));
-        verify(emailService, never()).sendMail(anyString(), anyString(), anyString());
+        verify(emailService, never()).sendHtmlMailAsync(anyString(), anyString(), anyString(), any());
     }
 }

@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{email-layout :: html}">
+<body>
+    <th:block th:fragment="content">
+        <h2>Xin chào Giáo viên <span th:text="${teacherName}">Giáo viên</span>,</h2>
+        <p>Học sinh <strong th:text="${studentName}">Học sinh</strong> (<span th:text="${studentEmail}">email</span>) vừa gửi yêu cầu tham gia vào lớp học: <strong th:text="${className}">Tên lớp</strong> (<span th:text="${classCode}">Mã lớp</span>).</p>
+        <p>Vui lòng đăng nhập vào hệ thống để duyệt hoặc từ chối yêu cầu này.</p>
+        <div style="text-align: center;">
+            <a th:href="${classroomLink}" class="btn" style="color: #ffffff;">Xem danh sách yêu cầu</a>
+        </div>
+    </th:block>
+</body>
+</html>

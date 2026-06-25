@@ -13,11 +13,14 @@ import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
+import com.codegym.mathclass.utils.EmailService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.thymeleaf.context.Context;
 
 import java.time.LocalDateTime;
 
@@ -28,6 +31,10 @@ public class SubmissionServiceImpl implements SubmissionService {
     private final SubmissionRepository submissionRepository;
     private final AssignmentRepository assignmentRepository;
     private final UserRepository userRepository;
+    private final EmailService emailService;
+
+    @Value("${FRONTEND_URL:http://localhost:5173}")
+    private String frontendUrl;
 
     @Override
     @Transactional
@@ -158,6 +165,16 @@ public class SubmissionServiceImpl implements SubmissionService {
         submission.setStatus(SubmissionStatus.GRADED);
 
         Submission savedSubmission = submissionRepository.save(submission);
+
+        // Send email notification to student
+        String subject = "Giáo viên đã chấm điểm bài tập: " + assignment.getTitle();
+        String link = frontendUrl + "/assignments/" + assignment.getId();
+        Context context = new Context();
+        context.setVariable("studentName", submission.getStudent().getFullName());
+        context.setVariable("assignmentName", assignment.getTitle());
+        context.setVariable("link", link);
+        emailService.sendHtmlMailAsync(submission.getStudent().getEmail(), subject, "submission-graded", context);
+
         return mapToDto(savedSubmission);
     }
 

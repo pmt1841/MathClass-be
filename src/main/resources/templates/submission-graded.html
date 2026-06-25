@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{email-layout :: html}">
+<body>
+    <th:block th:fragment="content">
+        <h2>Xin chào <span th:text="${studentName}">Học sinh</span>,</h2>
+        <p>Giáo viên vừa hoàn tất việc chấm điểm cho bài làm của bạn trong bài tập: <strong th:text="${assignmentName}">Tên bài tập</strong>.</p>
+        <p>Để đảm bảo tính riêng tư, vui lòng nhấp vào nút bên dưới để đăng nhập vào hệ thống và xem chi tiết điểm số cũng như lời nhận xét từ giáo viên.</p>
+        <div style="text-align: center;">
+            <a th:href="${link}" class="btn" style="color: #ffffff;">Xem chi tiết bài làm</a>
+        </div>
+    </th:block>
+</body>
+</html>
