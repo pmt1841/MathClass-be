@@ -16,8 +16,10 @@ import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.EmailService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.thymeleaf.context.Context;
 
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +33,9 @@ public class ClassroomJoinRequestServiceImpl implements ClassroomJoinRequestServ
     private final ClassroomRepository classroomRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+
+    @Value("${FRONTEND_URL:http://localhost:5173}")
+    private String frontendUrl;
 
     @Override
     @Transactional
@@ -67,14 +72,15 @@ public class ClassroomJoinRequestServiceImpl implements ClassroomJoinRequestServ
         // Send email to teacher
         User teacher = classroom.getTeacher();
         String subject = "Có học sinh xin vào lớp học " + classroom.getClassName();
-        String content = String.format(
-                "Xin chào giáo viên %s,\n\nHọc sinh %s (%s) vừa gửi yêu cầu tham gia vào lớp học: %s (%s).\n\nVui lòng đăng nhập vào hệ thống để duyệt hoặc từ chối yêu cầu.",
-                teacher.getFullName(),
-                student.getFullName(),
-                student.getEmail(),
-                classroom.getClassName(),
-                classroom.getClassCode());
-        emailService.sendMail(teacher.getEmail(), subject, content);
+        String classroomLink = frontendUrl + "/classrooms/" + classroom.getClassCode() + "/requests";
+        Context context = new Context();
+        context.setVariable("teacherName", teacher.getFullName());
+        context.setVariable("studentName", student.getFullName());
+        context.setVariable("studentEmail", student.getEmail());
+        context.setVariable("className", classroom.getClassName());
+        context.setVariable("classCode", classroom.getClassCode());
+        context.setVariable("classroomLink", classroomLink);
+        emailService.sendHtmlMailAsync(teacher.getEmail(), subject, "join-request-teacher", context);
 
         return JoinRequestResponse.fromEntity(joinRequest);
     }
@@ -133,21 +139,24 @@ public class ClassroomJoinRequestServiceImpl implements ClassroomJoinRequestServ
             // directly here to avoid sending the standard add email.
             // Better to use custom email here since they requested it.
             String subject = "Yêu cầu tham gia lớp học " + classroom.getClassName() + " đã được DUYỆT";
-            String content = String.format(
-                    "Xin chào %s,\n\nYêu cầu tham gia lớp học: %s (%s) của bạn đã được giáo viên %s phê duyệt.\n\nChào mừng bạn đến với lớp học!",
-                    student.getFullName(),
-                    classroom.getClassName(),
-                    classroom.getClassCode(),
-                    classroom.getTeacher().getFullName());
-            emailService.sendMail(student.getEmail(), subject, content);
+            String classroomLink = frontendUrl + "/classrooms/" + classroom.getClassCode();
+            Context context = new Context();
+            context.setVariable("studentName", student.getFullName());
+            context.setVariable("isApproved", true);
+            context.setVariable("className", classroom.getClassName());
+            context.setVariable("classCode", classroom.getClassCode());
+            context.setVariable("teacherName", classroom.getTeacher().getFullName());
+            context.setVariable("classroomLink", classroomLink);
+            emailService.sendHtmlMailAsync(student.getEmail(), subject, "join-request-result", context);
         } else if (newStatus == JoinRequestStatus.REJECTED) {
             String subject = "Yêu cầu tham gia lớp học " + classroom.getClassName() + " đã BỊ TỪ CHỐI";
-            String content = String.format(
-                    "Xin chào %s,\n\nYêu cầu tham gia lớp học: %s (%s) của bạn đã bị giáo viên từ chối.",
-                    student.getFullName(),
-                    classroom.getClassName(),
-                    classroom.getClassCode());
-            emailService.sendMail(student.getEmail(), subject, content);
+            Context context = new Context();
+            context.setVariable("studentName", student.getFullName());
+            context.setVariable("isApproved", false);
+            context.setVariable("className", classroom.getClassName());
+            context.setVariable("classCode", classroom.getClassCode());
+            context.setVariable("teacherName", classroom.getTeacher().getFullName());
+            emailService.sendHtmlMailAsync(student.getEmail(), subject, "join-request-result", context);
         }
 
         return JoinRequestResponse.fromEntity(joinRequest);

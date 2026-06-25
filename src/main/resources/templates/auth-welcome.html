@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{email-layout :: html}">
+<body>
+    <th:block th:fragment="content">
+        <h2>Xin chào <span th:text="${fullName}">Bạn</span>,</h2>
+        <p>Chúc mừng! Tài khoản <strong th:text="${roleName}">Học sinh</strong> <strong th:text="${email}">email</strong> trên hệ thống MathClass của bạn đã được tạo và kích hoạt thành công.</p>
+        <p>Bây giờ bạn có thể đăng nhập và trải nghiệm các tính năng của hệ thống.</p>
+        <div style="text-align: center;">
+            <a th:href="${loginLink}" class="btn" style="color: #ffffff;">Đăng nhập ngay</a>
+        </div>
+    </th:block>
+</body>
+</html>
