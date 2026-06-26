@@ -15,6 +15,7 @@ import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.EmailService;
+import com.codegym.mathclass.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,7 @@ public class ClassroomJoinRequestServiceImpl implements ClassroomJoinRequestServ
     private final ClassroomRepository classroomRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final NotificationService notificationService;
 
     @Value("${FRONTEND_URL:http://localhost:5173}")
     private String frontendUrl;
@@ -81,6 +83,8 @@ public class ClassroomJoinRequestServiceImpl implements ClassroomJoinRequestServ
         context.setVariable("classCode", classroom.getClassCode());
         context.setVariable("classroomLink", classroomLink);
         emailService.sendHtmlMailAsync(teacher.getEmail(), subject, "join-request-teacher", context);
+
+        notificationService.saveAndSendNotification(teacher.getId(), subject, "/classrooms/" + classroom.getClassCode() + "/requests");
 
         return JoinRequestResponse.fromEntity(joinRequest);
     }
@@ -148,6 +152,7 @@ public class ClassroomJoinRequestServiceImpl implements ClassroomJoinRequestServ
             context.setVariable("teacherName", classroom.getTeacher().getFullName());
             context.setVariable("classroomLink", classroomLink);
             emailService.sendHtmlMailAsync(student.getEmail(), subject, "join-request-result", context);
+            notificationService.saveAndSendNotification(student.getId(), subject, "/classrooms/" + classroom.getClassCode());
         } else if (newStatus == JoinRequestStatus.REJECTED) {
             String subject = "Yêu cầu tham gia lớp học " + classroom.getClassName() + " đã BỊ TỪ CHỐI";
             Context context = new Context();
@@ -157,6 +162,7 @@ public class ClassroomJoinRequestServiceImpl implements ClassroomJoinRequestServ
             context.setVariable("classCode", classroom.getClassCode());
             context.setVariable("teacherName", classroom.getTeacher().getFullName());
             emailService.sendHtmlMailAsync(student.getEmail(), subject, "join-request-result", context);
+            notificationService.saveAndSendNotification(student.getId(), subject, null);
         }
 
         return JoinRequestResponse.fromEntity(joinRequest);

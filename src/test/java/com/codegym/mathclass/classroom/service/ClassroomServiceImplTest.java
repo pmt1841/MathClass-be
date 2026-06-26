@@ -10,6 +10,7 @@ import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.EmailService;
+import com.codegym.mathclass.notification.service.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -47,6 +48,9 @@ class ClassroomServiceImplTest {
 
     @Mock
     private EmailService emailService;
+
+    @Mock
+    private NotificationService notificationService;
 
     @InjectMocks
     private ClassroomServiceImpl classroomService;
@@ -273,6 +277,7 @@ class ClassroomServiceImplTest {
                 contains("Math 101"),
                 anyString(),
                 any());
+        verify(notificationService, times(1)).saveAndSendNotification(eq(student.getId()), contains("Math 101"), anyString());
     }
 
     @Test
@@ -501,6 +506,7 @@ class ClassroomServiceImplTest {
                 contains("Math 101"),
                 anyString(),
                 any());
+        verify(notificationService, times(1)).saveAndSendNotification(eq(student.getId()), contains("Math 101"), isNull());
     }
 
     @Test

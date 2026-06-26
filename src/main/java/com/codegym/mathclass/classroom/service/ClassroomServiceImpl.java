@@ -10,6 +10,7 @@ import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.EmailService;
+import com.codegym.mathclass.notification.service.NotificationService;
 import com.codegym.mathclass.exception.AccessDeniedException;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.ResourceNotFoundException;
@@ -32,6 +33,7 @@ public class ClassroomServiceImpl implements ClassroomService {
     private final ClassroomRepository classroomRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final NotificationService notificationService;
 
     @Value("${FRONTEND_URL:http://localhost:5173}")
     private String frontendUrl;
@@ -147,6 +149,7 @@ public class ClassroomServiceImpl implements ClassroomService {
         context.setVariable("classCode", classroom.getClassCode());
         context.setVariable("classroomLink", classroomLink);
         emailService.sendHtmlMailAsync(studentEmail, subject, "classroom-action", context);
+        notificationService.saveAndSendNotification(student.getId(), subject, "/classrooms/" + classroom.getClassCode());
     }
 
     @Override
@@ -209,6 +212,7 @@ public class ClassroomServiceImpl implements ClassroomService {
         context.setVariable("className", classroom.getClassName());
         context.setVariable("classCode", classroom.getClassCode());
         emailService.sendHtmlMailAsync(studentToRemove.getEmail(), subject, "classroom-action", context);
+        notificationService.saveAndSendNotification(studentToRemove.getId(), subject, null);
     }
 
     @Override
