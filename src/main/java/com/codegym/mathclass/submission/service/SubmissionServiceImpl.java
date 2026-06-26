@@ -14,6 +14,7 @@ import com.codegym.mathclass.submission.repository.SubmissionRepository;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.EmailService;
+import com.codegym.mathclass.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -32,6 +33,7 @@ public class SubmissionServiceImpl implements SubmissionService {
     private final AssignmentRepository assignmentRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final NotificationService notificationService;
 
     @Value("${FRONTEND_URL:http://localhost:5173}")
     private String frontendUrl;
@@ -174,6 +176,8 @@ public class SubmissionServiceImpl implements SubmissionService {
         context.setVariable("assignmentName", assignment.getTitle());
         context.setVariable("link", link);
         emailService.sendHtmlMailAsync(submission.getStudent().getEmail(), subject, "submission-graded", context);
+
+        notificationService.saveAndSendNotification(submission.getStudent().getId(), subject, "/assignments/" + assignment.getId());
 
         return mapToDto(savedSubmission);
     }

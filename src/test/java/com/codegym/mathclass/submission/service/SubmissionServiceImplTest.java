@@ -11,6 +11,7 @@ import com.codegym.mathclass.submission.repository.SubmissionRepository;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.EmailService;
+import com.codegym.mathclass.notification.service.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,6 +45,9 @@ public class SubmissionServiceImplTest {
 
     @Mock
     private EmailService emailService;
+
+    @Mock
+    private NotificationService notificationService;
 
     @InjectMocks
     private SubmissionServiceImpl submissionService;
@@ -149,6 +153,7 @@ public class SubmissionServiceImplTest {
         assertEquals(SubmissionStatus.GRADED, submission.getStatus());
         assertEquals(9.5, submission.getScore());
         assertEquals("Good job!", submission.getTeacherFeedback());
+        verify(notificationService, times(1)).saveAndSendNotification(eq(2L), anyString(), anyString());
     }
 
     @Test
