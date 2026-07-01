@@ -9,10 +9,8 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TeacherDashboardStatsDto {
-    private int teachingClasses;
-    private int managedStudents;
-    private int assignmentsToGrade;
-    private int pendingJoinRequests;
-    private int openAssignments;
+public class StudentDashboardStatsDto {
+    private int joinedClasses;
+    private int pendingTasks;
+    private int completedTasks;
 }

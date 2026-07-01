@@ -267,12 +267,15 @@ public class AssignmentServiceImpl implements AssignmentService {
             }
         }
 
-        Sort customSort = Sort.by(
-                Sort.Order.desc("updatedAt"),
-                Sort.Order.desc("createdAt"),
-                Sort.Order.asc("title"));
+        Sort sort = pageable.getSort();
+        if (sort.isUnsorted()) {
+            sort = Sort.by(
+                    Sort.Order.asc("status"),
+                    Sort.Order.desc("updatedAt"),
+                    Sort.Order.desc("createdAt"));
+        }
         Pageable sortedPageable = PageRequest.of(pageable.getPageNumber(),
-                pageable.getPageSize(), customSort);
+                pageable.getPageSize(), sort);
 
         Page<Assignment> assignments = assignmentRepository.findAll(spec, sortedPageable);
         return assignments.map(assignment -> {
@@ -326,12 +329,15 @@ public class AssignmentServiceImpl implements AssignmentService {
             spec = spec.and(AssignmentSpecification.hasStatus(status));
         }
 
-        Sort customSort = Sort.by(
-                Sort.Order.desc("updatedAt"),
-                Sort.Order.desc("createdAt"),
-                Sort.Order.asc("title"));
+        Sort sort = pageable.getSort();
+        if (sort.isUnsorted()) {
+            sort = Sort.by(
+                    Sort.Order.asc("status"),
+                    Sort.Order.desc("updatedAt"),
+                    Sort.Order.desc("createdAt"));
+        }
         Pageable sortedPageable = PageRequest.of(pageable.getPageNumber(),
-                pageable.getPageSize(), customSort);
+                pageable.getPageSize(), sort);
 
         Page<Assignment> assignments = assignmentRepository.findAll(spec, sortedPageable);
         return assignments.map(assignment -> {
