@@ -8,6 +8,16 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import com.codegym.mathclass.security.services.CustomUserDetails;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import jakarta.validation.Valid;
+import com.codegym.mathclass.user.dto.request.UpdateProfileRequest;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
@@ -18,23 +28,23 @@ public class UserController {
 
     @GetMapping("/profile")
     public ResponseEntity<UserResponse> getCurrentUserProfile(
-            @org.springframework.security.core.annotation.AuthenticationPrincipal com.codegym.mathclass.security.services.CustomUserDetails userDetails) {
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(userService.getUserProfile(userDetails.getId()));
     }
 
-    @org.springframework.web.bind.annotation.PutMapping("/profile")
+    @PutMapping("/profile")
     public ResponseEntity<UserResponse> updateProfile(
-            @org.springframework.security.core.annotation.AuthenticationPrincipal com.codegym.mathclass.security.services.CustomUserDetails userDetails,
-            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody com.codegym.mathclass.user.dto.request.UpdateProfileRequest request) {
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody UpdateProfileRequest request) {
         return ResponseEntity.ok(userService.updateProfile(userDetails.getId(), request));
     }
 
-    @org.springframework.web.bind.annotation.PostMapping("/avatar")
-    public ResponseEntity<java.util.Map<String, String>> uploadAvatar(
-            @org.springframework.security.core.annotation.AuthenticationPrincipal com.codegym.mathclass.security.services.CustomUserDetails userDetails,
-            @org.springframework.web.bind.annotation.RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+    @PostMapping("/avatar")
+    public ResponseEntity<Map<String, String>> uploadAvatar(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam("file") MultipartFile file) {
         String avatarUrl = userService.uploadAvatar(userDetails.getId(), file);
-        return ResponseEntity.ok(java.util.Map.of("avatarUrl", avatarUrl));
+        return ResponseEntity.ok(Map.of("avatarUrl", avatarUrl));
     }
 
     @GetMapping("/{id}")

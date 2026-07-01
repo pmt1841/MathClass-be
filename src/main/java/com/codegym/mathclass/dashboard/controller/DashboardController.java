@@ -10,6 +10,12 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
+import com.codegym.mathclass.dashboard.dto.PendingSubmissionDto;
+import com.codegym.mathclass.dashboard.dto.StudentDashboardStatsDto;
+import com.codegym.mathclass.dashboard.dto.StudentPendingTaskDto;
+import com.codegym.mathclass.dashboard.dto.StudentGradedTaskDto;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/dashboard")
@@ -26,31 +32,31 @@ public class DashboardController {
 
     @GetMapping("/pending-submissions")
     @PreAuthorize("hasRole('TEACHER')")
-    public ResponseEntity<java.util.List<com.codegym.mathclass.dashboard.dto.PendingSubmissionDto>> getPendingSubmissions(
+    public ResponseEntity<List<PendingSubmissionDto>> getPendingSubmissions(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "10") int limit) {
+            @RequestParam(defaultValue = "10") int limit) {
         return ResponseEntity.ok(dashboardService.getPendingSubmissions(userDetails.getId(), limit));
     }
 
     @GetMapping("/student-stats")
     @PreAuthorize("hasRole('STUDENT')")
-    public ResponseEntity<com.codegym.mathclass.dashboard.dto.StudentDashboardStatsDto> getStudentStats(@AuthenticationPrincipal CustomUserDetails userDetails) {
+    public ResponseEntity<StudentDashboardStatsDto> getStudentStats(@AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(dashboardService.getStudentDashboardStats(userDetails.getId()));
     }
 
     @GetMapping("/student-pending-tasks")
     @PreAuthorize("hasRole('STUDENT')")
-    public ResponseEntity<java.util.List<com.codegym.mathclass.dashboard.dto.StudentPendingTaskDto>> getStudentPendingTasks(
+    public ResponseEntity<List<StudentPendingTaskDto>> getStudentPendingTasks(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "10") int limit) {
+            @RequestParam(defaultValue = "10") int limit) {
         return ResponseEntity.ok(dashboardService.getStudentPendingTasks(userDetails.getId(), limit));
     }
 
     @GetMapping("/student-graded-tasks")
     @PreAuthorize("hasRole('STUDENT')")
-    public ResponseEntity<java.util.List<com.codegym.mathclass.dashboard.dto.StudentGradedTaskDto>> getStudentGradedTasks(
+    public ResponseEntity<List<StudentGradedTaskDto>> getStudentGradedTasks(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "10") int limit) {
+            @RequestParam(defaultValue = "10") int limit) {
         return ResponseEntity.ok(dashboardService.getStudentGradedTasks(userDetails.getId(), limit));
     }
 }

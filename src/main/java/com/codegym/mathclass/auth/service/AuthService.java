@@ -2,14 +2,15 @@ package com.codegym.mathclass.auth.service;
 
 import com.codegym.mathclass.auth.dto.request.LoginRequest;
 import com.codegym.mathclass.auth.dto.request.SignupRequest;
-import org.springframework.http.ResponseEntity;
+import com.codegym.mathclass.auth.dto.response.JwtResponse;
+import com.codegym.mathclass.auth.dto.response.MessageResponse;
 
 public interface AuthService {
-    ResponseEntity<?> authenticateUser(LoginRequest loginRequest);
+    JwtResponse authenticateUser(LoginRequest loginRequest);
 
-    ResponseEntity<?> logoutUser();
+    MessageResponse logoutUser();
 
-    ResponseEntity<?> registerUser(SignupRequest signUpRequest);
+    MessageResponse registerUser(SignupRequest signUpRequest);
 
-    ResponseEntity<?> verifyUser(String token);
+    MessageResponse verifyUser(String token);
 }

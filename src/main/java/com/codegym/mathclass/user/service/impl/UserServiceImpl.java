@@ -7,8 +7,12 @@ import com.codegym.mathclass.user.mapper.UserMapper;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.user.service.UserService;
 import com.codegym.mathclass.utils.SupabaseStorageService;
+import com.codegym.mathclass.user.dto.request.UpdateProfileRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
 
 @Service
 @RequiredArgsConstructor
@@ -26,8 +30,8 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @org.springframework.transaction.annotation.Transactional
-    public UserResponse updateProfile(Long id, com.codegym.mathclass.user.dto.request.UpdateProfileRequest request) {
+    @Transactional
+    public UserResponse updateProfile(Long id, UpdateProfileRequest request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy người dùng với ID: " + id));
 
@@ -45,8 +49,8 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @org.springframework.transaction.annotation.Transactional
-    public String uploadAvatar(Long id, org.springframework.web.multipart.MultipartFile file) {
+    @Transactional
+    public String uploadAvatar(Long id, MultipartFile file) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy người dùng với ID: " + id));
 
@@ -55,7 +59,7 @@ public class UserServiceImpl implements UserService {
             user.setAvatarUrl(avatarUrl);
             userRepository.save(user);
             return avatarUrl;
-        } catch (java.io.IOException e) {
+        } catch (IOException e) {
             throw new RuntimeException("Lỗi khi upload ảnh đại diện: " + e.getMessage());
         }
     }

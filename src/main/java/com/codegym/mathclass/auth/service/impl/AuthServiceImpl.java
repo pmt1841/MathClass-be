@@ -16,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -39,7 +38,7 @@ public class AuthServiceImpl implements AuthService {
     private String frontendUrl;
 
     @Override
-    public ResponseEntity<?> authenticateUser(LoginRequest loginRequest) {
+    public JwtResponse authenticateUser(LoginRequest loginRequest) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
 
@@ -48,7 +47,7 @@ public class AuthServiceImpl implements AuthService {
 
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
 
-        return ResponseEntity.ok(new JwtResponse(jwt,
+        return new JwtResponse(jwt,
                 userDetails.getId(),
                 userDetails.getEmail(),
                 userDetails.getFullName(),
@@ -57,21 +56,21 @@ public class AuthServiceImpl implements AuthService {
                         .findFirst()
                         .map(r -> r.replace("ROLE_", ""))
                         .orElse(""),
-                userDetails.getAvatarUrl()));
+                userDetails.getAvatarUrl());
     }
 
     @Override
-    public ResponseEntity<?> logoutUser() {
+    public MessageResponse logoutUser() {
 
         // Đối với JWT (stateless), việc logout thực chất do client thực hiện bằng cách
         // xoá token ở LocalStorage/Cookie
         // Backend chỉ cần trả về thông báo thành công
         SecurityContextHolder.getContext().setAuthentication(null);
-        return ResponseEntity.ok(new MessageResponse("Đăng xuất thành công!"));
+        return new MessageResponse("Đăng xuất thành công!");
     }
 
     @Override
-    public ResponseEntity<?> registerUser(SignupRequest signUpRequest) {
+    public MessageResponse registerUser(SignupRequest signUpRequest) {
         if (userRepository.existsByEmail(signUpRequest.getEmail())) {
             throw new BadRequestException("Lỗi: Email đã tồn tại!");
         }
@@ -95,12 +94,11 @@ public class AuthServiceImpl implements AuthService {
         context.setVariable("verifyLink", verifyLink);
         emailService.sendHtmlMailAsync(user.getEmail(), "Xác nhận đăng ký tài khoản MathClass", "auth-verify", context);
 
-        return ResponseEntity
-                .ok(new MessageResponse("Đăng ký tài khoản thành công! Vui lòng kiểm tra email để xác nhận."));
+        return new MessageResponse("Đăng ký tài khoản thành công! Vui lòng kiểm tra email để xác nhận.");
     }
 
     @Override
-    public ResponseEntity<?> verifyUser(String token) {
+    public MessageResponse verifyUser(String token) {
         Optional<User> userOptional = userRepository.findByVerificationCode(token);
         if (userOptional.isEmpty()) {
             throw new BadRequestException("Lỗi: Mã xác nhận không hợp lệ!");
@@ -133,6 +131,6 @@ public class AuthServiceImpl implements AuthService {
         context.setVariable("loginLink", loginLink);
         emailService.sendHtmlMailAsync(user.getEmail(), "Kích hoạt tài khoản thành công", "auth-welcome", context);
 
-        return ResponseEntity.ok(new MessageResponse("Tài khoản đã được kích hoạt thành công!"));
+        return new MessageResponse("Tài khoản đã được kích hoạt thành công!");
     }
 }

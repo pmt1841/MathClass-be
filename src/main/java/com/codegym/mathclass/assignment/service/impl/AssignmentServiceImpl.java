@@ -65,7 +65,6 @@ public class AssignmentServiceImpl implements AssignmentService {
         User teacher = userRepository.findById(teacherId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
-        // 2. Kiểm tra vai trò
         if (teacher.getRole() != Role.TEACHER) {
             throw new AccessDeniedException("Chỉ giáo viên mới có quyền tạo bài tập");
         }
@@ -87,29 +86,8 @@ public class AssignmentServiceImpl implements AssignmentService {
         assignment.setClassroom(null);
         // deadline = null cho đến khi giáo viên publish
 
-        if (request.getDrawings() != null && !request.getDrawings().isEmpty()) {
-            List<AssignmentDrawing> drawings = new ArrayList<>();
-            for (var drawingReq : request.getDrawings()) {
-                AssignmentDrawing drawing = new AssignmentDrawing();
-                drawing.setShapeCode(drawingReq.getShapeCode());
-                drawing.setJsxGraphData(drawingReq.getJsxGraphData());
-                drawing.setAssignment(assignment);
-                drawings.add(drawing);
-            }
-            assignment.setDrawings(drawings);
-        }
-
-        if (request.getImages() != null && !request.getImages().isEmpty()) {
-            List<AssignmentImage> images = new ArrayList<>();
-            for (var imageReq : request.getImages()) {
-                AssignmentImage img = new AssignmentImage();
-                img.setImageCode(imageReq.getImageCode());
-                img.setImageUrl(imageReq.getImageUrl());
-                img.setAssignment(assignment);
-                images.add(img);
-            }
-            assignment.setImages(images);
-        }
+        updateDrawings(assignment, request.getDrawings());
+        updateImages(assignment, request.getImages());
 
         Assignment saved = assignmentRepository.save(assignment);
         return assignmentMapper.toAssignmentResponse(saved);
@@ -122,10 +100,7 @@ public class AssignmentServiceImpl implements AssignmentService {
         Assignment originalAssignment = assignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập"));
 
-        // 2. Kiểm tra quyền sở hữu
-        if (originalAssignment.getTeacher().getId() != teacherId) {
-            throw new AccessDeniedException("Bạn không có quyền publish bài tập này");
-        }
+        validateTeacherOwnership(originalAssignment, teacherId, "Bạn không có quyền publish bài tập này");
 
         // 3. Kiểm tra trạng thái – chỉ publish được khi đang là DRAFT
         if (originalAssignment.getStatus() != AssignmentStatus.DRAFT) {
@@ -153,36 +128,7 @@ public class AssignmentServiceImpl implements AssignmentService {
                         "Bạn không có quyền giao bài tập cho lớp: " + classCode);
             }
 
-            Assignment clone = new Assignment();
-            clone.setTitle(originalAssignment.getTitle());
-            clone.setDescription(originalAssignment.getDescription());
-            clone.setContent(originalAssignment.getContent());
-            clone.setTeacher(originalAssignment.getTeacher());
-            clone.setParentId(originalAssignment.getId());
-            clone.setClassroom(classroom);
-            clone.setDeadline(target.getDeadline());
-            clone.setStatus(AssignmentStatus.PUBLISHED);
-
-            if (originalAssignment.getDrawings() != null) {
-                for (AssignmentDrawing originalDrawing : originalAssignment.getDrawings()) {
-                    AssignmentDrawing drawing = new AssignmentDrawing();
-                    drawing.setShapeCode(originalDrawing.getShapeCode());
-                    drawing.setJsxGraphData(originalDrawing.getJsxGraphData());
-                    drawing.setAssignment(clone);
-                    clone.getDrawings().add(drawing);
-                }
-            }
-
-            if (originalAssignment.getImages() != null) {
-                for (AssignmentImage originalImage : originalAssignment.getImages()) {
-                    AssignmentImage image = new AssignmentImage();
-                    image.setImageCode(originalImage.getImageCode());
-                    image.setImageUrl(originalImage.getImageUrl());
-                    image.setAssignment(clone);
-                    clone.getImages().add(image);
-                }
-            }
-
+            Assignment clone = cloneAssignmentForClassroom(originalAssignment, classroom, target.getDeadline());
             clones.add(clone);
         }
 
@@ -191,22 +137,7 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         // Gửi email cho từng học sinh trong lớp học
         for (Assignment clone : clones) {
-            Classroom classroom = clone.getClassroom();
-            if (classroom != null && classroom.getStudents() != null) {
-                for (User student : classroom.getStudents()) {
-                    Context context = new Context();
-                    context.setVariable("studentName", student.getFullName());
-                    context.setVariable("assignmentName", clone.getTitle());
-                    context.setVariable("link", frontendUrl + "/assignments/" + clone.getId());
-                    
-                    emailService.sendHtmlMailAsync(
-                        student.getEmail(),
-                        "Bài tập mới: " + clone.getTitle(),
-                        "assignment-notification",
-                        context
-                    );
-                }
-            }
+            sendAssignmentNotificationToClassroom(clone, clone.getClassroom());
         }
 
         // 6. Cập nhật trạng thái bản nháp thành ARCHIVED nếu như đang là DRAFT
@@ -399,10 +330,7 @@ public class AssignmentServiceImpl implements AssignmentService {
         Assignment assignment = assignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập"));
 
-        // 2. Kiểm tra quyền sở hữu
-        if (assignment.getTeacher().getId() != teacherId) {
-            throw new AccessDeniedException("Bạn không có quyền sửa bài tập này");
-        }
+        validateTeacherOwnership(assignment, teacherId, "Bạn không có quyền sửa bài tập này");
 
         // 3. Từ chối nếu đã bị xóa
         if (assignment.getStatus() == AssignmentStatus.DELETED) {
@@ -428,145 +356,13 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         // 5. Xử lý theo trạng thái
         if (assignment.getStatus() == AssignmentStatus.DRAFT) {
-            // DRAFT: sửa tự do, không có deadline
-            assignment.setTitle(request.getTitle() != null ? request.getTitle() : "");
-            assignment.setDescription(request.getDescription() != null ? request.getDescription() : "");
-            assignment.setContent(request.getContent() != null ? request.getContent() : "");
-
-            if (request.getDrawings() != null) {
-                assignment.getDrawings().clear();
-                for (var drawingReq : request.getDrawings()) {
-                    AssignmentDrawing drawing = new AssignmentDrawing();
-                    drawing.setShapeCode(drawingReq.getShapeCode());
-                    drawing.setJsxGraphData(drawingReq.getJsxGraphData());
-                    drawing.setAssignment(assignment);
-                    assignment.getDrawings().add(drawing);
-                }
-            }
-
-            if (request.getImages() != null) {
-                assignment.getImages().clear();
-                for (var imageReq : request.getImages()) {
-                    AssignmentImage img = new AssignmentImage();
-                    img.setImageCode(imageReq.getImageCode());
-                    img.setImageUrl(imageReq.getImageUrl());
-                    img.setAssignment(assignment);
-                    assignment.getImages().add(img);
-                }
-            }
-
+            updateDraftAssignment(assignment, request);
             assignmentRepository.save(assignment);
-
         } else if (assignment.getStatus() == AssignmentStatus.ARCHIVED) {
-            // ARCHIVED (bản gốc): cập nhật bản gốc
-            assignment.setTitle(request.getTitle());
-            assignment.setDescription(request.getDescription());
-            assignment.setContent(request.getContent());
-
-            if (request.getDrawings() != null) {
-                assignment.getDrawings().clear();
-                for (var drawingReq : request.getDrawings()) {
-                    AssignmentDrawing drawing = new AssignmentDrawing();
-                    drawing.setJsxGraphData(drawingReq.getJsxGraphData());
-                    drawing.setAssignment(assignment);
-                    assignment.getDrawings().add(drawing);
-                }
-            }
-
-            if (request.getImages() != null) {
-                assignment.getImages().clear();
-                for (var imageReq : request.getImages()) {
-                    AssignmentImage img = new AssignmentImage();
-                    img.setImageCode(imageReq.getImageCode());
-                    img.setImageUrl(imageReq.getImageUrl());
-                    img.setAssignment(assignment);
-                    assignment.getImages().add(img);
-                }
-            }
+            updateArchivedAssignment(assignment, request);
             assignmentRepository.save(assignment);
-
-            // Đồng bộ sang tất cả bản PUBLISHED con
-            List<Assignment> publishedClones = assignmentRepository.findByParentId(assignment.getId());
-            for (Assignment clone : publishedClones) {
-                // Bỏ qua bản clone đã có submission
-                if (submissionRepository.existsByAssignmentId(clone.getId())) {
-                    continue;
-                }
-                clone.setTitle(request.getTitle());
-                clone.setDescription(request.getDescription());
-                clone.setContent(request.getContent());
-
-                if (request.getDrawings() != null) {
-                    clone.getDrawings().clear();
-                    for (var drawingReq : request.getDrawings()) {
-                        AssignmentDrawing drawing = new AssignmentDrawing();
-                        drawing.setShapeCode(drawingReq.getShapeCode());
-                        drawing.setJsxGraphData(drawingReq.getJsxGraphData());
-                        drawing.setAssignment(clone);
-                        clone.getDrawings().add(drawing);
-                    }
-                }
-
-                if (request.getImages() != null) {
-                    clone.getImages().clear();
-                    for (var imageReq : request.getImages()) {
-                        AssignmentImage img = new AssignmentImage();
-                        img.setImageCode(imageReq.getImageCode());
-                        img.setImageUrl(imageReq.getImageUrl());
-                        img.setAssignment(clone);
-                        clone.getImages().add(img);
-                    }
-                }
-            }
-            assignmentRepository.saveAll(publishedClones);
-
         } else if (assignment.getStatus() == AssignmentStatus.PUBLISHED) {
-            boolean hasSubmissions = submissionRepository.existsByAssignmentId(assignmentId);
-
-            if (hasSubmissions) {
-                // Nếu đã có bài nộp, chỉ cho phép cập nhật deadline
-                // Ném lỗi nếu cố tình thay đổi title, description hoặc content
-                if (!assignment.getTitle().equals(request.getTitle()) ||
-                        !assignment.getDescription().equals(request.getDescription()) ||
-                        !assignment.getContent().equals(request.getContent())) {
-                    throw new BadRequestException(
-                            "Bài tập đã có học sinh nộp bài, bạn chỉ có thể thay đổi hạn nộp");
-                }
-
-                if (request.getDeadline() != null) {
-                    assignment.setDeadline(request.getDeadline());
-                }
-            } else {
-                // Nếu chưa có bài nộp, cho phép sửa tất cả
-                assignment.setTitle(request.getTitle());
-                assignment.setDescription(request.getDescription());
-                assignment.setContent(request.getContent());
-                if (request.getDeadline() != null) {
-                    assignment.setDeadline(request.getDeadline());
-                }
-
-                if (request.getDrawings() != null) {
-                    assignment.getDrawings().clear();
-                    for (var drawingReq : request.getDrawings()) {
-                        AssignmentDrawing drawing = new AssignmentDrawing();
-                        drawing.setShapeCode(drawingReq.getShapeCode());
-                        drawing.setJsxGraphData(drawingReq.getJsxGraphData());
-                        drawing.setAssignment(assignment);
-                        assignment.getDrawings().add(drawing);
-                    }
-                }
-
-                if (request.getImages() != null) {
-                    assignment.getImages().clear();
-                    for (var imageReq : request.getImages()) {
-                        AssignmentImage img = new AssignmentImage();
-                        img.setImageCode(imageReq.getImageCode());
-                        img.setImageUrl(imageReq.getImageUrl());
-                        img.setAssignment(assignment);
-                        assignment.getImages().add(img);
-                    }
-                }
-            }
+            updatePublishedAssignment(assignment, request);
             assignmentRepository.save(assignment);
         }
 
@@ -613,5 +409,144 @@ public class AssignmentServiceImpl implements AssignmentService {
         }
 
         return response;
+    }
+
+    private void validateTeacherOwnership(Assignment assignment, long teacherId, String errorMessage) {
+        if (assignment.getTeacher().getId() != teacherId) {
+            throw new AccessDeniedException(errorMessage);
+        }
+    }
+
+    private void updateDrawings(Assignment assignment, List<com.codegym.mathclass.assignment.dto.AssignmentDrawingRequest> drawingReqs) {
+        if (drawingReqs != null) {
+            assignment.getDrawings().clear();
+            for (var drawingReq : drawingReqs) {
+                AssignmentDrawing drawing = new AssignmentDrawing();
+                drawing.setShapeCode(drawingReq.getShapeCode());
+                drawing.setJsxGraphData(drawingReq.getJsxGraphData());
+                drawing.setAssignment(assignment);
+                assignment.getDrawings().add(drawing);
+            }
+        }
+    }
+
+    private void updateImages(Assignment assignment, List<com.codegym.mathclass.assignment.dto.AssignmentImageRequest> imageReqs) {
+        if (imageReqs != null) {
+            assignment.getImages().clear();
+            for (var imageReq : imageReqs) {
+                AssignmentImage img = new AssignmentImage();
+                img.setImageCode(imageReq.getImageCode());
+                img.setImageUrl(imageReq.getImageUrl());
+                img.setAssignment(assignment);
+                assignment.getImages().add(img);
+            }
+        }
+    }
+
+    private void updateDraftAssignment(Assignment assignment, UpdateAssignmentRequest request) {
+        assignment.setTitle(request.getTitle() != null ? request.getTitle() : "");
+        assignment.setDescription(request.getDescription() != null ? request.getDescription() : "");
+        assignment.setContent(request.getContent() != null ? request.getContent() : "");
+
+        updateDrawings(assignment, request.getDrawings());
+        updateImages(assignment, request.getImages());
+    }
+
+    private void updateArchivedAssignment(Assignment assignment, UpdateAssignmentRequest request) {
+        assignment.setTitle(request.getTitle());
+        assignment.setDescription(request.getDescription());
+        assignment.setContent(request.getContent());
+
+        updateDrawings(assignment, request.getDrawings());
+        updateImages(assignment, request.getImages());
+
+        List<Assignment> publishedClones = assignmentRepository.findByParentId(assignment.getId());
+        for (Assignment clone : publishedClones) {
+            if (submissionRepository.existsByAssignmentId(clone.getId())) {
+                continue;
+            }
+            clone.setTitle(request.getTitle());
+            clone.setDescription(request.getDescription());
+            clone.setContent(request.getContent());
+
+            updateDrawings(clone, request.getDrawings());
+            updateImages(clone, request.getImages());
+        }
+        assignmentRepository.saveAll(publishedClones);
+    }
+
+    private void updatePublishedAssignment(Assignment assignment, UpdateAssignmentRequest request) {
+        boolean hasSubmissions = submissionRepository.existsByAssignmentId(assignment.getId());
+
+        if (hasSubmissions) {
+            if (!assignment.getTitle().equals(request.getTitle()) ||
+                    !assignment.getDescription().equals(request.getDescription()) ||
+                    !assignment.getContent().equals(request.getContent())) {
+                throw new BadRequestException("Bài tập đã có học sinh nộp bài, bạn chỉ có thể thay đổi hạn nộp");
+            }
+            if (request.getDeadline() != null) {
+                assignment.setDeadline(request.getDeadline());
+            }
+        } else {
+            assignment.setTitle(request.getTitle());
+            assignment.setDescription(request.getDescription());
+            assignment.setContent(request.getContent());
+            if (request.getDeadline() != null) {
+                assignment.setDeadline(request.getDeadline());
+            }
+            updateDrawings(assignment, request.getDrawings());
+            updateImages(assignment, request.getImages());
+        }
+    }
+
+    private Assignment cloneAssignmentForClassroom(Assignment original, Classroom classroom, java.time.LocalDateTime deadline) {
+        Assignment clone = new Assignment();
+        clone.setTitle(original.getTitle());
+        clone.setDescription(original.getDescription());
+        clone.setContent(original.getContent());
+        clone.setTeacher(original.getTeacher());
+        clone.setParentId(original.getId());
+        clone.setClassroom(classroom);
+        clone.setDeadline(deadline);
+        clone.setStatus(AssignmentStatus.PUBLISHED);
+
+        if (original.getDrawings() != null) {
+            for (AssignmentDrawing originalDrawing : original.getDrawings()) {
+                AssignmentDrawing drawing = new AssignmentDrawing();
+                drawing.setShapeCode(originalDrawing.getShapeCode());
+                drawing.setJsxGraphData(originalDrawing.getJsxGraphData());
+                drawing.setAssignment(clone);
+                clone.getDrawings().add(drawing);
+            }
+        }
+
+        if (original.getImages() != null) {
+            for (AssignmentImage originalImage : original.getImages()) {
+                AssignmentImage image = new AssignmentImage();
+                image.setImageCode(originalImage.getImageCode());
+                image.setImageUrl(originalImage.getImageUrl());
+                image.setAssignment(clone);
+                clone.getImages().add(image);
+            }
+        }
+        return clone;
+    }
+
+    private void sendAssignmentNotificationToClassroom(Assignment clone, Classroom classroom) {
+        if (classroom != null && classroom.getStudents() != null) {
+            for (User student : classroom.getStudents()) {
+                Context context = new Context();
+                context.setVariable("studentName", student.getFullName());
+                context.setVariable("assignmentName", clone.getTitle());
+                context.setVariable("link", frontendUrl + "/assignments/" + clone.getId());
+
+                emailService.sendHtmlMailAsync(
+                        student.getEmail(),
+                        "Bài tập mới: " + clone.getTitle(),
+                        "assignment-notification",
+                        context
+                );
+            }
+        }
     }
 }

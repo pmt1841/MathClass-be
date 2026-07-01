@@ -5,6 +5,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import java.time.LocalDate;
+import com.codegym.mathclass.user.entity.Gender;
 
 @Data
 @Builder
@@ -18,7 +21,7 @@ public class UserResponse {
     private Role role;
     private boolean isActive;
     private String avatarUrl;
-    @com.fasterxml.jackson.annotation.JsonFormat(pattern = "dd-MM-yyyy")
-    private java.time.LocalDate dateOfBirth;
-    private com.codegym.mathclass.user.entity.Gender gender;
+    @JsonFormat(pattern = "dd-MM-yyyy")
+    private LocalDate dateOfBirth;
+    private Gender gender;
 }

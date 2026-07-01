@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 @Data
 @NoArgsConstructor
@@ -22,7 +23,7 @@ public class UpdateProfileRequest {
     @Size(max = 15, message = "Số điện thoại tối đa 15 ký tự")
     private String phoneNumber;
 
-    @com.fasterxml.jackson.annotation.JsonFormat(pattern = "dd-MM-yyyy")
+    @JsonFormat(pattern = "dd-MM-yyyy")
     private LocalDate dateOfBirth;
 
     private Gender gender;
