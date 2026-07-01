@@ -33,4 +33,13 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
 
     @Query("SELECT COUNT(s) FROM Submission s WHERE s.assignment.classroom.teacher.id = :teacherId AND s.status = :status")
     int countByTeacherAndStatus(@Param("teacherId") long teacherId, @Param("status") SubmissionStatus status);
+
+    @Query("SELECT s FROM Submission s WHERE s.assignment.classroom.teacher.id = :teacherId AND s.status = 'SUBMITTED' ORDER BY s.submittedAt DESC")
+    Page<Submission> findPendingSubmissionsByTeacher(@Param("teacherId") long teacherId, Pageable pageable);
+
+    @Query("SELECT COUNT(s) FROM Submission s WHERE s.student.id = :studentId AND s.status = :status")
+    int countByStudentAndStatus(@Param("studentId") long studentId, @Param("status") SubmissionStatus status);
+
+    @Query("SELECT s FROM Submission s WHERE s.student.id = :studentId AND s.status = 'GRADED' ORDER BY s.updatedAt DESC")
+    Page<Submission> findGradedSubmissionsByStudent(@Param("studentId") long studentId, Pageable pageable);
 }
