@@ -30,12 +30,10 @@ public class ClassroomAssignmentController {
             @PathVariable String classCode,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) AssignmentStatus status,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+            Pageable pageable,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         long userId = userDetails.getId();
-        Pageable pageable = PageRequest.of(page, size);
         Page<AssignmentResponse> responses = assignmentService.getAssignmentsByClassCode(classCode, userId, keyword,
                 status, pageable);
         return ResponseEntity.ok(responses);
