@@ -31,6 +31,8 @@ public class CustomUserDetails implements UserDetails {
 
     private boolean isActive;
 
+    private String avatarUrl;
+
     private Collection<? extends GrantedAuthority> authorities;
 
     public static CustomUserDetails build(User user) {
@@ -42,6 +44,7 @@ public class CustomUserDetails implements UserDetails {
                 user.getEmail(),
                 user.getPassword(),
                 user.isActive(),
+                user.getAvatarUrl(),
                 Collections.singletonList(authority));
     }
 

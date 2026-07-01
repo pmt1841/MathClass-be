@@ -56,7 +56,8 @@ public class AuthServiceImpl implements AuthService {
                         .map(GrantedAuthority::getAuthority)
                         .findFirst()
                         .map(r -> r.replace("ROLE_", ""))
-                        .orElse("")));
+                        .orElse(""),
+                userDetails.getAvatarUrl()));
     }
 
     @Override
