@@ -238,4 +238,21 @@ public class ClassroomServiceImpl implements ClassroomService {
         Classroom savedClassroom = classroomRepository.save(classroom);
         return ClassroomResponse.fromEntity(savedClassroom);
     }
+
+    @Override
+    @Transactional
+    public void deleteClassroom(String classCode, long currentUserId) {
+        Classroom classroom = classroomRepository.findByClassCode(classCode)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lớp học"));
+
+        if (classroom.getTeacher().getId() != currentUserId) {
+            throw new AccessDeniedException("Bạn không có quyền xóa lớp học này");
+        }
+
+        if (!classroom.getStudents().isEmpty()) {
+            throw new BadRequestException("Không thể xóa lớp học đã có học sinh tham gia");
+        }
+
+        classroomRepository.delete(classroom);
+    }
 }

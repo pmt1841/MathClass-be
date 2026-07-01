@@ -17,6 +17,8 @@ public interface ClassroomRepository extends JpaRepository<Classroom, Long> {
 
     List<Classroom> findByStudentsId(long studentId);
 
+    int countByStudentsId(long studentId);
+
     int countByTeacherId(long teacherId);
 
     @Query("SELECT COUNT(DISTINCT s.id) FROM Classroom c JOIN c.students s WHERE c.teacher.id = :teacherId")
