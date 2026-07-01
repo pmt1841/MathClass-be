@@ -23,4 +23,6 @@ public interface ClassroomService {
     void removeStudentFromClass(String classCode, long studentId, long teacherId);
 
     ClassroomResponse updateClassroom(String classCode, UpdateClassroomRequest request, long currentUserId);
+
+    void deleteClassroom(String classCode, long currentUserId);
 }

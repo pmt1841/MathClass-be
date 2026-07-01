@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import com.codegym.mathclass.classroom.dto.UpdateClassroomRequest;
 
 @RestController
@@ -68,5 +69,15 @@ public class ClassroomController {
         long currentUserId = userDetails.getId();
         ClassroomResponse response = classroomService.updateClassroom(classCode, request, currentUserId);
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @DeleteMapping("/{classCode}")
+    @PreAuthorize("hasRole('TEACHER')")
+    public ResponseEntity<Void> deleteClassroom(
+            @PathVariable String classCode,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        long currentUserId = userDetails.getId();
+        classroomService.deleteClassroom(classCode, currentUserId);
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 }
