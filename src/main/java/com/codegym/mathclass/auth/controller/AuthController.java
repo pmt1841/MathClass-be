@@ -23,21 +23,21 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
-        return authService.authenticateUser(loginRequest);
+        return ResponseEntity.ok(authService.authenticateUser(loginRequest));
     }
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody SignupRequest signUpRequest) {
-        return authService.registerUser(signUpRequest);
+        return ResponseEntity.ok(authService.registerUser(signUpRequest));
     }
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout() {
-        return authService.logoutUser();
+        return ResponseEntity.ok(authService.logoutUser());
     }
 
     @GetMapping("/verify")
     public ResponseEntity<?> verifyUser(@RequestParam("token") String token) {
-        return authService.verifyUser(token);
+        return ResponseEntity.ok(authService.verifyUser(token));
     }
 }

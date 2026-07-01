@@ -83,30 +83,7 @@ public class ClassroomServiceImpl implements ClassroomService {
         }
 
         return classrooms.stream()
-                .sorted((c1, c2) -> {
-                    if (c1.getUpdatedAt() != null && c2.getUpdatedAt() != null) {
-                        int cmp = c2.getUpdatedAt().compareTo(c1.getUpdatedAt());
-                        if (cmp != 0)
-                            return cmp;
-                    } else if (c1.getUpdatedAt() != null)
-                        return -1;
-                    else if (c2.getUpdatedAt() != null)
-                        return 1;
-
-                    if (c1.getCreatedAt() != null && c2.getCreatedAt() != null) {
-                        int cmp = c2.getCreatedAt().compareTo(c1.getCreatedAt());
-                        if (cmp != 0)
-                            return cmp;
-                    } else if (c1.getCreatedAt() != null)
-                        return -1;
-                    else if (c2.getCreatedAt() != null)
-                        return 1;
-
-                    if (c1.getClassName() != null && c2.getClassName() != null) {
-                        return c1.getClassName().compareToIgnoreCase(c2.getClassName());
-                    }
-                    return 0;
-                })
+                .sorted(this::sortClassrooms)
                 .map(ClassroomResponse::fromEntity)
                 .collect(Collectors.toList());
     }
@@ -117,9 +94,7 @@ public class ClassroomServiceImpl implements ClassroomService {
         Classroom classroom = classroomRepository.findByClassCode(classCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lớp học"));
 
-        if (classroom.getTeacher().getId() != teacherId) {
-            throw new AccessDeniedException("Bạn không phải là giáo viên phụ trách lớp học này");
-        }
+        validateTeacherPrivilege(classroom, teacherId);
 
         User student = userRepository.findByEmail(studentEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy học sinh với email đã cung cấp"));
@@ -158,12 +133,7 @@ public class ClassroomServiceImpl implements ClassroomService {
         Classroom classroom = classroomRepository.findByClassCode(classCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lớp học"));
 
-        boolean isTeacher = classroom.getTeacher().getId() == currentUserId;
-        boolean isStudent = classroom.getStudents().stream().anyMatch(s -> s.getId() == currentUserId);
-
-        if (!isTeacher && !isStudent) {
-            throw new AccessDeniedException("Bạn không có quyền xem danh sách học sinh lớp học này");
-        }
+        validateTeacherOrStudentPrivilege(classroom, currentUserId);
 
         Page<User> studentPage = userRepository.findStudentsByClassCode(classCode, pageable);
         return studentPage.map(StudentResponse::fromEntity);
@@ -175,12 +145,7 @@ public class ClassroomServiceImpl implements ClassroomService {
         Classroom classroom = classroomRepository.findByClassCode(classCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lớp học"));
 
-        boolean isTeacher = classroom.getTeacher().getId() == currentUserId;
-        boolean isStudent = classroom.getStudents().stream().anyMatch(s -> s.getId() == currentUserId);
-
-        if (!isTeacher && !isStudent) {
-            throw new AccessDeniedException("Bạn không có quyền xem thông tin lớp học này");
-        }
+        validateTeacherOrStudentPrivilege(classroom, currentUserId);
 
         return ClassroomResponse.fromEntity(classroom);
     }
@@ -191,10 +156,7 @@ public class ClassroomServiceImpl implements ClassroomService {
         Classroom classroom = classroomRepository.findByClassCode(classCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lớp học"));
 
-        if (classroom.getTeacher().getId() != teacherId) {
-
-            throw new AccessDeniedException("Bạn không phải là giáo viên phụ trách lớp học này");
-        }
+        validateTeacherPrivilege(classroom, teacherId);
 
         User studentToRemove = classroom.getStudents().stream()
                 .filter(s -> s.getId() == studentId)
@@ -221,9 +183,7 @@ public class ClassroomServiceImpl implements ClassroomService {
         Classroom classroom = classroomRepository.findByClassCode(classCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lớp học"));
 
-        if (classroom.getTeacher().getId() != currentUserId) {
-            throw new AccessDeniedException("Bạn không có quyền chỉnh sửa lớp học này");
-        }
+        validateTeacherPrivilege(classroom, currentUserId, "Bạn không có quyền chỉnh sửa lớp học này");
 
         int currentStudentCount = classroom.getStudents().size();
         if (request.getMaxStudents() != null && request.getMaxStudents() < currentStudentCount) {
@@ -245,14 +205,50 @@ public class ClassroomServiceImpl implements ClassroomService {
         Classroom classroom = classroomRepository.findByClassCode(classCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lớp học"));
 
-        if (classroom.getTeacher().getId() != currentUserId) {
-            throw new AccessDeniedException("Bạn không có quyền xóa lớp học này");
-        }
+        validateTeacherPrivilege(classroom, currentUserId, "Bạn không có quyền xóa lớp học này");
 
         if (!classroom.getStudents().isEmpty()) {
             throw new BadRequestException("Không thể xóa lớp học đã có học sinh tham gia");
         }
 
         classroomRepository.delete(classroom);
+    }
+
+    private int sortClassrooms(Classroom c1, Classroom c2) {
+        if (c1.getUpdatedAt() != null && c2.getUpdatedAt() != null) {
+            int compareResult = c2.getUpdatedAt().compareTo(c1.getUpdatedAt());
+            if (compareResult != 0) return compareResult;
+        } else if (c1.getUpdatedAt() != null) return -1;
+        else if (c2.getUpdatedAt() != null) return 1;
+
+        if (c1.getCreatedAt() != null && c2.getCreatedAt() != null) {
+            int compareResult = c2.getCreatedAt().compareTo(c1.getCreatedAt());
+            if (compareResult != 0) return compareResult;
+        } else if (c1.getCreatedAt() != null) return -1;
+        else if (c2.getCreatedAt() != null) return 1;
+
+        if (c1.getClassName() != null && c2.getClassName() != null) {
+            return c1.getClassName().compareToIgnoreCase(c2.getClassName());
+        }
+        return 0;
+    }
+
+    private void validateTeacherPrivilege(Classroom classroom, long currentUserId) {
+        validateTeacherPrivilege(classroom, currentUserId, "Bạn không phải là giáo viên phụ trách lớp học này");
+    }
+
+    private void validateTeacherPrivilege(Classroom classroom, long currentUserId, String errorMessage) {
+        if (classroom.getTeacher().getId() != currentUserId) {
+            throw new AccessDeniedException(errorMessage);
+        }
+    }
+
+    private void validateTeacherOrStudentPrivilege(Classroom classroom, long currentUserId) {
+        boolean isTeacher = classroom.getTeacher().getId() == currentUserId;
+        boolean isStudent = classroom.getStudents().stream().anyMatch(s -> s.getId() == currentUserId);
+
+        if (!isTeacher && !isStudent) {
+            throw new AccessDeniedException("Bạn không có quyền xem thông tin lớp học này");
+        }
     }
 }
