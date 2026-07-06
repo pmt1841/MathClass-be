@@ -10,10 +10,13 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.time.LocalDateTime;
 
 public interface AssignmentRepository extends JpaRepository<Assignment, Long>, JpaSpecificationExecutor<Assignment> {
 
     List<Assignment> findByTeacherId(long teacherId);
+
+    List<Assignment> findByDeadlineBetweenAndIsReminderSentFalseAndStatus(LocalDateTime start, LocalDateTime end, AssignmentStatus status);
 
     int countByTeacherIdAndStatus(long teacherId, AssignmentStatus status);
 
@@ -26,7 +29,7 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long>, J
            "JOIN c.students s " +
            "WHERE s.id = :studentId " +
            "AND a.status = 'PUBLISHED' " +
-           "AND NOT EXISTS (SELECT sub FROM com.codegym.mathclass.submission.entity.Submission sub WHERE sub.assignment = a AND sub.student.id = :studentId AND sub.status <> 'DRAFT')")
+           "AND NOT EXISTS (SELECT sub FROM Submission sub WHERE sub.assignment = a AND sub.student.id = :studentId AND sub.status <> 'DRAFT')")
     int countPendingAssignmentsForStudent(@Param("studentId") long studentId);
 
     @Query("SELECT a FROM Assignment a " +
@@ -34,7 +37,7 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long>, J
            "JOIN c.students s " +
            "WHERE s.id = :studentId " +
            "AND a.status = 'PUBLISHED' " +
-           "AND NOT EXISTS (SELECT sub FROM com.codegym.mathclass.submission.entity.Submission sub WHERE sub.assignment = a AND sub.student.id = :studentId AND sub.status <> 'DRAFT') " +
+           "AND NOT EXISTS (SELECT sub FROM Submission sub WHERE sub.assignment = a AND sub.student.id = :studentId AND sub.status <> 'DRAFT') " +
            "ORDER BY a.deadline ASC")
     Page<Assignment> findPendingAssignmentsForStudent(@Param("studentId") long studentId, Pageable pageable);
 }

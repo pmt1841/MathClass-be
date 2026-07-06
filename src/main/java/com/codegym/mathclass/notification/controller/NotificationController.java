@@ -6,10 +6,12 @@ import com.codegym.mathclass.security.services.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import com.codegym.mathclass.exception.AccessDeniedException;
 
 import java.util.Map;
 
@@ -21,10 +23,10 @@ public class NotificationController {
     private final NotificationService notificationService;
 
     // Connect to SSE stream
-    @GetMapping(value = "/stream", produces = org.springframework.http.MediaType.TEXT_EVENT_STREAM_VALUE)
+    @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream(@AuthenticationPrincipal CustomUserDetails userDetails) {
         if (userDetails == null) {
-            throw new com.codegym.mathclass.exception.AccessDeniedException("Not authenticated");
+            throw new AccessDeniedException("Not authenticated");
         }
         return notificationService.createEmitter(userDetails.getId());
     }

@@ -36,10 +36,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import org.springframework.context.annotation.Import;
+import com.codegym.mathclass.config.TestSecurityConfig;
 
 @WebMvcTest(controllers = ClassroomMemberController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import(com.codegym.mathclass.config.TestSecurityConfig.class)
+@Import(TestSecurityConfig.class)
 class ClassroomMemberControllerTest {
 
     @Autowired

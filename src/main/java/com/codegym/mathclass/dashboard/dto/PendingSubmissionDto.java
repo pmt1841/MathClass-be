@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class PendingSubmissionDto {
     private Long id;
+    private Long assignmentId;
     private String studentName;
     private String assignmentTitle;
     private String className;

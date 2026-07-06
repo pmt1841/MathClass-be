@@ -16,6 +16,8 @@ public class ClassroomResponse {
     private String className;
     private long teacherId;
     private String teacherName;
+    private String teacherEmail;
+    private String teacherPhone;
     private int studentCount;
     private Integer maxStudents;
     private String description;
@@ -32,6 +34,8 @@ public class ClassroomResponse {
         response.setClassName(classroom.getClassName());
         response.setTeacherId(classroom.getTeacher() != null ? classroom.getTeacher().getId() : null);
         response.setTeacherName(classroom.getTeacher() != null ? classroom.getTeacher().getFullName() : null);
+        response.setTeacherEmail(classroom.getTeacher() != null ? classroom.getTeacher().getEmail() : null);
+        response.setTeacherPhone(classroom.getTeacher() != null ? classroom.getTeacher().getPhoneNumber() : null);
         response.setStudentCount(classroom.getStudents() != null ? classroom.getStudents().size() : 0);
         response.setMaxStudents(classroom.getMaxStudents());
         response.setDescription(classroom.getDescription());

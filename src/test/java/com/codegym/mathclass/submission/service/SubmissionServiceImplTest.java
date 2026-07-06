@@ -11,6 +11,8 @@ import com.codegym.mathclass.submission.repository.SubmissionRepository;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.EmailService;
+import com.codegym.mathclass.submission.dto.GradeRequest;
+import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.notification.service.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -143,7 +145,7 @@ public class SubmissionServiceImplTest {
 
     @Test
     void testGradeSubmission_Success() {
-        com.codegym.mathclass.submission.dto.GradeRequest gradeRequest = new com.codegym.mathclass.submission.dto.GradeRequest(9.5, "Good job!");
+        GradeRequest gradeRequest = new GradeRequest(9.5, "Good job!");
         when(submissionRepository.findById(100L)).thenReturn(Optional.of(submission));
         when(submissionRepository.save(any(Submission.class))).thenReturn(submission);
 
@@ -158,7 +160,7 @@ public class SubmissionServiceImplTest {
 
     @Test
     void testGradeSubmission_AccessDenied() {
-        com.codegym.mathclass.submission.dto.GradeRequest gradeRequest = new com.codegym.mathclass.submission.dto.GradeRequest(9.5, "Good job!");
+        GradeRequest gradeRequest = new GradeRequest(9.5, "Good job!");
         when(submissionRepository.findById(100L)).thenReturn(Optional.of(submission));
 
         assertThrows(AccessDeniedException.class, () ->
@@ -168,10 +170,10 @@ public class SubmissionServiceImplTest {
     @Test
     void testGradeSubmission_DraftSubmission() {
         submission.setStatus(SubmissionStatus.DRAFT);
-        com.codegym.mathclass.submission.dto.GradeRequest gradeRequest = new com.codegym.mathclass.submission.dto.GradeRequest(9.5, "Good job!");
+        GradeRequest gradeRequest = new GradeRequest(9.5, "Good job!");
         when(submissionRepository.findById(100L)).thenReturn(Optional.of(submission));
 
-        assertThrows(com.codegym.mathclass.exception.BadRequestException.class, () ->
+        assertThrows(BadRequestException.class, () ->
             submissionService.gradeSubmission(100L, 1L, gradeRequest));
     }
 }

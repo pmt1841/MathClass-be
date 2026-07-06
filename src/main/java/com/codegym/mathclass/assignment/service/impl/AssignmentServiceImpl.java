@@ -39,6 +39,8 @@ import com.codegym.mathclass.assignment.mapper.AssignmentMapper;
 import com.codegym.mathclass.assignment.entity.AssignmentImage;
 import com.codegym.mathclass.utils.SupabaseStorageService;
 import com.codegym.mathclass.assignment.dto.AssignmentImageDto;
+import com.codegym.mathclass.assignment.dto.AssignmentDrawingRequest;
+import com.codegym.mathclass.assignment.dto.AssignmentImageRequest;
 import com.codegym.mathclass.utils.EmailService;
 import org.thymeleaf.context.Context;
 import org.springframework.beans.factory.annotation.Value;
@@ -417,7 +419,7 @@ public class AssignmentServiceImpl implements AssignmentService {
         }
     }
 
-    private void updateDrawings(Assignment assignment, List<com.codegym.mathclass.assignment.dto.AssignmentDrawingRequest> drawingReqs) {
+    private void updateDrawings(Assignment assignment, List<AssignmentDrawingRequest> drawingReqs) {
         if (drawingReqs != null) {
             assignment.getDrawings().clear();
             for (var drawingReq : drawingReqs) {
@@ -430,7 +432,7 @@ public class AssignmentServiceImpl implements AssignmentService {
         }
     }
 
-    private void updateImages(Assignment assignment, List<com.codegym.mathclass.assignment.dto.AssignmentImageRequest> imageReqs) {
+    private void updateImages(Assignment assignment, List<AssignmentImageRequest> imageReqs) {
         if (imageReqs != null) {
             assignment.getImages().clear();
             for (var imageReq : imageReqs) {

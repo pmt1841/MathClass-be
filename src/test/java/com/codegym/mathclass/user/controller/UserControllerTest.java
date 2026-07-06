@@ -4,6 +4,10 @@ import com.codegym.mathclass.user.dto.request.UpdateProfileRequest;
 import com.codegym.mathclass.user.dto.response.UserResponse;
 import com.codegym.mathclass.user.entity.Gender;
 import com.codegym.mathclass.user.service.UserService;
+import com.codegym.mathclass.security.jwt.JwtUtils;
+import com.codegym.mathclass.security.services.CustomUserDetailsService;
+import com.codegym.mathclass.security.jwt.AuthEntryPointJwt;
+import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -42,17 +46,17 @@ class UserControllerTest {
     private UserService userService;
 
     @MockitoBean
-    private com.codegym.mathclass.security.jwt.JwtUtils jwtUtils;
+    private JwtUtils jwtUtils;
 
     @MockitoBean
-    private com.codegym.mathclass.security.services.CustomUserDetailsService customUserDetailsService;
+    private CustomUserDetailsService customUserDetailsService;
 
     @MockitoBean
-    private com.codegym.mathclass.security.jwt.AuthEntryPointJwt authEntryPointJwt;
+    private AuthEntryPointJwt authEntryPointJwt;
 
     private UserResponse userResponse;
     private UpdateProfileRequest updateRequest;
-    private com.codegym.mathclass.security.services.CustomUserDetails userDetails;
+    private CustomUserDetails userDetails;
 
     @BeforeEach
     void setUp() {
@@ -69,7 +73,7 @@ class UserControllerTest {
         updateRequest.setGender(Gender.MALE);
         updateRequest.setDateOfBirth(LocalDate.of(2000, 1, 1));
 
-        userDetails = new com.codegym.mathclass.security.services.CustomUserDetails(
+        userDetails = new CustomUserDetails(
                 1L, "test@test.com", "password", "Test User", true, java.util.Collections.emptyList()
         );
 

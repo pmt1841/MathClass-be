@@ -6,8 +6,21 @@ import com.codegym.mathclass.classroom.repository.ClassroomRepository;
 import com.codegym.mathclass.dashboard.dto.TeacherDashboardStatsDto;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
+import com.codegym.mathclass.assignment.entity.Assignment;
+import com.codegym.mathclass.assignment.entity.AssignmentStatus;
+import com.codegym.mathclass.assignment.repository.AssignmentRepository;
+import com.codegym.mathclass.dashboard.dto.PendingSubmissionDto;
+import com.codegym.mathclass.dashboard.dto.StudentDashboardStatsDto;
+import com.codegym.mathclass.dashboard.dto.StudentGradedTaskDto;
+import com.codegym.mathclass.dashboard.dto.StudentPendingTaskDto;
+import com.codegym.mathclass.submission.entity.Submission;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -16,7 +29,7 @@ public class DashboardServiceImpl implements DashboardService {
     private final ClassroomRepository classroomRepository;
     private final ClassroomJoinRequestRepository joinRequestRepository;
     private final SubmissionRepository submissionRepository;
-    private final com.codegym.mathclass.assignment.repository.AssignmentRepository assignmentRepository;
+    private final AssignmentRepository assignmentRepository;
 
     @Override
     public TeacherDashboardStatsDto getTeacherDashboardStats(long teacherId) {
@@ -24,7 +37,7 @@ public class DashboardServiceImpl implements DashboardService {
         int managedStudents = classroomRepository.countDistinctStudentsByTeacherId(teacherId);
         int assignmentsToGrade = submissionRepository.countByTeacherAndStatus(teacherId, SubmissionStatus.SUBMITTED);
         int pendingJoinRequests = joinRequestRepository.countByClassroomTeacherIdAndStatus(teacherId, JoinRequestStatus.PENDING);
-        int openAssignments = assignmentRepository.countByTeacherIdAndStatus(teacherId, com.codegym.mathclass.assignment.entity.AssignmentStatus.PUBLISHED);
+        int openAssignments = assignmentRepository.countByTeacherIdAndStatus(teacherId, AssignmentStatus.PUBLISHED);
 
         return TeacherDashboardStatsDto.builder()
                 .teachingClasses(teachingClasses)
@@ -36,28 +49,29 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     @Override
-    public java.util.List<com.codegym.mathclass.dashboard.dto.PendingSubmissionDto> getPendingSubmissions(long teacherId, int limit) {
-        org.springframework.data.domain.Page<com.codegym.mathclass.submission.entity.Submission> submissions = submissionRepository.findPendingSubmissionsByTeacher(
+    public List<PendingSubmissionDto> getPendingSubmissions(long teacherId, int limit) {
+        Page<Submission> submissions = submissionRepository.findPendingSubmissionsByTeacher(
                 teacherId, 
-                org.springframework.data.domain.PageRequest.of(0, limit)
+                PageRequest.of(0, limit)
         );
 
-        return submissions.stream().map(s -> com.codegym.mathclass.dashboard.dto.PendingSubmissionDto.builder()
+        return submissions.stream().map(s -> PendingSubmissionDto.builder()
                 .id(s.getId())
+                .assignmentId(s.getAssignment().getId())
                 .studentName(s.getStudent().getFullName())
                 .assignmentTitle(s.getAssignment().getTitle())
                 .className(s.getAssignment().getClassroom().getClassName())
                 .classCode(s.getAssignment().getClassroom().getClassCode())
                 .submittedAt(s.getSubmittedAt())
-                .build()).collect(java.util.stream.Collectors.toList());
+                .build()).collect(Collectors.toList());
     }
     @Override
-    public com.codegym.mathclass.dashboard.dto.StudentDashboardStatsDto getStudentDashboardStats(long studentId) {
+    public StudentDashboardStatsDto getStudentDashboardStats(long studentId) {
         int joinedClasses = classroomRepository.countByStudentsId(studentId);
         int pendingTasks = assignmentRepository.countPendingAssignmentsForStudent(studentId);
         int completedTasks = submissionRepository.countByStudentAndStatus(studentId, SubmissionStatus.GRADED);
 
-        return com.codegym.mathclass.dashboard.dto.StudentDashboardStatsDto.builder()
+        return StudentDashboardStatsDto.builder()
                 .joinedClasses(joinedClasses)
                 .pendingTasks(pendingTasks)
                 .completedTasks(completedTasks)
@@ -65,30 +79,30 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     @Override
-    public java.util.List<com.codegym.mathclass.dashboard.dto.StudentPendingTaskDto> getStudentPendingTasks(long studentId, int limit) {
-        org.springframework.data.domain.Page<com.codegym.mathclass.assignment.entity.Assignment> assignments = assignmentRepository.findPendingAssignmentsForStudent(
+    public List<StudentPendingTaskDto> getStudentPendingTasks(long studentId, int limit) {
+        Page<Assignment> assignments = assignmentRepository.findPendingAssignmentsForStudent(
                 studentId, 
-                org.springframework.data.domain.PageRequest.of(0, limit)
+                PageRequest.of(0, limit)
         );
 
-        return assignments.stream().map(a -> com.codegym.mathclass.dashboard.dto.StudentPendingTaskDto.builder()
+        return assignments.stream().map(a -> StudentPendingTaskDto.builder()
                 .id(a.getId())
                 .title(a.getTitle())
                 .classCode(a.getClassroom().getClassCode())
                 .className(a.getClassroom().getClassName())
                 .deadline(a.getDeadline())
                 .type("Bài tập")
-                .build()).collect(java.util.stream.Collectors.toList());
+                .build()).collect(Collectors.toList());
     }
 
     @Override
-    public java.util.List<com.codegym.mathclass.dashboard.dto.StudentGradedTaskDto> getStudentGradedTasks(long studentId, int limit) {
-        org.springframework.data.domain.Page<com.codegym.mathclass.submission.entity.Submission> submissions = submissionRepository.findGradedSubmissionsByStudent(
+    public List<StudentGradedTaskDto> getStudentGradedTasks(long studentId, int limit) {
+        Page<Submission> submissions = submissionRepository.findGradedSubmissionsByStudent(
                 studentId, 
-                org.springframework.data.domain.PageRequest.of(0, limit)
+                PageRequest.of(0, limit)
         );
 
-        return submissions.stream().map(s -> com.codegym.mathclass.dashboard.dto.StudentGradedTaskDto.builder()
+        return submissions.stream().map(s -> StudentGradedTaskDto.builder()
                 .id(s.getAssignment().getId())
                 .title(s.getAssignment().getTitle())
                 .classCode(s.getAssignment().getClassroom().getClassCode())
@@ -97,6 +111,6 @@ public class DashboardServiceImpl implements DashboardService {
                 .score(s.getScore() != null ? s.getScore().floatValue() : 0f)
                 .maxScore(10f)
                 .teacherComment(s.getTeacherFeedback())
-                .build()).collect(java.util.stream.Collectors.toList());
+                .build()).collect(Collectors.toList());
     }
 }

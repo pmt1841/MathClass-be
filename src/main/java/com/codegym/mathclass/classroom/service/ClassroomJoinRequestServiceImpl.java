@@ -74,7 +74,7 @@ public class ClassroomJoinRequestServiceImpl implements ClassroomJoinRequestServ
         // Send email to teacher
         User teacher = classroom.getTeacher();
         String subject = "Có học sinh xin vào lớp học " + classroom.getClassName();
-        String classroomLink = frontendUrl + "/classrooms/" + classroom.getClassCode() + "/requests";
+        String classroomLink = frontendUrl + "/classes/" + classroom.getClassCode() + "/requests";
         Context context = new Context();
         context.setVariable("teacherName", teacher.getFullName());
         context.setVariable("studentName", student.getFullName());
@@ -84,7 +84,8 @@ public class ClassroomJoinRequestServiceImpl implements ClassroomJoinRequestServ
         context.setVariable("classroomLink", classroomLink);
         emailService.sendHtmlMailAsync(teacher.getEmail(), subject, "join-request-teacher", context);
 
-        notificationService.saveAndSendNotification(teacher.getId(), subject, "/classrooms/" + classroom.getClassCode() + "/requests");
+        notificationService.saveAndSendNotification(teacher.getId(), subject,
+                "/classes/" + classroom.getClassCode() + "/requests");
 
         return JoinRequestResponse.fromEntity(joinRequest);
     }
@@ -143,7 +144,7 @@ public class ClassroomJoinRequestServiceImpl implements ClassroomJoinRequestServ
             // directly here to avoid sending the standard add email.
             // Better to use custom email here since they requested it.
             String subject = "Yêu cầu tham gia lớp học " + classroom.getClassName() + " đã được DUYỆT";
-            String classroomLink = frontendUrl + "/classrooms/" + classroom.getClassCode();
+            String classroomLink = frontendUrl + "/classes/" + classroom.getClassCode();
             Context context = new Context();
             context.setVariable("studentName", student.getFullName());
             context.setVariable("isApproved", true);
@@ -152,7 +153,8 @@ public class ClassroomJoinRequestServiceImpl implements ClassroomJoinRequestServ
             context.setVariable("teacherName", classroom.getTeacher().getFullName());
             context.setVariable("classroomLink", classroomLink);
             emailService.sendHtmlMailAsync(student.getEmail(), subject, "join-request-result", context);
-            notificationService.saveAndSendNotification(student.getId(), subject, "/classrooms/" + classroom.getClassCode());
+            notificationService.saveAndSendNotification(student.getId(), subject,
+                    "/classes/" + classroom.getClassCode());
         } else if (newStatus == JoinRequestStatus.REJECTED) {
             String subject = "Yêu cầu tham gia lớp học " + classroom.getClassName() + " đã BỊ TỪ CHỐI";
             Context context = new Context();

@@ -11,6 +11,8 @@ import com.codegym.mathclass.classroom.entity.Classroom;
 import com.codegym.mathclass.classroom.repository.ClassroomRepository;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
+import com.codegym.mathclass.assignment.mapper.AssignmentMapper;
+import com.codegym.mathclass.utils.SupabaseStorageService;
 import com.codegym.mathclass.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -42,10 +44,10 @@ class AssignmentServiceImplTest {
     private ClassroomRepository classroomRepository;
 
     @Mock
-    private com.codegym.mathclass.assignment.mapper.AssignmentMapper assignmentMapper;
+    private AssignmentMapper assignmentMapper;
 
     @Mock
-    private com.codegym.mathclass.utils.SupabaseStorageService supabaseStorageService;
+    private SupabaseStorageService supabaseStorageService;
 
     @InjectMocks
     private AssignmentServiceImpl assignmentService;
