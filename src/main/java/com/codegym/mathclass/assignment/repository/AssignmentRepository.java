@@ -40,4 +40,7 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long>, J
            "AND NOT EXISTS (SELECT sub FROM Submission sub WHERE sub.assignment = a AND sub.student.id = :studentId AND sub.status <> 'DRAFT') " +
            "ORDER BY a.deadline ASC")
     Page<Assignment> findPendingAssignmentsForStudent(@Param("studentId") long studentId, Pageable pageable);
+
+    @Query("SELECT a FROM Assignment a WHERE a.teacher.id = :teacherId AND a.deadline < :now AND a.status = 'PUBLISHED'")
+    List<Assignment> findAssignmentsPastDeadline(@Param("teacherId") long teacherId, @Param("now") LocalDateTime now);
 }
