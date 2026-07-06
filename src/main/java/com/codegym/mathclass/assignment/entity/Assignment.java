@@ -66,6 +66,6 @@ public class Assignment extends BaseEntity {
     @OneToMany(mappedBy = "assignment", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<AssignmentImage> images = new ArrayList<>();
 
-    @Column(name = "is_reminder_sent", nullable = false)
+    @Column(name = "is_reminder_sent", nullable = false, columnDefinition = "boolean default false")
     private boolean isReminderSent = false;
 }

@@ -15,6 +15,7 @@ import com.codegym.mathclass.dashboard.dto.PendingSubmissionDto;
 import com.codegym.mathclass.dashboard.dto.StudentDashboardStatsDto;
 import com.codegym.mathclass.dashboard.dto.StudentPendingTaskDto;
 import com.codegym.mathclass.dashboard.dto.StudentGradedTaskDto;
+import com.codegym.mathclass.dashboard.dto.AtRiskStudentDto;
 import java.util.List;
 
 @RestController
@@ -36,6 +37,12 @@ public class DashboardController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(defaultValue = "10") int limit) {
         return ResponseEntity.ok(dashboardService.getPendingSubmissions(userDetails.getId(), limit));
+    }
+
+    @GetMapping("/at-risk-students")
+    @PreAuthorize("hasRole('TEACHER')")
+    public ResponseEntity<List<AtRiskStudentDto>> getAtRiskStudents(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(dashboardService.getAtRiskStudents(userDetails.getId()));
     }
 
     @GetMapping("/student-stats")

@@ -44,4 +44,7 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
 
     @Query("SELECT s FROM Submission s WHERE s.student.id = :studentId AND s.status = 'GRADED' ORDER BY s.updatedAt DESC")
     Page<Submission> findGradedSubmissionsByStudent(@Param("studentId") long studentId, Pageable pageable);
+
+    @Query("SELECT s.student, AVG(s.score) FROM Submission s WHERE s.assignment.classroom.teacher.id = :teacherId AND s.status = 'GRADED' GROUP BY s.student HAVING AVG(s.score) < 5.0")
+    List<Object[]> findStudentsWithLowAverageScore(@Param("teacherId") long teacherId);
 }

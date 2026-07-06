@@ -19,8 +19,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+import com.codegym.mathclass.classroom.entity.Classroom;
+import com.codegym.mathclass.dashboard.dto.AtRiskStudentDto;
+import com.codegym.mathclass.user.entity.User;
 
 @Service
 @RequiredArgsConstructor
@@ -112,5 +119,69 @@ public class DashboardServiceImpl implements DashboardService {
                 .maxScore(10f)
                 .teacherComment(s.getTeacherFeedback())
                 .build()).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<AtRiskStudentDto> getAtRiskStudents(long teacherId) {
+        List<AtRiskStudentDto> atRiskStudents = new ArrayList<>();
+        
+        // 1. Học sinh điểm trung bình < 5.0
+        List<Object[]> lowAvgScores = submissionRepository.findStudentsWithLowAverageScore(teacherId);
+        for (Object[] result : lowAvgScores) {
+            User student = (User) result[0];
+            Double avgScore = (Double) result[1];
+            
+            String className = getStudentClassName(teacherId, student);
+
+            atRiskStudents.add(AtRiskStudentDto.builder()
+                .id(student.getId())
+                .name(student.getFullName())
+                .className(className)
+                .issueType("low_score")
+                .detail(String.format("Điểm TB: %.1f", avgScore))
+                .avatar(student.getFullName().substring(0, 1).toUpperCase())
+                .build());
+        }
+
+        // 2. Học sinh thiếu > 2 bài nộp
+        List<Assignment> pastAssignments = assignmentRepository.findAssignmentsPastDeadline(teacherId, LocalDateTime.now());
+        Map<User, Integer> missingCountMap = new HashMap<>();
+        
+        for (Assignment a : pastAssignments) {
+            for (User student : a.getClassroom().getStudents()) {
+                boolean submitted = submissionRepository.existsByAssignmentIdAndStudentIdAndStatusNot(a.getId(), student.getId(), SubmissionStatus.DRAFT);
+                if (!submitted) {
+                    missingCountMap.put(student, missingCountMap.getOrDefault(student, 0) + 1);
+                }
+            }
+        }
+
+        for (Map.Entry<User, Integer> entry : missingCountMap.entrySet()) {
+            if (entry.getValue() > 2) {
+                User student = entry.getKey();
+                String className = getStudentClassName(teacherId, student);
+
+                atRiskStudents.add(AtRiskStudentDto.builder()
+                    .id(student.getId())
+                    .name(student.getFullName())
+                    .className(className)
+                    .issueType("missing_assignments")
+                    .detail("Thiếu " + entry.getValue() + " bài tập")
+                    .avatar(student.getFullName().substring(0, 1).toUpperCase())
+                    .build());
+            }
+        }
+
+        return atRiskStudents;
+    }
+
+    private String getStudentClassName(long teacherId, User student) {
+        List<Classroom> classes = classroomRepository.findByStudentsId(student.getId());
+        for (Classroom c : classes) {
+            if (c.getTeacher().getId() == teacherId) {
+                return c.getClassName();
+            }
+        }
+        return "N/A";
     }
 }
