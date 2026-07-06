@@ -13,4 +13,6 @@ public interface AuthService {
     MessageResponse registerUser(SignupRequest signUpRequest);
 
     MessageResponse verifyUser(String token);
+
+    JwtResponse authenticateWithGoogle(com.codegym.mathclass.auth.dto.request.GoogleAuthRequest request);
 }

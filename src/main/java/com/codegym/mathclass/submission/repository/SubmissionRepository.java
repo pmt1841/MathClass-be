@@ -21,8 +21,10 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
 
     boolean existsByAssignmentId(long assignmentId);
 
+    boolean existsByAssignmentIdAndStudentIdAndStatusNot(long assignmentId, long studentId, SubmissionStatus status);
+
     @Query("SELECT s FROM Submission s WHERE s.assignment.id = :assignmentId " +
-            "AND s.status <> com.codegym.mathclass.submission.entity.SubmissionStatus.DRAFT " +
+            "AND s.status <> 'DRAFT' " +
             "AND (:status IS NULL OR s.status = :status) " +
             "AND LOWER(s.student.fullName) LIKE LOWER(CONCAT('%', :keyword, '%'))")
     Page<Submission> findSubmissionsByAssignment(

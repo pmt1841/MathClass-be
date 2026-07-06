@@ -115,7 +115,7 @@ public class ClassroomServiceImpl implements ClassroomService {
         classroomRepository.save(classroom);
 
         String subject = "Bạn đã được thêm vào lớp học " + classroom.getClassName();
-        String classroomLink = frontendUrl + "/classrooms/" + classroom.getClassCode();
+        String classroomLink = frontendUrl + "/classes/" + classroom.getClassCode();
         Context context = new Context();
         context.setVariable("studentName", student.getFullName());
         context.setVariable("isAdded", true);
@@ -124,7 +124,7 @@ public class ClassroomServiceImpl implements ClassroomService {
         context.setVariable("classCode", classroom.getClassCode());
         context.setVariable("classroomLink", classroomLink);
         emailService.sendHtmlMailAsync(studentEmail, subject, "classroom-action", context);
-        notificationService.saveAndSendNotification(student.getId(), subject, "/classrooms/" + classroom.getClassCode());
+        notificationService.saveAndSendNotification(student.getId(), subject, "/classes/" + classroom.getClassCode());
     }
 
     @Override
@@ -217,15 +217,21 @@ public class ClassroomServiceImpl implements ClassroomService {
     private int sortClassrooms(Classroom c1, Classroom c2) {
         if (c1.getUpdatedAt() != null && c2.getUpdatedAt() != null) {
             int compareResult = c2.getUpdatedAt().compareTo(c1.getUpdatedAt());
-            if (compareResult != 0) return compareResult;
-        } else if (c1.getUpdatedAt() != null) return -1;
-        else if (c2.getUpdatedAt() != null) return 1;
+            if (compareResult != 0)
+                return compareResult;
+        } else if (c1.getUpdatedAt() != null)
+            return -1;
+        else if (c2.getUpdatedAt() != null)
+            return 1;
 
         if (c1.getCreatedAt() != null && c2.getCreatedAt() != null) {
             int compareResult = c2.getCreatedAt().compareTo(c1.getCreatedAt());
-            if (compareResult != 0) return compareResult;
-        } else if (c1.getCreatedAt() != null) return -1;
-        else if (c2.getCreatedAt() != null) return 1;
+            if (compareResult != 0)
+                return compareResult;
+        } else if (c1.getCreatedAt() != null)
+            return -1;
+        else if (c2.getCreatedAt() != null)
+            return 1;
 
         if (c1.getClassName() != null && c2.getClassName() != null) {
             return c1.getClassName().compareToIgnoreCase(c2.getClassName());

@@ -61,6 +61,8 @@ public class SubmissionServiceImpl implements SubmissionService {
         submission.setAssignment(assignment);
         submission.setStudent(student);
 
+        boolean isNewlySubmitted = (submission.getStatus() != SubmissionStatus.SUBMITTED && requestDto.getStatus() == SubmissionStatus.SUBMITTED);
+
         String content = requestDto.getContent() == null ? "" : requestDto.getContent();
 
         if (requestDto.getStatus() == SubmissionStatus.SUBMITTED) {
@@ -76,6 +78,11 @@ public class SubmissionServiceImpl implements SubmissionService {
         submission.setStatus(requestDto.getStatus());
 
         Submission savedSubmission = submissionRepository.save(submission);
+
+        if (isNewlySubmitted) {
+            sendSubmissionNotificationToTeacher(savedSubmission, assignment);
+        }
+
         return mapToDto(savedSubmission);
     }
 
@@ -88,6 +95,8 @@ public class SubmissionServiceImpl implements SubmissionService {
         if (submission.getStudent().getId() != studentId) {
             throw new AccessDeniedException("Bạn không có quyền sửa bài nộp này");
         }
+
+        boolean isNewlySubmitted = (submission.getStatus() != SubmissionStatus.SUBMITTED && requestDto.getStatus() == SubmissionStatus.SUBMITTED);
 
         Assignment assignment = submission.getAssignment();
         if (assignment.getDeadline() != null && LocalDateTime.now().isAfter(assignment.getDeadline())) {
@@ -113,6 +122,11 @@ public class SubmissionServiceImpl implements SubmissionService {
         submission.setStatus(requestDto.getStatus());
 
         Submission savedSubmission = submissionRepository.save(submission);
+
+        if (isNewlySubmitted) {
+            sendSubmissionNotificationToTeacher(savedSubmission, assignment);
+        }
+
         return mapToDto(savedSubmission);
     }
 
@@ -241,5 +255,22 @@ public class SubmissionServiceImpl implements SubmissionService {
                 .submittedAt(submission.getSubmittedAt())
                 .updatedAt(submission.getUpdatedAt())
                 .build();
+    }
+
+    private void sendSubmissionNotificationToTeacher(Submission submission, Assignment assignment) {
+        User teacher = assignment.getTeacher();
+        User student = submission.getStudent();
+
+        String subject = "Học sinh " + student.getFullName() + " đã nộp bài tập: " + assignment.getTitle();
+        String link = frontendUrl + "/assignments/" + assignment.getId() + "/submissions/" + submission.getId();
+
+        Context context = new Context();
+        context.setVariable("teacherName", teacher.getFullName());
+        context.setVariable("studentName", student.getFullName());
+        context.setVariable("assignmentName", assignment.getTitle());
+        context.setVariable("link", link);
+
+        emailService.sendHtmlMailAsync(teacher.getEmail(), subject, "submission-submitted", context);
+        notificationService.saveAndSendNotification(teacher.getId(), subject, link);
     }
 }
