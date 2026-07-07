@@ -19,6 +19,8 @@ import com.codegym.mathclass.security.jwt.JwtUtils;
 import com.codegym.mathclass.security.services.CustomUserDetailsService;
 
 import java.util.List;
+import java.util.Arrays;
+import org.springframework.beans.factory.annotation.Value;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.cors.CorsConfiguration;
@@ -35,9 +37,12 @@ public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
     private final AuthEntryPointJwt unauthorizedHandler;
-
     private final JwtUtils jwtUtils;
 
+    @Value("${mathclass.app.cors.allowedOrigins:http://localhost:3000,http://localhost:5173}")
+    private String[] allowedOrigins;
+
+    @Bean
     public AuthTokenFilter authenticationJwtTokenFilter() {
         return new AuthTokenFilter(jwtUtils, userDetailsService);
     }
@@ -80,7 +85,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173"));
+        configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
 
         // Cho phép tất cả các Method (GET, POST, PUT, DELETE, OPTIONS, PATCH)
         configuration.setAllowedMethods(List.of("*"));
