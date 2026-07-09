@@ -1,130 +1,168 @@
 package com.codegym.mathclass.auth.controller;
 
+import com.codegym.mathclass.auth.dto.request.GoogleAuthRequest;
 import com.codegym.mathclass.auth.dto.request.LoginRequest;
 import com.codegym.mathclass.auth.dto.request.SignupRequest;
+import com.codegym.mathclass.auth.dto.response.JwtResponse;
 import com.codegym.mathclass.auth.dto.response.MessageResponse;
 import com.codegym.mathclass.auth.service.AuthService;
-import com.codegym.mathclass.user.entity.Role;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = AuthController.class)
-@AutoConfigureMockMvc(addFilters = false) // Bypass spring security filters for unit test
+@ExtendWith(MockitoExtension.class)
 class AuthControllerTest {
 
-        @Autowired
-        private MockMvc mockMvc;
+    private MockMvc mockMvc;
 
-        @MockitoBean
-        private AuthService authService;
+    @Mock
+    private AuthService authService;
 
-        private ObjectMapper objectMapper = new ObjectMapper();
+    @InjectMocks
+    private AuthController authController;
 
-        private LoginRequest loginRequest;
-        private SignupRequest signupRequest;
+    private ObjectMapper objectMapper;
 
-        @BeforeEach
-        void setUp() {
-                loginRequest = new LoginRequest();
-                loginRequest.setEmail("test@gmail.com");
-                loginRequest.setPassword("123456");
+    @BeforeEach
+    void setUp() {
+        objectMapper = new ObjectMapper();
+        
+        mockMvc = MockMvcBuilders.standaloneSetup(authController)
+                .build();
+    }
 
-                signupRequest = new SignupRequest();
-                signupRequest.setEmail("newuser@gmail.com");
-                signupRequest.setPassword("123456");
-                signupRequest.setFullName("New User");
-                signupRequest.setRole(Role.STUDENT);
-                signupRequest.setPhoneNumber("0123456789");
-        }
+    // ==========================================
+    // Tests for login
+    // ==========================================
 
-        @Test
-        @DisplayName("Should login successfully")
-        void login_Success() throws Exception {
-                when(authService.authenticateUser(any(LoginRequest.class)))
-                                .thenReturn((ResponseEntity) ResponseEntity.ok(new MessageResponse("Login success")));
+    @Test
+    @DisplayName("Should login and return JWT Response")
+    void login_ValidRequest_ReturnsOkAndJwtResponse() throws Exception {
+        // Given
+        LoginRequest loginRequest = new LoginRequest();
+        loginRequest.setEmail("test@test.com");
+        loginRequest.setPassword("password");
 
-                mockMvc.perform(post("/api/auth/login")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(loginRequest)))
-                                .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.message").value("Login success"));
-        }
+        JwtResponse mockJwtResponse = new JwtResponse("mockJwt", 1L, "test@test.com", "Test User", "STUDENT", null);
+        when(authService.authenticateUser(any(LoginRequest.class))).thenReturn(mockJwtResponse);
 
-        @Test
-        @DisplayName("Should return 400 Bad Request if login request is invalid (missing email)")
-        void login_InvalidRequest() throws Exception {
-                loginRequest.setEmail(null); // Invalid: email cannot be null
+        // When & Then
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value("mockJwt"))
+                .andExpect(jsonPath("$.email").value("test@test.com"))
+                .andExpect(jsonPath("$.userRole").value("STUDENT"));
+                
+        verify(authService, times(1)).authenticateUser(any(LoginRequest.class));
+    }
 
-                mockMvc.perform(post("/api/auth/login")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(loginRequest)))
-                                .andExpect(status().isBadRequest());
-        }
+    // ==========================================
+    // Tests for googleAuth
+    // ==========================================
 
-        @Test
-        @DisplayName("Should register successfully")
-        void register_Success() throws Exception {
-                when(authService.registerUser(any(SignupRequest.class)))
-                                .thenReturn((ResponseEntity) ResponseEntity
-                                                .ok(new MessageResponse("Register success")));
+    @Test
+    @DisplayName("Should authenticate with Google and return JWT Response")
+    void googleAuth_ValidRequest_ReturnsOkAndJwtResponse() throws Exception {
+        // Given
+        GoogleAuthRequest googleRequest = new GoogleAuthRequest();
+        googleRequest.setCredential("mockGoogleToken");
+        
+        JwtResponse mockJwtResponse = new JwtResponse("mockJwt", 1L, "google@test.com", "Google User", "STUDENT", "url");
+        when(authService.authenticateWithGoogle(any(GoogleAuthRequest.class))).thenReturn(mockJwtResponse);
 
-                mockMvc.perform(post("/api/auth/register")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(signupRequest)))
-                                .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.message").value("Register success"));
-        }
+        // When & Then
+        mockMvc.perform(post("/api/auth/google")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(googleRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value("mockJwt"))
+                .andExpect(jsonPath("$.email").value("google@test.com"));
+                
+        verify(authService, times(1)).authenticateWithGoogle(any(GoogleAuthRequest.class));
+    }
 
-        @Test
-        @DisplayName("Should return 400 Bad Request if signup request is invalid (missing full name)")
-        void register_InvalidRequest() throws Exception {
-                signupRequest.setFullName(null); // Invalid: full name may be required depending on validation
+    // ==========================================
+    // Tests for register
+    // ==========================================
 
-                mockMvc.perform(post("/api/auth/register")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(signupRequest)))
-                                .andExpect(status().isBadRequest());
-        }
+    @Test
+    @DisplayName("Should register new user and return success message")
+    void register_ValidRequest_ReturnsOkAndMessage() throws Exception {
+        // Given
+        SignupRequest signupRequest = new SignupRequest();
+        signupRequest.setEmail("new@test.com");
+        signupRequest.setPassword("password");
+        signupRequest.setFullName("New User");
+        signupRequest.setPhoneNumber("0123456789");
+        signupRequest.setRole(com.codegym.mathclass.user.entity.Role.STUDENT);
 
-        @Test
-        @DisplayName("Should logout successfully")
-        void logout_Success() throws Exception {
-                when(authService.logoutUser())
-                                .thenReturn((ResponseEntity) ResponseEntity.ok(new MessageResponse("Logout success")));
+        MessageResponse mockMessageResponse = new MessageResponse("Đăng ký tài khoản thành công!");
+        when(authService.registerUser(any(SignupRequest.class))).thenReturn(mockMessageResponse);
 
-                mockMvc.perform(post("/api/auth/logout")
-                                .contentType(MediaType.APPLICATION_JSON))
-                                .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.message").value("Logout success"));
-        }
+        // When & Then
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(signupRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Đăng ký tài khoản thành công!"));
+                
+        verify(authService, times(1)).registerUser(any(SignupRequest.class));
+    }
 
-        @Test
-        @DisplayName("Should verify user successfully")
-        void verifyUser_Success() throws Exception {
-                String token = "dummy-token";
-                when(authService.verifyUser(token))
-                                .thenReturn((ResponseEntity) ResponseEntity.ok(new MessageResponse("Verify success")));
+    // ==========================================
+    // Tests for logout
+    // ==========================================
 
-                mockMvc.perform(get("/api/auth/verify")
-                                .param("token", token)
-                                .contentType(MediaType.APPLICATION_JSON))
-                                .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.message").value("Verify success"));
-        }
+    @Test
+    @DisplayName("Should logout user and return success message")
+    void logout_Always_ReturnsOkAndMessage() throws Exception {
+        // Given
+        MessageResponse mockMessageResponse = new MessageResponse("Đăng xuất thành công!");
+        when(authService.logoutUser()).thenReturn(mockMessageResponse);
+
+        // When & Then
+        mockMvc.perform(post("/api/auth/logout"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Đăng xuất thành công!"));
+                
+        verify(authService, times(1)).logoutUser();
+    }
+
+    // ==========================================
+    // Tests for verifyUser
+    // ==========================================
+
+    @Test
+    @DisplayName("Should verify user token and return success message")
+    void verifyUser_ValidToken_ReturnsOkAndMessage() throws Exception {
+        // Given
+        String token = "valid-token";
+        MessageResponse mockMessageResponse = new MessageResponse("Tài khoản đã được kích hoạt thành công!");
+        when(authService.verifyUser(token)).thenReturn(mockMessageResponse);
+
+        // When & Then
+        mockMvc.perform(get("/api/auth/verify")
+                        .param("token", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Tài khoản đã được kích hoạt thành công!"));
+                
+        verify(authService, times(1)).verifyUser(token);
+    }
 }

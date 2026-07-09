@@ -27,7 +27,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -109,8 +110,9 @@ class AssignmentServiceImplTest {
     // =====================================================
 
     @Test
-    @DisplayName("should create assignment as DRAFT successfully when user is a teacher")
-    void createAssignment_Success() {
+    @DisplayName("Should create assignment as DRAFT successfully when user is a teacher")
+    void createAssignment_UserIsTeacher_ReturnsAssignmentResponse() {
+        // Given
         when(userRepository.findById(teacherId)).thenReturn(Optional.of(teacher));
         when(assignmentRepository.save(any(Assignment.class))).thenAnswer(invocation -> {
             Assignment a = invocation.getArgument(0);
@@ -125,79 +127,85 @@ class AssignmentServiceImplTest {
         mockResponse.setTeacherId(teacherId);
         when(assignmentMapper.toAssignmentResponse(any(Assignment.class))).thenReturn(mockResponse);
 
+        // When
         AssignmentResponse response = assignmentService.createAssignment(createRequest, teacherId);
 
-        assertNotNull(response);
-        assertEquals(assignmentId, response.getId());
-        assertEquals("Bài tập tích phân", response.getTitle());
-        assertEquals(AssignmentStatus.DRAFT, response.getStatus());
-        // DRAFT → chưa có deadline, isOpen luôn là false
-        assertFalse(response.isOpen());
-        assertNull(response.getDeadline());
-        assertNull(response.getClassCode());
-        assertEquals(teacherId, response.getTeacherId());
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.getId()).isEqualTo(assignmentId);
+        assertThat(response.getTitle()).isEqualTo("Bài tập tích phân");
+        assertThat(response.getStatus()).isEqualTo(AssignmentStatus.DRAFT);
+        assertThat(response.isOpen()).isFalse();
+        assertThat(response.getDeadline()).isNull();
+        assertThat(response.getClassCode()).isNull();
+        assertThat(response.getTeacherId()).isEqualTo(teacherId);
 
         verify(userRepository, times(1)).findById(teacherId);
         verify(assignmentRepository, times(1)).save(any(Assignment.class));
     }
 
     @Test
-    @DisplayName("should throw RuntimeException when teacher is not found")
+    @DisplayName("Should throw RuntimeException when teacher is not found")
     void createAssignment_TeacherNotFound_ThrowsException() {
+        // Given
         when(userRepository.findById(teacherId)).thenReturn(Optional.empty());
 
-        RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> assignmentService.createAssignment(createRequest, teacherId));
-
-        assertEquals("Không tìm thấy người dùng", ex.getMessage());
+        // When & Then
+        assertThatThrownBy(() -> assignmentService.createAssignment(createRequest, teacherId))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("Không tìm thấy người dùng");
+                
         verify(assignmentRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("should throw RuntimeException when user role is STUDENT, not TEACHER")
+    @DisplayName("Should throw RuntimeException when user role is STUDENT, not TEACHER")
     void createAssignment_UserNotTeacher_ThrowsException() {
+        // Given
         when(userRepository.findById(teacherId)).thenReturn(Optional.of(student));
 
-        RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> assignmentService.createAssignment(createRequest, teacherId));
-
-        assertEquals("Chỉ giáo viên mới có quyền tạo bài tập", ex.getMessage());
+        // When & Then
+        assertThatThrownBy(() -> assignmentService.createAssignment(createRequest, teacherId))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("Chỉ giáo viên mới có quyền tạo bài tập");
+                
         verify(assignmentRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("should throw IllegalArgumentException when description contains dangerous LaTeX command \\input")
-    void createAssignment_DangerousLaTeX_input_ThrowsException() {
+    @DisplayName("Should throw IllegalArgumentException when description contains dangerous LaTeX command \\input")
+    void createAssignment_DangerousLaTeXInput_ThrowsException() {
+        // Given
         createRequest.setContent("Xem file này: \\input{/etc/passwd}");
-
         when(userRepository.findById(teacherId)).thenReturn(Optional.of(teacher));
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> assignmentService.createAssignment(createRequest, teacherId));
-
-        assertTrue(ex.getMessage().contains("\\input"),
-                "Message lỗi phải chứa tên lệnh nguy hiểm");
+        // When & Then
+        assertThatThrownBy(() -> assignmentService.createAssignment(createRequest, teacherId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("\\input");
+                
         verify(assignmentRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("should throw IllegalArgumentException when description contains dangerous LaTeX command \\write")
-    void createAssignment_DangerousLaTeX_write_ThrowsException() {
+    @DisplayName("Should throw IllegalArgumentException when description contains dangerous LaTeX command \\write")
+    void createAssignment_DangerousLaTeXWrite_ThrowsException() {
+        // Given
         createRequest.setContent("\\write18{rm -rf /}");
-
         when(userRepository.findById(teacherId)).thenReturn(Optional.of(teacher));
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> assignmentService.createAssignment(createRequest, teacherId));
-
-        assertTrue(ex.getMessage().contains("lệnh LaTeX không được phép"));
+        // When & Then
+        assertThatThrownBy(() -> assignmentService.createAssignment(createRequest, teacherId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("lệnh LaTeX không được phép");
+                
         verify(assignmentRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("should allow safe LaTeX math expressions in description")
+    @DisplayName("Should allow safe LaTeX math expressions in description")
     void createAssignment_SafeLaTeX_Success() {
-        // LaTeX toán học thông thường – phải được chấp nhận
+        // Given
         createRequest.setDescription("Giải phương trình $ax^2 + bx + c = 0$, " +
                 "sử dụng công thức $x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$");
 
@@ -212,10 +220,13 @@ class AssignmentServiceImplTest {
         mockResponse.setStatus(AssignmentStatus.DRAFT);
         when(assignmentMapper.toAssignmentResponse(any(Assignment.class))).thenReturn(mockResponse);
 
+        // When
         AssignmentResponse response = assignmentService.createAssignment(createRequest, teacherId);
 
-        assertNotNull(response);
-        assertEquals(AssignmentStatus.DRAFT, response.getStatus());
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.getStatus()).isEqualTo(AssignmentStatus.DRAFT);
+        
         verify(assignmentRepository, times(1)).save(any(Assignment.class));
     }
 
@@ -224,30 +235,35 @@ class AssignmentServiceImplTest {
     // =====================================================
 
     @Test
-    @DisplayName("should publish assignment successfully and assign classrooms")
-    void publishAssignment_Success() {
+    @DisplayName("Should publish assignment successfully and assign classrooms")
+    void publishAssignment_ValidRequest_Success() {
+        // Given
         when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(draftAssignment));
         when(classroomRepository.findByClassCode("MATH2024")).thenReturn(Optional.of(classroom));
 
+        // When
         assignmentService.publishAssignment(assignmentId, publishRequest, teacherId);
 
-        assertEquals(AssignmentStatus.ARCHIVED, draftAssignment.getStatus());
+        // Then
+        assertThat(draftAssignment.getStatus()).isEqualTo(AssignmentStatus.ARCHIVED);
         verify(assignmentRepository, times(1)).save(draftAssignment);
 
         org.mockito.ArgumentCaptor<List<Assignment>> listCaptor = org.mockito.ArgumentCaptor.forClass(List.class);
         verify(assignmentRepository, times(1)).saveAll(listCaptor.capture());
 
         List<Assignment> savedClones = listCaptor.getValue();
-        assertEquals(1, savedClones.size());
+        assertThat(savedClones).hasSize(1);
+        
         Assignment clone = savedClones.get(0);
-        assertEquals(AssignmentStatus.PUBLISHED, clone.getStatus());
-        assertEquals("MATH2024", clone.getClassroom().getClassCode());
-        assertNotNull(clone.getDeadline(), "Deadline phải được gán sau khi publish");
+        assertThat(clone.getStatus()).isEqualTo(AssignmentStatus.PUBLISHED);
+        assertThat(clone.getClassroom().getClassCode()).isEqualTo("MATH2024");
+        assertThat(clone.getDeadline()).isNotNull();
     }
 
     @Test
-    @DisplayName("should publish to multiple classrooms successfully")
+    @DisplayName("Should publish to multiple classrooms successfully")
     void publishAssignment_MultipleClasses_Success() {
+        // Given
         Classroom classroom2 = new Classroom();
         classroom2.setId(101L);
         classroom2.setClassCode("MATH2025");
@@ -265,60 +281,69 @@ class AssignmentServiceImplTest {
         when(classroomRepository.findByClassCode("MATH2024")).thenReturn(Optional.of(classroom));
         when(classroomRepository.findByClassCode("MATH2025")).thenReturn(Optional.of(classroom2));
 
+        // When
         assignmentService.publishAssignment(assignmentId, publishRequest, teacherId);
 
+        // Then
         org.mockito.ArgumentCaptor<List<Assignment>> listCaptor = org.mockito.ArgumentCaptor.forClass(List.class);
         verify(assignmentRepository, times(1)).saveAll(listCaptor.capture());
 
         List<Assignment> savedClones = listCaptor.getValue();
-        assertEquals(2, savedClones.size());
-        assertTrue(savedClones.stream().anyMatch(c -> c.getClassroom().getClassCode().equals("MATH2024")));
-        assertTrue(savedClones.stream().anyMatch(c -> c.getClassroom().getClassCode().equals("MATH2025")));
+        assertThat(savedClones).hasSize(2);
+        assertThat(savedClones).anyMatch(c -> c.getClassroom().getClassCode().equals("MATH2024"));
+        assertThat(savedClones).anyMatch(c -> c.getClassroom().getClassCode().equals("MATH2025"));
     }
 
     @Test
-    @DisplayName("should throw RuntimeException when assignment is not found")
+    @DisplayName("Should throw RuntimeException when assignment is not found")
     void publishAssignment_AssignmentNotFound_ThrowsException() {
+        // Given
         when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.empty());
 
-        RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> assignmentService.publishAssignment(assignmentId, publishRequest, teacherId));
-
-        assertEquals("Không tìm thấy bài tập", ex.getMessage());
+        // When & Then
+        assertThatThrownBy(() -> assignmentService.publishAssignment(assignmentId, publishRequest, teacherId))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("Không tìm thấy bài tập");
+                
         verify(assignmentRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("should throw RuntimeException when teacher does not own the assignment")
+    @DisplayName("Should throw RuntimeException when teacher does not own the assignment")
     void publishAssignment_NotOwner_ThrowsException() {
+        // Given
         long otherTeacherId = 999L;
         when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(draftAssignment));
 
-        RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> assignmentService.publishAssignment(assignmentId, publishRequest, otherTeacherId));
-
-        assertEquals("Bạn không có quyền publish bài tập này", ex.getMessage());
+        // When & Then
+        assertThatThrownBy(() -> assignmentService.publishAssignment(assignmentId, publishRequest, otherTeacherId))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("Bạn không có quyền publish bài tập này");
+                
         verify(assignmentRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("should throw RuntimeException when assignment is already published")
+    @DisplayName("Should throw RuntimeException when assignment is already published")
     void publishAssignment_AlreadyPublished_ThrowsException() {
+        // Given
         draftAssignment.setStatus(AssignmentStatus.PUBLISHED);
         draftAssignment.setClassroom(classroom);
 
         when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(draftAssignment));
 
-        RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> assignmentService.publishAssignment(assignmentId, publishRequest, teacherId));
-
-        assertEquals("Bài tập đã được publish hoặc archive trước đó", ex.getMessage());
+        // When & Then
+        assertThatThrownBy(() -> assignmentService.publishAssignment(assignmentId, publishRequest, teacherId))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("Bài tập đã được publish hoặc archive trước đó");
+                
         verify(assignmentRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("should throw RuntimeException when classroom does not belong to the teacher")
+    @DisplayName("Should throw RuntimeException when classroom does not belong to the teacher")
     void publishAssignment_ClassNotBelongToTeacher_ThrowsException() {
+        // Given
         User otherTeacher = new User();
         otherTeacher.setId(888L);
         otherTeacher.setRole(Role.TEACHER);
@@ -331,24 +356,27 @@ class AssignmentServiceImplTest {
         when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(draftAssignment));
         when(classroomRepository.findByClassCode("MATH2024")).thenReturn(Optional.of(otherClassroom));
 
-        RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> assignmentService.publishAssignment(assignmentId, publishRequest, teacherId));
-
-        assertTrue(ex.getMessage().contains("MATH2024"));
-        assertTrue(ex.getMessage().contains("không có quyền"));
+        // When & Then
+        assertThatThrownBy(() -> assignmentService.publishAssignment(assignmentId, publishRequest, teacherId))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("MATH2024")
+                .hasMessageContaining("không có quyền");
+                
         verify(assignmentRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("should throw RuntimeException when one of the classCodes is not found")
+    @DisplayName("Should throw RuntimeException when one of the classCodes is not found")
     void publishAssignment_ClassroomNotFound_ThrowsException() {
+        // Given
         when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(draftAssignment));
         when(classroomRepository.findByClassCode("MATH2024")).thenReturn(Optional.empty());
 
-        RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> assignmentService.publishAssignment(assignmentId, publishRequest, teacherId));
-
-        assertTrue(ex.getMessage().contains("MATH2024"));
+        // When & Then
+        assertThatThrownBy(() -> assignmentService.publishAssignment(assignmentId, publishRequest, teacherId))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("MATH2024");
+                
         verify(assignmentRepository, never()).save(any());
     }
 }
