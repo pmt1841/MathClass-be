@@ -144,7 +144,7 @@ public class ClassroomJoinRequestServiceImpl implements ClassroomJoinRequestServ
             // directly here to avoid sending the standard add email.
             // Better to use custom email here since they requested it.
             String subject = "Yêu cầu tham gia lớp học " + classroom.getClassName() + " đã được DUYỆT";
-            String classroomLink = frontendUrl + "/classes/" + classroom.getClassCode();
+            String classroomLink = frontendUrl + "/classes/" + classroom.getClassCode() + "/student";
             Context context = new Context();
             context.setVariable("studentName", student.getFullName());
             context.setVariable("isApproved", true);
