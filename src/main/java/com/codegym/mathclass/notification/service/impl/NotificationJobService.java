@@ -34,8 +34,8 @@ public class NotificationJobService {
     @Value("${FRONTEND_URL}")
     private String frontendUrl;
 
-    // Chạy mỗi 1 phút để test, thực tế có thể đặt "0 0 * * * *" để chạy mỗi giờ
-    @Scheduled(fixedRate = 60000)
+    // Chạy mỗi giờ
+    @Scheduled(cron = "0 0 * * * *")
     @Transactional
     public void sendDeadlineReminders() {
         LocalDateTime now = LocalDateTime.now();
