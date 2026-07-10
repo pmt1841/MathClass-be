@@ -14,6 +14,7 @@ import com.codegym.mathclass.submission.repository.SubmissionRepository;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.EmailService;
+import com.codegym.mathclass.utils.LaTeXSanitizer;
 import com.codegym.mathclass.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -65,6 +66,11 @@ public class SubmissionServiceImpl implements SubmissionService {
 
         String content = requestDto.getContent() == null ? "" : requestDto.getContent();
 
+        if (content != null && !LaTeXSanitizer.isSafe(content)) {
+            String dangerous = LaTeXSanitizer.findDangerousCommand(content);
+            throw new BadRequestException("Nội dung bài làm chứa lệnh LaTeX không hợp lệ: " + dangerous);
+        }
+
         if (requestDto.getStatus() == SubmissionStatus.SUBMITTED) {
             if (content.trim().isEmpty()) {
                 throw new BadRequestException("Nội dung bài làm không được để trống khi nộp bài");
@@ -108,6 +114,11 @@ public class SubmissionServiceImpl implements SubmissionService {
         }
 
         String content = requestDto.getContent() == null ? "" : requestDto.getContent();
+
+        if (content != null && !LaTeXSanitizer.isSafe(content)) {
+            String dangerous = LaTeXSanitizer.findDangerousCommand(content);
+            throw new BadRequestException("Nội dung bài làm chứa lệnh LaTeX không hợp lệ: " + dangerous);
+        }
 
         if (requestDto.getStatus() == SubmissionStatus.SUBMITTED) {
             if (content.trim().isEmpty()) {
@@ -174,6 +185,11 @@ public class SubmissionServiceImpl implements SubmissionService {
 
         if (submission.getStatus() == SubmissionStatus.DRAFT) {
             throw new BadRequestException("Học sinh chưa nộp bài");
+        }
+
+        if (requestDto.getTeacherFeedback() != null && !LaTeXSanitizer.isSafe(requestDto.getTeacherFeedback())) {
+            String dangerous = LaTeXSanitizer.findDangerousCommand(requestDto.getTeacherFeedback());
+            throw new BadRequestException("Nội dung phản hồi chứa lệnh LaTeX không hợp lệ: " + dangerous);
         }
 
         submission.setScore(requestDto.getScore());

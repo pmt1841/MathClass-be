@@ -85,7 +85,7 @@ class SubmissionCommentControllerTest {
 
         List<SubmissionCommentResponse> responses = Collections.singletonList(response);
 
-        when(submissionCommentService.getCommentsBySubmissionId(100L)).thenReturn(responses);
+        when(submissionCommentService.getCommentsBySubmissionId(100L, "teacher@gmail.com")).thenReturn(responses);
 
         // When & Then
         mockMvc.perform(get("/api/submissions/100/comments"))
@@ -93,7 +93,7 @@ class SubmissionCommentControllerTest {
                 .andExpect(jsonPath("$[0].id").value(10L))
                 .andExpect(jsonPath("$[0].content").value("Good job"));
 
-        verify(submissionCommentService, times(1)).getCommentsBySubmissionId(100L);
+        verify(submissionCommentService, times(1)).getCommentsBySubmissionId(100L, "teacher@gmail.com");
     }
 
     // ==========================================

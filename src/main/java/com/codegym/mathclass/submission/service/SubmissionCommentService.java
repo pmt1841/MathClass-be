@@ -6,7 +6,7 @@ import com.codegym.mathclass.submission.dto.SubmissionCommentResponse;
 import java.util.List;
 
 public interface SubmissionCommentService {
-    List<SubmissionCommentResponse> getCommentsBySubmissionId(Long submissionId);
+    List<SubmissionCommentResponse> getCommentsBySubmissionId(Long submissionId, String currentUserEmail);
     
     SubmissionCommentResponse addComment(Long submissionId, Long teacherId, SubmissionCommentRequest request);
     

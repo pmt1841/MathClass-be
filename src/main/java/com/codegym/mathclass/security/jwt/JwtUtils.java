@@ -20,7 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class JwtUtils {
 
-    @Value("${mathclass.app.jwtSecret:======================MathClass=Spring=Boot=Secret=Key======================}")
+    @Value("${mathclass.app.jwtSecret:dGhpc19pc19hX3NlY3VyZV9hbmRfZ2VuZXJhdGVkX2Jhc2U2NF9rZXlfZm9yX21hdGhjY2xhc3NfYXBwbGljYXRpb25fNTEyYml0cwo=}")
     private String jwtSecret;
 
     @Value("${mathclass.app.jwtExpirationMs:86400000}")

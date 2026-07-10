@@ -313,4 +313,57 @@ class SubmissionServiceImplTest {
         assertThat(responsePage.getTotalElements()).isEqualTo(1);
         assertThat(responsePage.getContent().get(0).getId()).isEqualTo(100L);
     }
+
+    // ==========================================
+    // Security Regression Tests: LaTeX Injection
+    // ==========================================
+
+    @Test
+    @DisplayName("Should throw BadRequestException when create submission contains dangerous LaTeX")
+    void createSubmission_DangerousLaTeX_ThrowsBadRequestException() {
+        // Given
+        SubmissionRequest request = new SubmissionRequest();
+        request.setAssignmentId(10L);
+        request.setStatus(SubmissionStatus.SUBMITTED);
+        request.setContent("This is dangerous: \\input{/etc/passwd}");
+
+        when(assignmentRepository.findById(10L)).thenReturn(Optional.of(assignment));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(student));
+        when(submissionRepository.findFirstByAssignmentIdAndStudentId(10L, 2L)).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThatThrownBy(() -> submissionService.createSubmission(2L, request))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Nội dung bài làm chứa lệnh LaTeX không hợp lệ");
+    }
+
+    @Test
+    @DisplayName("Should throw BadRequestException when update submission contains dangerous LaTeX")
+    void updateSubmission_DangerousLaTeX_ThrowsBadRequestException() {
+        // Given
+        SubmissionRequest request = new SubmissionRequest();
+        request.setStatus(SubmissionStatus.SUBMITTED);
+        request.setContent("This is dangerous: \\write18{rm -rf /}");
+
+        when(submissionRepository.findById(100L)).thenReturn(Optional.of(submission));
+
+        // When & Then
+        assertThatThrownBy(() -> submissionService.updateSubmission(100L, 2L, request))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Nội dung bài làm chứa lệnh LaTeX không hợp lệ");
+    }
+
+    @Test
+    @DisplayName("Should throw BadRequestException when grading with dangerous LaTeX in teacher feedback")
+    void gradeSubmission_DangerousLaTeX_ThrowsBadRequestException() {
+        // Given
+        GradeRequest request = new GradeRequest(8.0, "Nice try, but: \\include{sensitive}");
+
+        when(submissionRepository.findById(100L)).thenReturn(Optional.of(submission));
+
+        // When & Then
+        assertThatThrownBy(() -> submissionService.gradeSubmission(100L, 1L, request))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Nội dung phản hồi chứa lệnh LaTeX không hợp lệ");
+    }
 }

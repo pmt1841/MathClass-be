@@ -395,6 +395,11 @@ public class AssignmentServiceImpl implements AssignmentService {
             if (assignment.getClassroom() == null) {
                 throw new BadRequestException("Bài tập chưa được giao cho lớp nào");
             }
+            boolean isStudentInClass = assignment.getClassroom().getStudents().stream()
+                    .anyMatch(student -> student.getId() == userId);
+            if (!isStudentInClass) {
+                throw new AccessDeniedException("Bạn không có quyền xem bài tập này");
+            }
         } else {
             throw new AccessDeniedException("Vai trò không hợp lệ");
         }
