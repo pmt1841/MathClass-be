@@ -14,6 +14,8 @@ import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.assignment.mapper.AssignmentMapper;
 import com.codegym.mathclass.utils.SupabaseStorageService;
 import com.codegym.mathclass.user.repository.UserRepository;
+import com.codegym.mathclass.submission.repository.SubmissionRepository;
+import com.codegym.mathclass.exception.AccessDeniedException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -49,6 +51,9 @@ class AssignmentServiceImplTest {
 
     @Mock
     private SupabaseStorageService supabaseStorageService;
+
+    @Mock
+    private SubmissionRepository submissionRepository;
 
     @InjectMocks
     private AssignmentServiceImpl assignmentService;
@@ -378,5 +383,87 @@ class AssignmentServiceImplTest {
                 .hasMessageContaining("MATH2024");
                 
         verify(assignmentRepository, never()).save(any());
+    }
+
+    // ==========================================
+    // Tests for getAssignmentById (Security Hardening)
+    // ==========================================
+
+    @Test
+    @DisplayName("Teacher should get their own assignment successfully")
+    void getAssignmentById_TeacherOwnAssignment_ReturnsResponse() {
+        Assignment assignment = new Assignment();
+        assignment.setId(100L);
+        assignment.setTeacher(teacher);
+
+        AssignmentResponse mockResponse = new AssignmentResponse();
+        mockResponse.setId(100L);
+
+        when(assignmentRepository.findById(100L)).thenReturn(Optional.of(assignment));
+        when(assignmentMapper.toAssignmentResponse(assignment)).thenReturn(mockResponse);
+
+        AssignmentResponse response = assignmentService.getAssignmentById(100L, teacherId, "TEACHER");
+
+        assertThat(response).isNotNull();
+        assertThat(response.getId()).isEqualTo(100L);
+    }
+
+    @Test
+    @DisplayName("Teacher should not get another teacher's assignment")
+    void getAssignmentById_TeacherNotOwnAssignment_ThrowsAccessDeniedException() {
+        Assignment assignment = new Assignment();
+        assignment.setId(100L);
+        User otherTeacher = new User();
+        otherTeacher.setId(999L);
+        assignment.setTeacher(otherTeacher);
+
+        when(assignmentRepository.findById(100L)).thenReturn(Optional.of(assignment));
+
+        assertThatThrownBy(() -> assignmentService.getAssignmentById(100L, teacherId, "TEACHER"))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("Bạn không có quyền xem bài tập này");
+    }
+
+    @Test
+    @DisplayName("Student in class should get published assignment successfully")
+    void getAssignmentById_StudentInClassPublishedAssignment_ReturnsResponse() {
+        Assignment assignment = new Assignment();
+        assignment.setId(100L);
+        assignment.setStatus(AssignmentStatus.PUBLISHED);
+        
+        Classroom classObj = new Classroom();
+        classObj.setId(200L);
+        classObj.setStudents(new java.util.HashSet<>(java.util.List.of(student)));
+        assignment.setClassroom(classObj);
+
+        AssignmentResponse mockResponse = new AssignmentResponse();
+        mockResponse.setId(100L);
+
+        when(assignmentRepository.findById(100L)).thenReturn(Optional.of(assignment));
+        when(assignmentMapper.toAssignmentResponse(assignment)).thenReturn(mockResponse);
+
+        AssignmentResponse response = assignmentService.getAssignmentById(100L, student.getId(), "STUDENT");
+
+        assertThat(response).isNotNull();
+        assertThat(response.getId()).isEqualTo(100L);
+    }
+
+    @Test
+    @DisplayName("Student not in class should fail to get published assignment")
+    void getAssignmentById_StudentNotInClassPublishedAssignment_ThrowsAccessDeniedException() {
+        Assignment assignment = new Assignment();
+        assignment.setId(100L);
+        assignment.setStatus(AssignmentStatus.PUBLISHED);
+        
+        Classroom classObj = new Classroom();
+        classObj.setId(200L);
+        classObj.setStudents(new java.util.HashSet<>()); // Không có học sinh này
+        assignment.setClassroom(classObj);
+
+        when(assignmentRepository.findById(100L)).thenReturn(Optional.of(assignment));
+
+        assertThatThrownBy(() -> assignmentService.getAssignmentById(100L, student.getId(), "STUDENT"))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("Bạn không có quyền xem bài tập này");
     }
 }

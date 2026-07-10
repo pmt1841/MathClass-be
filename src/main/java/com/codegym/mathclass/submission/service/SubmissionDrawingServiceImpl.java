@@ -57,10 +57,12 @@ public class SubmissionDrawingServiceImpl implements SubmissionDrawingService {
         Submission submission = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Submission not found with id: " + submissionId));
 
-        // In a real application, you might want to allow teachers to view the drawing
-        // as well.
-        // Assuming there is a role check or similar logic. For now, we just ensure it
-        // exists.
+        boolean isStudentOwner = submission.getStudent().getEmail().equals(currentUserUsername);
+        boolean isTeacherOwner = submission.getAssignment().getTeacher().getEmail().equals(currentUserUsername);
+
+        if (!isStudentOwner && !isTeacherOwner) {
+            throw new AccessDeniedException("You are not allowed to view this drawing");
+        }
 
         SubmissionDrawing drawing = submissionDrawingRepository.findBySubmissionId(submission.getId())
                 .orElseThrow(

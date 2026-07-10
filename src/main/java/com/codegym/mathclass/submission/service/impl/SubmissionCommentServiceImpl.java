@@ -3,6 +3,7 @@ package com.codegym.mathclass.submission.service.impl;
 import com.codegym.mathclass.exception.AccessDeniedException;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.ResourceNotFoundException;
+import com.codegym.mathclass.utils.LaTeXSanitizer;
 import com.codegym.mathclass.submission.dto.SubmissionCommentRequest;
 import com.codegym.mathclass.submission.dto.SubmissionCommentResponse;
 import com.codegym.mathclass.submission.entity.Submission;
@@ -29,10 +30,15 @@ public class SubmissionCommentServiceImpl implements SubmissionCommentService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<SubmissionCommentResponse> getCommentsBySubmissionId(Long submissionId) {
-        // Kiểm tra submission tồn tại
-        if (!submissionRepository.existsById(submissionId)) {
-            throw new ResourceNotFoundException("Không tìm thấy bài nộp với ID: " + submissionId);
+    public List<SubmissionCommentResponse> getCommentsBySubmissionId(Long submissionId, String currentUserEmail) {
+        Submission submission = submissionRepository.findById(submissionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài nộp với ID: " + submissionId));
+
+        boolean isStudentOwner = submission.getStudent().getEmail().equalsIgnoreCase(currentUserEmail);
+        boolean isTeacherOwner = submission.getAssignment().getTeacher().getEmail().equalsIgnoreCase(currentUserEmail);
+
+        if (!isStudentOwner && !isTeacherOwner) {
+            throw new AccessDeniedException("Bạn không có quyền truy cập nhận xét của bài nộp này");
         }
 
         List<SubmissionComment> comments = submissionCommentRepository.findBySubmissionIdOrderByCreatedAtAsc(submissionId);
@@ -46,6 +52,15 @@ public class SubmissionCommentServiceImpl implements SubmissionCommentService {
     public SubmissionCommentResponse addComment(Long submissionId, Long teacherId, SubmissionCommentRequest request) {
         Submission submission = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài nộp với ID: " + submissionId));
+
+        if (submission.getAssignment().getTeacher().getId() != teacherId) {
+            throw new AccessDeniedException("Bạn không phải giáo viên phụ trách bài tập của bài nộp này");
+        }
+
+        if (request.getContent() != null && !LaTeXSanitizer.isSafe(request.getContent())) {
+            String dangerous = LaTeXSanitizer.findDangerousCommand(request.getContent());
+            throw new BadRequestException("Nội dung nhận xét chứa lệnh LaTeX không hợp lệ: " + dangerous);
+        }
 
         User teacher = userRepository.findById(teacherId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy giáo viên với ID: " + teacherId));

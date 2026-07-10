@@ -24,9 +24,10 @@ public class SubmissionCommentController {
     @GetMapping
     @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
     public ResponseEntity<List<SubmissionCommentResponse>> getCommentsBySubmissionId(
-            @PathVariable Long submissionId) {
+            @PathVariable Long submissionId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
         
-        List<SubmissionCommentResponse> responses = submissionCommentService.getCommentsBySubmissionId(submissionId);
+        List<SubmissionCommentResponse> responses = submissionCommentService.getCommentsBySubmissionId(submissionId, userDetails.getUsername());
         return ResponseEntity.ok(responses);
     }
 
