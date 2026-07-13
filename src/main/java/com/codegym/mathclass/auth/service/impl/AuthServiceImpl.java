@@ -38,6 +38,12 @@ import org.springframework.stereotype.Service;
 import org.thymeleaf.context.Context;
 import org.springframework.http.*;
 import org.springframework.web.client.*;
+import org.springframework.transaction.annotation.Transactional;
+import com.codegym.mathclass.auth.entity.PasswordResetToken;
+import com.codegym.mathclass.auth.repository.PasswordResetTokenRepository;
+import com.codegym.mathclass.user.entity.Provider;
+import com.codegym.mathclass.exception.TooManyRequestsException;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -48,6 +54,9 @@ public class AuthServiceImpl implements AuthService {
     private final JwtUtils jwtUtils;
     private final PasswordEncoder encoder;
     private final EmailService emailService;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+
+    private final ConcurrentHashMap<String, LocalDateTime> forgotPasswordRateLimitMap = new ConcurrentHashMap<>();
 
     @Value("${FRONTEND_URL:http://localhost:5173}")
     private String frontendUrl;
@@ -164,8 +173,32 @@ public class AuthServiceImpl implements AuthService {
         return new MessageResponse("Tài khoản đã được kích hoạt thành công!");
     }
 
+    private String hashToken(String rawToken) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(rawToken.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new RuntimeException("Lỗi thuật toán mã hóa SHA-256", e);
+        }
+    }
+
     @Override
     public MessageResponse forgotPassword(ForgotPasswordRequest request) {
+        String email = request.getEmail().toLowerCase().trim();
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime lastRequest = forgotPasswordRateLimitMap.get(email);
+        if (lastRequest != null && lastRequest.plusSeconds(60).isAfter(now)) {
+            throw new TooManyRequestsException("Bạn đã gửi yêu cầu quá nhanh. Vui lòng thử lại sau 1 phút.");
+        }
+        forgotPasswordRateLimitMap.put(email, now);
+
         Optional<User> userOptional = userRepository.findByEmail(request.getEmail());
         
         // Luôn trả về thành công để tránh User Enumeration
@@ -176,13 +209,28 @@ public class AuthServiceImpl implements AuthService {
             SecureRandom random = new SecureRandom();
             byte[] bytes = new byte[32];
             random.nextBytes(bytes);
-            String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+            String rawToken = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
             
-            user.setResetPasswordToken(token);
-            user.setResetPasswordTokenExpiry(LocalDateTime.now().plusMinutes(15));
-            userRepository.save(user);
+            String tokenHash = hashToken(rawToken);
             
-            String resetLink = frontendUrl + "/reset-password?token=" + token;
+            // Ghi đè bản ghi cũ chưa sử dụng hoặc tạo mới
+            Optional<PasswordResetToken> existingTokenOpt = passwordResetTokenRepository.findByUserAndIsUsedFalse(user);
+            PasswordResetToken resetToken;
+            if (existingTokenOpt.isPresent()) {
+                resetToken = existingTokenOpt.get();
+                resetToken.setTokenHash(tokenHash);
+                resetToken.setExpiryDate(LocalDateTime.now().plusMinutes(15));
+            } else {
+                resetToken = PasswordResetToken.builder()
+                        .user(user)
+                        .tokenHash(tokenHash)
+                        .expiryDate(LocalDateTime.now().plusMinutes(15))
+                        .isUsed(false)
+                        .build();
+            }
+            passwordResetTokenRepository.save(resetToken);
+            
+            String resetLink = frontendUrl + "/reset-password?token=" + rawToken;
             
             Context context = new Context();
             context.setVariable("fullName", user.getFullName());
@@ -190,29 +238,35 @@ public class AuthServiceImpl implements AuthService {
             emailService.sendHtmlMailAsync(user.getEmail(), "Yêu cầu khôi phục mật khẩu MathClass", "forgot-password", context);
         }
         
-        return new MessageResponse("Nếu email hợp lệ, một liên kết đặt lại mật khẩu đã được gửi đến hộp thư của bạn.");
+        return new MessageResponse("Nếu email của bạn hợp lệ, một liên kết đặt lại mật khẩu đã được gửi đến hộp thư.");
     }
 
     @Override
+    @Transactional
     public MessageResponse resetPassword(ResetPasswordRequest request) {
-        Optional<User> userOptional = userRepository.findByResetPasswordToken(request.getToken());
+        String rawToken = request.getToken();
+        String tokenHash = hashToken(rawToken);
         
-        if (userOptional.isEmpty()) {
-            throw new BadRequestException("Token không hợp lệ hoặc đã hết hạn.");
+        Optional<PasswordResetToken> resetTokenOptional = passwordResetTokenRepository.findByTokenHashAndIsUsedFalse(tokenHash);
+        
+        if (resetTokenOptional.isEmpty()) {
+            throw new BadRequestException("Token không hợp lệ hoặc đã qua sử dụng.");
         }
         
-        User user = userOptional.get();
+        PasswordResetToken resetToken = resetTokenOptional.get();
         
-        if (user.getResetPasswordTokenExpiry() == null || user.getResetPasswordTokenExpiry().isBefore(LocalDateTime.now())) {
-            throw new BadRequestException("Token không hợp lệ hoặc đã hết hạn.");
+        if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+            throw new BadRequestException("Đường dẫn đặt lại mật khẩu đã hết hạn.");
         }
         
+        User user = resetToken.getUser();
         user.setPassword(encoder.encode(request.getNewPassword()));
-        user.setResetPasswordToken(null);
-        user.setResetPasswordTokenExpiry(null);
         userRepository.save(user);
         
-        return new MessageResponse("Mật khẩu đã được đặt lại thành công. Vui lòng đăng nhập bằng mật khẩu mới.", user.getRole().name());
+        resetToken.setUsed(true);
+        passwordResetTokenRepository.save(resetToken);
+        
+        return new MessageResponse("Mật khẩu của bạn đã được cập nhật thành công. Vui lòng đăng nhập bằng mật khẩu mới.", user.getRole().name());
     }
 
     @Value("${spring.security.oauth2.client.registration.google.client-id:}")
@@ -265,6 +319,7 @@ public class AuthServiceImpl implements AuthService {
                         }
                     }
                     user.setRole(role);
+                    user.setProvider(Provider.GOOGLE);
                     user.setPassword(encoder.encode(UUID.randomUUID().toString()));
                     user.setPhoneNumber(""); // Hoặc set null nếu cho phép nullable
                     userRepository.save(user);

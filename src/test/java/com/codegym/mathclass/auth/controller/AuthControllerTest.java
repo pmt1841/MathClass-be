@@ -3,6 +3,8 @@ package com.codegym.mathclass.auth.controller;
 import com.codegym.mathclass.auth.dto.request.GoogleAuthRequest;
 import com.codegym.mathclass.auth.dto.request.LoginRequest;
 import com.codegym.mathclass.auth.dto.request.SignupRequest;
+import com.codegym.mathclass.auth.dto.request.ForgotPasswordRequest;
+import com.codegym.mathclass.auth.dto.request.ResetPasswordRequest;
 import com.codegym.mathclass.auth.dto.response.JwtResponse;
 import com.codegym.mathclass.auth.dto.response.MessageResponse;
 import com.codegym.mathclass.auth.service.AuthService;
@@ -164,5 +166,54 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.message").value("Tài khoản đã được kích hoạt thành công!"));
                 
         verify(authService, times(1)).verifyUser(token);
+    }
+
+    // ==========================================
+    // Tests for forgotPassword
+    // ==========================================
+
+    @Test
+    @DisplayName("Should process forgot password and return message response")
+    void forgotPassword_ValidRequest_ReturnsOkAndMessage() throws Exception {
+        // Given
+        ForgotPasswordRequest request = new ForgotPasswordRequest();
+        request.setEmail("user@example.com");
+
+        MessageResponse mockResponse = new MessageResponse("Nếu email của bạn hợp lệ, một liên kết đặt lại mật khẩu đã được gửi đến hộp thư.");
+        when(authService.forgotPassword(any(ForgotPasswordRequest.class))).thenReturn(mockResponse);
+
+        // When & Then
+        mockMvc.perform(post("/api/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Nếu email của bạn hợp lệ, một liên kết đặt lại mật khẩu đã được gửi đến hộp thư."));
+
+        verify(authService, times(1)).forgotPassword(any(ForgotPasswordRequest.class));
+    }
+
+    // ==========================================
+    // Tests for resetPassword
+    // ==========================================
+
+    @Test
+    @DisplayName("Should reset password and return success message")
+    void resetPassword_ValidRequest_ReturnsOkAndMessage() throws Exception {
+        // Given
+        ResetPasswordRequest request = new ResetPasswordRequest();
+        request.setToken("valid-token");
+        request.setNewPassword("SecurePassword123!");
+
+        MessageResponse mockResponse = new MessageResponse("Mật khẩu của bạn đã được cập nhật thành công. Vui lòng đăng nhập bằng mật khẩu mới.");
+        when(authService.resetPassword(any(ResetPasswordRequest.class))).thenReturn(mockResponse);
+
+        // When & Then
+        mockMvc.perform(post("/api/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Mật khẩu của bạn đã được cập nhật thành công. Vui lòng đăng nhập bằng mật khẩu mới."));
+
+        verify(authService, times(1)).resetPassword(any(ResetPasswordRequest.class));
     }
 }
