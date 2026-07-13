@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.codegym.mathclass.auth.dto.request.LoginRequest;
 import com.codegym.mathclass.auth.dto.request.SignupRequest;
 import com.codegym.mathclass.auth.dto.request.GoogleAuthRequest;
+import com.codegym.mathclass.auth.dto.request.ForgotPasswordRequest;
+import com.codegym.mathclass.auth.dto.request.ResetPasswordRequest;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -45,5 +47,15 @@ public class AuthController {
     @GetMapping("/verify")
     public ResponseEntity<?> verifyUser(@RequestParam("token") String token) {
         return ResponseEntity.ok(authService.verifyUser(token));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        return ResponseEntity.ok(authService.forgotPassword(request));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        return ResponseEntity.ok(authService.resetPassword(request));
     }
 }
