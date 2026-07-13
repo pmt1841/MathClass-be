@@ -5,6 +5,8 @@ Thư mục này được sử dụng để lưu trữ các tài liệu đánh gi
 ## Danh sách Báo cáo Đánh giá (Review Reports)
 
 *   **[Báo cáo Đánh giá Bảo mật (Security Review)](security-review.md)** - Đánh giá về tính bảo mật của mã nguồn, kiểm soát truy cập (BOLA/IDOR) và các lỗ hổng tiêm mã độc (LaTeX Injection). *Cập nhật ngày: 10/07/2026*
+*   **[Báo cáo Đánh giá Phân quyền (Authorization Review)](authorization-review.md)** - Đánh giá về cơ chế kiểm soát quyền hạn (RBAC), bảo vệ tài nguyên chi tiết và phân loại vai trò. *Cập nhật ngày: 13/07/2026*
+
 
 ## Hướng dẫn Tạo Báo cáo Đánh giá mới
 Khi thực hiện đánh giá mã nguồn hoặc tính năng mới, hãy tạo một tệp tin Markdown trong thư mục này với định dạng đặt tên:
