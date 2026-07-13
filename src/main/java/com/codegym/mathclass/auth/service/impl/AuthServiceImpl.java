@@ -1,9 +1,11 @@
 package com.codegym.mathclass.auth.service.impl;
 
 import com.codegym.mathclass.auth.service.AuthService;
+import com.codegym.mathclass.auth.dto.request.GoogleAuthRequest;
 import com.codegym.mathclass.auth.dto.request.LoginRequest;
 import com.codegym.mathclass.auth.dto.request.SignupRequest;
-import com.codegym.mathclass.auth.dto.request.GoogleAuthRequest;
+import com.codegym.mathclass.auth.dto.request.ForgotPasswordRequest;
+import com.codegym.mathclass.auth.dto.request.ResetPasswordRequest;
 import com.codegym.mathclass.auth.dto.response.JwtResponse;
 import com.codegym.mathclass.auth.dto.response.MessageResponse;
 import com.codegym.mathclass.security.jwt.JwtUtils;
@@ -19,6 +21,11 @@ import com.codegym.mathclass.exception.BadRequestException;
 import lombok.RequiredArgsConstructor;
 
 import java.util.Optional;
+import java.util.Map;
+import java.util.UUID;
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.util.Base64;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -29,6 +36,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.context.Context;
+import org.springframework.http.*;
+import org.springframework.web.client.*;
 
 @Service
 @RequiredArgsConstructor
@@ -45,6 +54,15 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public JwtResponse authenticateUser(LoginRequest loginRequest) {
+        Optional<User> userOptional = userRepository.findByEmail(loginRequest.getEmail());
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+            if (user.getPassword() == null || user.getPassword().isEmpty()) {
+                throw new BadRequestException(
+                        "Bạn chưa thiết lập mật khẩu. Vui lòng bấm vào Quên mật khẩu để tạo mật khẩu mới, hoặc tiếp tục Đăng nhập bằng Google.");
+            }
+        }
+
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
 
@@ -89,7 +107,7 @@ public class AuthServiceImpl implements AuthService {
         user.setEmail(signUpRequest.getEmail());
         user.setRole(signUpRequest.getRole());
         user.setActive(false);
-        String token = java.util.UUID.randomUUID().toString();
+        String token = UUID.randomUUID().toString();
         user.setVerificationCode(token);
 
         userRepository.save(user);
@@ -146,26 +164,77 @@ public class AuthServiceImpl implements AuthService {
         return new MessageResponse("Tài khoản đã được kích hoạt thành công!");
     }
 
+    @Override
+    public MessageResponse forgotPassword(ForgotPasswordRequest request) {
+        Optional<User> userOptional = userRepository.findByEmail(request.getEmail());
+        
+        // Luôn trả về thành công để tránh User Enumeration
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+            
+            // Generate secure token
+            SecureRandom random = new SecureRandom();
+            byte[] bytes = new byte[32];
+            random.nextBytes(bytes);
+            String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+            
+            user.setResetPasswordToken(token);
+            user.setResetPasswordTokenExpiry(LocalDateTime.now().plusMinutes(15));
+            userRepository.save(user);
+            
+            String resetLink = frontendUrl + "/reset-password?token=" + token;
+            
+            Context context = new Context();
+            context.setVariable("fullName", user.getFullName());
+            context.setVariable("resetLink", resetLink);
+            emailService.sendHtmlMailAsync(user.getEmail(), "Yêu cầu khôi phục mật khẩu MathClass", "forgot-password", context);
+        }
+        
+        return new MessageResponse("Nếu email hợp lệ, một liên kết đặt lại mật khẩu đã được gửi đến hộp thư của bạn.");
+    }
+
+    @Override
+    public MessageResponse resetPassword(ResetPasswordRequest request) {
+        Optional<User> userOptional = userRepository.findByResetPasswordToken(request.getToken());
+        
+        if (userOptional.isEmpty()) {
+            throw new BadRequestException("Token không hợp lệ hoặc đã hết hạn.");
+        }
+        
+        User user = userOptional.get();
+        
+        if (user.getResetPasswordTokenExpiry() == null || user.getResetPasswordTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new BadRequestException("Token không hợp lệ hoặc đã hết hạn.");
+        }
+        
+        user.setPassword(encoder.encode(request.getNewPassword()));
+        user.setResetPasswordToken(null);
+        user.setResetPasswordTokenExpiry(null);
+        userRepository.save(user);
+        
+        return new MessageResponse("Mật khẩu đã được đặt lại thành công. Vui lòng đăng nhập bằng mật khẩu mới.", user.getRole().name());
+    }
+
     @Value("${spring.security.oauth2.client.registration.google.client-id:}")
     private String googleClientId;
 
     @Override
     public JwtResponse authenticateWithGoogle(GoogleAuthRequest request) {
         try {
-            org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
-            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            RestTemplate restTemplate = new RestTemplate();
+            HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(request.getCredential());
-            org.springframework.http.HttpEntity<String> entity = new org.springframework.http.HttpEntity<>("parameters",
+            HttpEntity<String> entity = new HttpEntity<>("parameters",
                     headers);
 
-            org.springframework.http.ResponseEntity<java.util.Map> response = restTemplate.exchange(
+            ResponseEntity<Map> response = restTemplate.exchange(
                     "https://www.googleapis.com/oauth2/v3/userinfo",
-                    org.springframework.http.HttpMethod.GET,
+                    HttpMethod.GET,
                     entity,
-                    java.util.Map.class);
+                    Map.class);
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                java.util.Map<String, Object> payload = response.getBody();
+                Map<String, Object> payload = response.getBody();
 
                 String email = (String) payload.get("email");
                 String name = (String) payload.get("name");
@@ -196,7 +265,7 @@ public class AuthServiceImpl implements AuthService {
                         }
                     }
                     user.setRole(role);
-                    user.setPassword(encoder.encode(java.util.UUID.randomUUID().toString()));
+                    user.setPassword(encoder.encode(UUID.randomUUID().toString()));
                     user.setPhoneNumber(""); // Hoặc set null nếu cho phép nullable
                     userRepository.save(user);
 

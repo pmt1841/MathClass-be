@@ -42,6 +42,12 @@ public class User extends BaseEntity {
     @Column(name = "verification_code")
     private String verificationCode;
 
+    @Column(name = "reset_password_token")
+    private String resetPasswordToken;
+
+    @Column(name = "reset_password_token_expiry")
+    private java.time.LocalDateTime resetPasswordTokenExpiry;
+
     @Column(name = "avatar_url")
     private String avatarUrl;
 

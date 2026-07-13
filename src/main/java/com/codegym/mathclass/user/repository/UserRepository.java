@@ -19,6 +19,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByVerificationCode(String verificationCode);
 
+    Optional<User> findByResetPasswordToken(String resetPasswordToken);
+
     @Query("SELECT s FROM Classroom c JOIN c.students s WHERE c.classCode = :classCode")
     Page<User> findStudentsByClassCode(@Param("classCode") String classCode, Pageable pageable);
 }
