@@ -8,7 +8,6 @@ import com.codegym.mathclass.classroom.entity.JoinRequestStatus;
 import com.codegym.mathclass.classroom.repository.ClassroomJoinRequestRepository;
 import com.codegym.mathclass.classroom.repository.ClassroomRepository;
 import com.codegym.mathclass.dashboard.dto.*;
-import com.codegym.mathclass.dashboard.service.DashboardServiceImpl;
 import com.codegym.mathclass.submission.entity.Submission;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
@@ -212,8 +211,9 @@ class DashboardServiceImplTest {
     @DisplayName("Should return at-risk students")
     void getAtRiskStudents_ValidData_ReturnsList() {
         // Given
-        Object[] lowScoreResult = new Object[]{student, 4.5};
-        when(submissionRepository.findStudentsWithLowAverageScore(1L)).thenReturn(Collections.singletonList(lowScoreResult));
+        Object[] lowScoreResult = new Object[] { student, 4.5 };
+        when(submissionRepository.findStudentsWithLowAverageScore(1L))
+                .thenReturn(Collections.singletonList(lowScoreResult));
         when(classroomRepository.findByStudentsId(2L)).thenReturn(Collections.singletonList(classroom));
 
         Assignment assignment1 = new Assignment();
@@ -223,7 +223,7 @@ class DashboardServiceImplTest {
         Assignment assignment2 = new Assignment();
         assignment2.setId(102L);
         assignment2.setClassroom(classroom);
-        
+
         Assignment assignment3 = new Assignment();
         assignment3.setId(103L);
         assignment3.setClassroom(classroom);
@@ -231,9 +231,12 @@ class DashboardServiceImplTest {
         when(assignmentRepository.findAssignmentsPastDeadline(eq(1L), any(LocalDateTime.class)))
                 .thenReturn(Arrays.asList(assignment1, assignment2, assignment3));
 
-        when(submissionRepository.existsByAssignmentIdAndStudentIdAndStatusNot(eq(101L), eq(2L), eq(SubmissionStatus.DRAFT))).thenReturn(false);
-        when(submissionRepository.existsByAssignmentIdAndStudentIdAndStatusNot(eq(102L), eq(2L), eq(SubmissionStatus.DRAFT))).thenReturn(false);
-        when(submissionRepository.existsByAssignmentIdAndStudentIdAndStatusNot(eq(103L), eq(2L), eq(SubmissionStatus.DRAFT))).thenReturn(false);
+        when(submissionRepository.existsByAssignmentIdAndStudentIdAndStatusNot(eq(101L), eq(2L),
+                eq(SubmissionStatus.DRAFT))).thenReturn(false);
+        when(submissionRepository.existsByAssignmentIdAndStudentIdAndStatusNot(eq(102L), eq(2L),
+                eq(SubmissionStatus.DRAFT))).thenReturn(false);
+        when(submissionRepository.existsByAssignmentIdAndStudentIdAndStatusNot(eq(103L), eq(2L),
+                eq(SubmissionStatus.DRAFT))).thenReturn(false);
 
         // When
         List<AtRiskStudentDto> list = dashboardService.getAtRiskStudents(1L);
@@ -241,7 +244,7 @@ class DashboardServiceImplTest {
         // Then
         // Expect 2 items: 1 for low score, 1 for missing assignments (>2)
         assertThat(list).hasSize(2);
-        
+
         AtRiskStudentDto lowScoreDto = list.get(0);
         assertThat(lowScoreDto.getId()).isEqualTo(2L);
         assertThat(lowScoreDto.getIssueType()).isEqualTo("low_score");
