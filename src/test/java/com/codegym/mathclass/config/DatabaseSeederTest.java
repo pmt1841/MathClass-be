@@ -10,6 +10,8 @@ import com.codegym.mathclass.submission.repository.SubmissionCommentRepository;
 import com.codegym.mathclass.submission.repository.SubmissionDrawingRepository;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
 import com.codegym.mathclass.user.entity.User;
+import com.codegym.mathclass.user.repository.PermissionRepository;
+import com.codegym.mathclass.user.repository.RolePermissionRepository;
 import com.codegym.mathclass.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -49,6 +51,10 @@ class DatabaseSeederTest {
     private NotificationSettingsRepository notificationSettingsRepository;
     @Mock
     private PasswordEncoder passwordEncoder;
+    @Mock
+    private PermissionRepository permissionRepository;
+    @Mock
+    private RolePermissionRepository rolePermissionRepository;
 
     @InjectMocks
     private DatabaseSeeder databaseSeeder;
@@ -72,6 +78,7 @@ class DatabaseSeederTest {
     @Test
     @DisplayName("Should skip seeding if database is not empty")
     void shouldSkipSeedingIfDatabaseNotEmpty() throws Exception {
+        when(permissionRepository.count()).thenReturn(10L);
         when(userRepository.count()).thenReturn(5L);
 
         databaseSeeder.run();
@@ -83,6 +90,7 @@ class DatabaseSeederTest {
     @Test
     @DisplayName("Should seed database successfully when empty")
     void shouldSeedDatabaseSuccessfullyWhenEmpty() throws Exception {
+        when(permissionRepository.count()).thenReturn(0L);
         when(userRepository.count()).thenReturn(0L);
         when(userRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(classroomRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -94,6 +102,8 @@ class DatabaseSeederTest {
         when(submissionDrawingRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(notificationRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(notificationSettingsRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(permissionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(rolePermissionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         databaseSeeder.run();
 
@@ -108,5 +118,7 @@ class DatabaseSeederTest {
         verify(submissionDrawingRepository, atLeastOnce()).save(any());
         verify(notificationRepository, atLeastOnce()).save(any());
         verify(notificationSettingsRepository, atLeastOnce()).save(any());
+        verify(permissionRepository, atLeastOnce()).save(any());
+        verify(rolePermissionRepository, atLeastOnce()).save(any());
     }
 }

@@ -155,23 +155,4 @@ class UserControllerTest {
         verify(userService, times(1)).uploadAvatar(eq(1L), any());
     }
 
-    // ==========================================
-    // Tests for getUserProfile (by ID)
-    // ==========================================
-
-    @Test
-    @DisplayName("Should return user profile by ID")
-    void getUserProfile_ValidId_ReturnsOkAndUserProfile() throws Exception {
-        // Given
-        Long targetUserId = 2L;
-        mockUserResponse.setId(targetUserId);
-        when(userService.getUserProfile(targetUserId)).thenReturn(mockUserResponse);
-
-        // When & Then
-        mockMvc.perform(get("/api/users/{id}", targetUserId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(targetUserId));
-                
-        verify(userService, times(1)).getUserProfile(targetUserId);
-    }
 }

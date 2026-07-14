@@ -32,7 +32,7 @@ public class ClassroomMemberController {
     private final ClassroomService classroomService;
 
     @PostMapping("/students/add")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAuthority('classroom:manage_requests')")
     public ResponseEntity<Void> addStudentToClass(
             @PathVariable String classCode,
             @Valid @RequestBody AddStudentRequest request,
@@ -62,7 +62,7 @@ public class ClassroomMemberController {
     }
 
     @DeleteMapping("/students/{studentId}")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAuthority('classroom:remove_student')")
     public ResponseEntity<Void> removeStudentFromClass(
             @PathVariable String classCode,
             @PathVariable long studentId,

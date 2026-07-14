@@ -23,7 +23,7 @@ public class ClassroomJoinRequestController {
     private final ClassroomJoinRequestService joinRequestService;
 
     @PostMapping("/join")
-    @PreAuthorize("hasRole('STUDENT')")
+    @PreAuthorize("hasAuthority('classroom:join')")
     public ResponseEntity<JoinRequestResponse> requestToJoin(
             @Valid @RequestBody JoinRequestRequest request,
             @AuthenticationPrincipal CustomUserDetails currentUser) {
@@ -32,7 +32,7 @@ public class ClassroomJoinRequestController {
     }
 
     @GetMapping("/my-join-requests")
-    @PreAuthorize("hasRole('STUDENT')")
+    @PreAuthorize("hasAuthority('classroom:join_status')")
     public ResponseEntity<List<JoinRequestResponse>> getMyJoinRequests(
             @AuthenticationPrincipal CustomUserDetails currentUser) {
         List<JoinRequestResponse> responses = joinRequestService.getMyJoinRequests(currentUser.getId());
@@ -40,7 +40,7 @@ public class ClassroomJoinRequestController {
     }
 
     @GetMapping("/{classCode}/join-requests")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAuthority('classroom:manage_requests')")
     public ResponseEntity<List<JoinRequestResponse>> getPendingRequests(
             @PathVariable String classCode,
             @AuthenticationPrincipal CustomUserDetails currentUser) {
@@ -49,7 +49,7 @@ public class ClassroomJoinRequestController {
     }
 
     @PutMapping("/join-requests/{requestId}")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAuthority('classroom:manage_requests')")
     public ResponseEntity<JoinRequestResponse> processRequest(
             @PathVariable Long requestId,
             @Valid @RequestBody ProcessJoinRequestDto requestDto,

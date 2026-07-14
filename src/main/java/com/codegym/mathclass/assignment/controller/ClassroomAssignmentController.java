@@ -26,7 +26,7 @@ public class ClassroomAssignmentController {
     private final AssignmentService assignmentService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAuthority('assignment:read')")
     public ResponseEntity<?> getClassroomAssignments(
             @PathVariable String classCode,
             @RequestParam(required = false) String keyword,
@@ -41,7 +41,7 @@ public class ClassroomAssignmentController {
     }
 
     @GetMapping("/{id}/detail")
-    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAuthority('assignment:read')")
     public ResponseEntity<?> getAssignmentDetail(
             @PathVariable String classCode,
             @PathVariable long id,

@@ -13,6 +13,8 @@ import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.entity.Role;
+import com.codegym.mathclass.user.service.PermissionCacheService;
+import java.util.List;
 import com.codegym.mathclass.notification.entity.NotificationSettings;
 import com.codegym.mathclass.notification.repository.NotificationSettingsRepository;
 import com.codegym.mathclass.utils.EmailService;
@@ -52,6 +54,7 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final NotificationSettingsRepository notificationSettingsRepository;
+    private final PermissionCacheService permissionCacheService;
     private final JwtUtils jwtUtils;
     private final PasswordEncoder encoder;
     private final EmailService emailService;
@@ -332,7 +335,8 @@ public class AuthServiceImpl implements AuthService {
                     notificationSettingsRepository.save(settings);
                 }
 
-                CustomUserDetails userDetails = CustomUserDetails.build(user);
+                List<String> permissions = permissionCacheService.getPermissionsByRole(user.getRole());
+                CustomUserDetails userDetails = CustomUserDetails.build(user, permissions);
 
                 Authentication authentication = new UsernamePasswordAuthenticationToken(
                         userDetails, null, userDetails.getAuthorities());
@@ -354,8 +358,13 @@ public class AuthServiceImpl implements AuthService {
             } else {
                 throw new BadRequestException("Token xác thực Google không hợp lệ.");
             }
+        } catch (BadRequestException e) {
+            throw e;
         } catch (Exception e) {
-            throw new BadRequestException("Lỗi xác thực Google: " + e.getMessage());
+            // Log lỗi để debug nội bộ
+            e.printStackTrace();
+            // Trả về thông báo chung chung, an toàn cho Frontend
+            throw new BadRequestException("Đăng nhập thất bại. Vui lòng thử lại sau.");
         }
     }
 }

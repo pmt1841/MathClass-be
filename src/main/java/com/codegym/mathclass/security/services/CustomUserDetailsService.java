@@ -8,14 +8,17 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
+import com.codegym.mathclass.user.service.PermissionCacheService;
 
 import lombok.RequiredArgsConstructor;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
+    private final PermissionCacheService permissionCacheService;
 
     @Override
     @Transactional
@@ -24,7 +27,8 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .orElseThrow(
                         () -> new UsernameNotFoundException("Không tìm thấy tài khoản: " + login));
 
-        return CustomUserDetails.build(user);
+        List<String> permissions = permissionCacheService.getPermissionsByRole(user.getRole());
+        return CustomUserDetails.build(user, permissions);
     }
 
 }
