@@ -43,7 +43,7 @@ public class User extends BaseEntity {
     private String verificationCode;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "provider", nullable = false, length = 20)
+    @Column(name = "provider", nullable = false, length = 20, columnDefinition = "varchar(20) default 'LOCAL'")
     private Provider provider = Provider.LOCAL;
 
     @Column(name = "avatar_url")
