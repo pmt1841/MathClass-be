@@ -27,25 +27,10 @@ Ngày đánh giá: 13/07/2026
     ```
 
 ### 2. Lỗ hổng IDOR/BOLA tại API Truy vấn Thông tin cá nhân người dùng
-*   **Trạng thái:** [ ] 🔴 Open
-*   **Vị trí:** [UserController.java](../src/main/java/com/codegym/mathclass/user/controller/UserController.java#L50-L53) & [UserServiceImpl.java](../src/main/java/com/codegym/mathclass/user/service/impl/UserServiceImpl.java#L26-L30)
+*   **Trạng thái:** [x] 🟢 Resolved
+*   **Vị trí:** [UserController.java](../src/main/java/com/codegym/mathclass/user/controller/UserController.java)
 *   **Chi tiết:** 
-    API lấy thông tin profile theo ID `/api/users/{id}` yêu cầu xác thực nhưng **không kiểm tra mối quan hệ** giữa người gửi request và người được truy vấn.
-*   **Hậu quả:** 
-    Bất kỳ học sinh nào cũng có thể gửi request lấy thông tin cá nhân (bao gồm Email, Số điện thoại, Ngày sinh và Giới tính) của bất kỳ học sinh khác hoặc giáo viên khác trong hệ thống bằng cách thay đổi ID trong URL.
-*   **Khuyến nghị khắc phục:**
-    Giới hạn quyền truy cập profile theo ID: chỉ cho phép người dùng tự xem profile của chính mình. Đối với người dùng khác, chỉ hiển thị thông tin giới hạn (ẩn Số điện thoại, Email) trừ khi người gọi là giáo viên của lớp học chứa học sinh đó.
-    ```java
-    // Tại UserController.java
-    @GetMapping("/{id}")
-    public ResponseEntity<UserResponse> getUserProfile(
-            @PathVariable Long id,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        // Thực hiện lọc thông tin nhạy cảm dựa trên ID người gọi
-        UserResponse response = userService.getUserProfileWithPrivacy(id, userDetails.getId());
-        return ResponseEntity.ok(response);
-    }
-    ```
+    Đã xử lý triệt để bằng cách xóa hoàn toàn API `/api/users/{id}` do không được sử dụng ở Frontend, tuân thủ nguyên tắc YAGNI và giảm thiểu bề mặt tấn công.
 
 ---
 

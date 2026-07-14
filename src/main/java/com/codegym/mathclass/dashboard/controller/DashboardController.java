@@ -26,13 +26,13 @@ public class DashboardController {
     private final DashboardService dashboardService;
 
     @GetMapping("/teacher-stats")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAuthority('dashboard:teacher_view')")
     public ResponseEntity<TeacherDashboardStatsDto> getTeacherStats(@AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(dashboardService.getTeacherDashboardStats(userDetails.getId()));
     }
 
     @GetMapping("/pending-submissions")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAuthority('dashboard:teacher_view')")
     public ResponseEntity<List<PendingSubmissionDto>> getPendingSubmissions(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(defaultValue = "10") int limit) {
@@ -40,19 +40,19 @@ public class DashboardController {
     }
 
     @GetMapping("/at-risk-students")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAuthority('dashboard:teacher_view')")
     public ResponseEntity<List<AtRiskStudentDto>> getAtRiskStudents(@AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(dashboardService.getAtRiskStudents(userDetails.getId()));
     }
 
     @GetMapping("/student-stats")
-    @PreAuthorize("hasRole('STUDENT')")
+    @PreAuthorize("hasAuthority('dashboard:student_view')")
     public ResponseEntity<StudentDashboardStatsDto> getStudentStats(@AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(dashboardService.getStudentDashboardStats(userDetails.getId()));
     }
 
     @GetMapping("/student-pending-tasks")
-    @PreAuthorize("hasRole('STUDENT')")
+    @PreAuthorize("hasAuthority('dashboard:student_view')")
     public ResponseEntity<List<StudentPendingTaskDto>> getStudentPendingTasks(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(defaultValue = "10") int limit) {
@@ -60,7 +60,7 @@ public class DashboardController {
     }
 
     @GetMapping("/student-graded-tasks")
-    @PreAuthorize("hasRole('STUDENT')")
+    @PreAuthorize("hasAuthority('dashboard:student_view')")
     public ResponseEntity<List<StudentGradedTaskDto>> getStudentGradedTasks(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(defaultValue = "10") int limit) {

@@ -24,6 +24,10 @@ import com.codegym.mathclass.submission.repository.SubmissionRepository;
 import com.codegym.mathclass.user.entity.Gender;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
+import com.codegym.mathclass.user.entity.Permission;
+import com.codegym.mathclass.user.entity.RolePermission;
+import com.codegym.mathclass.user.repository.PermissionRepository;
+import com.codegym.mathclass.user.repository.RolePermissionRepository;
 import com.codegym.mathclass.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -53,6 +57,8 @@ public class DatabaseSeeder implements CommandLineRunner {
     private final NotificationRepository notificationRepository;
     private final NotificationSettingsRepository notificationSettingsRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PermissionRepository permissionRepository;
+    private final RolePermissionRepository rolePermissionRepository;
 
     @Value("${mathclass.seed.enabled:true}")
     private boolean isSeedEnabled;
@@ -63,6 +69,11 @@ public class DatabaseSeeder implements CommandLineRunner {
         if (!isSeedEnabled) {
             log.info("[DatabaseSeeder] Database seeding is disabled.");
             return;
+        }
+
+        if (permissionRepository.count() == 0) {
+            log.info("[DatabaseSeeder] Permissions are empty. Seeding permissions...");
+            seedPermissions();
         }
 
         if (userRepository.count() > 0) {
@@ -79,6 +90,58 @@ public class DatabaseSeeder implements CommandLineRunner {
             log.error("[DatabaseSeeder] Error during database seeding!", e);
             throw e;
         }
+    }
+
+    private void seedPermissions() {
+        // 0. Create Permissions and RolePermissions
+        log.info("[DatabaseSeeder] Creating permissions...");
+        // Classroom permissions
+        Permission classCreate = permissionRepository.save(Permission.builder().name("classroom:create").description("Tạo lớp học").build());
+        Permission classUpdate = permissionRepository.save(Permission.builder().name("classroom:update").description("Sửa lớp học").build());
+        Permission classDelete = permissionRepository.save(Permission.builder().name("classroom:delete").description("Xóa lớp học").build());
+        Permission classManageReq = permissionRepository.save(Permission.builder().name("classroom:manage_requests").description("Quản lý yêu cầu tham gia").build());
+        Permission classRemoveStu = permissionRepository.save(Permission.builder().name("classroom:remove_student").description("Xóa học sinh").build());
+        Permission classJoin = permissionRepository.save(Permission.builder().name("classroom:join").description("Tham gia lớp").build());
+        Permission classJoinStatus = permissionRepository.save(Permission.builder().name("classroom:join_status").description("Xem trạng thái tham gia").build());
+
+        // Assignment permissions
+        Permission assignCreate = permissionRepository.save(Permission.builder().name("assignment:create").description("Tạo bài tập").build());
+        Permission assignUpdate = permissionRepository.save(Permission.builder().name("assignment:update").description("Sửa bài tập").build());
+        Permission assignDelete = permissionRepository.save(Permission.builder().name("assignment:delete").description("Xóa bài tập").build());
+        Permission assignPublish = permissionRepository.save(Permission.builder().name("assignment:publish").description("Xuất bản bài tập").build());
+        Permission assignRead = permissionRepository.save(Permission.builder().name("assignment:read").description("Xem bài tập").build());
+
+        // Submission permissions
+        Permission subSubmit = permissionRepository.save(Permission.builder().name("submission:submit").description("Nộp bài").build());
+        Permission subReadOwn = permissionRepository.save(Permission.builder().name("submission:read_own").description("Xem bài nộp của mình").build());
+        Permission subGrade = permissionRepository.save(Permission.builder().name("submission:grade").description("Chấm điểm").build());
+        Permission subReadAll = permissionRepository.save(Permission.builder().name("submission:read_all").description("Xem tất cả bài nộp").build());
+        Permission subComment = permissionRepository.save(Permission.builder().name("submission:comment").description("Bình luận bài nộp").build());
+
+        // Dashboard permissions
+        Permission dashTeacher = permissionRepository.save(Permission.builder().name("dashboard:teacher_view").description("Xem thống kê giáo viên").build());
+        Permission dashStudent = permissionRepository.save(Permission.builder().name("dashboard:student_view").description("Xem thống kê học sinh").build());
+
+        // Admin permissions
+        Permission manageUsers = permissionRepository.save(Permission.builder().name("user:manage").description("Quản lý người dùng").build());
+
+        log.info("[DatabaseSeeder] Assigning permissions to roles...");
+        // ADMIN
+        rolePermissionRepository.save(RolePermission.builder().role(Role.ADMIN).permission(manageUsers).build());
+        
+        // TEACHER
+        List<Permission> teacherPerms = List.of(
+                classCreate, classUpdate, classDelete, classManageReq, classRemoveStu,
+                assignCreate, assignUpdate, assignDelete, assignPublish, assignRead,
+                subGrade, subReadAll, subComment, dashTeacher
+        );
+        teacherPerms.forEach(p -> rolePermissionRepository.save(RolePermission.builder().role(Role.TEACHER).permission(p).build()));
+        
+        // STUDENT
+        List<Permission> studentPerms = List.of(
+                classJoin, classJoinStatus, assignRead, subSubmit, subReadOwn, subComment, dashStudent
+        );
+        studentPerms.forEach(p -> rolePermissionRepository.save(RolePermission.builder().role(Role.STUDENT).permission(p).build()));
     }
 
     private void seedData() {

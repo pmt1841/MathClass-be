@@ -43,7 +43,7 @@ public class AssignmentController {
      * Chưa giao cho lớp nào.
      */
     @PostMapping("/create")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAuthority('assignment:create')")
     public ResponseEntity<?> createAssignment(
             @Valid @RequestBody CreateAssignmentRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -63,7 +63,7 @@ public class AssignmentController {
      * Chuyển trạng thái từ DRAFT → PUBLISHED.
      */
     @PutMapping("/{id}/publish")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAuthority('assignment:publish')")
     public ResponseEntity<?> publishAssignment(
             @PathVariable long id,
             @Valid @RequestBody PublishAssignmentRequest request,
@@ -78,7 +78,7 @@ public class AssignmentController {
      * Giáo viên xóa bài tập.
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAuthority('assignment:delete')")
     public ResponseEntity<?> deleteAssignment(
             @PathVariable long id,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -142,7 +142,7 @@ public class AssignmentController {
      * - PUBLISHED: sửa title + description + deadline.
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAuthority('assignment:update')")
     public ResponseEntity<?> updateAssignment(
             @PathVariable long id,
             @Valid @RequestBody UpdateAssignmentRequest request,
@@ -158,7 +158,7 @@ public class AssignmentController {
     }
 
     @PostMapping("/images/upload")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAuthority('assignment:create')")
     public ResponseEntity<?> uploadImage(
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal CustomUserDetails userDetails) {

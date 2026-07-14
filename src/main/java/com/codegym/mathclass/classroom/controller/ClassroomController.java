@@ -32,7 +32,7 @@ public class ClassroomController {
     private final ClassroomService classroomService;
 
     @PostMapping("/create")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAuthority('classroom:create')")
     public ResponseEntity<ClassroomResponse> createClassroom(
             @Valid @RequestBody CreateClassroomRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -61,7 +61,7 @@ public class ClassroomController {
     }
 
     @PutMapping("/{classCode}")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAuthority('classroom:update')")
     public ResponseEntity<ClassroomResponse> updateClassroom(
             @PathVariable String classCode,
             @Valid @RequestBody UpdateClassroomRequest request,
@@ -72,7 +72,7 @@ public class ClassroomController {
     }
 
     @DeleteMapping("/{classCode}")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAuthority('classroom:delete')")
     public ResponseEntity<Void> deleteClassroom(
             @PathVariable String classCode,
             @AuthenticationPrincipal CustomUserDetails userDetails) {

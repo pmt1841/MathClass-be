@@ -10,9 +10,11 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import com.codegym.mathclass.user.entity.User;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @AllArgsConstructor
 @Getter
@@ -35,8 +37,13 @@ public class CustomUserDetails implements UserDetails {
 
     private Collection<? extends GrantedAuthority> authorities;
 
-    public static CustomUserDetails build(User user) {
-        GrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + user.getRole().name());
+    public static CustomUserDetails build(User user, List<String> permissions) {
+        List<GrantedAuthority> authorities = new ArrayList<>();
+        authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+        
+        if (permissions != null) {
+            permissions.forEach(p -> authorities.add(new SimpleGrantedAuthority(p)));
+        }
 
         return new CustomUserDetails(
                 user.getId(),
@@ -45,7 +52,7 @@ public class CustomUserDetails implements UserDetails {
                 user.getPassword(),
                 user.isActive(),
                 user.getAvatarUrl(),
-                Collections.singletonList(authority));
+                authorities);
     }
 
     @Override

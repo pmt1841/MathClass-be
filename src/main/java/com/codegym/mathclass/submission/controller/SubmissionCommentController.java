@@ -22,7 +22,7 @@ public class SubmissionCommentController {
     private final SubmissionCommentService submissionCommentService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAuthority('submission:comment')")
     public ResponseEntity<List<SubmissionCommentResponse>> getCommentsBySubmissionId(
             @PathVariable Long submissionId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -32,7 +32,7 @@ public class SubmissionCommentController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAuthority('submission:comment')")
     public ResponseEntity<SubmissionCommentResponse> addComment(
             @PathVariable Long submissionId,
             @Valid @RequestBody SubmissionCommentRequest request,
@@ -44,7 +44,7 @@ public class SubmissionCommentController {
     }
 
     @DeleteMapping("/{commentId}")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAuthority('submission:comment')")
     public ResponseEntity<Void> deleteComment(
             @PathVariable Long submissionId,
             @PathVariable Long commentId,

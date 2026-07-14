@@ -26,7 +26,7 @@ public class SubmissionController {
 
     // Nộp bài làm
     @PostMapping
-    @PreAuthorize("hasRole('STUDENT')")
+    @PreAuthorize("hasAuthority('submission:submit')")
     public ResponseEntity<SubmissionResponse> createSubmission(
             @RequestBody SubmissionRequest requestDto,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -38,7 +38,7 @@ public class SubmissionController {
 
     // Cập nhật bài làm
     @PutMapping("/{submissionId}")
-    @PreAuthorize("hasRole('STUDENT')")
+    @PreAuthorize("hasAuthority('submission:submit')")
     public ResponseEntity<SubmissionResponse> updateSubmission(
             @PathVariable long submissionId,
             @RequestBody SubmissionRequest requestDto,
@@ -51,7 +51,7 @@ public class SubmissionController {
 
     // Hủy nộp
     @PutMapping("/{submissionId}/unsubmit")
-    @PreAuthorize("hasRole('STUDENT')")
+    @PreAuthorize("hasAuthority('submission:submit')")
     public ResponseEntity<SubmissionResponse> unsubmitSubmission(
             @PathVariable long submissionId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -63,7 +63,7 @@ public class SubmissionController {
 
     // Chấm điểm
     @PutMapping("/{submissionId}/grade")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAuthority('submission:grade')")
     public ResponseEntity<SubmissionResponse> gradeSubmission(
             @PathVariable long submissionId,
             @Valid @RequestBody GradeRequest requestDto,
@@ -76,7 +76,7 @@ public class SubmissionController {
 
     // Lấy bài làm theo id bài tập
     @GetMapping("/my-submission")
-    @PreAuthorize("hasRole('STUDENT')")
+    @PreAuthorize("hasAuthority('submission:read_own')")
     public ResponseEntity<SubmissionResponse> getMySubmission(
             @RequestParam long assignmentId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -91,7 +91,7 @@ public class SubmissionController {
 
     // Lấy danh sách bài làm theo id bài tập (dành cho giáo viên)
     @GetMapping
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAuthority('submission:read_all')")
     public ResponseEntity<Page<SubmissionResponse>> getSubmissionsByAssignment(
             @RequestParam long assignmentId,
             @RequestParam(required = false) SubmissionStatus status,
@@ -108,7 +108,7 @@ public class SubmissionController {
 
     // Lấy chi tiết một bài nộp (dành cho giáo viên)
     @GetMapping("/{submissionId}")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAuthority('submission:read_all')")
     public ResponseEntity<SubmissionResponse> getSubmissionDetail(
             @PathVariable long submissionId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
