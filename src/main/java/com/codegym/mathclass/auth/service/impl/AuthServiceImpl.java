@@ -29,6 +29,7 @@ import java.util.Base64;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -64,17 +65,18 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public JwtResponse authenticateUser(LoginRequest loginRequest) {
         Optional<User> userOptional = userRepository.findByEmail(loginRequest.getEmail());
-        if (userOptional.isPresent()) {
-            User user = userOptional.get();
-            if (user.getPassword() == null || user.getPassword().isEmpty()) {
-                throw new BadRequestException(
-                        "Bạn chưa thiết lập mật khẩu. Vui lòng bấm vào Quên mật khẩu để tạo mật khẩu mới, hoặc tiếp tục Đăng nhập bằng Google.");
-            }
+        if (!userOptional.isPresent()) {
+           throw new BadRequestException("Email hoặc mật khẩu không đúng. Vui lòng thử lại.");}
+
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
+        } catch (BadCredentialsException e) {
+            throw new BadRequestException("Email hoặc mật khẩu không đúng. Vui lòng thử lại.");
+        } catch (Exception e) {
+            throw new BadRequestException("Lỗi đăng nhập: Tài khoản của bạn có thể đã bị khóa hoặc chưa kích hoạt.");
         }
-
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
-
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = jwtUtils.generateJwtToken(authentication);
 
