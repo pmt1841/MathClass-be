@@ -58,4 +58,9 @@ public interface AssignmentService {
     AssignmentResponse getAssignmentById(long assignmentId, long userId, String role);
 
     AssignmentImageDto uploadImageForAssignment(MultipartFile file) throws IOException;
+
+    /**
+     * Upload file (.txt, .docx, ...) và trích xuất nội dung văn bản
+     */
+    java.util.Map<String, Object> extractTextFromFile(org.springframework.web.multipart.MultipartFile file) throws Exception;
 }

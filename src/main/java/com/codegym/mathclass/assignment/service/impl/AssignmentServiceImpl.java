@@ -44,6 +44,12 @@ import com.codegym.mathclass.assignment.dto.AssignmentImageRequest;
 import com.codegym.mathclass.utils.EmailService;
 import org.thymeleaf.context.Context;
 import org.springframework.beans.factory.annotation.Value;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFRun;
+import org.apache.poi.xwpf.usermodel.XWPFPicture;
+import org.apache.poi.xwpf.usermodel.XWPFPictureData;
+import java.nio.charset.StandardCharsets;
 
 @Service
 @RequiredArgsConstructor
@@ -377,6 +383,112 @@ public class AssignmentServiceImpl implements AssignmentService {
         String imageCode = "[IMAGE_" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase() + "]";
         return new AssignmentImageDto(imageCode, publicUrl);
     }
+
+    @Override
+    public java.util.Map<String, Object> extractTextFromFile(org.springframework.web.multipart.MultipartFile file) throws Exception {
+        String filename = file.getOriginalFilename();
+        if (filename == null) {
+            throw new BadRequestException("Tên file không hợp lệ");
+        }
+        
+        filename = filename.toLowerCase();
+        
+        if (filename.endsWith(".txt")) {
+            return java.util.Map.of("content", new String(file.getBytes(), StandardCharsets.UTF_8), "images", new ArrayList<>());
+        } else if (filename.endsWith(".docx")) {
+            try (java.io.InputStream is = file.getInputStream();
+                 XWPFDocument document = new XWPFDocument(is)) {
+                List<AssignmentImageDto> extractedImages = new ArrayList<>();
+                String content = convertDocxToMarkdown(document, extractedImages);
+                return java.util.Map.of("content", content, "images", extractedImages);
+            }
+        } else {
+            throw new BadRequestException("Chỉ hỗ trợ file .txt hoặc .docx");
+        }
+    }
+
+    private String convertDocxToMarkdown(XWPFDocument document, List<AssignmentImageDto> extractedImages) {
+        StringBuilder md = new StringBuilder();
+        for (XWPFParagraph p : document.getParagraphs()) {
+            if (p.isEmpty() || (p.getText().trim().isEmpty() && p.getRuns().stream().noneMatch(r -> !r.getEmbeddedPictures().isEmpty()))) {
+                md.append("\n");
+                continue;
+            }
+            
+            String style = p.getStyleID();
+            String prefix = "";
+            if (style != null) {
+                if (style.contains("Heading1") || "1".equals(style)) prefix = "# ";
+                else if (style.contains("Heading2") || "2".equals(style)) prefix = "## ";
+                else if (style.contains("Heading3") || "3".equals(style)) prefix = "### ";
+                else if (style.contains("Heading4") || "4".equals(style)) prefix = "#### ";
+                else if (style.contains("Heading5") || "5".equals(style)) prefix = "##### ";
+                else if (style.contains("Heading6") || "6".equals(style)) prefix = "###### ";
+            }
+            
+            String listPrefix = "";
+            if (p.getNumID() != null) {
+                // Determine indentation based on level
+                int level = p.getNumIlvl() != null ? p.getNumIlvl().intValue() : 0;
+                listPrefix = "  ".repeat(level) + "- ";
+            }
+
+            StringBuilder paraMd = new StringBuilder();
+            for (XWPFRun run : p.getRuns()) {
+                String runText = run.text();
+                if (runText != null && !runText.isEmpty()) {
+                    boolean bold = run.isBold();
+                    boolean italic = run.isItalic();
+                    
+                    runText = runText.replace("\n", " ");
+                    
+                    if (bold && italic) paraMd.append("***").append(runText).append("***");
+                    else if (bold) paraMd.append("**").append(runText).append("**");
+                    else if (italic) paraMd.append("*").append(runText).append("*");
+                    else paraMd.append(runText);
+                }
+
+                // Xử lý ảnh nhúng
+                List<XWPFPicture> pictures = run.getEmbeddedPictures();
+                if (pictures != null && !pictures.isEmpty()) {
+                    for (XWPFPicture pic : pictures) {
+                        try {
+                            XWPFPictureData picData = pic.getPictureData();
+                            byte[] byteData = picData.getData();
+                            String ext = picData.suggestFileExtension();
+                            String originalName = picData.getFileName();
+                            if (originalName == null || originalName.isEmpty()) {
+                                originalName = "image." + ext;
+                            }
+                            String contentType = picData.getPackagePart().getContentType();
+                            
+                            // Upload to Supabase
+                            String publicUrl = supabaseStorageService.uploadImage(byteData, originalName, contentType, "assignment_image");
+                            
+                            // Generate unique code
+                            String imageCode = "[IMAGE_" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase() + "]";
+                            
+                            // Add to list and markdown
+                            extractedImages.add(new AssignmentImageDto(imageCode, publicUrl));
+                            paraMd.append(" ").append(imageCode).append(" ");
+                        } catch (Exception e) {
+                            System.err.println("Failed to extract and upload image: " + e.getMessage());
+                        }
+                    }
+                }
+            }
+            
+            if (!prefix.isEmpty()) {
+                md.append(prefix).append(paraMd.toString()).append("\n\n");
+            } else if (!listPrefix.isEmpty()) {
+                md.append(listPrefix).append(paraMd.toString()).append("\n");
+            } else {
+                md.append(paraMd.toString()).append("\n\n");
+            }
+        }
+        return md.toString().trim();
+    }
+
 
     @Override
     @Transactional(readOnly = true)

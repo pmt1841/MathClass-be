@@ -25,16 +25,18 @@ public class SupabaseStorageService {
 
 
     public String uploadImage(MultipartFile file, String bucketName) throws IOException {
-        if (file.getSize() > MAX_FILE_SIZE) {
+        return uploadImage(file.getBytes(), file.getOriginalFilename(), file.getContentType(), bucketName);
+    }
+
+    public String uploadImage(byte[] fileData, String originalFilename, String contentType, String bucketName) throws IOException {
+        if (fileData.length > MAX_FILE_SIZE) {
             throw new IllegalArgumentException("Kích thước file không được vượt quá 5MB");
         }
         
-        String contentType = file.getContentType();
         if (contentType == null || !ALLOWED_TYPES.contains(contentType)) {
             throw new IllegalArgumentException("Chỉ chấp nhận file định dạng: png, jpeg, jpg, webp");
         }
 
-        String originalFilename = file.getOriginalFilename();
         String extension = "";
         if (originalFilename != null && originalFilename.contains(".")) {
             extension = originalFilename.substring(originalFilename.lastIndexOf("."));
@@ -44,6 +46,8 @@ public class SupabaseStorageService {
         String objectPath = "images/" + uniqueFileName;
         String apiUrl = supabaseUrl + "/storage/v1/object/" + bucketName + "/" + objectPath;
 
+        System.out.println("[Supabase] Uploading to URL: " + apiUrl);
+
         RestTemplate restTemplate = new RestTemplate();
 
         HttpHeaders headers = new HttpHeaders();
@@ -51,7 +55,7 @@ public class SupabaseStorageService {
         headers.set("apikey", supabaseKey);
         headers.setContentType(MediaType.valueOf(contentType));
 
-        HttpEntity<byte[]> requestEntity = new HttpEntity<>(file.getBytes(), headers);
+        HttpEntity<byte[]> requestEntity = new HttpEntity<>(fileData, headers);
 
         ResponseEntity<String> response = restTemplate.exchange(apiUrl, HttpMethod.POST, requestEntity, String.class);
 
