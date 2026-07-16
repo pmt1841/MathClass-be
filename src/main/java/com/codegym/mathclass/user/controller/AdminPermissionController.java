@@ -4,43 +4,51 @@ import com.codegym.mathclass.user.dto.request.UpdateRolePermissionsRequest;
 import com.codegym.mathclass.user.dto.response.PermissionDto;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.service.RolePermissionService;
+import com.codegym.mathclass.systemlog.service.SystemLogService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/roles")
 @RequiredArgsConstructor
+@PreAuthorize("hasAuthority('user:manage') or hasRole('ADMIN')")
 public class AdminPermissionController {
 
     private final RolePermissionService rolePermissionService;
-
-    @GetMapping("/{roleName}/permissions")
-    @PreAuthorize("hasAuthority('user:manage') or hasRole('ADMIN')")
-    public ResponseEntity<List<PermissionDto>> getRolePermissions(@PathVariable String roleName) {
-        Role role = parseRole(roleName);
-        return ResponseEntity.ok(rolePermissionService.getPermissionsByRole(role));
-    }
+    private final SystemLogService systemLogService;
 
     @GetMapping("/permissions")
-    @PreAuthorize("hasAuthority('user:manage') or hasRole('ADMIN')")
     public ResponseEntity<List<PermissionDto>> getAllPermissions() {
         return ResponseEntity.ok(rolePermissionService.getAllPermissions());
     }
 
+    @GetMapping("/{roleName}/permissions")
+    public ResponseEntity<List<PermissionDto>> getPermissionsByRole(@PathVariable String roleName) {
+        Role role = parseRole(roleName);
+        return ResponseEntity.ok(rolePermissionService.getPermissionsByRole(role));
+    }
+
     @PutMapping("/{roleName}/permissions")
-    @PreAuthorize("hasAuthority('user:manage') or hasRole('ADMIN')")
-    public ResponseEntity<Void> updateRolePermissions(
+    public ResponseEntity<Map<String, String>> updateRolePermissions(
             @PathVariable String roleName,
-            @Valid @RequestBody UpdateRolePermissionsRequest request) {
+            @Valid @RequestBody UpdateRolePermissionsRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
         
         Role role = parseRole(roleName);
         rolePermissionService.updateRolePermissions(role, request.getPermissionIds());
-        return ResponseEntity.ok().build();
+        
+        systemLogService.logWarning(userDetails.getUsername(), 
+            "Cập nhật danh sách phân quyền cho nhóm " + role.name(), null);
+            
+        return ResponseEntity.ok(Map.of("message", "Cập nhật phân quyền thành công."));
     }
 
     private Role parseRole(String roleName) {
