@@ -171,4 +171,17 @@ public class AssignmentController {
             return ResponseEntity.badRequest().body("Lỗi: " + e.getMessage());
         }
     }
+
+    @PostMapping("/extract-text")
+    @PreAuthorize("hasAuthority('assignment:create')")
+    public ResponseEntity<?> extractTextFromFile(
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        try {
+            java.util.Map<String, Object> result = assignmentService.extractTextFromFile(file);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", "Lỗi trích xuất văn bản: " + e.getMessage()));
+        }
+    }
 }

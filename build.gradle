@@ -35,6 +35,9 @@ dependencies {
     // Dev
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
+    // Apache POI for docx reading
+    implementation 'org.apache.poi:poi-ooxml:5.2.5'
+
     // JWT
     implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'
