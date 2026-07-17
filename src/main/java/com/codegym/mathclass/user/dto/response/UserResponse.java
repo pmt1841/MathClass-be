@@ -25,5 +25,6 @@ public class UserResponse {
     @JsonFormat(pattern = "dd-MM-yyyy")
     private LocalDate dateOfBirth;
     private Gender gender;
+    private java.util.List<String> permissions;
     private Provider provider;
 }
