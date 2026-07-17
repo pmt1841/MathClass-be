@@ -8,6 +8,7 @@ import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.user.service.UserService;
 import com.codegym.mathclass.utils.SupabaseStorageService;
 import com.codegym.mathclass.user.dto.request.UpdateProfileRequest;
+import com.codegym.mathclass.user.repository.RolePermissionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,12 +22,16 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final SupabaseStorageService supabaseStorageService;
+    private final RolePermissionRepository rolePermissionRepository;
 
     @Override
     public UserResponse getUserProfile(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy người dùng với ID: " + id));
-        return userMapper.toUserResponse(user);
+        UserResponse response = userMapper.toUserResponse(user);
+        // Always fetch real-time permissions for UI updates, bypassing the backend auth cache
+        response.setPermissions(rolePermissionRepository.findPermissionNamesByRole(user.getRole()));
+        return response;
     }
 
     @Override
@@ -45,7 +50,9 @@ public class UserServiceImpl implements UserService {
         }
 
         userRepository.save(user);
-        return userMapper.toUserResponse(user);
+        UserResponse response = userMapper.toUserResponse(user);
+        response.setPermissions(rolePermissionRepository.findPermissionNamesByRole(user.getRole()));
+        return response;
     }
 
     @Override

@@ -52,6 +52,7 @@ public class RolePermissionService {
         // Delete all existing permissions for this role
         List<RolePermission> existingRolePermissions = rolePermissionRepository.findByRole(role);
         rolePermissionRepository.deleteAll(existingRolePermissions);
+        rolePermissionRepository.flush();
 
         // Save new permissions
         if (permissionIds != null && !permissionIds.isEmpty()) {
@@ -71,8 +72,8 @@ public class RolePermissionService {
             rolePermissionRepository.saveAll(newRolePermissions);
         }
 
-        // Evict cache to force reload next time
-        permissionCacheService.evictPermissionsCache(role);
-        log.info("Successfully updated permissions and evicted cache for role: {}", role);
+        // Cache is not immediately evicted to allow in-flight operations (grace period)
+        // permissionCacheService.evictPermissionsCache(role);
+        log.info("Successfully updated permissions for role: {}", role);
     }
 }

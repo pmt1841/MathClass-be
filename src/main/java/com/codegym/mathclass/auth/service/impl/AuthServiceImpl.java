@@ -91,10 +91,15 @@ public class AuthServiceImpl implements AuthService {
                 userDetails.getFullName(),
                 userDetails.getAuthorities().stream()
                         .map(GrantedAuthority::getAuthority)
+                        .filter(a -> a.startsWith("ROLE_"))
                         .findFirst()
                         .map(r -> r.replace("ROLE_", ""))
                         .orElse(""),
-                userDetails.getAvatarUrl());
+                userDetails.getAvatarUrl(),
+                userDetails.getAuthorities().stream()
+                        .map(GrantedAuthority::getAuthority)
+                        .filter(a -> !a.startsWith("ROLE_"))
+                        .toList());
     }
 
     @Override
@@ -350,10 +355,15 @@ public class AuthServiceImpl implements AuthService {
                         userDetails.getFullName(),
                         userDetails.getAuthorities().stream()
                                 .map(GrantedAuthority::getAuthority)
+                                .filter(a -> a.startsWith("ROLE_"))
                                 .findFirst()
                                 .map(r -> r.replace("ROLE_", ""))
                                 .orElse(""),
-                        userDetails.getAvatarUrl());
+                        userDetails.getAvatarUrl(),
+                        userDetails.getAuthorities().stream()
+                                .map(GrantedAuthority::getAuthority)
+                                .filter(a -> !a.startsWith("ROLE_"))
+                                .toList());
 
             } else {
                 throw new BadRequestException("Token xác thực Google không hợp lệ.");
