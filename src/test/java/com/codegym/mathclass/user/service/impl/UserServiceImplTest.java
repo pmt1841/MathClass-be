@@ -6,6 +6,7 @@ import com.codegym.mathclass.user.dto.response.UserResponse;
 import com.codegym.mathclass.user.entity.Gender;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
+import com.codegym.mathclass.user.entity.Provider;
 import com.codegym.mathclass.user.mapper.UserMapper;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.SupabaseStorageService;
@@ -222,5 +223,48 @@ class UserServiceImplTest {
                 .hasMessageContaining("Lỗi khi upload ảnh đại diện: Upload failed");
                 
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Should not update fullName and avatarUrl when user has GOOGLE provider")
+    void updateProfile_UserIsGoogle_DoesNotUpdateNameAndAvatar() {
+        // Given
+        Long userId = 1L;
+        mockUser.setProvider(Provider.GOOGLE);
+        mockUser.setFullName("Google User Name");
+        mockUser.setAvatarUrl("https://google.com/avatar.png");
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+        when(userRepository.save(any(User.class))).thenReturn(mockUser);
+        when(userMapper.toUserResponse(mockUser)).thenReturn(mockUserResponse);
+
+        // When
+        userService.updateProfile(userId, mockUpdateRequest);
+
+        // Then
+        verify(userRepository, times(1)).save(mockUser);
+        assertThat(mockUser.getFullName()).isEqualTo("Google User Name"); // Must NOT change
+        assertThat(mockUser.getAvatarUrl()).isEqualTo("https://google.com/avatar.png"); // Must NOT change
+        assertThat(mockUser.getPhoneNumber()).isEqualTo("0123456789"); // Should update
+        assertThat(mockUser.getGender()).isEqualTo(Gender.MALE); // Should update
+    }
+
+    @Test
+    @DisplayName("Should throw BadRequestException when uploading avatar for GOOGLE provider user")
+    void uploadAvatar_UserIsGoogle_ThrowsBadRequestException() {
+        // Given
+        Long userId = 1L;
+        mockUser.setProvider(Provider.GOOGLE);
+        MultipartFile mockFile = mock(MultipartFile.class);
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+
+        // When & Then
+        assertThatThrownBy(() -> userService.uploadAvatar(userId, mockFile))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Không thể thay đổi ảnh đại diện cho tài khoản liên kết Google");
+
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(supabaseStorageService);
     }
 }
