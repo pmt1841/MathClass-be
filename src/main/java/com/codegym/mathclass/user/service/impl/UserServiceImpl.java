@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import com.codegym.mathclass.user.entity.Provider;
 import java.io.IOException;
 
 @Service
@@ -35,14 +36,15 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy người dùng với ID: " + id));
 
-        user.setFullName(request.getFullName());
+        if (user.getProvider() != Provider.GOOGLE) {
+            user.setFullName(request.getFullName());
+            if (request.getAvatarUrl() != null && !request.getAvatarUrl().isEmpty()) {
+                user.setAvatarUrl(request.getAvatarUrl());
+            }
+        }
         user.setPhoneNumber(request.getPhoneNumber());
         user.setDateOfBirth(request.getDateOfBirth());
         user.setGender(request.getGender());
-
-        if (request.getAvatarUrl() != null && !request.getAvatarUrl().isEmpty()) {
-            user.setAvatarUrl(request.getAvatarUrl());
-        }
 
         userRepository.save(user);
         return userMapper.toUserResponse(user);
@@ -53,6 +55,10 @@ public class UserServiceImpl implements UserService {
     public String uploadAvatar(Long id, MultipartFile file) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy người dùng với ID: " + id));
+
+        if (user.getProvider() == Provider.GOOGLE) {
+            throw new BadRequestException("Không thể thay đổi ảnh đại diện cho tài khoản liên kết Google");
+        }
 
         try {
             String avatarUrl = supabaseStorageService.uploadImage(file, "avatar");

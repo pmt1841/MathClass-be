@@ -22,6 +22,7 @@ public class UserMapper {
                 .avatarUrl(user.getAvatarUrl())
                 .dateOfBirth(user.getDateOfBirth())
                 .gender(user.getGender())
+                .provider(user.getProvider())
                 .build();
     }
 }

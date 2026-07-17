@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.LocalDate;
 import com.codegym.mathclass.user.entity.Gender;
+import com.codegym.mathclass.user.entity.Provider;
 
 @Data
 @Builder
@@ -24,4 +25,5 @@ public class UserResponse {
     @JsonFormat(pattern = "dd-MM-yyyy")
     private LocalDate dateOfBirth;
     private Gender gender;
+    private Provider provider;
 }
