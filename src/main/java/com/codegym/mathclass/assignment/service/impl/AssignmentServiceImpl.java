@@ -455,10 +455,30 @@ public class AssignmentServiceImpl implements AssignmentService {
                 
                 runText = runText.replace("\n", " ");
                 
-                if (bold && italic) paraMd.append("***").append(runText).append("***");
-                else if (bold) paraMd.append("**").append(runText).append("**");
-                else if (italic) paraMd.append("*").append(runText).append("*");
-                else paraMd.append(runText);
+                if (bold || italic) {
+                    // Extract leading spaces
+                    String leadingSpaces = "";
+                    while (runText.startsWith(" ")) {
+                        leadingSpaces += " ";
+                        runText = runText.substring(1);
+                    }
+                    // Extract trailing spaces
+                    String trailingSpaces = "";
+                    while (runText.endsWith(" ")) {
+                        trailingSpaces += " ";
+                        runText = runText.substring(0, runText.length() - 1);
+                    }
+                    
+                    paraMd.append(leadingSpaces);
+                    if (!runText.isEmpty()) {
+                        if (bold && italic) paraMd.append("***").append(runText).append("***");
+                        else if (bold) paraMd.append("**").append(runText).append("**");
+                        else if (italic) paraMd.append("*").append(runText).append("*");
+                    }
+                    paraMd.append(trailingSpaces);
+                } else {
+                    paraMd.append(runText);
+                }
             }
 
             // Xử lý ảnh nhúng
