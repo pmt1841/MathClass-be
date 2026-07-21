@@ -1,12 +1,14 @@
 package com.codegym.mathclass.auth.service.impl;
 
 import com.codegym.mathclass.auth.service.AuthService;
+import com.codegym.mathclass.auth.service.RefreshTokenService;
+import com.codegym.mathclass.auth.entity.RefreshToken;
 import com.codegym.mathclass.auth.dto.request.GoogleAuthRequest;
 import com.codegym.mathclass.auth.dto.request.LoginRequest;
 import com.codegym.mathclass.auth.dto.request.SignupRequest;
 import com.codegym.mathclass.auth.dto.request.ForgotPasswordRequest;
 import com.codegym.mathclass.auth.dto.request.ResetPasswordRequest;
-import com.codegym.mathclass.auth.dto.response.JwtResponse;
+import com.codegym.mathclass.auth.dto.response.UserInfoResponse;
 import com.codegym.mathclass.auth.dto.response.MessageResponse;
 import com.codegym.mathclass.security.jwt.JwtUtils;
 import com.codegym.mathclass.security.services.CustomUserDetails;
@@ -47,6 +49,8 @@ import com.codegym.mathclass.auth.repository.PasswordResetTokenRepository;
 import com.codegym.mathclass.user.entity.Provider;
 import com.codegym.mathclass.exception.TooManyRequestsException;
 import java.util.concurrent.ConcurrentHashMap;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -59,17 +63,36 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder encoder;
     private final EmailService emailService;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final RefreshTokenService refreshTokenService;
 
     private final ConcurrentHashMap<String, LocalDateTime> forgotPasswordRateLimitMap = new ConcurrentHashMap<>();
 
-    @Value("${FRONTEND_URL:http://localhost:5173}")
+    @Value("${FRONTEND_URL}")
     private String frontendUrl;
 
     @Override
-    public JwtResponse authenticateUser(LoginRequest loginRequest) {
+    public UserInfoResponse authenticateUser(LoginRequest loginRequest, HttpServletResponse response) {
         Optional<User> userOptional = userRepository.findByEmail(loginRequest.getEmail());
         if (!userOptional.isPresent()) {
-           throw new BadRequestException("Email hoặc mật khẩu không đúng. Vui lòng thử lại.");}
+            throw new BadRequestException("Email hoặc mật khẩu không đúng. Vui lòng thử lại.");
+        }
+
+        User user = userOptional.get();
+        if (loginRequest.getRole() != null && !loginRequest.getRole().isEmpty()) {
+            try {
+                Role requestedRole = Role.valueOf(loginRequest.getRole().toUpperCase());
+                // Học sinh không thể đăng nhập trang Giáo viên
+                if (requestedRole == Role.TEACHER && user.getRole() == Role.STUDENT) {
+                    throw new BadRequestException("Email hoặc mật khẩu không đúng. Vui lòng thử lại.");
+                }
+                // Giáo viên/Admin không nên đăng nhập trang Học sinh
+                if (requestedRole == Role.STUDENT && user.getRole() != Role.STUDENT) {
+                    throw new BadRequestException("Email hoặc mật khẩu không đúng. Vui lòng thử lại.");
+                }
+            } catch (IllegalArgumentException e) {
+                // Bỏ qua nếu role từ frontend gửi lên không hợp lệ
+            }
+        }
 
         Authentication authentication;
         try {
@@ -81,11 +104,16 @@ public class AuthServiceImpl implements AuthService {
             throw new BadRequestException("Lỗi đăng nhập: Tài khoản của bạn có thể đã bị khóa hoặc chưa kích hoạt.");
         }
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        String jwt = jwtUtils.generateJwtToken(authentication);
-
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
 
-        return new JwtResponse(jwt,
+        ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails);
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(userDetails.getId());
+        ResponseCookie jwtRefreshCookie = jwtUtils.generateRefreshJwtCookie(refreshToken.getToken());
+
+        response.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, jwtRefreshCookie.toString());
+
+        return new UserInfoResponse(
                 userDetails.getId(),
                 userDetails.getEmail(),
                 userDetails.getFullName(),
@@ -103,13 +131,44 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public MessageResponse logoutUser() {
+    public MessageResponse logoutUser(HttpServletRequest request, HttpServletResponse response) {
+        String refreshCookie = jwtUtils.getJwtRefreshFromCookies(request);
+        if (refreshCookie != null && !refreshCookie.isEmpty()) {
+            refreshTokenService.findByToken(refreshCookie).ifPresent(token -> {
+                refreshTokenService.deleteByUserId(token.getUser().getId());
+            });
+        }
 
-        // Đối với JWT (stateless), việc logout thực chất do client thực hiện bằng cách
-        // xoá token ở LocalStorage/Cookie
-        // Backend chỉ cần trả về thông báo thành công
+        ResponseCookie cleanJwtCookie = jwtUtils.getCleanJwtCookie();
+        ResponseCookie cleanJwtRefreshCookie = jwtUtils.getCleanJwtRefreshCookie();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, cleanJwtCookie.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, cleanJwtRefreshCookie.toString());
+
         SecurityContextHolder.getContext().setAuthentication(null);
         return new MessageResponse("Đăng xuất thành công!");
+    }
+
+    @Override
+    public MessageResponse refreshToken(HttpServletRequest request, HttpServletResponse response) {
+        String refreshTokenStr = jwtUtils.getJwtRefreshFromCookies(request);
+
+        if (refreshTokenStr != null && !refreshTokenStr.isEmpty()) {
+            return refreshTokenService.findByToken(refreshTokenStr)
+                    .map(refreshTokenService::verifyExpiration)
+                    .map(RefreshToken::getUser)
+                    .map(user -> {
+                        List<String> permissions = permissionCacheService.getPermissionsByRole(user.getRole());
+                        CustomUserDetails userDetails = CustomUserDetails.build(user, permissions);
+                        ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails);
+
+                        response.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
+                        return new MessageResponse("Token is refreshed successfully!");
+                    })
+                    .orElseThrow(() -> new BadRequestException("Refresh token không hợp lệ hoặc đã bị thu hồi!"));
+        }
+
+        throw new BadRequestException("Refresh Token bị trống!");
     }
 
     @Override
@@ -118,20 +177,23 @@ public class AuthServiceImpl implements AuthService {
             throw new BadRequestException("Lỗi: Email đã tồn tại!");
         }
 
-        // Tạo user mới
+        Role requestedRole = signUpRequest.getRole();
+        if (requestedRole == Role.ADMIN) {
+            throw new BadRequestException("Lỗi đăng ký tài khoản");
+        }
+
         User user = new User();
         user.setPassword(encoder.encode(signUpRequest.getPassword()));
         user.setFullName(signUpRequest.getFullName());
         user.setPhoneNumber(signUpRequest.getPhoneNumber());
         user.setEmail(signUpRequest.getEmail());
-        user.setRole(signUpRequest.getRole());
+        user.setRole(requestedRole != null ? requestedRole : Role.STUDENT);
         user.setActive(false);
         String token = UUID.randomUUID().toString();
         user.setVerificationCode(token);
 
         userRepository.save(user);
 
-        // Khởi tạo cài đặt thông báo mặc định cho người dùng mới
         NotificationSettings settings = NotificationSettings.builder()
                 .userId(user.getId())
                 .build();
@@ -190,7 +252,8 @@ public class AuthServiceImpl implements AuthService {
             StringBuilder hexString = new StringBuilder();
             for (byte b : hash) {
                 String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) hexString.append('0');
+                if (hex.length() == 1)
+                    hexString.append('0');
                 hexString.append(hex);
             }
             return hexString.toString();
@@ -210,20 +273,17 @@ public class AuthServiceImpl implements AuthService {
         forgotPasswordRateLimitMap.put(email, now);
 
         Optional<User> userOptional = userRepository.findByEmail(request.getEmail());
-        
-        // Luôn trả về thành công để tránh User Enumeration
+
         if (userOptional.isPresent()) {
             User user = userOptional.get();
-            
-            // Generate secure token
+
             SecureRandom random = new SecureRandom();
             byte[] bytes = new byte[32];
             random.nextBytes(bytes);
             String rawToken = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-            
+
             String tokenHash = hashToken(rawToken);
-            
-            // Ghi đè bản ghi cũ chưa sử dụng hoặc tạo mới
+
             Optional<PasswordResetToken> existingTokenOpt = passwordResetTokenRepository.findByUserAndIsUsedFalse(user);
             PasswordResetToken resetToken;
             if (existingTokenOpt.isPresent()) {
@@ -239,15 +299,16 @@ public class AuthServiceImpl implements AuthService {
                         .build();
             }
             passwordResetTokenRepository.save(resetToken);
-            
+
             String resetLink = frontendUrl + "/reset-password?token=" + rawToken;
-            
+
             Context context = new Context();
             context.setVariable("fullName", user.getFullName());
             context.setVariable("resetLink", resetLink);
-            emailService.sendHtmlMailAsync(user.getEmail(), "Yêu cầu khôi phục mật khẩu MathClass", "forgot-password", context);
+            emailService.sendHtmlMailAsync(user.getEmail(), "Yêu cầu khôi phục mật khẩu MathClass", "forgot-password",
+                    context);
         }
-        
+
         return new MessageResponse("Nếu email của bạn hợp lệ, một liên kết đặt lại mật khẩu đã được gửi đến hộp thư.");
     }
 
@@ -256,34 +317,37 @@ public class AuthServiceImpl implements AuthService {
     public MessageResponse resetPassword(ResetPasswordRequest request) {
         String rawToken = request.getToken();
         String tokenHash = hashToken(rawToken);
-        
-        Optional<PasswordResetToken> resetTokenOptional = passwordResetTokenRepository.findByTokenHashAndIsUsedFalse(tokenHash);
-        
+
+        Optional<PasswordResetToken> resetTokenOptional = passwordResetTokenRepository
+                .findByTokenHashAndIsUsedFalse(tokenHash);
+
         if (resetTokenOptional.isEmpty()) {
             throw new BadRequestException("Token không hợp lệ hoặc đã qua sử dụng.");
         }
-        
+
         PasswordResetToken resetToken = resetTokenOptional.get();
-        
+
         if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
             throw new BadRequestException("Đường dẫn đặt lại mật khẩu đã hết hạn.");
         }
-        
+
         User user = resetToken.getUser();
         user.setPassword(encoder.encode(request.getNewPassword()));
         userRepository.save(user);
-        
+
         resetToken.setUsed(true);
         passwordResetTokenRepository.save(resetToken);
-        
-        return new MessageResponse("Mật khẩu của bạn đã được cập nhật thành công. Vui lòng đăng nhập bằng mật khẩu mới.", user.getRole().name());
+
+        return new MessageResponse(
+                "Mật khẩu của bạn đã được cập nhật thành công. Vui lòng đăng nhập bằng mật khẩu mới.",
+                user.getRole().name());
     }
 
     @Value("${spring.security.oauth2.client.registration.google.client-id:}")
     private String googleClientId;
 
     @Override
-    public JwtResponse authenticateWithGoogle(GoogleAuthRequest request) {
+    public UserInfoResponse authenticateWithGoogle(GoogleAuthRequest request, HttpServletResponse httpResponse) {
         try {
             RestTemplate restTemplate = new RestTemplate();
             HttpHeaders headers = new HttpHeaders();
@@ -309,6 +373,21 @@ public class AuthServiceImpl implements AuthService {
 
                 if (userOptional.isPresent()) {
                     user = userOptional.get();
+
+                    if (request.getRole() != null && !request.getRole().isEmpty()) {
+                        try {
+                            Role requestedRole = Role.valueOf(request.getRole().toUpperCase());
+                            if (requestedRole == Role.TEACHER && user.getRole() == Role.STUDENT) {
+                                throw new BadRequestException("Tài khoản học sinh không thể truy cập hệ thống của giáo viên.");
+                            }
+                            if (requestedRole == Role.STUDENT && user.getRole() != Role.STUDENT) {
+                                throw new BadRequestException("Tài khoản giáo viên không thể truy cập hệ thống của học sinh.");
+                            }
+                        } catch (IllegalArgumentException e) {
+                            // ignore
+                        }
+                    }
+
                     if (user.getAvatarUrl() == null || user.getAvatarUrl().isEmpty()) {
                         user.setAvatarUrl(pictureUrl);
                         userRepository.save(user);
@@ -330,8 +409,12 @@ public class AuthServiceImpl implements AuthService {
                     }
                     user.setRole(role);
                     user.setProvider(Provider.GOOGLE);
-                    user.setPassword(encoder.encode(UUID.randomUUID().toString()));
-                    user.setPhoneNumber(""); // Hoặc set null nếu cho phép nullable
+                    SecureRandom random = new SecureRandom();
+                    byte[] bytes = new byte[24];
+                    random.nextBytes(bytes);
+                    String randomPassword = java.util.Base64.getEncoder().encodeToString(bytes);
+                    user.setPassword(encoder.encode(randomPassword));
+                    user.setPhoneNumber("");
                     userRepository.save(user);
 
                     NotificationSettings settings = NotificationSettings.builder()
@@ -347,9 +430,14 @@ public class AuthServiceImpl implements AuthService {
                         userDetails, null, userDetails.getAuthorities());
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                String jwt = jwtUtils.generateJwtToken(authentication);
+                ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails);
+                RefreshToken refreshToken = refreshTokenService.createRefreshToken(userDetails.getId());
+                ResponseCookie jwtRefreshCookie = jwtUtils.generateRefreshJwtCookie(refreshToken.getToken());
 
-                return new JwtResponse(jwt,
+                httpResponse.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
+                httpResponse.addHeader(HttpHeaders.SET_COOKIE, jwtRefreshCookie.toString());
+
+                return new UserInfoResponse(
                         userDetails.getId(),
                         userDetails.getEmail(),
                         userDetails.getFullName(),
@@ -371,9 +459,7 @@ public class AuthServiceImpl implements AuthService {
         } catch (BadRequestException e) {
             throw e;
         } catch (Exception e) {
-            // Log lỗi để debug nội bộ
             e.printStackTrace();
-            // Trả về thông báo chung chung, an toàn cho Frontend
             throw new BadRequestException("Đăng nhập thất bại. Vui lòng thử lại sau.");
         }
     }

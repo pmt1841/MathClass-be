@@ -4,13 +4,15 @@ import com.codegym.mathclass.auth.dto.request.LoginRequest;
 import com.codegym.mathclass.auth.dto.request.SignupRequest;
 import com.codegym.mathclass.auth.dto.request.ForgotPasswordRequest;
 import com.codegym.mathclass.auth.dto.request.ResetPasswordRequest;
-import com.codegym.mathclass.auth.dto.response.JwtResponse;
+import com.codegym.mathclass.auth.dto.response.UserInfoResponse;
 import com.codegym.mathclass.auth.dto.response.MessageResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 public interface AuthService {
-    JwtResponse authenticateUser(LoginRequest loginRequest);
+    UserInfoResponse authenticateUser(LoginRequest loginRequest, HttpServletResponse response);
 
-    MessageResponse logoutUser();
+    MessageResponse logoutUser(HttpServletRequest request, HttpServletResponse response);
 
     MessageResponse registerUser(SignupRequest signUpRequest);
 
@@ -20,5 +22,7 @@ public interface AuthService {
 
     MessageResponse resetPassword(ResetPasswordRequest request);
 
-    JwtResponse authenticateWithGoogle(com.codegym.mathclass.auth.dto.request.GoogleAuthRequest request);
+    UserInfoResponse authenticateWithGoogle(com.codegym.mathclass.auth.dto.request.GoogleAuthRequest request, HttpServletResponse response);
+
+    MessageResponse refreshToken(HttpServletRequest request, HttpServletResponse response);
 }

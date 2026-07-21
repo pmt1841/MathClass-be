@@ -67,7 +67,7 @@ public class AssignmentServiceImpl implements AssignmentService {
     private final SupabaseStorageService supabaseStorageService;
     private final EmailService emailService;
 
-    @Value("${FRONTEND_URL:http://localhost:5173}")
+    @Value("${FRONTEND_URL}")
     private String frontendUrl;
 
     @Override
@@ -382,26 +382,29 @@ public class AssignmentServiceImpl implements AssignmentService {
     }
 
     @Override
-    public AssignmentImageDto uploadImageForAssignment(org.springframework.web.multipart.MultipartFile file) throws java.io.IOException {
+    public AssignmentImageDto uploadImageForAssignment(org.springframework.web.multipart.MultipartFile file)
+            throws java.io.IOException {
         String publicUrl = supabaseStorageService.uploadImage(file, "assignment_image");
         String imageCode = "[IMAGE_" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase() + "]";
         return new AssignmentImageDto(imageCode, publicUrl);
     }
 
     @Override
-    public java.util.Map<String, Object> extractTextFromFile(org.springframework.web.multipart.MultipartFile file) throws Exception {
+    public java.util.Map<String, Object> extractTextFromFile(org.springframework.web.multipart.MultipartFile file)
+            throws Exception {
         String filename = file.getOriginalFilename();
         if (filename == null) {
             throw new BadRequestException("Tên file không hợp lệ");
         }
-        
+
         filename = filename.toLowerCase();
-        
+
         if (filename.endsWith(".txt")) {
-            return java.util.Map.of("content", new String(file.getBytes(), StandardCharsets.UTF_8), "images", new ArrayList<>());
+            return java.util.Map.of("content", new String(file.getBytes(), StandardCharsets.UTF_8), "images",
+                    new ArrayList<>());
         } else if (filename.endsWith(".docx")) {
             try (java.io.InputStream is = file.getInputStream();
-                 XWPFDocument document = new XWPFDocument(is)) {
+                    XWPFDocument document = new XWPFDocument(is)) {
                 List<AssignmentImageDto> extractedImages = new ArrayList<>();
                 String content = convertDocxToMarkdown(document, extractedImages);
                 return java.util.Map.of("content", content, "images", extractedImages);
@@ -424,21 +427,28 @@ public class AssignmentServiceImpl implements AssignmentService {
     }
 
     private String processParagraph(XWPFParagraph p, List<AssignmentImageDto> extractedImages) {
-        if (p.isEmpty() || (p.getText().trim().isEmpty() && p.getRuns().stream().noneMatch(r -> !r.getEmbeddedPictures().isEmpty()))) {
+        if (p.isEmpty() || (p.getText().trim().isEmpty()
+                && p.getRuns().stream().noneMatch(r -> !r.getEmbeddedPictures().isEmpty()))) {
             return "\n";
         }
-        
+
         String style = p.getStyleID();
         String prefix = "";
         if (style != null) {
-            if (style.contains("Heading1") || "1".equals(style)) prefix = "# ";
-            else if (style.contains("Heading2") || "2".equals(style)) prefix = "## ";
-            else if (style.contains("Heading3") || "3".equals(style)) prefix = "### ";
-            else if (style.contains("Heading4") || "4".equals(style)) prefix = "#### ";
-            else if (style.contains("Heading5") || "5".equals(style)) prefix = "##### ";
-            else if (style.contains("Heading6") || "6".equals(style)) prefix = "###### ";
+            if (style.contains("Heading1") || "1".equals(style))
+                prefix = "# ";
+            else if (style.contains("Heading2") || "2".equals(style))
+                prefix = "## ";
+            else if (style.contains("Heading3") || "3".equals(style))
+                prefix = "### ";
+            else if (style.contains("Heading4") || "4".equals(style))
+                prefix = "#### ";
+            else if (style.contains("Heading5") || "5".equals(style))
+                prefix = "##### ";
+            else if (style.contains("Heading6") || "6".equals(style))
+                prefix = "###### ";
         }
-        
+
         String listPrefix = "";
         if (p.getNumID() != null) {
             // Determine indentation based on level
@@ -452,13 +462,17 @@ public class AssignmentServiceImpl implements AssignmentService {
             if (runText != null && !runText.isEmpty()) {
                 boolean bold = run.isBold();
                 boolean italic = run.isItalic();
-                
+
                 runText = runText.replace("\n", " ");
-                
-                if (bold && italic) paraMd.append("***").append(runText).append("***");
-                else if (bold) paraMd.append("**").append(runText).append("**");
-                else if (italic) paraMd.append("*").append(runText).append("*");
-                else paraMd.append(runText);
+
+                if (bold && italic)
+                    paraMd.append("***").append(runText).append("***");
+                else if (bold)
+                    paraMd.append("**").append(runText).append("**");
+                else if (italic)
+                    paraMd.append("*").append(runText).append("*");
+                else
+                    paraMd.append(runText);
             }
 
             // Xử lý ảnh nhúng
@@ -474,13 +488,15 @@ public class AssignmentServiceImpl implements AssignmentService {
                             originalName = "image." + ext;
                         }
                         String contentType = picData.getPackagePart().getContentType();
-                        
+
                         // Upload to Supabase
-                        String publicUrl = supabaseStorageService.uploadImage(byteData, originalName, contentType, "assignment_image");
-                        
+                        String publicUrl = supabaseStorageService.uploadImage(byteData, originalName, contentType,
+                                "assignment_image");
+
                         // Generate unique code
-                        String imageCode = "[IMAGE_" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase() + "]";
-                        
+                        String imageCode = "[IMAGE_"
+                                + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase() + "]";
+
                         // Add to list and markdown
                         extractedImages.add(new AssignmentImageDto(imageCode, publicUrl));
                         paraMd.append(" ").append(imageCode).append(" ");
@@ -490,7 +506,7 @@ public class AssignmentServiceImpl implements AssignmentService {
                 }
             }
         }
-        
+
         if (!prefix.isEmpty()) {
             return prefix + paraMd.toString() + "\n\n";
         } else if (!listPrefix.isEmpty()) {
@@ -511,7 +527,8 @@ public class AssignmentServiceImpl implements AssignmentService {
                     if (element instanceof XWPFParagraph) {
                         String pText = processParagraph((XWPFParagraph) element, extractedImages).trim();
                         if (!pText.isEmpty()) {
-                            if (cellContent.length() > 0) cellContent.append("<br>");
+                            if (cellContent.length() > 0)
+                                cellContent.append("<br>");
                             cellContent.append(pText);
                         }
                     } else if (element instanceof XWPFTable) {
@@ -522,7 +539,7 @@ public class AssignmentServiceImpl implements AssignmentService {
                 tableMd.append(" ").append(cellContent.toString().replace("|", "\\|")).append(" |");
             }
             tableMd.append("\n");
-            
+
             // Add separator after first row
             if (rowIndex == 0) {
                 tableMd.append("|");
@@ -535,7 +552,6 @@ public class AssignmentServiceImpl implements AssignmentService {
         }
         return tableMd.toString() + "\n";
     }
-
 
     @Override
     @Transactional(readOnly = true)
@@ -665,7 +681,8 @@ public class AssignmentServiceImpl implements AssignmentService {
         }
     }
 
-    private Assignment cloneAssignmentForClassroom(Assignment original, Classroom classroom, java.time.LocalDateTime deadline) {
+    private Assignment cloneAssignmentForClassroom(Assignment original, Classroom classroom,
+            java.time.LocalDateTime deadline) {
         Assignment clone = new Assignment();
         clone.setTitle(original.getTitle());
         clone.setDescription(original.getDescription());
@@ -710,8 +727,7 @@ public class AssignmentServiceImpl implements AssignmentService {
                         student.getEmail(),
                         "Bài tập mới: " + clone.getTitle(),
                         "assignment-notification",
-                        context
-                );
+                        context);
             }
         }
     }
