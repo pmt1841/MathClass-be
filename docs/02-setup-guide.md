@@ -1,15 +1,16 @@
 # Hướng Dẫn Cài Đặt Môi Trường (Backend Setup Guide)
 
-## 1. Yêu cầu (Prerequisites)
+## 1. Yêu cầu Hệ thống (Prerequisites)
 
 - **Java JDK 21**
-- **Docker Desktop** (Đề xuất)
-- **IDE:** IntelliJ IDEA hoặc Eclipse (khuyên dùng IntelliJ IDEA).
+- **Docker & Docker Desktop** (Khuyên dùng cho PostgreSQL container)
+- **IDE:** IntelliJ IDEA (Khuyên dùng) hoặc Eclipse
+- **Gradle 8.x+** (Đã đính kèm Gradle Wrapper `gradlew`)
 - **Git**
 
 ## 2. Cấu hình Môi trường (.env)
 
-Tạo file `.env` tại thư mục gốc `MathClass-service/`:
+Tạo file `.env` tại thư mục gốc của dự án (`MathClass-service/.env`):
 
 ```properties
 # Cơ sở dữ liệu PostgreSQL
@@ -17,39 +18,64 @@ DB_URL=jdbc:postgresql://localhost:5433/mathclass_db
 DB_USERNAME=postgres
 DB_PASSWORD=your_secure_password
 
-# Cấu hình SMTP Gmail gửi thông báo
+# Cấu hình SMTP Gmail gửi email xác thực & thông báo
 MAIL_USERNAME=your_gmail@gmail.com
 MAIL_PASSWORD=your_app_password
 
-# Cấu hình kết nối Supabase Cloud Storage
+# Cấu hình kết nối Supabase Cloud Storage (upload avatar, ảnh bài tập)
 SUPABASE_URL=https://your-project-id.supabase.co
 SUPABASE_KEY=your_supabase_anon_key
 
-# Google OAuth2 Client ID
+# Google OAuth2 Client ID (Đăng nhập Google)
 GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
+
+# Cấu hình JWT Secret (Base64 encoded, tối thiểu 512-bit)
+# Tạo nhanh bằng lệnh CLI: openssl rand -base64 64
+JWT_SECRET=dGhpc19pc19hX3NlY3VyZV9hbmRfZ2VuZXJhdGVkX2Jhc2U2NF9rZXlfZm9yX21hdGhjY2xhc3NfYXBwbGljYXRpb25fNTEyYml0cwo=
 ```
 
-## 3. Khởi chạy Ứng dụng (Running)
+## 3. Dữ liệu Khởi tạo (Database Seeding)
 
-### 3.1 Chạy bằng Docker Compose (Khuyên dùng)
+Dự án hỗ trợ nạp dữ liệu mẫu ban đầu (Data Seeding) tự động khi khởi động.
+Trong file `src/main/resources/application.properties`:
 
-Tại thư mục `MathClass-service/`:
+```properties
+mathclass.seed.enabled=true
+```
+
+Khi bật option này, ứng dụng sẽ tự khởi tạo tài khoản mặc định (Admin, Teacher, Student) và dữ liệu bài tập mẫu khi mở kết nối DB lần đầu.
+
+## 4. Khởi chạy Ứng dụng (Running)
+
+### 4.1 Chạy bằng Docker Compose (Khuyên dùng)
+
+Tại thư mục gốc `MathClass-service/`:
 
 ```bash
 docker-compose up --build
 ```
 
-Dịch vụ sẽ tự động setup Database (port 5433) và chạy Spring Boot app (port 8080).
+Docker Compose sẽ khởi tạo 2 service:
+- `db`: PostgreSQL 16 (Port 5433 trên host map vào Port 5423 container).
+- `backend`: Spring Boot App (Port 8080).
 
-### 3.2 Chạy thủ công
+### 4.2 Chạy thủ công với Gradle
 
-Nếu bạn đã tự cài đặt PostgreSQL và tạo DB khớp với `.env`:
+1. Khởi chạy PostgreSQL database (hoặc dùng docker chỉ chạy db: `docker-compose up db -d`).
+2. Chạy ứng dụng Spring Boot:
 
 ```bash
+# Trên Linux / macOS / Git Bash
 ./gradlew bootRun
+
+# Trên Windows Command Prompt / PowerShell
+.\gradlew.bat bootRun
 ```
 
-## 4. Kiểm tra
+## 5. Kiểm tra & Verification
 
-- Mở trình duyệt truy cập: `http://localhost:8080/api/auth/register` (sẽ trả về lỗi Method Not Supported hoặc form tương ứng, chứng tỏ server đã chạy).
-- Để bắt đầu đóng góp mã nguồn, hãy đọc [Hướng dẫn Backend (Backend Guide)](03-backend-guide.md).
+- Server khởi chạy tại: `http://localhost:8080`
+- Kiểm tra trạng thái ứng dụng via Spring Actuator: `http://localhost:8080/actuator/health`
+- Thử gửi yêu cầu POST đăng nhập: `http://localhost:8080/api/auth/login`
+- Đọc tiếp [Hướng dẫn Phát triển (Backend Guide)](03-backend-guide.md) để nắm rõ cấu trúc source code và quy chuẩn lập trình.
+
