@@ -14,9 +14,9 @@ public interface SystemLogRepository extends JpaRepository<SystemLog, Long> {
     
     @Query("SELECT l FROM SystemLog l WHERE " +
            "(:level IS NULL OR l.level = :level) AND " +
-           "(:actor IS NULL OR LOWER(l.actor) LIKE LOWER(CONCAT('%', :actor, '%'))) AND " +
-           "(CAST(:startDate AS java.time.LocalDateTime) IS NULL OR l.timestamp >= :startDate) AND " +
-           "(CAST(:endDate AS java.time.LocalDateTime) IS NULL OR l.timestamp <= :endDate)")
+           "(:actor IS NULL OR LOWER(l.actor) LIKE :actor) AND " +
+           "(:startDate IS NULL OR l.timestamp >= :startDate) AND " +
+           "(:endDate IS NULL OR l.timestamp <= :endDate)")
     Page<SystemLog> findByFilters(@Param("level") SystemLogLevel level,
                                   @Param("actor") String actor,
                                   @Param("startDate") LocalDateTime startDate,

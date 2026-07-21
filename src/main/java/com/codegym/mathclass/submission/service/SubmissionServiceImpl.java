@@ -235,7 +235,7 @@ public class SubmissionServiceImpl implements SubmissionService {
             throw new AccessDeniedException("Bạn không có quyền xem danh sách bài nộp này");
         }
 
-        String searchKeyword = (keyword == null) ? "" : keyword;
+        String searchKeyword = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
 
         Page<Submission> submissionPage = submissionRepository
                 .findSubmissionsByAssignment(
