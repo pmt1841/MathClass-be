@@ -60,7 +60,7 @@ class AuthControllerTest {
         loginRequest.setEmail("test@test.com");
         loginRequest.setPassword("password");
 
-        JwtResponse mockJwtResponse = new JwtResponse("mockJwt", 1L, "test@test.com", "Test User", "STUDENT", null);
+        JwtResponse mockJwtResponse = new JwtResponse("mockJwt", 1L, "test@test.com", "Test User", "STUDENT", null, null);
         when(authService.authenticateUser(any(LoginRequest.class))).thenReturn(mockJwtResponse);
 
         // When & Then
@@ -86,7 +86,7 @@ class AuthControllerTest {
         GoogleAuthRequest googleRequest = new GoogleAuthRequest();
         googleRequest.setCredential("mockGoogleToken");
         
-        JwtResponse mockJwtResponse = new JwtResponse("mockJwt", 1L, "google@test.com", "Google User", "STUDENT", "url");
+        JwtResponse mockJwtResponse = new JwtResponse("mockJwt", 1L, "google@test.com", "Google User", "STUDENT", "url", null);
         when(authService.authenticateWithGoogle(any(GoogleAuthRequest.class))).thenReturn(mockJwtResponse);
 
         // When & Then

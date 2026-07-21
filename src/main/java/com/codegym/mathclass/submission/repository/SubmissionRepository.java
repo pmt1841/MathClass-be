@@ -26,7 +26,7 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     @Query("SELECT s FROM Submission s WHERE s.assignment.id = :assignmentId " +
             "AND s.status <> 'DRAFT' " +
             "AND (:status IS NULL OR s.status = :status) " +
-            "AND LOWER(s.student.fullName) LIKE LOWER(CONCAT('%', :keyword, '%'))")
+            "AND (:keyword IS NULL OR LOWER(s.student.fullName) LIKE :keyword)")
     Page<Submission> findSubmissionsByAssignment(
             @Param("assignmentId") long assignmentId,
             @Param("status") SubmissionStatus status,

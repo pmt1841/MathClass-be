@@ -1,5 +1,6 @@
 package com.codegym.mathclass.user.controller;
 
+import com.codegym.mathclass.auth.dto.response.MessageResponse;
 import com.codegym.mathclass.user.dto.request.UpdateUserStatusRequest;
 import com.codegym.mathclass.user.dto.response.UserResponse;
 import com.codegym.mathclass.user.entity.Role;
@@ -13,8 +14,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.*;
-import java.util.Map;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/admin/users")
@@ -36,12 +42,12 @@ public class AdminUserController {
     }
 
     @PatchMapping("/{id}/status")
-    public ResponseEntity<Map<String, String>> updateStatus(
+    public ResponseEntity<MessageResponse> updateStatus(
             @PathVariable Long id,
             @Valid @RequestBody UpdateUserStatusRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         
         adminUserService.updateUserStatus(id, request.getIsActive(), userDetails.getUsername());
-        return ResponseEntity.ok(Map.of("message", "Trạng thái tài khoản đã được cập nhật thành công."));
+        return ResponseEntity.ok(new MessageResponse("Trạng thái tài khoản đã được cập nhật thành công."));
     }
 }

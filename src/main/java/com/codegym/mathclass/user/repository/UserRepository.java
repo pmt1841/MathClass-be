@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
 
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -24,10 +25,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Page<User> findStudentsByClassCode(@Param("classCode") String classCode, Pageable pageable);
 
     @Query("SELECT u FROM User u WHERE " +
-           "(:role IS NULL OR u.role = :role) AND " +
-           "(:isActive IS NULL OR u.isActive = :isActive) AND " +
-           "(:search IS NULL OR LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')))")
-    Page<User> findAllForAdmin(@Param("role") com.codegym.mathclass.user.entity.Role role,
+        "(:role IS NULL OR u.role = :role) AND " +
+        "(:isActive IS NULL OR u.isActive = :isActive) AND " +
+        "(:search IS NULL OR LOWER(u.email) LIKE :search ESCAPE '\\\\' OR LOWER(u.fullName) LIKE :search ESCAPE '\\\\')")
+     Page<User> findAllForAdmin(@Param("role") Role role,
                                @Param("isActive") Boolean isActive,
                                @Param("search") String search,
                                Pageable pageable);
