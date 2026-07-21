@@ -15,6 +15,8 @@ import com.codegym.mathclass.auth.dto.request.GoogleAuthRequest;
 import com.codegym.mathclass.auth.dto.request.ForgotPasswordRequest;
 import com.codegym.mathclass.auth.dto.request.ResetPasswordRequest;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -25,23 +27,28 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
-        return ResponseEntity.ok(authService.authenticateUser(loginRequest));
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest, HttpServletResponse response) {
+        return ResponseEntity.ok(authService.authenticateUser(loginRequest, response));
     }
 
     @PostMapping("/google")
-    public ResponseEntity<?> googleAuth(@Valid @RequestBody GoogleAuthRequest request) {
-        return ResponseEntity.ok(authService.authenticateWithGoogle(request));
+    public ResponseEntity<?> googleAuth(@Valid @RequestBody GoogleAuthRequest request, HttpServletResponse response) {
+        return ResponseEntity.ok(authService.authenticateWithGoogle(request, response));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response) {
+        return ResponseEntity.ok(authService.logoutUser(request, response));
+    }
+
+    @PostMapping("/refreshtoken")
+    public ResponseEntity<?> refreshtoken(HttpServletRequest request, HttpServletResponse response) {
+        return ResponseEntity.ok(authService.refreshToken(request, response));
     }
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody SignupRequest signUpRequest) {
         return ResponseEntity.ok(authService.registerUser(signUpRequest));
-    }
-
-    @PostMapping("/logout")
-    public ResponseEntity<?> logout() {
-        return ResponseEntity.ok(authService.logoutUser());
     }
 
     @GetMapping("/verify")

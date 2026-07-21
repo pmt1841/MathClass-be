@@ -37,10 +37,12 @@ public class SupabaseStorageService {
             throw new IllegalArgumentException("Chỉ chấp nhận file định dạng: png, jpeg, jpg, webp");
         }
 
-        String extension = "";
-        if (originalFilename != null && originalFilename.contains(".")) {
-            extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-        }
+        String extension = switch (contentType) {
+            case "image/png" -> ".png";
+            case "image/jpeg", "image/jpg" -> ".jpg";
+            case "image/webp" -> ".webp";
+            default -> throw new IllegalArgumentException("Định dạng tệp không được hỗ trợ");
+        };
 
         String uniqueFileName = UUID.randomUUID().toString() + extension;
         String objectPath = "images/" + uniqueFileName;
