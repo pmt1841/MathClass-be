@@ -54,6 +54,8 @@ import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import java.nio.charset.StandardCharsets;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 
 @Service
 @RequiredArgsConstructor
@@ -406,8 +408,24 @@ public class AssignmentServiceImpl implements AssignmentService {
                 String content = convertDocxToMarkdown(document, extractedImages);
                 return java.util.Map.of("content", content, "images", extractedImages);
             }
+        } else if (filename.endsWith(".pdf")) {
+            try (java.io.InputStream is = file.getInputStream();
+                 PDDocument document = PDDocument.load(is)) {
+                PDFTextStripper stripper = new PDFTextStripper();
+                stripper.setSortByPosition(true);
+                String content = stripper.getText(document);
+                
+                // Normalize newlines and replace single newlines with double newlines 
+                // so Markdown parses them as separate paragraphs/lines instead of collapsing them.
+                if (content != null) {
+                    content = content.replaceAll("\\r\\n?", "\n");
+                    content = content.replaceAll("\\n+", "\n\n");
+                }
+                
+                return java.util.Map.of("content", content != null ? content : "", "images", new ArrayList<>());
+            }
         } else {
-            throw new BadRequestException("Chỉ hỗ trợ file .txt hoặc .docx");
+            throw new BadRequestException("Chỉ hỗ trợ file .txt, .docx, hoặc .pdf");
         }
     }
 
@@ -455,10 +473,30 @@ public class AssignmentServiceImpl implements AssignmentService {
                 
                 runText = runText.replace("\n", " ");
                 
-                if (bold && italic) paraMd.append("***").append(runText).append("***");
-                else if (bold) paraMd.append("**").append(runText).append("**");
-                else if (italic) paraMd.append("*").append(runText).append("*");
-                else paraMd.append(runText);
+                if (bold || italic) {
+                    // Extract leading spaces
+                    String leadingSpaces = "";
+                    while (runText.startsWith(" ")) {
+                        leadingSpaces += " ";
+                        runText = runText.substring(1);
+                    }
+                    // Extract trailing spaces
+                    String trailingSpaces = "";
+                    while (runText.endsWith(" ")) {
+                        trailingSpaces += " ";
+                        runText = runText.substring(0, runText.length() - 1);
+                    }
+                    
+                    paraMd.append(leadingSpaces);
+                    if (!runText.isEmpty()) {
+                        if (bold && italic) paraMd.append("***").append(runText).append("***");
+                        else if (bold) paraMd.append("**").append(runText).append("**");
+                        else if (italic) paraMd.append("*").append(runText).append("*");
+                    }
+                    paraMd.append(trailingSpaces);
+                } else {
+                    paraMd.append(runText);
+                }
             }
 
             // Xử lý ảnh nhúng
