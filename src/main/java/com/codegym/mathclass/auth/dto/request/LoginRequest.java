@@ -17,4 +17,6 @@ public class LoginRequest {
     @Size(min = 6, message = "Mật khẩu phải tối thiểu 6 ký tự")
     @Size(max = 24, message = "Mật khẩu không quá 24 ký tự")
     private String password;
+
+    private String role; // "STUDENT" hoặc "TEACHER"
 }

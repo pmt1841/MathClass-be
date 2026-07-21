@@ -36,7 +36,7 @@ public class ClassroomJoinRequestServiceImpl implements ClassroomJoinRequestServ
     private final EmailService emailService;
     private final NotificationService notificationService;
 
-    @Value("${FRONTEND_URL:http://localhost:5173}")
+    @Value("${FRONTEND_URL}")
     private String frontendUrl;
 
     @Override

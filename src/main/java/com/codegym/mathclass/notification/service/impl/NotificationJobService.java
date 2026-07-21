@@ -76,7 +76,7 @@ public class NotificationJobService {
             // Đánh dấu đã gửi nhắc nhở cho bài tập này
             assignment.setReminderSent(true);
             assignmentRepository.save(assignment);
-            
+
             log.info("Đã hoàn tất gửi {} email nhắc nhở cho bài tập ID: {}", sentCount, assignment.getId());
         }
     }
@@ -86,11 +86,12 @@ public class NotificationJobService {
         context.setVariable("studentName", student.getFullName());
         context.setVariable("assignmentTitle", assignment.getTitle());
         context.setVariable("className", assignment.getClassroom().getClassName());
-        
+
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
-        String deadlineStr = assignment.getDeadline() != null ? assignment.getDeadline().format(formatter) : "Không xác định";
+        String deadlineStr = assignment.getDeadline() != null ? assignment.getDeadline().format(formatter)
+                : "Không xác định";
         context.setVariable("deadline", deadlineStr);
-        
+
         // Sử dụng biến FRONTEND_URL lấy từ .env
         context.setVariable("assignmentUrl", frontendUrl + "/assignments/" + assignment.getId());
 
@@ -98,7 +99,6 @@ public class NotificationJobService {
                 student.getEmail(),
                 "Nhắc nhở: Sắp đến hạn nộp bài tập " + assignment.getTitle(),
                 "assignment-reminder",
-                context
-        );
+                context);
     }
 }
