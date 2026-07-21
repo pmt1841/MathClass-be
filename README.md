@@ -27,7 +27,7 @@ src/main/java/com/codegym/mathclass
 ## 🛠️ Công nghệ Sử dụng
 
 *   **Ngôn ngữ lập trình:** Java 21 (sử dụng [build.gradle](build.gradle))
-*   **Framework chính:** Spring Boot (Starter Web, Data JPA, Security, Mail, Validation)
+*   **Framework chính:** Spring Boot 4(Starter Web, Data JPA, Security, Mail, Validation)
 *   **Cơ sở dữ liệu:** PostgreSQL 16 (lưu trữ quan hệ và dữ liệu JSONB)
 *   **Xác thực:** JSON Web Tokens (JWT) + Google OAuth2 Client
 *   **Lưu trữ đám mây:** Supabase Object Storage (dùng để lưu trữ tài liệu ảnh đính kèm bài viết/đề bài)
