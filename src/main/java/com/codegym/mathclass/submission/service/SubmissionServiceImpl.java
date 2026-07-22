@@ -36,7 +36,7 @@ public class SubmissionServiceImpl implements SubmissionService {
     private final EmailService emailService;
     private final NotificationService notificationService;
 
-    @Value("${FRONTEND_URL:http://localhost:5173}")
+    @Value("${FRONTEND_URL}")
     private String frontendUrl;
 
     @Override
@@ -62,7 +62,8 @@ public class SubmissionServiceImpl implements SubmissionService {
         submission.setAssignment(assignment);
         submission.setStudent(student);
 
-        boolean isNewlySubmitted = (submission.getStatus() != SubmissionStatus.SUBMITTED && requestDto.getStatus() == SubmissionStatus.SUBMITTED);
+        boolean isNewlySubmitted = (submission.getStatus() != SubmissionStatus.SUBMITTED
+                && requestDto.getStatus() == SubmissionStatus.SUBMITTED);
 
         String content = requestDto.getContent() == null ? "" : requestDto.getContent();
 
@@ -102,7 +103,8 @@ public class SubmissionServiceImpl implements SubmissionService {
             throw new AccessDeniedException("Bạn không có quyền sửa bài nộp này");
         }
 
-        boolean isNewlySubmitted = (submission.getStatus() != SubmissionStatus.SUBMITTED && requestDto.getStatus() == SubmissionStatus.SUBMITTED);
+        boolean isNewlySubmitted = (submission.getStatus() != SubmissionStatus.SUBMITTED
+                && requestDto.getStatus() == SubmissionStatus.SUBMITTED);
 
         Assignment assignment = submission.getAssignment();
         if (assignment.getDeadline() != null && LocalDateTime.now().isAfter(assignment.getDeadline())) {
@@ -237,7 +239,7 @@ public class SubmissionServiceImpl implements SubmissionService {
             throw new AccessDeniedException("Bạn không có quyền xem danh sách bài nộp này");
         }
 
-        String searchKeyword = (keyword == null) ? "" : keyword;
+        String searchKeyword = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
 
         Page<Submission> submissionPage = submissionRepository
                 .findSubmissionsByAssignment(

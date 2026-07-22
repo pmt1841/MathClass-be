@@ -20,7 +20,8 @@ public class SystemLogServiceImpl implements SystemLogService {
 
     @Override
     public Page<SystemLogResponse> getLogs(SystemLogLevel level, String actor, LocalDateTime startDate, LocalDateTime endDate, Pageable pageable) {
-        return systemLogRepository.findByFilters(level, actor, startDate, endDate, pageable)
+        String actorParam = (actor != null && !actor.trim().isEmpty()) ? "%" + actor.trim().toLowerCase() + "%" : null;
+        return systemLogRepository.findByFilters(level, actorParam, startDate, endDate, pageable)
                 .map(log -> SystemLogResponse.builder()
                         .id(log.getId())
                         .timestamp(log.getTimestamp())

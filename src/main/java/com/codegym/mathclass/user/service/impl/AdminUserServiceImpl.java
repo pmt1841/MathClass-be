@@ -23,8 +23,22 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final SystemLogService systemLogService;
 
     @Override
+    @Transactional(readOnly = true)
     public Page<UserResponse> getUsersForAdmin(Role role, Boolean isActive, String search, Pageable pageable) {
-        return userRepository.findAllForAdmin(role, isActive, search, pageable)
+        // Build LIKE pattern trong Java thay vì CONCAT() bên trong JPQL,
+        // để tránh lỗi "function lower(bytea) does not exist" trên PostgreSQL
+        // khi Hibernate truyền tham số null vào biểu thức chuỗi trong câu SQL.
+        // Đồng thời escape ký tự wildcard SQL (%, _) để ngăn người dùng
+        // vô tình làm lệch kết quả tìm kiếm.
+        String searchParam = null;
+        if (search != null && !search.trim().isEmpty()) {
+            String sanitized = search.trim()
+                    .replace("\\", "\\\\")
+                    .replace("%", "\\%")
+                    .replace("_", "\\_");
+            searchParam = "%" + sanitized.toLowerCase() + "%";
+        }
+        return userRepository.findAllForAdmin(role, isActive, searchParam, pageable)
                 .map(userMapper::toUserResponse);
     }
 
@@ -34,7 +48,7 @@ public class AdminUserServiceImpl implements AdminUserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng với ID này."));
 
-        user.setActive(isActive); // Using Lombok generated setter. Usually setActive for boolean
+        user.setActive(isActive);
         userRepository.save(user);
 
         String action = (isActive ? "Mở khóa" : "Khóa") + " tài khoản " + user.getEmail() + " (" + user.getRole() + ")";

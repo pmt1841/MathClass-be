@@ -1,5 +1,6 @@
 package com.codegym.mathclass.classroom.dto;
 
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -19,5 +20,6 @@ public class UpdateClassroomRequest {
     private String description;
     
     @NotNull(message = "Sĩ số tối đa không được để trống")
+    @Min(value = 1, message = "Số học sinh tối đa phải lớn hơn 0")
     private Integer maxStudents;
 }
