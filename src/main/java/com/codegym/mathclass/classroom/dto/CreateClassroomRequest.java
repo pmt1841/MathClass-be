@@ -12,7 +12,7 @@ public class CreateClassroomRequest {
     @NotBlank(message = "Tên lớp không được để trống")
     private String name;
 
-    @Min(value = 1, message = "Số học sinh tối đa phải lớn hơn 0")
+    
     private Integer maxStudents;
 
     private String description;
