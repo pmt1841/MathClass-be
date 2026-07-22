@@ -57,11 +57,15 @@ import java.nio.charset.StandardCharsets;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 
+import com.codegym.mathclass.assignment.entity.AssignmentSheetItem;
+import com.codegym.mathclass.assignment.repository.AssignmentSheetItemRepository;
+
 @Service
 @RequiredArgsConstructor
 public class AssignmentServiceImpl implements AssignmentService {
 
     private final AssignmentRepository assignmentRepository;
+    private final AssignmentSheetItemRepository assignmentSheetItemRepository;
     private final UserRepository userRepository;
     private final ClassroomRepository classroomRepository;
     private final SubmissionRepository submissionRepository;
@@ -116,9 +120,9 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         validateTeacherOwnership(originalAssignment, teacherId, "Bạn không có quyền publish bài tập này");
 
-        // 3. Kiểm tra trạng thái – chỉ publish được khi đang là DRAFT
-        if (originalAssignment.getStatus() != AssignmentStatus.DRAFT) {
-            throw new BadRequestException("Bài tập đã được publish hoặc archive trước đó");
+        // 3. Kiểm tra trạng thái – cho phép publish khi đang là DRAFT hoặc ARCHIVED
+        if (originalAssignment.getStatus() == AssignmentStatus.DELETED) {
+            throw new BadRequestException("Bài tập đã bị xóa không thể giao bài");
         }
 
         // 3.1 Validate đầy đủ thông tin trước khi publish
@@ -194,6 +198,8 @@ public class AssignmentServiceImpl implements AssignmentService {
                 return isClassCode;
             }
         });
+        
+        spec = spec.and(AssignmentSpecification.isNotInSheet());
 
         // Lọc theo keyword (tiêu đề)
         if (keyword != null && !keyword.trim().isEmpty()) {
@@ -242,6 +248,9 @@ public class AssignmentServiceImpl implements AssignmentService {
     public Page<AssignmentResponse> getAssignmentsForCurrentUser(long userId, String role, String keyword,
             String classCode, AssignmentStatus status, Pageable pageable) {
         Specification<Assignment> spec = Specification.where((root, query, cb) -> cb.conjunction());
+        
+        // Loại bỏ những bài tập đã nằm trong phiếu bài tập
+        spec = spec.and(AssignmentSpecification.isNotInSheet());
 
         // 1. Phân quyền truy cập cơ bản theo Role
         if (Role.TEACHER.name().equals(role)) {
@@ -287,6 +296,18 @@ public class AssignmentServiceImpl implements AssignmentService {
         Page<Assignment> assignments = assignmentRepository.findAll(spec, sortedPageable);
         return assignments.map(assignment -> {
             AssignmentResponse response = assignmentMapper.toAssignmentResponseWithoutContent(assignment);
+            if (Role.TEACHER.name().equals(role)) {
+                List<Assignment> clones = assignmentRepository.findByParentId(assignment.getId());
+                List<String> publishedCodes = clones.stream()
+                        .filter(c -> c.getClassroom() != null)
+                        .map(c -> c.getClassroom().getClassCode())
+                        .distinct()
+                        .collect(java.util.stream.Collectors.toList());
+                if (assignment.getClassroom() != null && !publishedCodes.contains(assignment.getClassroom().getClassCode())) {
+                    publishedCodes.add(assignment.getClassroom().getClassCode());
+                }
+                response.setPublishedClassCodes(publishedCodes);
+            }
             if (Role.STUDENT.name().equals(role)) {
                 submissionRepository.findFirstByAssignmentIdAndStudentId(assignment.getId(), userId)
                         .ifPresent(sub -> {
@@ -314,6 +335,12 @@ public class AssignmentServiceImpl implements AssignmentService {
         // Kiểm tra xem đã có submission hay chưa
         if (submissionRepository.existsByAssignmentId(assignmentId)) {
             throw new BadRequestException("Đã có học sinh nộp bài, không thể xóa bài tập này");
+        }
+
+        // Xóa các liên kết trong assignment_sheet_items đối với bài tập này
+        List<AssignmentSheetItem> sheetItems = assignmentSheetItemRepository.findByAssignmentIdIn(List.of(assignmentId));
+        if (!sheetItems.isEmpty()) {
+            assignmentSheetItemRepository.deleteAll(sheetItems);
         }
 
         // 3. Xử lý theo trạng thái
