@@ -19,5 +19,6 @@ public class UpdateClassroomRequest {
     private String description;
     
     @NotNull(message = "Sĩ số tối đa không được để trống")
+    @Min(value = 1, message = "Số học sinh tối đa phải lớn hơn 0")
     private Integer maxStudents;
 }
