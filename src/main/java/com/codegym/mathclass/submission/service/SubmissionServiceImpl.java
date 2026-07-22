@@ -202,15 +202,16 @@ public class SubmissionServiceImpl implements SubmissionService {
 
         // Send email notification to student
         String subject = "Giáo viên đã chấm điểm bài tập: " + assignment.getTitle();
-        String link = frontendUrl + "/assignments/" + assignment.getId();
+        String classCodeParam = assignment.getClassroom() != null ? "?classCode=" + assignment.getClassroom().getClassCode() : "";
+        String relativeLink = "/assignments/" + assignment.getId() + classCodeParam;
+        String link = frontendUrl + relativeLink;
         Context context = new Context();
         context.setVariable("studentName", submission.getStudent().getFullName());
         context.setVariable("assignmentName", assignment.getTitle());
         context.setVariable("link", link);
         emailService.sendHtmlMailAsync(submission.getStudent().getEmail(), subject, "submission-graded", context);
 
-        notificationService.saveAndSendNotification(submission.getStudent().getId(), subject,
-                "/assignments/" + assignment.getId());
+        notificationService.saveAndSendNotification(submission.getStudent().getId(), subject, relativeLink);
 
         return mapToDto(savedSubmission);
     }

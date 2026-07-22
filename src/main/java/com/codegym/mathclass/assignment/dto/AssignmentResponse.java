@@ -43,6 +43,7 @@ public class AssignmentResponse {
     // Lớp đã giao (null nếu còn là DRAFT)
     private String classCode;
     private String className;
+    private List<String> publishedClassCodes;
 
     private List<AssignmentDrawingResponse> drawings;
     private List<AssignmentImageDto> images;
