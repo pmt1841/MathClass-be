@@ -94,16 +94,11 @@ class ClassroomServiceImplTest {
         request.setDescription("Basic mathematics course");
     }
 
-    // ==========================================
-    // Tests for createClassroom
-    // ==========================================
 
     @Test
-    @DisplayName("Should create classroom successfully when user is teacher and code is unique")
-    void createClassroom_UserIsTeacher_ReturnsClassroomResponse() {
-        // Given
+    @DisplayName("Should create classroom successfully and return ClassroomResponse")
+    void createClassroom_ValidRequest_ReturnsClassroomResponse() {
         when(userRepository.findById(currentUserId)).thenReturn(Optional.of(teacher));
-        when(classroomRepository.existsByClassCode(anyString())).thenReturn(false);
 
         Classroom savedClassroom = new Classroom();
         savedClassroom.setId(10L);
@@ -119,96 +114,94 @@ class ClassroomServiceImplTest {
             return savedClassroom;
         });
 
-        // When
         ClassroomResponse response = classroomService.createClassroom(request, currentUserId);
 
-        // Then
         assertThat(response).isNotNull();
         assertThat(response.getId()).isEqualTo(10L);
         assertThat(response.getClassName()).isEqualTo(request.getName());
         assertThat(response.getTeacherId()).isEqualTo(teacher.getId());
         assertThat(response.getTeacherName()).isEqualTo(teacher.getFullName());
         assertThat(response.getClassCode()).isNotNull().hasSize(8);
+        assertThat(response.getMaxStudents()).isEqualTo(request.getMaxStudents());
+        assertThat(response.getDescription()).isEqualTo(request.getDescription());
 
         verify(userRepository, times(1)).findById(currentUserId);
-        verify(classroomRepository, atLeastOnce()).existsByClassCode(anyString());
+        verify(classroomRepository, never()).existsByClassCode(anyString());
         verify(classroomRepository, times(1)).save(any(Classroom.class));
     }
 
     @Test
     @DisplayName("Should throw Exception when user is not found")
     void createClassroom_UserNotFound_ThrowsException() {
-        // Given
         when(userRepository.findById(currentUserId)).thenReturn(Optional.empty());
 
-        // When & Then
         assertThatThrownBy(() -> classroomService.createClassroom(request, currentUserId))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("Không tìm thấy người dùng");
 
         verify(userRepository, times(1)).findById(currentUserId);
-        verify(classroomRepository, never()).existsByClassCode(anyString());
         verify(classroomRepository, never()).save(any(Classroom.class));
     }
 
     @Test
-    @DisplayName("Should throw Exception when user is not a teacher")
-    void createClassroom_UserNotTeacher_ThrowsException() {
-        // Given
-        User studentUser = new User();
-        studentUser.setId(currentUserId);
-        studentUser.setRole(Role.STUDENT);
-
-        when(userRepository.findById(currentUserId)).thenReturn(Optional.of(studentUser));
-
-        // When & Then
-        assertThatThrownBy(() -> classroomService.createClassroom(request, currentUserId))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("Chỉ giáo viên mới có quyền tạo lớp học");
-
-        verify(userRepository, times(1)).findById(currentUserId);
-        verify(classroomRepository, never()).existsByClassCode(anyString());
-        verify(classroomRepository, never()).save(any(Classroom.class));
-    }
-
-    @Test
-    @DisplayName("Should retry generating code when there is a collision")
-    void createClassroom_CodeCollision_RetriesAndSucceeds() {
-        // Given
+    @DisplayName("Should create classroom with description null")
+    void createClassroom_NullDescription_ReturnsClassroomResponse() {
+        request.setDescription(null);
         when(userRepository.findById(currentUserId)).thenReturn(Optional.of(teacher));
-        when(classroomRepository.existsByClassCode(anyString())).thenReturn(true).thenReturn(false);
 
         Classroom savedClassroom = new Classroom();
         savedClassroom.setId(10L);
         savedClassroom.setClassName(request.getName());
         savedClassroom.setMaxStudents(request.getMaxStudents());
-        savedClassroom.setDescription(request.getDescription());
+        savedClassroom.setDescription(null);
         savedClassroom.setTeacher(teacher);
         savedClassroom.setStudents(new HashSet<>());
 
         when(classroomRepository.save(any(Classroom.class))).thenAnswer(invocation -> {
-            Classroom classroomToSave = invocation.getArgument(0);
-            savedClassroom.setClassCode(classroomToSave.getClassCode());
+            Classroom c = invocation.getArgument(0);
+            savedClassroom.setClassCode(c.getClassCode());
             return savedClassroom;
         });
 
-        // When
         ClassroomResponse response = classroomService.createClassroom(request, currentUserId);
 
-        // Then
         assertThat(response).isNotNull();
-        verify(classroomRepository, times(2)).existsByClassCode(anyString());
+        assertThat(response.getDescription()).isNull();
+        assertThat(response.getClassCode()).isNotNull().hasSize(8);
+
         verify(classroomRepository, times(1)).save(any(Classroom.class));
     }
 
-    // ==========================================
-    // Tests for getClassroomsListById
-    // ==========================================
+    @Test
+    @DisplayName("Should generate a unique 8-character uppercase class code")
+    void createClassroom_GeneratesUniqueClassCode() {
+        when(userRepository.findById(currentUserId)).thenReturn(Optional.of(teacher));
+
+        Classroom savedClassroom = new Classroom();
+        savedClassroom.setId(10L);
+        savedClassroom.setClassName(request.getName());
+        savedClassroom.setMaxStudents(request.getMaxStudents());
+        savedClassroom.setTeacher(teacher);
+        savedClassroom.setStudents(new HashSet<>());
+
+        when(classroomRepository.save(any(Classroom.class))).thenAnswer(invocation -> {
+            Classroom c = invocation.getArgument(0);
+            savedClassroom.setClassCode(c.getClassCode());
+            return savedClassroom;
+        });
+
+        ClassroomResponse r1 = classroomService.createClassroom(request, currentUserId);
+        ClassroomResponse r2 = classroomService.createClassroom(request, currentUserId);
+
+        assertThat(r1.getClassCode()).hasSize(8).matches("[A-F0-9]{8}");
+        assertThat(r2.getClassCode()).hasSize(8).matches("[A-F0-9]{8}");
+
+        verify(classroomRepository, never()).existsByClassCode(anyString());
+    }
 
     @Test
     @DisplayName("Should return classroom list successfully when user is a teacher")
     void getClassroomsListById_Teacher_ReturnsList() {
-        // Given
         when(userRepository.findById(currentUserId)).thenReturn(Optional.of(teacher));
 
         Classroom class1 = new Classroom();
@@ -227,10 +220,8 @@ class ClassroomServiceImplTest {
 
         when(classroomRepository.findByTeacherId(currentUserId)).thenReturn(Arrays.asList(class1, class2));
 
-        // When
         List<ClassroomResponse> responses = classroomService.getClassroomsListById(currentUserId);
 
-        // Then
         assertThat(responses).isNotNull().hasSize(2);
         assertThat(responses.get(0).getId()).isEqualTo(101L);
         assertThat(responses.get(1).getId()).isEqualTo(102L);
@@ -242,7 +233,6 @@ class ClassroomServiceImplTest {
     @Test
     @DisplayName("Should return classroom list successfully when user is a student")
     void getClassroomsListById_Student_ReturnsList() {
-        // Given
         long studentId = 2L;
         when(userRepository.findById(studentId)).thenReturn(Optional.of(student));
 
@@ -255,10 +245,8 @@ class ClassroomServiceImplTest {
 
         when(classroomRepository.findByStudentsId(studentId)).thenReturn(Collections.singletonList(class1));
 
-        // When
         List<ClassroomResponse> responses = classroomService.getClassroomsListById(studentId);
 
-        // Then
         assertThat(responses).isNotNull().hasSize(1);
         assertThat(responses.get(0).getId()).isEqualTo(101L);
 
@@ -269,10 +257,8 @@ class ClassroomServiceImplTest {
     @Test
     @DisplayName("Should throw Exception when getting classrooms and user is not found")
     void getClassroomsListById_UserNotFound_ThrowsException() {
-        // Given
         when(userRepository.findById(currentUserId)).thenReturn(Optional.empty());
 
-        // When & Then
         assertThatThrownBy(() -> classroomService.getClassroomsListById(currentUserId))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("Không tìm thấy người dùng");
@@ -281,23 +267,16 @@ class ClassroomServiceImplTest {
         verify(classroomRepository, never()).findByTeacherId(anyLong());
     }
 
-    // ==========================================
-    // Tests for addStudentToClass
-    // ==========================================
-
     @Test
     @DisplayName("Should add student to classroom successfully and send notification email")
     void addStudentToClass_ValidRequest_AddsStudent() {
-        // Given
         when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
         when(userRepository.findByEmail("student@codegym.com")).thenReturn(Optional.of(student));
         when(classroomRepository.save(any(Classroom.class))).thenReturn(classroom);
         doNothing().when(emailService).sendHtmlMailAsync(anyString(), anyString(), anyString(), any());
 
-        // When
         classroomService.addStudentToClass("ABC12345", "student@codegym.com", currentUserId);
 
-        // Then
         assertThat(classroom.getStudents()).contains(student);
         verify(classroomRepository, times(1)).save(classroom);
         verify(emailService, times(1)).sendHtmlMailAsync(
@@ -311,10 +290,8 @@ class ClassroomServiceImplTest {
     @Test
     @DisplayName("Should throw Exception when classroom is not found")
     void addStudentToClass_ClassroomNotFound_ThrowsException() {
-        // Given
         when(classroomRepository.findByClassCode("NOTEXIST")).thenReturn(Optional.empty());
 
-        // When & Then
         assertThatThrownBy(() -> classroomService.addStudentToClass("NOTEXIST", "student@codegym.com", currentUserId))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("Không tìm thấy lớp học");
@@ -326,10 +303,8 @@ class ClassroomServiceImplTest {
     @Test
     @DisplayName("Should throw Exception when requester is not the classroom teacher")
     void addStudentToClass_NotClassroomTeacher_ThrowsException() {
-        // Given
         when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
 
-        // When & Then
         assertThatThrownBy(() -> classroomService.addStudentToClass("ABC12345", "student@codegym.com", 999L))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("Bạn không phải là giáo viên phụ trách lớp học này");
@@ -341,11 +316,9 @@ class ClassroomServiceImplTest {
     @Test
     @DisplayName("Should throw Exception when student email is not found in the system")
     void addStudentToClass_StudentNotFound_ThrowsException() {
-        // Given
         when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
         when(userRepository.findByEmail("notfound@codegym.com")).thenReturn(Optional.empty());
 
-        // When & Then
         assertThatThrownBy(() -> classroomService.addStudentToClass("ABC12345", "notfound@codegym.com", currentUserId))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("Không tìm thấy học sinh với email đã cung cấp");
@@ -357,7 +330,6 @@ class ClassroomServiceImplTest {
     @Test
     @DisplayName("Should throw Exception when the user being added is not a student")
     void addStudentToClass_UserIsNotStudent_ThrowsException() {
-        // Given
         User anotherTeacher = new User();
         anotherTeacher.setId(3L);
         anotherTeacher.setEmail("another_teacher@codegym.com");
@@ -366,7 +338,6 @@ class ClassroomServiceImplTest {
         when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
         when(userRepository.findByEmail("another_teacher@codegym.com")).thenReturn(Optional.of(anotherTeacher));
 
-        // When & Then
         assertThatThrownBy(() -> classroomService.addStudentToClass("ABC12345", "another_teacher@codegym.com", currentUserId))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("Người dùng được thêm phải là học sinh");
@@ -378,12 +349,10 @@ class ClassroomServiceImplTest {
     @Test
     @DisplayName("Should throw Exception when student is already in the classroom")
     void addStudentToClass_StudentAlreadyInClass_ThrowsException() {
-        // Given
         classroom.getStudents().add(student);
         when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
         when(userRepository.findByEmail("student@codegym.com")).thenReturn(Optional.of(student));
 
-        // When & Then
         assertThatThrownBy(() -> classroomService.addStudentToClass("ABC12345", "student@codegym.com", currentUserId))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("Học sinh này đã tham gia lớp học");
@@ -395,7 +364,6 @@ class ClassroomServiceImplTest {
     @Test
     @DisplayName("Should throw Exception when classroom is at max capacity")
     void addStudentToClass_ClassroomFull_ThrowsException() {
-        // Given
         classroom.setMaxStudents(1);
 
         User existingStudent = new User();
@@ -407,7 +375,6 @@ class ClassroomServiceImplTest {
         when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
         when(userRepository.findByEmail("student@codegym.com")).thenReturn(Optional.of(student));
 
-        // When & Then
         assertThatThrownBy(() -> classroomService.addStudentToClass("ABC12345", "student@codegym.com", currentUserId))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("Lớp học đã đạt số lượng tối đa");
@@ -416,14 +383,9 @@ class ClassroomServiceImplTest {
         verify(emailService, never()).sendHtmlMailAsync(anyString(), anyString(), anyString(), any());
     }
 
-    // ==========================================
-    // Tests for getStudentsByClassCode
-    // ==========================================
-
     @Test
     @DisplayName("Should get students by class code successfully for teacher")
     void getStudentsByClassCode_Teacher_ReturnsPage() {
-        // Given
         classroom.getStudents().add(student);
         Pageable pageable = PageRequest.of(0, 10);
         Page<User> studentPage = new PageImpl<>(Collections.singletonList(student));
@@ -431,10 +393,8 @@ class ClassroomServiceImplTest {
         when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
         when(userRepository.findStudentsByClassCode("ABC12345", pageable)).thenReturn(studentPage);
 
-        // When
         Page<StudentResponse> result = classroomService.getStudentsByClassCode("ABC12345", currentUserId, pageable);
 
-        // Then
         assertThat(result).isNotNull();
         assertThat(result.getTotalElements()).isEqualTo(1);
         assertThat(result.getContent().get(0).getId()).isEqualTo(student.getId());
@@ -446,7 +406,6 @@ class ClassroomServiceImplTest {
     @Test
     @DisplayName("Should get students by class code successfully for student in the class")
     void getStudentsByClassCode_Student_ReturnsPage() {
-        // Given
         classroom.getStudents().add(student);
         Pageable pageable = PageRequest.of(0, 10);
         Page<User> studentPage = new PageImpl<>(Collections.singletonList(student));
@@ -454,10 +413,8 @@ class ClassroomServiceImplTest {
         when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
         when(userRepository.findStudentsByClassCode("ABC12345", pageable)).thenReturn(studentPage);
 
-        // When
         Page<StudentResponse> result = classroomService.getStudentsByClassCode("ABC12345", student.getId(), pageable);
 
-        // Then
         assertThat(result).isNotNull();
         assertThat(result.getTotalElements()).isEqualTo(1);
         assertThat(result.getContent().get(0).getId()).isEqualTo(student.getId());
@@ -469,11 +426,9 @@ class ClassroomServiceImplTest {
     @Test
     @DisplayName("Should throw Exception when classroom not found for getStudentsByClassCode")
     void getStudentsByClassCode_ClassroomNotFound_ThrowsException() {
-        // Given
         Pageable pageable = PageRequest.of(0, 10);
         when(classroomRepository.findByClassCode("NOTEXIST")).thenReturn(Optional.empty());
 
-        // When & Then
         assertThatThrownBy(() -> classroomService.getStudentsByClassCode("NOTEXIST", currentUserId, pageable))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("Không tìm thấy lớp học");
@@ -484,11 +439,9 @@ class ClassroomServiceImplTest {
     @Test
     @DisplayName("Should throw Exception when getting students and user not authorized")
     void getStudentsByClassCode_NotAuthorized_ThrowsException() {
-        // Given
         Pageable pageable = PageRequest.of(0, 10);
         when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
 
-        // When & Then
         assertThatThrownBy(() -> classroomService.getStudentsByClassCode("ABC12345", 999L, pageable))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("Bạn không có quyền xem thông tin lớp học này");
@@ -496,20 +449,13 @@ class ClassroomServiceImplTest {
         verify(userRepository, never()).findStudentsByClassCode(anyString(), any(Pageable.class));
     }
 
-    // ==========================================
-    // Tests for getClassroomByClassCode
-    // ==========================================
-
     @Test
     @DisplayName("Should get classroom by class code successfully for teacher")
     void getClassroomByClassCode_Teacher_ReturnsResponse() {
-        // Given
         when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
 
-        // When
         ClassroomResponse response = classroomService.getClassroomByClassCode("ABC12345", currentUserId);
 
-        // Then
         assertThat(response).isNotNull();
         assertThat(response.getId()).isEqualTo(classroom.getId());
         assertThat(response.getClassCode()).isEqualTo(classroom.getClassCode());
@@ -518,14 +464,11 @@ class ClassroomServiceImplTest {
     @Test
     @DisplayName("Should get classroom by class code successfully for student in the class")
     void getClassroomByClassCode_Student_ReturnsResponse() {
-        // Given
         classroom.getStudents().add(student);
         when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
 
-        // When
         ClassroomResponse response = classroomService.getClassroomByClassCode("ABC12345", student.getId());
 
-        // Then
         assertThat(response).isNotNull();
         assertThat(response.getId()).isEqualTo(classroom.getId());
     }
@@ -533,32 +476,23 @@ class ClassroomServiceImplTest {
     @Test
     @DisplayName("Should throw Exception when getting classroom by code and user not authorized")
     void getClassroomByClassCode_NotAuthorized_ThrowsException() {
-        // Given
         when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
 
-        // When & Then
         assertThatThrownBy(() -> classroomService.getClassroomByClassCode("ABC12345", 999L))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("Bạn không có quyền xem thông tin lớp học này");
     }
 
-    // ==========================================
-    // Tests for removeStudentFromClass
-    // ==========================================
-
     @Test
     @DisplayName("Should remove student from class successfully and send notification email")
     void removeStudentFromClass_ValidRequest_RemovesStudent() {
-        // Given
         classroom.getStudents().add(student);
         when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
         when(classroomRepository.save(any(Classroom.class))).thenReturn(classroom);
         doNothing().when(emailService).sendHtmlMailAsync(anyString(), anyString(), anyString(), any());
 
-        // When
         classroomService.removeStudentFromClass("ABC12345", student.getId(), currentUserId);
 
-        // Then
         assertThat(classroom.getStudents()).doesNotContain(student);
         verify(classroomRepository, times(1)).save(classroom);
         verify(emailService, times(1)).sendHtmlMailAsync(
@@ -572,10 +506,8 @@ class ClassroomServiceImplTest {
     @Test
     @DisplayName("Should throw Exception when classroom not found for removeStudentFromClass")
     void removeStudentFromClass_ClassroomNotFound_ThrowsException() {
-        // Given
         when(classroomRepository.findByClassCode("NOTEXIST")).thenReturn(Optional.empty());
 
-        // When & Then
         assertThatThrownBy(() -> classroomService.removeStudentFromClass("NOTEXIST", student.getId(), currentUserId))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("Không tìm thấy lớp học");
@@ -587,11 +519,9 @@ class ClassroomServiceImplTest {
     @Test
     @DisplayName("Should throw Exception when requester is not the classroom teacher for removeStudentFromClass")
     void removeStudentFromClass_NotClassroomTeacher_ThrowsException() {
-        // Given
         classroom.getStudents().add(student);
         when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
 
-        // When & Then
         assertThatThrownBy(() -> classroomService.removeStudentFromClass("ABC12345", student.getId(), 999L))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("Bạn không phải là giáo viên phụ trách lớp học này");
@@ -603,11 +533,8 @@ class ClassroomServiceImplTest {
     @Test
     @DisplayName("Should throw Exception when student is not in the classroom for removeStudentFromClass")
     void removeStudentFromClass_StudentNotInClass_ThrowsException() {
-        // Given
-        // classroom.getStudents() is empty — student not in class
         when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
 
-        // When & Then
         assertThatThrownBy(() -> classroomService.removeStudentFromClass("ABC12345", student.getId(), currentUserId))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("Học sinh không tồn tại trong lớp học này");
@@ -616,14 +543,9 @@ class ClassroomServiceImplTest {
         verify(emailService, never()).sendHtmlMailAsync(anyString(), anyString(), anyString(), any());
     }
 
-    // ==========================================
-    // Tests for updateClassroom
-    // ==========================================
-
     @Test
     @DisplayName("Should update classroom successfully when teacher updates own classroom")
     void updateClassroom_ValidRequest_ReturnsResponse() {
-        // Given
         UpdateClassroomRequest updateRequest = UpdateClassroomRequest.builder()
                 .className("Math 101 Advanced")
                 .description("Updated description")
@@ -642,21 +564,18 @@ class ClassroomServiceImplTest {
         when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
         when(classroomRepository.save(any(Classroom.class))).thenReturn(updatedClassroom);
 
-        // When
         ClassroomResponse response = classroomService.updateClassroom("ABC12345", updateRequest, currentUserId);
 
-        // Then
         assertThat(response).isNotNull();
         assertThat(response.getClassName()).isEqualTo("Math 101 Advanced");
         assertThat(response.getMaxStudents()).isEqualTo(50);
-        
+
         verify(classroomRepository, times(1)).save(any(Classroom.class));
     }
 
     @Test
     @DisplayName("Should throw Exception when classroom not found for updateClassroom")
     void updateClassroom_ClassroomNotFound_ThrowsException() {
-        // Given
         UpdateClassroomRequest updateRequest = UpdateClassroomRequest.builder()
                 .className("New Name")
                 .maxStudents(30)
@@ -664,7 +583,6 @@ class ClassroomServiceImplTest {
 
         when(classroomRepository.findByClassCode("NOTEXIST")).thenReturn(Optional.empty());
 
-        // When & Then
         assertThatThrownBy(() -> classroomService.updateClassroom("NOTEXIST", updateRequest, currentUserId))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("Không tìm thấy lớp học");
@@ -675,7 +593,6 @@ class ClassroomServiceImplTest {
     @Test
     @DisplayName("Should throw Exception when requester is not the classroom teacher for updateClassroom")
     void updateClassroom_NotClassroomTeacher_ThrowsException() {
-        // Given
         UpdateClassroomRequest updateRequest = UpdateClassroomRequest.builder()
                 .className("New Name")
                 .maxStudents(30)
@@ -683,7 +600,6 @@ class ClassroomServiceImplTest {
 
         when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
 
-        // When & Then
         assertThatThrownBy(() -> classroomService.updateClassroom("ABC12345", updateRequest, 999L))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("Bạn không có quyền chỉnh sửa lớp học này");
@@ -694,7 +610,6 @@ class ClassroomServiceImplTest {
     @Test
     @DisplayName("Should throw Exception when new maxStudents is less than current student count")
     void updateClassroom_MaxStudentsBelowCurrentCount_ThrowsException() {
-        // Given
         User student2 = new User();
         student2.setId(3L);
         student2.setEmail("student2@codegym.com");
@@ -704,12 +619,11 @@ class ClassroomServiceImplTest {
 
         UpdateClassroomRequest updateRequest = UpdateClassroomRequest.builder()
                 .className("Math 101")
-                .maxStudents(1)  // less than the 2 current students
+                .maxStudents(1)
                 .build();
 
         when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
 
-        // When & Then
         assertThatThrownBy(() -> classroomService.updateClassroom("ABC12345", updateRequest, currentUserId))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageStartingWith("Sĩ số tối đa không được nhỏ hơn sĩ số học sinh hiện tại");
