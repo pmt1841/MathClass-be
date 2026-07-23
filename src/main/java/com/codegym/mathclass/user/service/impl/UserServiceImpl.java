@@ -41,15 +41,7 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy người dùng với ID: " + id));
 
-        if (user.getProvider() != Provider.GOOGLE) {
-            user.setFullName(request.getFullName());
-            if (request.getAvatarUrl() != null && !request.getAvatarUrl().isEmpty()) {
-                user.setAvatarUrl(request.getAvatarUrl());
-            }
-        }
-        user.setPhoneNumber(request.getPhoneNumber());
-        user.setDateOfBirth(request.getDateOfBirth());
-        user.setGender(request.getGender());
+        userMapper.updateUserFromRequest(user, request);
 
         userRepository.save(user);
         UserResponse response = userMapper.toUserResponse(user);

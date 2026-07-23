@@ -8,12 +8,15 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
+import lombok.Builder;
+
 @Entity
 @Table(name = "classroom_join_requests")
 @Data
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class ClassroomJoinRequest extends BaseEntity {
 
     @ManyToOne

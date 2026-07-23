@@ -36,7 +36,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -64,6 +63,7 @@ public class AuthServiceImpl implements AuthService {
     private final EmailService emailService;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final RefreshTokenService refreshTokenService;
+    private final com.codegym.mathclass.user.mapper.UserMapper userMapper;
 
     private final ConcurrentHashMap<String, LocalDateTime> forgotPasswordRateLimitMap = new ConcurrentHashMap<>();
 
@@ -113,21 +113,7 @@ public class AuthServiceImpl implements AuthService {
         response.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE, jwtRefreshCookie.toString());
 
-        return new UserInfoResponse(
-                userDetails.getId(),
-                userDetails.getEmail(),
-                userDetails.getFullName(),
-                userDetails.getAuthorities().stream()
-                        .map(GrantedAuthority::getAuthority)
-                        .filter(a -> a.startsWith("ROLE_"))
-                        .findFirst()
-                        .map(r -> r.replace("ROLE_", ""))
-                        .orElse(""),
-                userDetails.getAvatarUrl(),
-                userDetails.getAuthorities().stream()
-                        .map(GrantedAuthority::getAuthority)
-                        .filter(a -> !a.startsWith("ROLE_"))
-                        .toList());
+        return userMapper.toUserInfoResponse(userDetails);
     }
 
     @Override
@@ -182,15 +168,16 @@ public class AuthServiceImpl implements AuthService {
             throw new BadRequestException("Lỗi đăng ký tài khoản");
         }
 
-        User user = new User();
-        user.setPassword(encoder.encode(signUpRequest.getPassword()));
-        user.setFullName(signUpRequest.getFullName());
-        user.setPhoneNumber(signUpRequest.getPhoneNumber());
-        user.setEmail(signUpRequest.getEmail());
-        user.setRole(requestedRole != null ? requestedRole : Role.STUDENT);
-        user.setActive(false);
         String token = UUID.randomUUID().toString();
-        user.setVerificationCode(token);
+        User user = User.builder()
+                .email(signUpRequest.getEmail())
+                .fullName(signUpRequest.getFullName())
+                .phoneNumber(signUpRequest.getPhoneNumber())
+                .password(encoder.encode(signUpRequest.getPassword()))
+                .role(requestedRole != null ? requestedRole : Role.STUDENT)
+                .isActive(false)
+                .verificationCode(token)
+                .build();
 
         userRepository.save(user);
 
@@ -378,10 +365,12 @@ public class AuthServiceImpl implements AuthService {
                         try {
                             Role requestedRole = Role.valueOf(request.getRole().toUpperCase());
                             if (requestedRole == Role.TEACHER && user.getRole() == Role.STUDENT) {
-                                throw new BadRequestException("Tài khoản học sinh không thể truy cập hệ thống của giáo viên.");
+                                throw new BadRequestException(
+                                        "Tài khoản học sinh không thể truy cập hệ thống của giáo viên.");
                             }
                             if (requestedRole == Role.STUDENT && user.getRole() != Role.STUDENT) {
-                                throw new BadRequestException("Tài khoản giáo viên không thể truy cập hệ thống của học sinh.");
+                                throw new BadRequestException(
+                                        "Tài khoản giáo viên không thể truy cập hệ thống của học sinh.");
                             }
                         } catch (IllegalArgumentException e) {
                             // ignore
@@ -393,12 +382,6 @@ public class AuthServiceImpl implements AuthService {
                         userRepository.save(user);
                     }
                 } else {
-                    user = new User();
-                    user.setEmail(email);
-                    user.setFullName(name);
-                    user.setAvatarUrl(pictureUrl);
-                    user.setActive(true);
-
                     Role role = Role.STUDENT; // Default
                     if (request.getRole() != null) {
                         try {
@@ -407,14 +390,23 @@ public class AuthServiceImpl implements AuthService {
                             // ignore
                         }
                     }
-                    user.setRole(role);
-                    user.setProvider(Provider.GOOGLE);
+
                     SecureRandom random = new SecureRandom();
                     byte[] bytes = new byte[24];
                     random.nextBytes(bytes);
                     String randomPassword = java.util.Base64.getEncoder().encodeToString(bytes);
-                    user.setPassword(encoder.encode(randomPassword));
-                    user.setPhoneNumber("");
+
+                    user = User.builder()
+                            .email(email)
+                            .fullName(name)
+                            .avatarUrl(pictureUrl)
+                            .isActive(true)
+                            .role(role)
+                            .provider(Provider.GOOGLE)
+                            .password(encoder.encode(randomPassword))
+                            .phoneNumber("")
+                            .build();
+
                     userRepository.save(user);
 
                     NotificationSettings settings = NotificationSettings.builder()
@@ -437,21 +429,7 @@ public class AuthServiceImpl implements AuthService {
                 httpResponse.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
                 httpResponse.addHeader(HttpHeaders.SET_COOKIE, jwtRefreshCookie.toString());
 
-                return new UserInfoResponse(
-                        userDetails.getId(),
-                        userDetails.getEmail(),
-                        userDetails.getFullName(),
-                        userDetails.getAuthorities().stream()
-                                .map(GrantedAuthority::getAuthority)
-                                .filter(a -> a.startsWith("ROLE_"))
-                                .findFirst()
-                                .map(r -> r.replace("ROLE_", ""))
-                                .orElse(""),
-                        userDetails.getAvatarUrl(),
-                        userDetails.getAuthorities().stream()
-                                .map(GrantedAuthority::getAuthority)
-                                .filter(a -> !a.startsWith("ROLE_"))
-                                .toList());
+                return userMapper.toUserInfoResponse(userDetails);
 
             } else {
                 throw new BadRequestException("Token xác thực Google không hợp lệ.");

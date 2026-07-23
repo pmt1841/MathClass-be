@@ -22,12 +22,15 @@ import jakarta.persistence.OneToMany;
 import com.codegym.mathclass.common.entity.BaseEntity;
 import lombok.EqualsAndHashCode;
 
+import lombok.Builder;
+
 @Entity
 @Table(name = "assignments")
 @Data
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Assignment extends BaseEntity {
 
     @Column(nullable = false)
@@ -42,6 +45,7 @@ public class Assignment extends BaseEntity {
     @Column(nullable = true)
     private LocalDateTime deadline;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AssignmentStatus status = AssignmentStatus.DRAFT;
@@ -60,12 +64,15 @@ public class Assignment extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String content;
 
+    @Builder.Default
     @OneToMany(mappedBy = "assignment", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<AssignmentDrawing> drawings = new ArrayList<>();
 
+    @Builder.Default
     @OneToMany(mappedBy = "assignment", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<AssignmentImage> images = new ArrayList<>();
 
+    @Builder.Default
     @Column(name = "is_reminder_sent", nullable = false, columnDefinition = "boolean default false")
     private boolean isReminderSent = false;
 }

@@ -19,12 +19,15 @@ import java.util.Set;
 import com.codegym.mathclass.common.entity.BaseEntity;
 import lombok.EqualsAndHashCode;
 
+import lombok.Builder;
+
 @Entity
 @Table(name = "classrooms")
 @Data
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Classroom extends BaseEntity {
 
     @Column(name = "class_code", unique = true, nullable = false)
@@ -42,6 +45,7 @@ public class Classroom extends BaseEntity {
 
     private String description;
 
+    @Builder.Default
     @ManyToMany
     @JoinTable(name = "classroom_students", joinColumns = @JoinColumn(name = "classroom_id"), inverseJoinColumns = @JoinColumn(name = "student_id"))
     private Set<User> students = new HashSet<>();
