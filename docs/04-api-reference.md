@@ -14,9 +14,9 @@ Môi trường chạy mặc định: `http://localhost:8080`.
 | Method | Endpoint | Quyền | Mô tả |
 | :--- | :--- | :--- | :--- |
 | `POST` | `/api/auth/register` | Public | Đăng ký tài khoản mới (Gửi OTP qua email). |
-| `POST` | `/api/auth/login` | Public | Đăng nhập bằng Email & Mật khẩu. Trả về thông tin user & JWT. |
+| `POST` | `/api/auth/login` | Public | Đăng nhập bằng Email & Mật khẩu (Dùng chung cho Học sinh, Giáo viên và Admin tại `/admin/login`). Trả về Cookie `mathclass_jwt` & vai trò người dùng. |
 | `POST` | `/api/auth/google` | Public | Đăng nhập/Đăng ký nhanh bằng Google OAuth2 ID Token. |
-| `POST` | `/api/auth/logout` | Authenticated | Đăng xuất và vô hiệu hóa Cookie JWT. |
+| `POST` | `/api/auth/logout` | Authenticated | Đăng xuất và vô hiệu hóa Cookie JWT (`mathclass_jwt`). |
 | `POST` | `/api/auth/refreshtoken` | Public | Cấp lại Access Token mới bằng Refresh Token. |
 | `GET` | `/api/auth/verify` | Public | Xác thực mã OTP để kích hoạt tài khoản. |
 | `POST` | `/api/auth/forgot-password` | Public | Gửi email chứa link/mã khôi phục mật khẩu. |

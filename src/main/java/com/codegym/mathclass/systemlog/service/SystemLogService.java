@@ -8,9 +8,16 @@ import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
 
 public interface SystemLogService {
-    Page<SystemLogResponse> getLogs(SystemLogLevel level, String actor, LocalDateTime startDate, LocalDateTime endDate, Pageable pageable);
-    
+    Page<SystemLogResponse> getLogs(SystemLogLevel level, String resourceType, String actor, LocalDateTime startDate, LocalDateTime endDate, Pageable pageable);
+
+    void log(String actor, String action, SystemLogLevel level, String resourceType, String resourceId, String ipAddress, String userAgent, String status);
+
     void logInfo(String actor, String action, Long userId);
+    void logInfo(String actor, String action, String resourceType, String resourceId);
+
     void logWarning(String actor, String action, Long userId);
+    void logWarning(String actor, String action, String resourceType, String resourceId);
+
     void logError(String actor, String action, Long userId);
+    void logError(String actor, String action, String resourceType, String resourceId);
 }
