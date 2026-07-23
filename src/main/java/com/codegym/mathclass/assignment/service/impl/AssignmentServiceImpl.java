@@ -91,13 +91,14 @@ public class AssignmentServiceImpl implements AssignmentService {
         }
 
         // 4. Tạo bài tập với trạng thái DRAFT, chưa gán lớp và chưa có deadline
-        Assignment assignment = new Assignment();
-        assignment.setTitle(request.getTitle() != null ? request.getTitle() : "");
-        assignment.setDescription(request.getDescription() != null ? request.getDescription() : "");
-        assignment.setContent(request.getContent() != null ? request.getContent() : "");
-        assignment.setStatus(AssignmentStatus.DRAFT);
-        assignment.setTeacher(teacher);
-        assignment.setClassroom(null);
+        Assignment assignment = Assignment.builder()
+                .title(request.getTitle() != null ? request.getTitle() : "")
+                .description(request.getDescription() != null ? request.getDescription() : "")
+                .content(request.getContent() != null ? request.getContent() : "")
+                .status(AssignmentStatus.DRAFT)
+                .teacher(teacher)
+                .classroom(null)
+                .build();
         // deadline = null cho đến khi giáo viên publish
 
         updateDrawings(assignment, request.getDrawings());

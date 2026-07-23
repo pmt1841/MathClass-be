@@ -14,12 +14,15 @@ import java.time.LocalDate;
 import com.codegym.mathclass.common.entity.BaseEntity;
 import lombok.EqualsAndHashCode;
 
+import lombok.Builder;
+
 @Entity
 @Table(name = "users")
 @Data
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class User extends BaseEntity {
     private String password;
 
@@ -36,12 +39,14 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private Role role;
 
+    @Builder.Default
     @Column(name = "is_active")
     private boolean isActive = false;
 
     @Column(name = "verification_code")
     private String verificationCode;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "provider", nullable = false, length = 20, columnDefinition = "varchar(20) default 'LOCAL'")
     private Provider provider = Provider.LOCAL;

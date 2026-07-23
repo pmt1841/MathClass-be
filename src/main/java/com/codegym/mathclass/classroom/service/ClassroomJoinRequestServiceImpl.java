@@ -64,10 +64,11 @@ public class ClassroomJoinRequestServiceImpl implements ClassroomJoinRequestServ
             throw new BadRequestException("Bạn đã gửi yêu cầu tham gia lớp này và đang chờ duyệt");
         }
 
-        ClassroomJoinRequest joinRequest = new ClassroomJoinRequest();
-        joinRequest.setClassroom(classroom);
-        joinRequest.setStudent(student);
-        joinRequest.setStatus(JoinRequestStatus.PENDING);
+        ClassroomJoinRequest joinRequest = ClassroomJoinRequest.builder()
+                .classroom(classroom)
+                .student(student)
+                .status(JoinRequestStatus.PENDING)
+                .build();
 
         joinRequest = joinRequestRepository.save(joinRequest);
 

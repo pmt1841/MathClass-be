@@ -53,12 +53,13 @@ public class ClassroomServiceImpl implements ClassroomService {
             generatedClassCode = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         } while (classroomRepository.existsByClassCode(generatedClassCode));
 
-        Classroom classroom = new Classroom();
-        classroom.setClassName(request.getName());
-        classroom.setClassCode(generatedClassCode);
-        classroom.setMaxStudents(request.getMaxStudents());
-        classroom.setDescription(request.getDescription());
-        classroom.setTeacher(teacher);
+        Classroom classroom = Classroom.builder()
+                .className(request.getName())
+                .classCode(generatedClassCode)
+                .maxStudents(request.getMaxStudents())
+                .description(request.getDescription())
+                .teacher(teacher)
+                .build();
         // Danh sách học sinh được khởi tạo rỗng mặc định trong entity
 
         Classroom savedClassroom = classroomRepository.save(classroom);
