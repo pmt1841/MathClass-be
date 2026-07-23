@@ -11,7 +11,10 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 
@@ -26,12 +29,13 @@ public class AdminLogController {
     @GetMapping
     public ResponseEntity<Page<SystemLogResponse>> getLogs(
             @RequestParam(required = false) SystemLogLevel level,
+            @RequestParam(required = false) String resourceType,
             @RequestParam(required = false) String actor,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
-            @PageableDefault(size = 20, sort = "timestamp", direction = Sort.Direction.DESC) Pageable pageable) {
-        
-        Page<SystemLogResponse> logs = systemLogService.getLogs(level, actor, startDate, endDate, pageable);
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        Page<SystemLogResponse> logs = systemLogService.getLogs(level, resourceType, actor, startDate, endDate, pageable);
         return ResponseEntity.ok(logs);
     }
 }
