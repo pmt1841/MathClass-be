@@ -23,7 +23,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import com.codegym.mathclass.classroom.dto.UpdateClassroomRequest;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(name = "Classroom Management", description = "APIs quản lý lớp học (Tạo mới, truy vấn, cập nhật, xóa lớp học)")
 @RestController
 @RequestMapping("/api/classrooms")
 @RequiredArgsConstructor
@@ -31,6 +34,7 @@ public class ClassroomController {
 
     private final ClassroomService classroomService;
 
+    @Operation(summary = "Tạo lớp học mới", description = "Tạo một lớp học mới và gán người tạo làm Giáo viên (Teacher)")
     @PostMapping("/create")
     @PreAuthorize("hasAuthority('classroom:create')")
     public ResponseEntity<ClassroomResponse> createClassroom(
@@ -43,6 +47,7 @@ public class ClassroomController {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
+    @Operation(summary = "Lấy danh sách lớp học của người dùng", description = "Truy vấn tất cả các lớp học mà người dùng hiện tại đang tham gia hoặc giảng dạy")
     @GetMapping("/my-classroom")
     public ResponseEntity<List<ClassroomResponse>> getClassroomsList(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -51,6 +56,7 @@ public class ClassroomController {
         return new ResponseEntity<>(responses, HttpStatus.OK);
     }
 
+    @Operation(summary = "Chi tiết lớp học theo mã lớp (Class Code)", description = "Lấy thông tin chi tiết của một lớp học bằng mã lớp")
     @GetMapping("/{classCode}")
     public ResponseEntity<ClassroomResponse> getClassroomByClassCode(
             @PathVariable String classCode,
@@ -60,6 +66,7 @@ public class ClassroomController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+    @Operation(summary = "Cập nhật thông tin lớp học", description = "Cập nhật tên, mô tả hoặc cài đặt của lớp học")
     @PutMapping("/{classCode}")
     @PreAuthorize("hasAuthority('classroom:update')")
     public ResponseEntity<ClassroomResponse> updateClassroom(
@@ -71,6 +78,7 @@ public class ClassroomController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+    @Operation(summary = "Xóa lớp học", description = "Xóa lớp học theo mã lớp (chỉ dành cho giáo viên chủ nhiệm hoặc quản trị viên)")
     @DeleteMapping("/{classCode}")
     @PreAuthorize("hasAuthority('classroom:delete')")
     public ResponseEntity<Void> deleteClassroom(

@@ -19,48 +19,59 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(name = "Authentication", description = "APIs đăng nhập, đăng ký, xác thực Google và khôi phục mật khẩu")
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
     private final AuthService authService;
 
+    @Operation(summary = "Đăng nhập bằng Email và Password", description = "Xác thực người dùng và trả về JWT Token")
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest, HttpServletResponse response) {
         return ResponseEntity.ok(authService.authenticateUser(loginRequest, response));
     }
 
+    @Operation(summary = "Đăng nhập / Đăng ký qua Google OAuth2", description = "Xác thực người dùng bằng Google ID Token")
     @PostMapping("/google")
     public ResponseEntity<?> googleAuth(@Valid @RequestBody GoogleAuthRequest request, HttpServletResponse response) {
         return ResponseEntity.ok(authService.authenticateWithGoogle(request, response));
     }
 
+    @Operation(summary = "Đăng xuất", description = "Xóa Cookie JWT và phiên làm việc của người dùng")
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response) {
         return ResponseEntity.ok(authService.logoutUser(request, response));
     }
 
+    @Operation(summary = "Làm mới JWT Token (Refresh Token)", description = "Cấp lại Access Token mới dựa trên Refresh Cookie")
     @PostMapping("/refreshtoken")
     public ResponseEntity<?> refreshtoken(HttpServletRequest request, HttpServletResponse response) {
         return ResponseEntity.ok(authService.refreshToken(request, response));
     }
 
+    @Operation(summary = "Đăng ký tài khoản mới", description = "Đăng ký tài khoản người dùng mới và gửi email xác minh")
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody SignupRequest signUpRequest) {
         return ResponseEntity.ok(authService.registerUser(signUpRequest));
     }
 
+    @Operation(summary = "Xác minh tài khoản qua Email", description = "Kích hoạt tài khoản bằng mã Token gửi qua email")
     @GetMapping("/verify")
     public ResponseEntity<?> verifyUser(@RequestParam("token") String token) {
         return ResponseEntity.ok(authService.verifyUser(token));
     }
 
+    @Operation(summary = "Yêu cầu khôi phục mật khẩu (Quên mật khẩu)", description = "Gửi email chứa liên kết đặt lại mật khẩu")
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         return ResponseEntity.ok(authService.forgotPassword(request));
     }
 
+    @Operation(summary = "Đặt lại mật khẩu mới", description = "Cập nhật mật khẩu mới bằng Token khôi phục")
     @PostMapping("/reset-password")
     public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         return ResponseEntity.ok(authService.resetPassword(request));

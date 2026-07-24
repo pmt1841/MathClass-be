@@ -17,7 +17,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import com.codegym.mathclass.assignment.dto.UpdateAssignmentSheetRequest;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(name = "Assignment Sheets", description = "APIs quản lý phiếu bài tập (Xuất bản phiếu bài tập, cập nhật, tìm kiếm và xóa phiếu bài tập)")
 @RestController
 @RequestMapping("/api/assignment-sheets")
 @RequiredArgsConstructor
@@ -25,6 +28,7 @@ public class AssignmentSheetController {
 
     private final AssignmentSheetService assignmentSheetService;
 
+    @Operation(summary = "Xuất bản phiếu bài tập", description = "Giao danh sách bài tập dưới dạng một phiếu bài tập cho các lớp học")
     @PostMapping("/publish")
     @PreAuthorize("hasAuthority('assignment:publish')")
     public ResponseEntity<?> publishAssignmentSheet(
@@ -35,6 +39,7 @@ public class AssignmentSheetController {
         return ResponseEntity.ok().build();
     }
 
+    @Operation(summary = "Cập nhật phiếu bài tập", description = "Chỉnh sửa tên phiếu bài tập, danh sách bài tập thuộc phiếu hoặc thời hạn nộp bài")
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('assignment:update')")
     public ResponseEntity<AssignmentSheetResponse> updateAssignmentSheet(
@@ -45,6 +50,7 @@ public class AssignmentSheetController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Danh sách phiếu bài tập của tôi", description = "Lấy danh sách phiếu bài tập của người dùng có hỗ trợ lọc từ khóa, mã lớp và phân trang")
     @GetMapping
     public ResponseEntity<Page<AssignmentSheetResponse>> getAssignmentSheetsForCurrentUser(
             @RequestParam(required = false) String keyword,
@@ -65,6 +71,7 @@ public class AssignmentSheetController {
         return ResponseEntity.ok(sheets);
     }
 
+    @Operation(summary = "Xóa phiếu bài tập", description = "Xóa một phiếu bài tập theo ID")
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('assignment:delete')")
     public ResponseEntity<Void> deleteAssignmentSheet(

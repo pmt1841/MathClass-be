@@ -17,7 +17,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(name = "Admin - System Logs", description = "APIs quản trị viên: Tra cứu và truy vấn nhật ký hoạt động hệ thống (System Logs)")
 @RestController
 @RequestMapping("/api/admin/logs")
 @RequiredArgsConstructor
@@ -26,6 +29,7 @@ public class AdminLogController {
 
     private final SystemLogService systemLogService;
 
+    @Operation(summary = "Truy vấn nhật ký hệ thống (Admin)", description = "Lọc log hệ thống theo mức độ (INFO, WARN, ERROR), loại tài nguyên, người thực hiện và khoảng thời gian")
     @GetMapping
     public ResponseEntity<Page<SystemLogResponse>> getLogs(
             @RequestParam(required = false) SystemLogLevel level,

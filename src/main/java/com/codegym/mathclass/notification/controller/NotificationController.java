@@ -14,7 +14,10 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import com.codegym.mathclass.exception.AccessDeniedException;
 
 import java.util.Map;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(name = "Notifications", description = "APIs thông báo thời gian thực SSE, danh sách thông báo và đánh dấu đã đọc")
 @RestController
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
@@ -22,7 +25,7 @@ public class NotificationController {
 
     private final NotificationService notificationService;
 
-    // Connect to SSE stream
+    @Operation(summary = "Đăng ký SSE Stream thông báo thời gian thực", description = "Kết nối Server-Sent Events (SSE) để nhận thông báo real-time từ hệ thống")
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream(@AuthenticationPrincipal CustomUserDetails userDetails) {
         if (userDetails == null) {
@@ -31,6 +34,7 @@ public class NotificationController {
         return notificationService.createEmitter(userDetails.getId());
     }
 
+    @Operation(summary = "Danh sách thông báo cá nhân", description = "Lấy danh sách các thông báo của người dùng hiện tại có phân trang")
     @GetMapping
     public ResponseEntity<Page<NotificationResponse>> getNotifications(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -39,6 +43,7 @@ public class NotificationController {
         return ResponseEntity.ok(notificationService.getNotifications(userDetails.getId(), PageRequest.of(page, size)));
     }
 
+    @Operation(summary = "Số lượng thông báo chưa đọc", description = "Lấy số lượng thông báo chưa đọc của người dùng")
     @GetMapping("/unread-count")
     public ResponseEntity<Map<String, Long>> getUnreadCount(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -46,12 +51,14 @@ public class NotificationController {
         return ResponseEntity.ok(Map.of("count", count));
     }
 
+    @Operation(summary = "Đánh dấu tất cả thông báo là đã đọc", description = "Chuyển tất cả thông báo của người dùng sang trạng thái đã đọc")
     @PutMapping("/read-all")
     public ResponseEntity<Void> markAllAsRead(@AuthenticationPrincipal CustomUserDetails userDetails) {
         notificationService.markAllAsRead(userDetails.getId());
         return ResponseEntity.ok().build();
     }
 
+    @Operation(summary = "Đánh dấu một thông báo là đã đọc", description = "Chuyển trạng thái của thông báo theo ID sang đã đọc")
     @PutMapping("/{id}/read")
     public ResponseEntity<Void> markAsRead(
             @PathVariable Long id,
