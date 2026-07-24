@@ -16,7 +16,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(name = "Submissions", description = "APIs quản lý bài làm của học sinh (Nộp bài, sửa bài làm, hủy nộp, chấm điểm, truy vấn bài nộp)")
 @RestController
 @RequestMapping("/api/submissions")
 @RequiredArgsConstructor
@@ -24,7 +27,7 @@ public class SubmissionController {
 
     private final SubmissionService submissionService;
 
-    // Nộp bài làm
+    @Operation(summary = "Nộp bài làm", description = "Học sinh nộp câu trả lời bài tập (tự luận / trắc nghiệm)")
     @PostMapping
     @PreAuthorize("hasAuthority('submission:submit')")
     public ResponseEntity<SubmissionResponse> createSubmission(
@@ -36,7 +39,7 @@ public class SubmissionController {
         return ResponseEntity.ok(response);
     }
 
-    // Cập nhật bài làm
+    @Operation(summary = "Cập nhật bài làm", description = "Học sinh chỉnh sửa nội dung bài làm trước khi hết hạn hoặc trước khi giáo viên chấm điểm")
     @PutMapping("/{submissionId}")
     @PreAuthorize("hasAuthority('submission:submit')")
     public ResponseEntity<SubmissionResponse> updateSubmission(
@@ -49,7 +52,7 @@ public class SubmissionController {
         return ResponseEntity.ok(response);
     }
 
-    // Hủy nộp
+    @Operation(summary = "Hủy nộp bài", description = "Học sinh rút lại bài làm để chỉnh sửa lại")
     @PutMapping("/{submissionId}/unsubmit")
     @PreAuthorize("hasAuthority('submission:submit')")
     public ResponseEntity<SubmissionResponse> unsubmitSubmission(
@@ -61,7 +64,7 @@ public class SubmissionController {
         return ResponseEntity.ok(response);
     }
 
-    // Chấm điểm
+    @Operation(summary = "Chấm điểm bài làm", description = "Giáo viên nhập điểm và nhận xét cho bài nộp của học sinh")
     @PutMapping("/{submissionId}/grade")
     @PreAuthorize("hasAuthority('submission:grade')")
     public ResponseEntity<SubmissionResponse> gradeSubmission(
@@ -74,7 +77,7 @@ public class SubmissionController {
         return ResponseEntity.ok(response);
     }
 
-    // Lấy bài làm theo id bài tập
+    @Operation(summary = "Lấy bài làm cá nhân của học sinh", description = "Học sinh truy vấn bài làm của chính mình cho một bài tập")
     @GetMapping("/my-submission")
     @PreAuthorize("hasAuthority('submission:read_own')")
     public ResponseEntity<SubmissionResponse> getMySubmission(
@@ -89,7 +92,7 @@ public class SubmissionController {
         return ResponseEntity.ok(response);
     }
 
-    // Lấy danh sách bài làm theo id bài tập (dành cho giáo viên)
+    @Operation(summary = "Danh sách bài nộp của bài tập (Dành cho Giáo viên)", description = "Giáo viên truy vấn danh sách tất cả các bài nộp của bài tập, hỗ trợ lọc theo trạng thái và tìm kiếm học sinh")
     @GetMapping
     @PreAuthorize("hasAuthority('submission:read_all')")
     public ResponseEntity<Page<SubmissionResponse>> getSubmissionsByAssignment(
@@ -106,7 +109,7 @@ public class SubmissionController {
         return ResponseEntity.ok(responses);
     }
 
-    // Lấy chi tiết một bài nộp (dành cho giáo viên)
+    @Operation(summary = "Chi tiết một bài nộp (Dành cho Giáo viên)", description = "Giáo viên xem chi tiết bài nộp và kết quả trả lời của một học sinh")
     @GetMapping("/{submissionId}")
     @PreAuthorize("hasAuthority('submission:read_all')")
     public ResponseEntity<SubmissionResponse> getSubmissionDetail(

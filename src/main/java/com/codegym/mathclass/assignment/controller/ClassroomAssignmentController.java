@@ -17,7 +17,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(name = "Classroom Assignments", description = "APIs truy vấn bài tập theo từng lớp học")
 @RestController
 @RequestMapping("/api/classrooms/{classCode}/assignments")
 @RequiredArgsConstructor
@@ -25,6 +28,7 @@ public class ClassroomAssignmentController {
 
     private final AssignmentService assignmentService;
 
+    @Operation(summary = "Danh sách bài tập thuộc lớp học", description = "Lấy danh sách bài tập được giao trong một lớp học cụ thể")
     @GetMapping
     @PreAuthorize("hasAuthority('assignment:read')")
     public ResponseEntity<?> getClassroomAssignments(
@@ -40,6 +44,7 @@ public class ClassroomAssignmentController {
         return ResponseEntity.ok(responses);
     }
 
+    @Operation(summary = "Chi tiết bài tập trong lớp học", description = "Lấy chi tiết một bài tập dựa trên mã lớp và ID bài tập")
     @GetMapping("/{id}/detail")
     @PreAuthorize("hasAuthority('assignment:read')")
     public ResponseEntity<?> getAssignmentDetail(

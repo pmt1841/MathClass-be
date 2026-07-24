@@ -24,13 +24,17 @@ import com.codegym.mathclass.security.services.CustomUserDetails;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(name = "Classroom Members", description = "APIs quản lý thành viên học sinh trong lớp học (Thêm học sinh trực tiếp, xem danh sách, xóa học sinh)")
 @RestController
 @RequestMapping("/api/classrooms/{classCode}")
 @RequiredArgsConstructor
 public class ClassroomMemberController {
     private final ClassroomService classroomService;
 
+    @Operation(summary = "Thêm học sinh trực tiếp bằng Email", description = "Giáo viên trực tiếp thêm một học sinh vào lớp thông qua email của học sinh")
     @PostMapping("/students/add")
     @PreAuthorize("hasAuthority('classroom:manage_requests')")
     public ResponseEntity<Void> addStudentToClass(
@@ -42,6 +46,7 @@ public class ClassroomMemberController {
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
+    @Operation(summary = "Danh sách học sinh trong lớp", description = "Lấy danh sách học sinh tham gia lớp học có phân trang và sắp xếp")
     @GetMapping("/students")
     public ResponseEntity<Page<StudentResponse>> getStudentsByClassCode(
             @PathVariable String classCode,
@@ -61,6 +66,7 @@ public class ClassroomMemberController {
         return new ResponseEntity<>(students, HttpStatus.OK);
     }
 
+    @Operation(summary = "Xóa học sinh khỏi lớp", description = "Giáo viên xóa một học sinh ra khỏi lớp học")
     @DeleteMapping("/students/{studentId}")
     @PreAuthorize("hasAuthority('classroom:remove_student')")
     public ResponseEntity<Void> removeStudentFromClass(
