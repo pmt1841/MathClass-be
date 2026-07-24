@@ -63,4 +63,14 @@ public interface AssignmentService {
      * Upload file (.txt, .docx, ...) và trích xuất nội dung văn bản
      */
     java.util.Map<String, Object> extractTextFromFile(org.springframework.web.multipart.MultipartFile file) throws Exception;
+
+    /**
+     * Lấy danh sách các bài tập công khai (PUBLIC) trong Thư viện
+     */
+    Page<AssignmentResponse> getPublicAssignments(String keyword, Pageable pageable);
+
+    /**
+     * Clone bài tập từ Thư viện về kho cá nhân của giáo viên
+     */
+    AssignmentResponse cloneAssignmentFromLibrary(long assignmentId, long teacherId);
 }

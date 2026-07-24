@@ -31,9 +31,17 @@ public class AssignmentSheet extends BaseEntity {
     @Column(nullable = true)
     private LocalDateTime deadline;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AssignmentVisibility visibility = AssignmentVisibility.PRIVATE;
+
     @ManyToOne
     @JoinColumn(name = "teacher_id", nullable = false)
     private User teacher;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "original_author_id")
+    private User originalAuthor;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "classroom_id")

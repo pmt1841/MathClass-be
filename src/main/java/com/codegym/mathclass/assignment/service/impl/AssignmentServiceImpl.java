@@ -100,6 +100,7 @@ public class AssignmentServiceImpl implements AssignmentService {
                 .description(request.getDescription() != null ? request.getDescription() : "")
                 .content(request.getContent() != null ? request.getContent() : "")
                 .status(AssignmentStatus.DRAFT)
+                .visibility(request.getVisibility() != null ? request.getVisibility() : com.codegym.mathclass.assignment.entity.AssignmentVisibility.PRIVATE)
                 .teacher(teacher)
                 .classroom(null)
                 .build();
@@ -695,6 +696,9 @@ public class AssignmentServiceImpl implements AssignmentService {
         assignment.setTitle(request.getTitle() != null ? request.getTitle() : "");
         assignment.setDescription(request.getDescription() != null ? request.getDescription() : "");
         assignment.setContent(request.getContent() != null ? request.getContent() : "");
+        if (request.getVisibility() != null) {
+            assignment.setVisibility(request.getVisibility());
+        }
 
         updateDrawings(assignment, request.getDrawings());
         updateImages(assignment, request.getImages());
@@ -704,6 +708,9 @@ public class AssignmentServiceImpl implements AssignmentService {
         assignment.setTitle(request.getTitle());
         assignment.setDescription(request.getDescription());
         assignment.setContent(request.getContent());
+        if (request.getVisibility() != null) {
+            assignment.setVisibility(request.getVisibility());
+        }
 
         updateDrawings(assignment, request.getDrawings());
         updateImages(assignment, request.getImages());
@@ -725,6 +732,10 @@ public class AssignmentServiceImpl implements AssignmentService {
 
     private void updatePublishedAssignment(Assignment assignment, UpdateAssignmentRequest request) {
         boolean hasSubmissions = submissionRepository.existsByAssignmentId(assignment.getId());
+
+        if (request.getVisibility() != null) {
+            assignment.setVisibility(request.getVisibility());
+        }
 
         if (hasSubmissions) {
             if (!assignment.getTitle().equals(request.getTitle()) ||
@@ -796,5 +807,73 @@ public class AssignmentServiceImpl implements AssignmentService {
                         context);
             }
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<AssignmentResponse> getPublicAssignments(String keyword, Pageable pageable) {
+        Specification<Assignment> spec = Specification.where((root, query, cb) -> cb.and(
+                cb.equal(root.get("visibility"), com.codegym.mathclass.assignment.entity.AssignmentVisibility.PUBLIC),
+                cb.isNull(root.get("classroom")),
+                cb.notEqual(root.get("status"), AssignmentStatus.DELETED)
+        ));
+
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            spec = spec.and((root, query, cb) -> cb.like(cb.lower(root.get("title")), "%" + keyword.toLowerCase() + "%"));
+        }
+
+        Page<Assignment> assignments = assignmentRepository.findAll(spec, pageable);
+        return assignments.map(assignmentMapper::toAssignmentResponseWithoutContent);
+    }
+
+    @Override
+    @Transactional
+    public AssignmentResponse cloneAssignmentFromLibrary(long assignmentId, long teacherId) {
+        User teacher = userRepository.findById(teacherId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
+
+        Assignment original = assignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập"));
+
+        if (original.getVisibility() != com.codegym.mathclass.assignment.entity.AssignmentVisibility.PUBLIC
+                || original.getStatus() == AssignmentStatus.DELETED) {
+            throw new BadRequestException("Bài tập này không ở trạng thái công khai trong Thư viện");
+        }
+
+        User originalAuthor = original.getOriginalAuthor() != null ? original.getOriginalAuthor() : original.getTeacher();
+
+        Assignment clone = Assignment.builder()
+                .title(original.getTitle())
+                .description(original.getDescription())
+                .content(original.getContent())
+                .status(AssignmentStatus.DRAFT)
+                .visibility(com.codegym.mathclass.assignment.entity.AssignmentVisibility.PRIVATE)
+                .teacher(teacher)
+                .originalAuthor(originalAuthor)
+                .classroom(null)
+                .build();
+
+        if (original.getDrawings() != null) {
+            for (AssignmentDrawing originalDrawing : original.getDrawings()) {
+                AssignmentDrawing drawing = new AssignmentDrawing();
+                drawing.setShapeCode(originalDrawing.getShapeCode());
+                drawing.setJsxGraphData(originalDrawing.getJsxGraphData());
+                drawing.setAssignment(clone);
+                clone.getDrawings().add(drawing);
+            }
+        }
+
+        if (original.getImages() != null) {
+            for (AssignmentImage originalImage : original.getImages()) {
+                AssignmentImage image = new AssignmentImage();
+                image.setImageCode(originalImage.getImageCode());
+                image.setImageUrl(originalImage.getImageUrl());
+                image.setAssignment(clone);
+                clone.getImages().add(image);
+            }
+        }
+
+        Assignment saved = assignmentRepository.save(clone);
+        return assignmentMapper.toAssignmentResponse(saved);
     }
 }

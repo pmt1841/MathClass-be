@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 public class PublishAssignmentSheetRequest {
     private String title;
     private String description;
+    private com.codegym.mathclass.assignment.entity.AssignmentVisibility visibility;
     private List<Long> assignmentIds;
     private List<TargetClass> targets;
 
