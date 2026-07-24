@@ -13,12 +13,14 @@ public class AssignmentSheetResponse {
     private String title;
     private String description;
     private LocalDateTime deadline;
-    private String status = "PUBLISHED";
+    private com.codegym.mathclass.assignment.entity.AssignmentVisibility visibility;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     
     private long teacherId;
     private String teacherName;
+    private Long originalAuthorId;
+    private String originalAuthorName;
     private String classCode;
     private String className;
 
@@ -35,12 +37,18 @@ public class AssignmentSheetResponse {
         res.setTitle(sheet.getTitle());
         res.setDescription(sheet.getDescription());
         res.setDeadline(sheet.getDeadline());
+        res.setVisibility(sheet.getVisibility());
         res.setCreatedAt(sheet.getCreatedAt());
         res.setUpdatedAt(sheet.getUpdatedAt());
         
         if (sheet.getTeacher() != null) {
             res.setTeacherId(sheet.getTeacher().getId());
             res.setTeacherName(sheet.getTeacher().getFullName());
+        }
+
+        if (sheet.getOriginalAuthor() != null) {
+            res.setOriginalAuthorId(sheet.getOriginalAuthor().getId());
+            res.setOriginalAuthorName(sheet.getOriginalAuthor().getFullName());
         }
         
         if (sheet.getClassroom() != null) {

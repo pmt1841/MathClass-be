@@ -92,6 +92,9 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
                     AssignmentSheet sheet = new AssignmentSheet();
                     sheet.setTitle(request.getTitle());
                     sheet.setDescription(request.getDescription());
+                    if (request.getVisibility() != null) {
+                        sheet.setVisibility(request.getVisibility());
+                    }
                     sheet.setTeacher(teacher);
                     sheet.setClassroom(null);
                     return assignmentSheetRepository.save(sheet);
@@ -311,6 +314,9 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
         String oldTitle = sheet.getTitle();
         sheet.setTitle(request.getTitle());
         sheet.setDescription(request.getDescription() != null ? request.getDescription() : "");
+        if (request.getVisibility() != null) {
+            sheet.setVisibility(request.getVisibility());
+        }
         sheet = assignmentSheetRepository.save(sheet);
 
         if (oldTitle != null && !oldTitle.equals(request.getTitle())) {
@@ -318,16 +324,94 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
             for (AssignmentSheet related : relatedSheets) {
                 related.setTitle(request.getTitle());
                 related.setDescription(request.getDescription() != null ? request.getDescription() : "");
+                if (request.getVisibility() != null) {
+                    related.setVisibility(request.getVisibility());
+                }
             }
             assignmentSheetRepository.saveAll(relatedSheets);
         } else {
             List<AssignmentSheet> relatedSheets = assignmentSheetRepository.findByTeacherIdAndTitle(teacherId, sheet.getTitle());
             for (AssignmentSheet related : relatedSheets) {
                 related.setDescription(request.getDescription() != null ? request.getDescription() : "");
+                if (request.getVisibility() != null) {
+                    related.setVisibility(request.getVisibility());
+                }
             }
             assignmentSheetRepository.saveAll(relatedSheets);
         }
 
         return AssignmentSheetResponse.fromEntity(sheet);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<AssignmentSheetResponse> getPublicAssignmentSheets(String keyword, Pageable pageable) {
+        Specification<AssignmentSheet> spec = Specification.where((root, query, cb) -> cb.and(
+                cb.equal(root.get("visibility"), com.codegym.mathclass.assignment.entity.AssignmentVisibility.PUBLIC),
+                cb.isNull(root.get("classroom"))
+        ));
+
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            spec = spec.and((root, query, cb) -> cb.like(cb.lower(root.get("title")), "%" + keyword.toLowerCase() + "%"));
+        }
+
+        Page<AssignmentSheet> sheets = assignmentSheetRepository.findAll(spec, pageable);
+        return sheets.map(sheet -> {
+            AssignmentSheetResponse res = AssignmentSheetResponse.fromEntity(sheet);
+            if (res.getItems() == null || res.getItems().isEmpty()) {
+                if (sheet.getItems() != null && !sheet.getItems().isEmpty()) {
+                    res.setItems(sheet.getItems().stream()
+                        .filter(item -> item.getAssignment() != null && item.getAssignment().getStatus() != com.codegym.mathclass.assignment.entity.AssignmentStatus.DELETED)
+                        .map(item -> AssignmentResponse.fromEntityWithoutContent(item.getAssignment()))
+                        .collect(Collectors.toList()));
+                }
+            }
+            return res;
+        });
+    }
+
+    @Override
+    @Transactional
+    public AssignmentSheetResponse cloneAssignmentSheetFromLibrary(long sheetId, long teacherId) {
+        User teacher = userRepository.findById(teacherId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
+
+        AssignmentSheet originalSheet = assignmentSheetRepository.findById(sheetId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phiếu bài tập"));
+
+        if (originalSheet.getVisibility() != com.codegym.mathclass.assignment.entity.AssignmentVisibility.PUBLIC) {
+            throw new com.codegym.mathclass.exception.BadRequestException("Phiếu bài tập này không ở trạng thái công khai trong Thư viện");
+        }
+
+        User originalAuthor = originalSheet.getOriginalAuthor() != null ? originalSheet.getOriginalAuthor() : originalSheet.getTeacher();
+
+        AssignmentSheet clonedSheet = new AssignmentSheet();
+        clonedSheet.setTitle(originalSheet.getTitle());
+        clonedSheet.setDescription(originalSheet.getDescription());
+        clonedSheet.setTeacher(teacher);
+        clonedSheet.setOriginalAuthor(originalAuthor);
+        clonedSheet.setVisibility(com.codegym.mathclass.assignment.entity.AssignmentVisibility.PRIVATE);
+        clonedSheet.setClassroom(null);
+        clonedSheet = assignmentSheetRepository.save(clonedSheet);
+
+        if (originalSheet.getItems() != null) {
+            for (AssignmentSheetItem item : originalSheet.getItems()) {
+                Assignment originalAsgn = item.getAssignment();
+                if (originalAsgn != null && originalAsgn.getStatus() != AssignmentStatus.DELETED) {
+                    Assignment clonedAsgn = createAssignmentClone(originalAsgn, teacher, null, null);
+                    clonedAsgn.setOriginalAuthor(originalAuthor);
+                    clonedAsgn.setStatus(AssignmentStatus.DRAFT);
+                    clonedAsgn.setVisibility(com.codegym.mathclass.assignment.entity.AssignmentVisibility.PRIVATE);
+                    assignmentRepository.save(clonedAsgn);
+
+                    AssignmentSheetItem newItem = new AssignmentSheetItem();
+                    newItem.setSheet(clonedSheet);
+                    newItem.setAssignment(clonedAsgn);
+                    assignmentSheetItemRepository.save(newItem);
+                }
+            }
+        }
+
+        return AssignmentSheetResponse.fromEntity(clonedSheet);
     }
 }

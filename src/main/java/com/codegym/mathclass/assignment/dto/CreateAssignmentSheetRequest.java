@@ -7,5 +7,6 @@ import java.util.List;
 public class CreateAssignmentSheetRequest {
     private String title;
     private String description;
+    private com.codegym.mathclass.assignment.entity.AssignmentVisibility visibility;
     private List<Long> assignmentIds;
 }

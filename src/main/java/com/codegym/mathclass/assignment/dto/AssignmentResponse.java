@@ -21,8 +21,12 @@ public class AssignmentResponse {
     private String content;
     private LocalDateTime deadline;
     private AssignmentStatus status;
+    private com.codegym.mathclass.assignment.entity.AssignmentVisibility visibility;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    private Long originalAuthorId;
+    private String originalAuthorName;
 
     // isOpen: tính tự động theo deadline, không lưu vào DB
     // true → PUBLISHED và còn trong hạn nộp
@@ -60,8 +64,14 @@ public class AssignmentResponse {
         response.setContent(assignment.getContent());
         response.setDeadline(assignment.getDeadline());
         response.setStatus(assignment.getStatus());
+        response.setVisibility(assignment.getVisibility());
         response.setCreatedAt(assignment.getCreatedAt());
         response.setUpdatedAt(assignment.getUpdatedAt());
+
+        if (assignment.getOriginalAuthor() != null) {
+            response.setOriginalAuthorId(assignment.getOriginalAuthor().getId());
+            response.setOriginalAuthorName(assignment.getOriginalAuthor().getFullName());
+        }
 
         // Tính isOpen tự động: chỉ mở khi PUBLISHED và chưa quá deadline
         boolean open = assignment.getStatus() == AssignmentStatus.PUBLISHED
