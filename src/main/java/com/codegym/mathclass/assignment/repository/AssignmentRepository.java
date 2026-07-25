@@ -16,6 +16,13 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long>, J
 
     List<Assignment> findByTeacherId(long teacherId);
 
+    /**
+     * Lấy assignments theo danh sách IDs, chỉ trả về những bài thuộc về teacherId.
+     * Dùng để validate ownership trong publishAssignmentSheet.
+     */
+    List<Assignment> findAllByIdInAndTeacherId(List<Long> ids, long teacherId);
+
+
     List<Assignment> findByDeadlineBetweenAndIsReminderSentFalseAndStatus(LocalDateTime start, LocalDateTime end, AssignmentStatus status);
 
     int countByTeacherIdAndStatus(long teacherId, AssignmentStatus status);

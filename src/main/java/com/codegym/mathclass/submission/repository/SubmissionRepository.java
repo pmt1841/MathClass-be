@@ -13,6 +13,20 @@ import java.util.Optional;
 
 public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     Optional<Submission> findFirstByAssignmentIdAndStudentId(long assignmentId, long studentId);
+
+    /**
+     * Batch query: lấy submission của một học sinh cho nhiều assignments cùng lúc.
+     * Dùng để tránh N+1 khi hiển thị danh sách phiếu bài tập cho STUDENT.
+     */
+    @Query("""
+            SELECT s FROM Submission s
+            WHERE s.assignment.id IN :assignmentIds
+            AND s.student.id = :studentId
+            """)
+    List<Submission> findAllByAssignmentIdInAndStudentId(
+            @Param("assignmentIds") List<Long> assignmentIds,
+            @Param("studentId") long studentId
+    );
     
     // Lấy danh sách bài nộp và sắp xếp theo thời gian nộp hoặc cập nhật mới nhất
     List<Submission> findAllByAssignmentIdOrderByUpdatedAtDesc(long assignmentId);
