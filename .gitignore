@@ -42,3 +42,5 @@ out/
 ### Enviroment Variables ###
 .env
 .antigravity/skill
+
+skills-lock.json
