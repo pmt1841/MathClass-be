@@ -9,6 +9,7 @@ import com.codegym.mathclass.submission.service.SubmissionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -79,191 +80,210 @@ class SubmissionControllerTest {
                 .build();
     }
 
-    // ==========================================
-    // Tests for createSubmission
-    // ==========================================
+    @Nested
+    @DisplayName("POST /api/submissions Integration Tests")
+    class CreateSubmissionEndpointTests {
 
-    @Test
-    @DisplayName("Should create submission successfully")
-    void createSubmission_ValidRequest_ReturnsOk() throws Exception {
-        // Given
-        SubmissionRequest request = new SubmissionRequest();
-        request.setAssignmentId(100L);
+        @Test
+        @DisplayName("Should create submission successfully and return 200 OK")
+        void createSubmission_ValidRequest_ReturnsOk() throws Exception {
+            SubmissionRequest request = new SubmissionRequest();
+            request.setAssignmentId(100L);
 
-        SubmissionResponse response = new SubmissionResponse();
-        response.setId(10L);
-        response.setStatus(SubmissionStatus.SUBMITTED);
+            SubmissionResponse response = new SubmissionResponse();
+            response.setId(10L);
+            response.setStatus(SubmissionStatus.SUBMITTED);
 
-        when(submissionService.createSubmission(eq(1L), any(SubmissionRequest.class))).thenReturn(response);
+            when(submissionService.createSubmission(eq(1L), any(SubmissionRequest.class))).thenReturn(response);
 
-        // When & Then
-        mockMvc.perform(post("/api/submissions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(10L))
-                .andExpect(jsonPath("$.status").value(SubmissionStatus.SUBMITTED.toString()));
+            mockMvc.perform(post("/api/submissions")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(10L))
+                    .andExpect(jsonPath("$.status").value(SubmissionStatus.SUBMITTED.toString()));
 
-        verify(submissionService, times(1)).createSubmission(eq(1L), any(SubmissionRequest.class));
+            verify(submissionService, times(1)).createSubmission(eq(1L), any(SubmissionRequest.class));
+        }
     }
 
-    // ==========================================
-    // Tests for updateSubmission
-    // ==========================================
+    @Nested
+    @DisplayName("PUT /api/submissions/{submissionId} Integration Tests")
+    class UpdateSubmissionEndpointTests {
 
-    @Test
-    @DisplayName("Should update submission successfully")
-    void updateSubmission_ValidRequest_ReturnsOk() throws Exception {
-        // Given
-        SubmissionRequest request = new SubmissionRequest();
-        request.setAssignmentId(100L);
+        @Test
+        @DisplayName("Should update submission successfully and return 200 OK")
+        void updateSubmission_ValidRequest_ReturnsOk() throws Exception {
+            SubmissionRequest request = new SubmissionRequest();
+            request.setAssignmentId(100L);
 
-        SubmissionResponse response = new SubmissionResponse();
-        response.setId(10L);
-        response.setStatus(SubmissionStatus.SUBMITTED);
+            SubmissionResponse response = new SubmissionResponse();
+            response.setId(10L);
+            response.setStatus(SubmissionStatus.SUBMITTED);
 
-        when(submissionService.updateSubmission(eq(10L), eq(1L), any(SubmissionRequest.class))).thenReturn(response);
+            when(submissionService.updateSubmission(eq(10L), eq(1L), any(SubmissionRequest.class))).thenReturn(response);
 
-        // When & Then
-        mockMvc.perform(put("/api/submissions/10")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(10L));
+            mockMvc.perform(put("/api/submissions/10")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(10L));
 
-        verify(submissionService, times(1)).updateSubmission(eq(10L), eq(1L), any(SubmissionRequest.class));
+            verify(submissionService, times(1)).updateSubmission(eq(10L), eq(1L), any(SubmissionRequest.class));
+        }
     }
 
-    // ==========================================
-    // Tests for unsubmitSubmission
-    // ==========================================
+    @Nested
+    @DisplayName("PUT /api/submissions/{submissionId}/unsubmit Integration Tests")
+    class UnsubmitSubmissionEndpointTests {
 
-    @Test
-    @DisplayName("Should unsubmit submission successfully")
-    void unsubmitSubmission_ValidId_ReturnsOk() throws Exception {
-        // Given
-        SubmissionResponse response = new SubmissionResponse();
-        response.setId(10L);
-        response.setStatus(SubmissionStatus.DRAFT);
+        @Test
+        @DisplayName("Should unsubmit submission successfully and return 200 OK")
+        void unsubmitSubmission_ValidId_ReturnsOk() throws Exception {
+            SubmissionResponse response = new SubmissionResponse();
+            response.setId(10L);
+            response.setStatus(SubmissionStatus.DRAFT);
 
-        when(submissionService.unsubmitSubmission(10L, 1L)).thenReturn(response);
+            when(submissionService.unsubmitSubmission(10L, 1L)).thenReturn(response);
 
-        // When & Then
-        mockMvc.perform(put("/api/submissions/10/unsubmit"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value(SubmissionStatus.DRAFT.toString()));
+            mockMvc.perform(put("/api/submissions/10/unsubmit"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value(SubmissionStatus.DRAFT.toString()));
 
-        verify(submissionService, times(1)).unsubmitSubmission(10L, 1L);
+            verify(submissionService, times(1)).unsubmitSubmission(10L, 1L);
+        }
     }
 
-    // ==========================================
-    // Tests for gradeSubmission
-    // ==========================================
+    @Nested
+    @DisplayName("PUT /api/submissions/{submissionId}/grade Integration Tests")
+    class GradeSubmissionEndpointTests {
 
-    @Test
-    @DisplayName("Should grade submission successfully")
-    void gradeSubmission_ValidRequest_ReturnsOk() throws Exception {
-        // Given
-        GradeRequest request = new GradeRequest();
-        request.setScore(9.5);
+        @Test
+        @DisplayName("Should grade submission successfully and return 200 OK")
+        void gradeSubmission_ValidRequest_ReturnsOk() throws Exception {
+            GradeRequest request = new GradeRequest();
+            request.setScore(9.5);
 
-        SubmissionResponse response = new SubmissionResponse();
-        response.setId(10L);
-        response.setScore(9.5);
-        response.setStatus(SubmissionStatus.GRADED);
+            SubmissionResponse response = new SubmissionResponse();
+            response.setId(10L);
+            response.setScore(9.5);
+            response.setStatus(SubmissionStatus.GRADED);
 
-        when(submissionService.gradeSubmission(eq(10L), eq(1L), any(GradeRequest.class))).thenReturn(response);
+            when(submissionService.gradeSubmission(eq(10L), eq(1L), any(GradeRequest.class))).thenReturn(response);
 
-        // When & Then
-        mockMvc.perform(put("/api/submissions/10/grade")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.score").value(9.5))
-                .andExpect(jsonPath("$.status").value(SubmissionStatus.GRADED.toString()));
+            mockMvc.perform(put("/api/submissions/10/grade")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.score").value(9.5))
+                    .andExpect(jsonPath("$.status").value(SubmissionStatus.GRADED.toString()));
 
-        verify(submissionService, times(1)).gradeSubmission(eq(10L), eq(1L), any(GradeRequest.class));
+            verify(submissionService, times(1)).gradeSubmission(eq(10L), eq(1L), any(GradeRequest.class));
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when score is negative")
+        void gradeSubmission_NegativeScore_Returns400BadRequest() throws Exception {
+            GradeRequest request = new GradeRequest();
+            request.setScore(-1.0);
+
+            mockMvc.perform(put("/api/submissions/10/grade")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest());
+
+            verify(submissionService, never()).gradeSubmission(anyLong(), anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when score exceeds 10")
+        void gradeSubmission_ExceedsMaxScore_Returns400BadRequest() throws Exception {
+            GradeRequest request = new GradeRequest();
+            request.setScore(11.0);
+
+            mockMvc.perform(put("/api/submissions/10/grade")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest());
+
+            verify(submissionService, never()).gradeSubmission(anyLong(), anyLong(), any());
+        }
     }
 
-    // ==========================================
-    // Tests for getMySubmission
-    // ==========================================
+    @Nested
+    @DisplayName("GET /api/submissions/my-submission Integration Tests")
+    class GetMySubmissionEndpointTests {
 
-    @Test
-    @DisplayName("Should get my submission successfully")
-    void getMySubmission_ValidId_ReturnsOk() throws Exception {
-        // Given
-        SubmissionResponse response = new SubmissionResponse();
-        response.setId(10L);
+        @Test
+        @DisplayName("Should get my submission successfully and return 200 OK")
+        void getMySubmission_ValidId_ReturnsOk() throws Exception {
+            SubmissionResponse response = new SubmissionResponse();
+            response.setId(10L);
 
-        when(submissionService.getMySubmission(100L, 1L)).thenReturn(response);
+            when(submissionService.getMySubmission(100L, 1L)).thenReturn(response);
 
-        // When & Then
-        mockMvc.perform(get("/api/submissions/my-submission").param("assignmentId", "100"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(10L));
+            mockMvc.perform(get("/api/submissions/my-submission").param("assignmentId", "100"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(10L));
 
-        verify(submissionService, times(1)).getMySubmission(100L, 1L);
+            verify(submissionService, times(1)).getMySubmission(100L, 1L);
+        }
+
+        @Test
+        @DisplayName("Should return 204 No Content when my submission is not found")
+        void getMySubmission_NotFound_ReturnsNoContent() throws Exception {
+            when(submissionService.getMySubmission(100L, 1L)).thenReturn(null);
+
+            mockMvc.perform(get("/api/submissions/my-submission").param("assignmentId", "100"))
+                    .andExpect(status().isNoContent());
+
+            verify(submissionService, times(1)).getMySubmission(100L, 1L);
+        }
     }
 
-    @Test
-    @DisplayName("Should return no content when my submission is not found")
-    void getMySubmission_NotFound_ReturnsNoContent() throws Exception {
-        // Given
-        when(submissionService.getMySubmission(100L, 1L)).thenReturn(null);
+    @Nested
+    @DisplayName("GET /api/submissions Integration Tests")
+    class GetSubmissionsByAssignmentEndpointTests {
 
-        // When & Then
-        mockMvc.perform(get("/api/submissions/my-submission").param("assignmentId", "100"))
-                .andExpect(status().isNoContent());
+        @Test
+        @DisplayName("Should get submissions by assignment and return 200 OK")
+        void getSubmissionsByAssignment_ValidRequest_ReturnsOkAndPage() throws Exception {
+            SubmissionResponse response = new SubmissionResponse();
+            response.setId(10L);
 
-        verify(submissionService, times(1)).getMySubmission(100L, 1L);
+            Page<SubmissionResponse> page = new PageImpl<>(Collections.singletonList(response), PageRequest.of(0, 10), 1);
+
+            when(submissionService.getSubmissionsByAssignment(eq(100L), eq(1L), any(), any(), any(Pageable.class)))
+                    .thenReturn(page);
+
+            mockMvc.perform(get("/api/submissions")
+                            .param("assignmentId", "100")
+                            .param("page", "0")
+                            .param("size", "10"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content[0].id").value(10L));
+
+            verify(submissionService, times(1)).getSubmissionsByAssignment(eq(100L), eq(1L), any(), any(), any(Pageable.class));
+        }
     }
 
-    // ==========================================
-    // Tests for getSubmissionsByAssignment
-    // ==========================================
+    @Nested
+    @DisplayName("GET /api/submissions/{submissionId} Integration Tests")
+    class GetSubmissionDetailEndpointTests {
 
-    @Test
-    @DisplayName("Should get submissions by assignment")
-    void getSubmissionsByAssignment_ValidRequest_ReturnsOkAndPage() throws Exception {
-        // Given
-        SubmissionResponse response = new SubmissionResponse();
-        response.setId(10L);
+        @Test
+        @DisplayName("Should get submission detail and return 200 OK")
+        void getSubmissionDetail_ValidId_ReturnsOk() throws Exception {
+            SubmissionResponse response = new SubmissionResponse();
+            response.setId(10L);
 
-        Page<SubmissionResponse> page = new PageImpl<>(Collections.singletonList(response), PageRequest.of(0, 10), 1);
+            when(submissionService.getSubmissionDetail(10L, 1L)).thenReturn(response);
 
-        when(submissionService.getSubmissionsByAssignment(eq(100L), eq(1L), any(), any(), any(Pageable.class)))
-                .thenReturn(page);
+            mockMvc.perform(get("/api/submissions/10"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(10L));
 
-        // When & Then
-        mockMvc.perform(get("/api/submissions")
-                        .param("assignmentId", "100")
-                        .param("page", "0")
-                        .param("size", "10"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].id").value(10L));
-
-        verify(submissionService, times(1)).getSubmissionsByAssignment(eq(100L), eq(1L), any(), any(), any(Pageable.class));
-    }
-
-    // ==========================================
-    // Tests for getSubmissionDetail
-    // ==========================================
-
-    @Test
-    @DisplayName("Should get submission detail")
-    void getSubmissionDetail_ValidId_ReturnsOk() throws Exception {
-        // Given
-        SubmissionResponse response = new SubmissionResponse();
-        response.setId(10L);
-
-        when(submissionService.getSubmissionDetail(10L, 1L)).thenReturn(response);
-
-        // When & Then
-        mockMvc.perform(get("/api/submissions/10"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(10L));
-
-        verify(submissionService, times(1)).getSubmissionDetail(10L, 1L);
+            verify(submissionService, times(1)).getSubmissionDetail(10L, 1L);
+        }
     }
 }

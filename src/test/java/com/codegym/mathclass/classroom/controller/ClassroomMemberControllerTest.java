@@ -7,6 +7,7 @@ import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -73,72 +74,97 @@ class ClassroomMemberControllerTest {
                 .build();
     }
 
-    // ==========================================
-    // Tests for addStudentToClass
-    // ==========================================
+    @Nested
+    @DisplayName("POST /api/classrooms/{classCode}/students/add Integration Tests")
+    class AddStudentToClassEndpointTests {
 
-    @Test
-    @DisplayName("Should add student to classroom successfully")
-    void addStudentToClass_ValidRequest_ReturnsOk() throws Exception {
-        // Given
-        AddStudentRequest request = new AddStudentRequest();
-        request.setStudentEmail("student@gmail.com");
+        @Test
+        @DisplayName("Should add student to classroom successfully and return 200 OK")
+        void addStudentToClass_ValidRequest_ReturnsOk() throws Exception {
+            AddStudentRequest request = new AddStudentRequest();
+            request.setStudentEmail("student@gmail.com");
 
-        doNothing().when(classroomService).addStudentToClass(eq("MATH101"), eq("student@gmail.com"), eq(1L));
+            doNothing().when(classroomService).addStudentToClass(eq("MATH101"), eq("student@gmail.com"), eq(1L));
 
-        // When & Then
-        mockMvc.perform(post("/api/classrooms/MATH101/students/add")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk());
-                
-        verify(classroomService, times(1)).addStudentToClass(eq("MATH101"), eq("student@gmail.com"), eq(1L));
+            mockMvc.perform(post("/api/classrooms/MATH101/students/add")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk());
+
+            verify(classroomService, times(1)).addStudentToClass(eq("MATH101"), eq("student@gmail.com"), eq(1L));
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when studentEmail is blank")
+        void addStudentToClass_BlankEmail_Returns400BadRequest() throws Exception {
+            AddStudentRequest request = new AddStudentRequest();
+            request.setStudentEmail("");
+
+            mockMvc.perform(post("/api/classrooms/MATH101/students/add")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest());
+
+            verify(classroomService, never()).addStudentToClass(anyString(), anyString(), anyLong());
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when studentEmail is invalid format")
+        void addStudentToClass_InvalidEmailFormat_Returns400BadRequest() throws Exception {
+            AddStudentRequest request = new AddStudentRequest();
+            request.setStudentEmail("not-an-email");
+
+            mockMvc.perform(post("/api/classrooms/MATH101/students/add")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest());
+
+            verify(classroomService, never()).addStudentToClass(anyString(), anyString(), anyLong());
+        }
     }
 
-    // ==========================================
-    // Tests for getStudentsByClassCode
-    // ==========================================
+    @Nested
+    @DisplayName("GET /api/classrooms/{classCode}/students Integration Tests")
+    class GetStudentsByClassCodeEndpointTests {
 
-    @Test
-    @DisplayName("Should get students by class code successfully")
-    void getStudentsByClassCode_ValidRequest_ReturnsOkAndPage() throws Exception {
-        // Given
-        StudentResponse studentResponse = new StudentResponse();
-        studentResponse.setId(2L);
-        studentResponse.setFullName("Student One");
-        studentResponse.setEmail("student@gmail.com");
+        @Test
+        @DisplayName("Should get students by class code successfully and return 200 OK")
+        void getStudentsByClassCode_ValidRequest_ReturnsOkAndPage() throws Exception {
+            StudentResponse studentResponse = new StudentResponse();
+            studentResponse.setId(2L);
+            studentResponse.setFullName("Student One");
+            studentResponse.setEmail("student@gmail.com");
 
-        Page<StudentResponse> page = new PageImpl<>(Collections.singletonList(studentResponse), org.springframework.data.domain.PageRequest.of(0, 10), 1);
-        
-        when(classroomService.getStudentsByClassCode(eq("MATH101"), eq(1L), any(Pageable.class)))
-                .thenReturn(page);
+            Page<StudentResponse> page = new PageImpl<>(Collections.singletonList(studentResponse), org.springframework.data.domain.PageRequest.of(0, 10), 1);
 
-        // When & Then
-        mockMvc.perform(get("/api/classrooms/MATH101/students")
-                        .param("page", "0")
-                        .param("size", "10")
-                        .param("sort", "s.fullName,asc"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].id").value(2L))
-                .andExpect(jsonPath("$.content[0].fullName").value("Student One"));
-                
-        verify(classroomService, times(1)).getStudentsByClassCode(eq("MATH101"), eq(1L), any(Pageable.class));
+            when(classroomService.getStudentsByClassCode(eq("MATH101"), eq(1L), any(Pageable.class)))
+                    .thenReturn(page);
+
+            mockMvc.perform(get("/api/classrooms/MATH101/students")
+                            .param("page", "0")
+                            .param("size", "10")
+                            .param("sort", "s.fullName,asc"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content[0].id").value(2L))
+                    .andExpect(jsonPath("$.content[0].fullName").value("Student One"));
+
+            verify(classroomService, times(1)).getStudentsByClassCode(eq("MATH101"), eq(1L), any(Pageable.class));
+        }
     }
 
-    // ==========================================
-    // Tests for removeStudentFromClass
-    // ==========================================
+    @Nested
+    @DisplayName("DELETE /api/classrooms/{classCode}/students/{studentId} Integration Tests")
+    class RemoveStudentFromClassEndpointTests {
 
-    @Test
-    @DisplayName("Should remove student from class successfully")
-    void removeStudentFromClass_ValidRequest_ReturnsOk() throws Exception {
-        // Given
-        doNothing().when(classroomService).removeStudentFromClass(eq("MATH101"), eq(2L), eq(1L));
+        @Test
+        @DisplayName("Should remove student from class successfully and return 200 OK")
+        void removeStudentFromClass_ValidRequest_ReturnsOk() throws Exception {
+            doNothing().when(classroomService).removeStudentFromClass(eq("MATH101"), eq(2L), eq(1L));
 
-        // When & Then
-        mockMvc.perform(delete("/api/classrooms/MATH101/students/2"))
-                .andExpect(status().isOk());
-                
-        verify(classroomService, times(1)).removeStudentFromClass(eq("MATH101"), eq(2L), eq(1L));
+            mockMvc.perform(delete("/api/classrooms/MATH101/students/2"))
+                    .andExpect(status().isOk());
+
+            verify(classroomService, times(1)).removeStudentFromClass(eq("MATH101"), eq(2L), eq(1L));
+        }
     }
 }

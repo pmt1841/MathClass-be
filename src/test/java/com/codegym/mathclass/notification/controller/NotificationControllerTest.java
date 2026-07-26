@@ -5,6 +5,7 @@ import com.codegym.mathclass.notification.service.NotificationService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -70,103 +71,98 @@ class NotificationControllerTest {
                 .build();
     }
 
-    // ==========================================
-    // Tests for stream (SSE)
-    // ==========================================
+    @Nested
+    @DisplayName("GET /api/notifications/stream Integration Tests")
+    class StreamEndpointTests {
 
-    @Test
-    @DisplayName("Should return SSE stream")
-    void stream_ValidUser_ReturnsSseEmitter() throws Exception {
-        // Given
-        SseEmitter emitter = new SseEmitter();
-        when(notificationService.createEmitter(1L)).thenReturn(emitter);
+        @Test
+        @DisplayName("Should return SSE stream and 200 OK")
+        void stream_ValidUser_ReturnsSseEmitter() throws Exception {
+            SseEmitter emitter = new SseEmitter();
+            when(notificationService.createEmitter(1L)).thenReturn(emitter);
 
-        // When & Then
-        mockMvc.perform(get("/api/notifications/stream"))
-                .andExpect(status().isOk());
+            mockMvc.perform(get("/api/notifications/stream"))
+                    .andExpect(status().isOk());
 
-        verify(notificationService, times(1)).createEmitter(1L);
+            verify(notificationService, times(1)).createEmitter(1L);
+        }
     }
 
-    // ==========================================
-    // Tests for getNotifications
-    // ==========================================
+    @Nested
+    @DisplayName("GET /api/notifications Integration Tests")
+    class GetNotificationsEndpointTests {
 
-    @Test
-    @DisplayName("Should return notifications page")
-    void getNotifications_ValidRequest_ReturnsPage() throws Exception {
-        // Given
-        NotificationResponse response = new NotificationResponse();
-        response.setId(10L);
-        response.setMessage("New assignment");
-        response.setLink("/assignments/1");
-        response.setRead(false);
-        response.setCreatedAt(LocalDateTime.now());
+        @Test
+        @DisplayName("Should return notifications page and 200 OK")
+        void getNotifications_ValidRequest_ReturnsPage() throws Exception {
+            NotificationResponse response = new NotificationResponse();
+            response.setId(10L);
+            response.setMessage("New assignment");
+            response.setLink("/assignments/1");
+            response.setRead(false);
+            response.setCreatedAt(LocalDateTime.now());
 
-        Page<NotificationResponse> page = new PageImpl<>(Collections.singletonList(response), PageRequest.of(0, 10), 1);
+            Page<NotificationResponse> page = new PageImpl<>(Collections.singletonList(response), PageRequest.of(0, 10), 1);
 
-        when(notificationService.getNotifications(eq(1L), any(PageRequest.class))).thenReturn(page);
+            when(notificationService.getNotifications(eq(1L), any(PageRequest.class))).thenReturn(page);
 
-        // When & Then
-        mockMvc.perform(get("/api/notifications")
-                        .param("page", "0")
-                        .param("size", "10"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].id").value(10L))
-                .andExpect(jsonPath("$.content[0].message").value("New assignment"));
+            mockMvc.perform(get("/api/notifications")
+                            .param("page", "0")
+                            .param("size", "10"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content[0].id").value(10L))
+                    .andExpect(jsonPath("$.content[0].message").value("New assignment"));
 
-        verify(notificationService, times(1)).getNotifications(eq(1L), any(PageRequest.class));
+            verify(notificationService, times(1)).getNotifications(eq(1L), any(PageRequest.class));
+        }
     }
 
-    // ==========================================
-    // Tests for getUnreadCount
-    // ==========================================
+    @Nested
+    @DisplayName("GET /api/notifications/unread-count Integration Tests")
+    class GetUnreadCountEndpointTests {
 
-    @Test
-    @DisplayName("Should return unread count")
-    void getUnreadCount_ValidUser_ReturnsCount() throws Exception {
-        // Given
-        when(notificationService.getUnreadCount(1L)).thenReturn(5L);
+        @Test
+        @DisplayName("Should return unread notifications count and 200 OK")
+        void getUnreadCount_ValidUser_ReturnsCount() throws Exception {
+            when(notificationService.getUnreadCount(1L)).thenReturn(5L);
 
-        // When & Then
-        mockMvc.perform(get("/api/notifications/unread-count"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.count").value(5));
+            mockMvc.perform(get("/api/notifications/unread-count"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.count").value(5));
 
-        verify(notificationService, times(1)).getUnreadCount(1L);
+            verify(notificationService, times(1)).getUnreadCount(1L);
+        }
     }
 
-    // ==========================================
-    // Tests for markAllAsRead
-    // ==========================================
+    @Nested
+    @DisplayName("PUT /api/notifications/read-all Integration Tests")
+    class MarkAllAsReadEndpointTests {
 
-    @Test
-    @DisplayName("Should mark all as read")
-    void markAllAsRead_ValidUser_ReturnsOk() throws Exception {
-        // Given
-        doNothing().when(notificationService).markAllAsRead(1L);
+        @Test
+        @DisplayName("Should mark all notifications as read and return 200 OK")
+        void markAllAsRead_ValidUser_ReturnsOk() throws Exception {
+            doNothing().when(notificationService).markAllAsRead(1L);
 
-        // When & Then
-        mockMvc.perform(put("/api/notifications/read-all"))
-                .andExpect(status().isOk());
+            mockMvc.perform(put("/api/notifications/read-all"))
+                    .andExpect(status().isOk());
 
-        verify(notificationService, times(1)).markAllAsRead(1L);
+            verify(notificationService, times(1)).markAllAsRead(1L);
+        }
     }
 
-    // ==========================================
-    // Tests for markAsRead
-    // ==========================================
+    @Nested
+    @DisplayName("PUT /api/notifications/{id}/read Integration Tests")
+    class MarkAsReadEndpointTests {
 
-    @Test
-    @DisplayName("Should mark as read by id")
-    void markAsRead_ValidId_ReturnsOk() throws Exception {
-        // Given
-        doNothing().when(notificationService).markAsRead(10L, 1L);
+        @Test
+        @DisplayName("Should mark single notification as read by id and return 200 OK")
+        void markAsRead_ValidId_ReturnsOk() throws Exception {
+            doNothing().when(notificationService).markAsRead(10L, 1L);
 
-        // When & Then
-        mockMvc.perform(put("/api/notifications/10/read"))
-                .andExpect(status().isOk());
+            mockMvc.perform(put("/api/notifications/10/read"))
+                    .andExpect(status().isOk());
 
-        verify(notificationService, times(1)).markAsRead(10L, 1L);
+            verify(notificationService, times(1)).markAsRead(10L, 1L);
+        }
     }
 }

@@ -7,6 +7,7 @@ import com.codegym.mathclass.submission.service.SubmissionCommentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -71,74 +72,85 @@ class SubmissionCommentControllerTest {
                 .build();
     }
 
-    // ==========================================
-    // Tests for getCommentsBySubmissionId
-    // ==========================================
+    @Nested
+    @DisplayName("GET /api/submissions/{submissionId}/comments Integration Tests")
+    class GetCommentsBySubmissionIdEndpointTests {
 
-    @Test
-    @DisplayName("Should get comments by submission id successfully")
-    void getCommentsBySubmissionId_ValidId_ReturnsOk() throws Exception {
-        // Given
-        SubmissionCommentResponse response = new SubmissionCommentResponse();
-        response.setId(10L);
-        response.setContent("Good job");
+        @Test
+        @DisplayName("Should get comments by submission id successfully and return 200 OK")
+        void getCommentsBySubmissionId_ValidId_ReturnsOk() throws Exception {
+            SubmissionCommentResponse response = new SubmissionCommentResponse();
+            response.setId(10L);
+            response.setContent("Good job");
 
-        List<SubmissionCommentResponse> responses = Collections.singletonList(response);
+            List<SubmissionCommentResponse> responses = Collections.singletonList(response);
 
-        when(submissionCommentService.getCommentsBySubmissionId(100L, "teacher@gmail.com")).thenReturn(responses);
+            when(submissionCommentService.getCommentsBySubmissionId(100L, "teacher@gmail.com")).thenReturn(responses);
 
-        // When & Then
-        mockMvc.perform(get("/api/submissions/100/comments"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(10L))
-                .andExpect(jsonPath("$[0].content").value("Good job"));
+            mockMvc.perform(get("/api/submissions/100/comments"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].id").value(10L))
+                    .andExpect(jsonPath("$[0].content").value("Good job"));
 
-        verify(submissionCommentService, times(1)).getCommentsBySubmissionId(100L, "teacher@gmail.com");
+            verify(submissionCommentService, times(1)).getCommentsBySubmissionId(100L, "teacher@gmail.com");
+        }
     }
 
-    // ==========================================
-    // Tests for addComment
-    // ==========================================
+    @Nested
+    @DisplayName("POST /api/submissions/{submissionId}/comments Integration Tests")
+    class AddCommentEndpointTests {
 
-    @Test
-    @DisplayName("Should add comment successfully")
-    void addComment_ValidRequest_ReturnsCreated() throws Exception {
-        // Given
-        SubmissionCommentRequest request = new SubmissionCommentRequest();
-        request.setContent("Needs improvement");
+        @Test
+        @DisplayName("Should add comment successfully and return 201 Created")
+        void addComment_ValidRequest_ReturnsCreated() throws Exception {
+            SubmissionCommentRequest request = new SubmissionCommentRequest();
+            request.setContent("Needs improvement");
 
-        SubmissionCommentResponse response = new SubmissionCommentResponse();
-        response.setId(10L);
-        response.setContent("Needs improvement");
+            SubmissionCommentResponse response = new SubmissionCommentResponse();
+            response.setId(10L);
+            response.setContent("Needs improvement");
 
-        when(submissionCommentService.addComment(eq(100L), eq(1L), any(SubmissionCommentRequest.class)))
-                .thenReturn(response);
+            when(submissionCommentService.addComment(eq(100L), eq(1L), any(SubmissionCommentRequest.class)))
+                    .thenReturn(response);
 
-        // When & Then
-        mockMvc.perform(post("/api/submissions/100/comments")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(10L))
-                .andExpect(jsonPath("$.content").value("Needs improvement"));
+            mockMvc.perform(post("/api/submissions/100/comments")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.id").value(10L))
+                    .andExpect(jsonPath("$.content").value("Needs improvement"));
 
-        verify(submissionCommentService, times(1)).addComment(eq(100L), eq(1L), any(SubmissionCommentRequest.class));
+            verify(submissionCommentService, times(1)).addComment(eq(100L), eq(1L), any(SubmissionCommentRequest.class));
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when content is blank")
+        void addComment_BlankContent_Returns400BadRequest() throws Exception {
+            SubmissionCommentRequest request = new SubmissionCommentRequest();
+            request.setContent("");
+
+            mockMvc.perform(post("/api/submissions/100/comments")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest());
+
+            verify(submissionCommentService, never()).addComment(anyLong(), anyLong(), any());
+        }
     }
 
-    // ==========================================
-    // Tests for deleteComment
-    // ==========================================
+    @Nested
+    @DisplayName("DELETE /api/submissions/{submissionId}/comments/{commentId} Integration Tests")
+    class DeleteCommentEndpointTests {
 
-    @Test
-    @DisplayName("Should delete comment successfully")
-    void deleteComment_ValidIds_ReturnsNoContent() throws Exception {
-        // Given
-        doNothing().when(submissionCommentService).deleteComment(100L, 10L, 1L);
+        @Test
+        @DisplayName("Should delete comment successfully and return 204 No Content")
+        void deleteComment_ValidIds_ReturnsNoContent() throws Exception {
+            doNothing().when(submissionCommentService).deleteComment(100L, 10L, 1L);
 
-        // When & Then
-        mockMvc.perform(delete("/api/submissions/100/comments/10"))
-                .andExpect(status().isNoContent());
+            mockMvc.perform(delete("/api/submissions/100/comments/10"))
+                    .andExpect(status().isNoContent());
 
-        verify(submissionCommentService, times(1)).deleteComment(100L, 10L, 1L);
+            verify(submissionCommentService, times(1)).deleteComment(100L, 10L, 1L);
+        }
     }
 }

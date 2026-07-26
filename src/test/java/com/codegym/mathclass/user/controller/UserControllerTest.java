@@ -8,6 +8,7 @@ import com.codegym.mathclass.user.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -45,7 +46,6 @@ class UserControllerTest {
 
     private ObjectMapper objectMapper;
     private UserResponse mockUserResponse;
-    private UpdateProfileRequest mockUpdateRequest;
     private CustomUserDetails mockUserDetails;
 
     @BeforeEach
@@ -59,17 +59,10 @@ class UserControllerTest {
         mockUserResponse.setGender(Gender.MALE);
         mockUserResponse.setDateOfBirth(LocalDate.of(2000, 1, 1));
 
-        mockUpdateRequest = new UpdateProfileRequest();
-        mockUpdateRequest.setFullName("Test User");
-        mockUpdateRequest.setPhoneNumber("0123456789");
-        mockUpdateRequest.setGender(Gender.MALE);
-        mockUpdateRequest.setDateOfBirth(LocalDate.of(2000, 1, 1));
-
         mockUserDetails = new CustomUserDetails(
                 1L, "Test User", "test@test.com", "password", true, null, Collections.emptyList()
         );
 
-        // Configure standalone setup with CustomUserDetails resolver
         mockMvc = MockMvcBuilders.standaloneSetup(userController)
                 .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
                     @Override
@@ -86,73 +79,85 @@ class UserControllerTest {
                 .build();
     }
 
-    // ==========================================
-    // Tests for getCurrentUserProfile
-    // ==========================================
+    @Nested
+    @DisplayName("GET /api/users/profile Integration Tests")
+    class GetCurrentUserProfileEndpointTests {
 
-    @Test
-    @DisplayName("Should return current user profile")
-    void getCurrentUserProfile_ValidUserDetails_ReturnsOkAndUserProfile() throws Exception {
-        // Given
-        when(userService.getUserProfile(1L)).thenReturn(mockUserResponse);
+        @Test
+        @DisplayName("Should return current user profile and 200 OK")
+        void getCurrentUserProfile_ValidUserDetails_ReturnsOk() throws Exception {
+            when(userService.getUserProfile(1L)).thenReturn(mockUserResponse);
 
-        // When & Then
-        mockMvc.perform(get("/api/users/profile"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.fullName").value("Test User"))
-                .andExpect(jsonPath("$.phoneNumber").value("0123456789"));
-                
-        verify(userService, times(1)).getUserProfile(1L);
+            mockMvc.perform(get("/api/users/profile"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(1))
+                    .andExpect(jsonPath("$.fullName").value("Test User"))
+                    .andExpect(jsonPath("$.phoneNumber").value("0123456789"));
+
+            verify(userService, times(1)).getUserProfile(1L);
+        }
     }
 
-    // ==========================================
-    // Tests for updateProfile
-    // ==========================================
+    @Nested
+    @DisplayName("PUT /api/users/profile Integration Tests")
+    class UpdateProfileEndpointTests {
 
-    @Test
-    @DisplayName("Should update user profile")
-    void updateProfile_ValidRequest_ReturnsOkAndUpdatedProfile() throws Exception {
-        // Given
-        when(userService.updateProfile(eq(1L), any(UpdateProfileRequest.class))).thenReturn(mockUserResponse);
+        @Test
+        @DisplayName("Should update user profile and return 200 OK")
+        void updateProfile_ValidRequest_ReturnsOk() throws Exception {
+            when(userService.updateProfile(eq(1L), any(UpdateProfileRequest.class))).thenReturn(mockUserResponse);
 
-        String requestJson = "{" +
-                "\"fullName\":\"Test User\"," +
-                "\"phoneNumber\":\"0123456789\"," +
-                "\"gender\":\"MALE\"," +
-                "\"dateOfBirth\":\"01-01-2000\"" +
-                "}";
+            String requestJson = "{" +
+                    "\"fullName\":\"Test User\"," +
+                    "\"phoneNumber\":\"0123456789\"," +
+                    "\"gender\":\"MALE\"," +
+                    "\"dateOfBirth\":\"01-01-2000\"" +
+                    "}";
 
-        // When & Then
-        mockMvc.perform(put("/api/users/profile")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestJson))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.fullName").value("Test User"))
-                .andExpect(jsonPath("$.gender").value("MALE"));
-                
-        verify(userService, times(1)).updateProfile(eq(1L), any(UpdateProfileRequest.class));
+            mockMvc.perform(put("/api/users/profile")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(requestJson))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.fullName").value("Test User"))
+                    .andExpect(jsonPath("$.gender").value("MALE"));
+
+            verify(userService, times(1)).updateProfile(eq(1L), any(UpdateProfileRequest.class));
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when fullName is blank")
+        void updateProfile_BlankFullName_Returns400BadRequest() throws Exception {
+            String requestJson = "{" +
+                    "\"fullName\":\"\"," +
+                    "\"phoneNumber\":\"0123456789\"" +
+                    "}";
+
+            mockMvc.perform(put("/api/users/profile")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(requestJson))
+                    .andExpect(status().isBadRequest());
+
+            verify(userService, never()).updateProfile(anyLong(), any());
+        }
     }
 
-    // ==========================================
-    // Tests for uploadAvatar
-    // ==========================================
+    @Nested
+    @DisplayName("POST /api/users/avatar Integration Tests")
+    class UploadAvatarEndpointTests {
 
-    @Test
-    @DisplayName("Should upload avatar and return new url")
-    void uploadAvatar_ValidFile_ReturnsOkAndAvatarUrl() throws Exception {
-        // Given
-        MockMultipartFile file = new MockMultipartFile("file", "avatar.png", "image/png", "content".getBytes());
-        String expectedUrl = "https://example.com/avatar.png";
-        
-        when(userService.uploadAvatar(eq(1L), any())).thenReturn(expectedUrl);
+        @Test
+        @DisplayName("Should upload avatar and return new url with 200 OK")
+        void uploadAvatar_ValidFile_ReturnsOk() throws Exception {
+            MockMultipartFile file = new MockMultipartFile("file", "avatar.png", "image/png", "content".getBytes());
+            String expectedUrl = "https://example.com/avatar.png";
 
-        // When & Then
-        mockMvc.perform(multipart("/api/users/avatar").file(file))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.avatarUrl").value(expectedUrl));
-                
-        verify(userService, times(1)).uploadAvatar(eq(1L), any());
+            when(userService.uploadAvatar(eq(1L), any())).thenReturn(expectedUrl);
+
+            mockMvc.perform(multipart("/api/users/avatar").file(file))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.avatarUrl").value(expectedUrl));
+
+            verify(userService, times(1)).uploadAvatar(eq(1L), any());
+        }
     }
-
 }

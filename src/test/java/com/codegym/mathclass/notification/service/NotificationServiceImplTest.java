@@ -9,6 +9,7 @@ import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -57,90 +58,101 @@ class NotificationServiceImplTest {
         notification.setId(100L);
     }
 
-    @Test
-    @DisplayName("Should create SSE emitter")
-    void createEmitter_ValidUserId_ReturnsEmitter() {
-        // When
-        SseEmitter emitter = notificationService.createEmitter(1L);
+    @Nested
+    @DisplayName("createEmitter Tests")
+    class CreateEmitterTests {
 
-        // Then
-        assertThat(emitter).isNotNull();
-        // Internally it sends an INIT event but that's handled asynchronously or synchronously.
+        @Test
+        @DisplayName("Should create and return SSE emitter")
+        void createEmitter_ValidUserId_ReturnsEmitter() {
+            SseEmitter emitter = notificationService.createEmitter(1L);
+
+            assertThat(emitter).isNotNull();
+        }
     }
 
-    @Test
-    @DisplayName("Should save and send notification successfully")
-    void saveAndSendNotification_ValidData_Success() {
-        // Given
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(notificationRepository.save(any(Notification.class))).thenReturn(notification);
+    @Nested
+    @DisplayName("saveAndSendNotification Tests")
+    class SaveAndSendNotificationTests {
 
-        // When
-        notificationService.saveAndSendNotification(1L, "Test message", "/test");
+        @Test
+        @DisplayName("Should save notification and push via SSE emitter when user exists")
+        void saveAndSendNotification_ValidData_Success() {
+            SseEmitter emitter = notificationService.createEmitter(1L);
+            when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+            when(notificationRepository.save(any(Notification.class))).thenReturn(notification);
 
-        // Then
-        verify(notificationRepository, times(1)).save(any(Notification.class));
+            notificationService.saveAndSendNotification(1L, "Test message", "/test");
+
+            verify(notificationRepository, times(1)).save(any(Notification.class));
+        }
+
+        @Test
+        @DisplayName("Should throw ResourceNotFoundException when user does not exist")
+        void saveAndSendNotification_UserNotFound_ThrowsException() {
+            when(userRepository.findById(1L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> notificationService.saveAndSendNotification(1L, "Msg", "/"))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessage("User not found");
+
+            verify(notificationRepository, never()).save(any());
+        }
     }
 
-    @Test
-    @DisplayName("Should throw Exception when saving notification for non-existent user")
-    void saveAndSendNotification_UserNotFound_ThrowsException() {
-        // Given
-        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+    @Nested
+    @DisplayName("getNotifications Tests")
+    class GetNotificationsTests {
 
-        // When & Then
-        assertThatThrownBy(() -> notificationService.saveAndSendNotification(1L, "Msg", "/"))
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessage("User not found");
+        @Test
+        @DisplayName("Should return notifications page for user")
+        void getNotifications_ValidUser_ReturnsPage() {
+            Pageable pageable = PageRequest.of(0, 10);
+            Page<Notification> page = new PageImpl<>(Collections.singletonList(notification));
+            when(notificationRepository.findByUserIdOrderByCreatedAtDesc(1L, pageable)).thenReturn(page);
+
+            Page<NotificationResponse> result = notificationService.getNotifications(1L, pageable);
+
+            assertThat(result).isNotNull();
+            assertThat(result.getTotalElements()).isEqualTo(1);
+            assertThat(result.getContent().get(0).getId()).isEqualTo(100L);
+        }
     }
 
-    @Test
-    @DisplayName("Should return notifications page")
-    void getNotifications_ValidUser_ReturnsPage() {
-        // Given
-        Pageable pageable = PageRequest.of(0, 10);
-        Page<Notification> page = new PageImpl<>(Collections.singletonList(notification));
-        when(notificationRepository.findByUserIdOrderByCreatedAtDesc(1L, pageable)).thenReturn(page);
+    @Nested
+    @DisplayName("markAsRead & markAllAsRead Tests")
+    class MarkAsReadTests {
 
-        // When
-        Page<NotificationResponse> result = notificationService.getNotifications(1L, pageable);
+        @Test
+        @DisplayName("Should mark all notifications as read for user")
+        void markAllAsRead_ValidUser_Success() {
+            notificationService.markAllAsRead(1L);
 
-        // Then
-        assertThat(result).isNotNull();
-        assertThat(result.getTotalElements()).isEqualTo(1);
-        assertThat(result.getContent().get(0).getId()).isEqualTo(100L);
+            verify(notificationRepository, times(1)).markAllAsReadByUserId(1L);
+        }
+
+        @Test
+        @DisplayName("Should mark single notification as read by id and userId")
+        void markAsRead_ValidData_Success() {
+            notificationService.markAsRead(100L, 1L);
+
+            verify(notificationRepository, times(1)).markAsReadByIdAndUserId(100L, 1L);
+        }
     }
 
-    @Test
-    @DisplayName("Should mark all as read")
-    void markAllAsRead_ValidUser_Success() {
-        // When
-        notificationService.markAllAsRead(1L);
+    @Nested
+    @DisplayName("getUnreadCount Tests")
+    class GetUnreadCountTests {
 
-        // Then
-        verify(notificationRepository, times(1)).markAllAsReadByUserId(1L);
-    }
+        @Test
+        @DisplayName("Should return count of unread notifications")
+        void getUnreadCount_ValidUser_ReturnsCount() {
+            when(notificationRepository.countByUserIdAndIsReadFalse(1L)).thenReturn(5L);
 
-    @Test
-    @DisplayName("Should mark as read by id")
-    void markAsRead_ValidData_Success() {
-        // When
-        notificationService.markAsRead(100L, 1L);
+            long count = notificationService.getUnreadCount(1L);
 
-        // Then
-        verify(notificationRepository, times(1)).markAsReadByIdAndUserId(100L, 1L);
-    }
-
-    @Test
-    @DisplayName("Should return unread count")
-    void getUnreadCount_ValidUser_ReturnsCount() {
-        // Given
-        when(notificationRepository.countByUserIdAndIsReadFalse(1L)).thenReturn(5L);
-
-        // When
-        long count = notificationService.getUnreadCount(1L);
-
-        // Then
-        assertThat(count).isEqualTo(5L);
+            assertThat(count).isEqualTo(5L);
+            verify(notificationRepository, times(1)).countByUserIdAndIsReadFalse(1L);
+        }
     }
 }
