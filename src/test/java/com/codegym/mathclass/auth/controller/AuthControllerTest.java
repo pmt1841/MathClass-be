@@ -1,16 +1,14 @@
 package com.codegym.mathclass.auth.controller;
 
-import com.codegym.mathclass.auth.dto.request.GoogleAuthRequest;
-import com.codegym.mathclass.auth.dto.request.LoginRequest;
-import com.codegym.mathclass.auth.dto.request.SignupRequest;
-import com.codegym.mathclass.auth.dto.request.ForgotPasswordRequest;
-import com.codegym.mathclass.auth.dto.request.ResetPasswordRequest;
-import com.codegym.mathclass.auth.dto.response.JwtResponse;
+import com.codegym.mathclass.auth.dto.request.*;
 import com.codegym.mathclass.auth.dto.response.MessageResponse;
+import com.codegym.mathclass.auth.dto.response.UserInfoResponse;
 import com.codegym.mathclass.auth.service.AuthService;
+import com.codegym.mathclass.user.entity.Role;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -20,7 +18,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.util.List;
+
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -43,177 +44,340 @@ class AuthControllerTest {
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        
+
         mockMvc = MockMvcBuilders.standaloneSetup(authController)
                 .build();
     }
 
-    // ==========================================
-    // Tests for login
-    // ==========================================
+    @Nested
+    @DisplayName("POST /api/auth/login Integration Tests")
+    class LoginEndpointTests {
 
-    @Test
-    @DisplayName("Should login and return JWT Response")
-    void login_ValidRequest_ReturnsOkAndJwtResponse() throws Exception {
-        // Given
-        LoginRequest loginRequest = new LoginRequest();
-        loginRequest.setEmail("test@test.com");
-        loginRequest.setPassword("password");
+        @Test
+        @DisplayName("Should return 200 OK and UserInfoResponse when request is valid")
+        void login_ValidRequest_Returns200AndUserInfo() throws Exception {
+            LoginRequest loginRequest = new LoginRequest();
+            loginRequest.setEmail("test@test.com");
+            loginRequest.setPassword("password123");
+            loginRequest.setRole("STUDENT");
 
-        JwtResponse mockJwtResponse = new JwtResponse("mockJwt", 1L, "test@test.com", "Test User", "STUDENT", null, null);
-        when(authService.authenticateUser(any(LoginRequest.class))).thenReturn(mockJwtResponse);
+            UserInfoResponse mockUserInfoResponse = new UserInfoResponse(
+                    1L, "test@test.com", "Test User", "STUDENT", null, List.of()
+            );
 
-        // When & Then
-        mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").value("mockJwt"))
-                .andExpect(jsonPath("$.email").value("test@test.com"))
-                .andExpect(jsonPath("$.userRole").value("STUDENT"));
-                
-        verify(authService, times(1)).authenticateUser(any(LoginRequest.class));
+            when(authService.authenticateUser(any(LoginRequest.class), any())).thenReturn(mockUserInfoResponse);
+
+            mockMvc.perform(post("/api/auth/login")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(loginRequest)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(1))
+                    .andExpect(jsonPath("$.email").value("test@test.com"))
+                    .andExpect(jsonPath("$.userRole").value("STUDENT"));
+
+            verify(authService, times(1)).authenticateUser(any(LoginRequest.class), any());
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when email is blank")
+        void login_BlankEmail_Returns400BadRequest() throws Exception {
+            LoginRequest loginRequest = new LoginRequest();
+            loginRequest.setEmail("");
+            loginRequest.setPassword("password123");
+
+            mockMvc.perform(post("/api/auth/login")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(loginRequest)))
+                    .andExpect(status().isBadRequest());
+
+            verify(authService, never()).authenticateUser(any(), any());
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when email format is invalid")
+        void login_InvalidEmailFormat_Returns400BadRequest() throws Exception {
+            LoginRequest loginRequest = new LoginRequest();
+            loginRequest.setEmail("invalid-email-format");
+            loginRequest.setPassword("password123");
+
+            mockMvc.perform(post("/api/auth/login")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(loginRequest)))
+                    .andExpect(status().isBadRequest());
+
+            verify(authService, never()).authenticateUser(any(), any());
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when password is shorter than 6 chars")
+        void login_ShortPassword_Returns400BadRequest() throws Exception {
+            LoginRequest loginRequest = new LoginRequest();
+            loginRequest.setEmail("test@test.com");
+            loginRequest.setPassword("123"); // < 6 chars
+
+            mockMvc.perform(post("/api/auth/login")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(loginRequest)))
+                    .andExpect(status().isBadRequest());
+
+            verify(authService, never()).authenticateUser(any(), any());
+        }
     }
 
-    // ==========================================
-    // Tests for googleAuth
-    // ==========================================
+    @Nested
+    @DisplayName("POST /api/auth/google Integration Tests")
+    class GoogleAuthEndpointTests {
 
-    @Test
-    @DisplayName("Should authenticate with Google and return JWT Response")
-    void googleAuth_ValidRequest_ReturnsOkAndJwtResponse() throws Exception {
-        // Given
-        GoogleAuthRequest googleRequest = new GoogleAuthRequest();
-        googleRequest.setCredential("mockGoogleToken");
-        
-        JwtResponse mockJwtResponse = new JwtResponse("mockJwt", 1L, "google@test.com", "Google User", "STUDENT", "url", null);
-        when(authService.authenticateWithGoogle(any(GoogleAuthRequest.class))).thenReturn(mockJwtResponse);
+        @Test
+        @DisplayName("Should return 200 OK when credential is valid")
+        void googleAuth_ValidRequest_Returns200AndUserInfo() throws Exception {
+            GoogleAuthRequest googleRequest = new GoogleAuthRequest();
+            googleRequest.setCredential("mockGoogleToken");
+            googleRequest.setRole("STUDENT");
 
-        // When & Then
-        mockMvc.perform(post("/api/auth/google")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(googleRequest)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").value("mockJwt"))
-                .andExpect(jsonPath("$.email").value("google@test.com"));
-                
-        verify(authService, times(1)).authenticateWithGoogle(any(GoogleAuthRequest.class));
+            UserInfoResponse mockUserInfoResponse = new UserInfoResponse(
+                    1L, "google@test.com", "Google User", "STUDENT", "http://avatar.url", List.of()
+            );
+
+            when(authService.authenticateWithGoogle(any(GoogleAuthRequest.class), any())).thenReturn(mockUserInfoResponse);
+
+            mockMvc.perform(post("/api/auth/google")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(googleRequest)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.email").value("google@test.com"));
+
+            verify(authService, times(1)).authenticateWithGoogle(any(GoogleAuthRequest.class), any());
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when credential is blank")
+        void googleAuth_BlankCredential_Returns400BadRequest() throws Exception {
+            GoogleAuthRequest googleRequest = new GoogleAuthRequest();
+            googleRequest.setCredential("");
+
+            mockMvc.perform(post("/api/auth/google")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(googleRequest)))
+                    .andExpect(status().isBadRequest());
+
+            verify(authService, never()).authenticateWithGoogle(any(), any());
+        }
     }
 
-    // ==========================================
-    // Tests for register
-    // ==========================================
+    @Nested
+    @DisplayName("POST /api/auth/register Integration Tests")
+    class RegisterEndpointTests {
 
-    @Test
-    @DisplayName("Should register new user and return success message")
-    void register_ValidRequest_ReturnsOkAndMessage() throws Exception {
-        // Given
-        SignupRequest signupRequest = new SignupRequest();
-        signupRequest.setEmail("new@test.com");
-        signupRequest.setPassword("password");
-        signupRequest.setFullName("New User");
-        signupRequest.setPhoneNumber("0123456789");
-        signupRequest.setRole(com.codegym.mathclass.user.entity.Role.STUDENT);
+        @Test
+        @DisplayName("Should return 200 OK when SignupRequest is valid")
+        void register_ValidRequest_Returns200AndMessage() throws Exception {
+            SignupRequest signupRequest = new SignupRequest();
+            signupRequest.setEmail("newuser@test.com");
+            signupRequest.setPassword("Password123");
+            signupRequest.setFullName("New User");
+            signupRequest.setPhoneNumber("0987654321");
+            signupRequest.setRole(Role.STUDENT);
 
-        MessageResponse mockMessageResponse = new MessageResponse("Đăng ký tài khoản thành công!");
-        when(authService.registerUser(any(SignupRequest.class))).thenReturn(mockMessageResponse);
+            MessageResponse mockMessageResponse = new MessageResponse("Đăng ký tài khoản thành công!");
+            when(authService.registerUser(any(SignupRequest.class))).thenReturn(mockMessageResponse);
 
-        // When & Then
-        mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(signupRequest)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Đăng ký tài khoản thành công!"));
-                
-        verify(authService, times(1)).registerUser(any(SignupRequest.class));
+            mockMvc.perform(post("/api/auth/register")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(signupRequest)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.message").value("Đăng ký tài khoản thành công!"));
+
+            verify(authService, times(1)).registerUser(any(SignupRequest.class));
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when fullName is missing")
+        void register_MissingFullName_Returns400BadRequest() throws Exception {
+            SignupRequest signupRequest = new SignupRequest();
+            signupRequest.setEmail("newuser@test.com");
+            signupRequest.setPassword("Password123");
+            signupRequest.setFullName(""); // Blank
+            signupRequest.setPhoneNumber("0987654321");
+            signupRequest.setRole(Role.STUDENT);
+
+            mockMvc.perform(post("/api/auth/register")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(signupRequest)))
+                    .andExpect(status().isBadRequest());
+
+            verify(authService, never()).registerUser(any());
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when role is null")
+        void register_NullRole_Returns400BadRequest() throws Exception {
+            SignupRequest signupRequest = new SignupRequest();
+            signupRequest.setEmail("newuser@test.com");
+            signupRequest.setPassword("Password123");
+            signupRequest.setFullName("New User");
+            signupRequest.setPhoneNumber("0987654321");
+            signupRequest.setRole(null); // Null role
+
+            mockMvc.perform(post("/api/auth/register")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(signupRequest)))
+                    .andExpect(status().isBadRequest());
+
+            verify(authService, never()).registerUser(any());
+        }
     }
 
-    // ==========================================
-    // Tests for logout
-    // ==========================================
+    @Nested
+    @DisplayName("POST /api/auth/logout & /refreshtoken Integration Tests")
+    class SessionEndpointTests {
 
-    @Test
-    @DisplayName("Should logout user and return success message")
-    void logout_Always_ReturnsOkAndMessage() throws Exception {
-        // Given
-        MessageResponse mockMessageResponse = new MessageResponse("Đăng xuất thành công!");
-        when(authService.logoutUser()).thenReturn(mockMessageResponse);
+        @Test
+        @DisplayName("POST /api/auth/logout should return 200 OK")
+        void logout_Returns200AndMessage() throws Exception {
+            MessageResponse mockMessageResponse = new MessageResponse("Đăng xuất thành công!");
+            when(authService.logoutUser(any(), any())).thenReturn(mockMessageResponse);
 
-        // When & Then
-        mockMvc.perform(post("/api/auth/logout"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Đăng xuất thành công!"));
-                
-        verify(authService, times(1)).logoutUser();
+            mockMvc.perform(post("/api/auth/logout"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.message").value("Đăng xuất thành công!"));
+
+            verify(authService, times(1)).logoutUser(any(), any());
+        }
+
+        @Test
+        @DisplayName("POST /api/auth/refreshtoken should return 200 OK")
+        void refreshtoken_Returns200AndMessage() throws Exception {
+            MessageResponse mockMessageResponse = new MessageResponse("Token is refreshed successfully!");
+            when(authService.refreshToken(any(), any())).thenReturn(mockMessageResponse);
+
+            mockMvc.perform(post("/api/auth/refreshtoken"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.message").value("Token is refreshed successfully!"));
+
+            verify(authService, times(1)).refreshToken(any(), any());
+        }
     }
 
-    // ==========================================
-    // Tests for verifyUser
-    // ==========================================
+    @Nested
+    @DisplayName("GET /api/auth/verify Integration Tests")
+    class VerifyEndpointTests {
 
-    @Test
-    @DisplayName("Should verify user token and return success message")
-    void verifyUser_ValidToken_ReturnsOkAndMessage() throws Exception {
-        // Given
-        String token = "valid-token";
-        MessageResponse mockMessageResponse = new MessageResponse("Tài khoản đã được kích hoạt thành công!");
-        when(authService.verifyUser(token)).thenReturn(mockMessageResponse);
+        @Test
+        @DisplayName("Should return 200 OK when token query param is provided")
+        void verifyUser_ValidToken_Returns200AndMessage() throws Exception {
+            String token = "valid-token-uuid";
+            MessageResponse mockMessageResponse = new MessageResponse("Tài khoản đã được kích hoạt thành công!");
+            when(authService.verifyUser(token)).thenReturn(mockMessageResponse);
 
-        // When & Then
-        mockMvc.perform(get("/api/auth/verify")
-                        .param("token", token))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Tài khoản đã được kích hoạt thành công!"));
-                
-        verify(authService, times(1)).verifyUser(token);
+            mockMvc.perform(get("/api/auth/verify")
+                    .param("token", token))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.message").value("Tài khoản đã được kích hoạt thành công!"));
+
+            verify(authService, times(1)).verifyUser(token);
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when token query param is missing")
+        void verifyUser_MissingTokenParam_Returns400BadRequest() throws Exception {
+            mockMvc.perform(get("/api/auth/verify"))
+                    .andExpect(status().isBadRequest());
+
+            verify(authService, never()).verifyUser(any());
+        }
     }
 
-    // ==========================================
-    // Tests for forgotPassword
-    // ==========================================
+    @Nested
+    @DisplayName("POST /api/auth/forgot-password Integration Tests")
+    class ForgotPasswordEndpointTests {
 
-    @Test
-    @DisplayName("Should process forgot password and return message response")
-    void forgotPassword_ValidRequest_ReturnsOkAndMessage() throws Exception {
-        // Given
-        ForgotPasswordRequest request = new ForgotPasswordRequest();
-        request.setEmail("user@example.com");
+        @Test
+        @DisplayName("Should return 200 OK when email is valid")
+        void forgotPassword_ValidRequest_Returns200AndMessage() throws Exception {
+            ForgotPasswordRequest request = new ForgotPasswordRequest();
+            request.setEmail("user@example.com");
 
-        MessageResponse mockResponse = new MessageResponse("Nếu email của bạn hợp lệ, một liên kết đặt lại mật khẩu đã được gửi đến hộp thư.");
-        when(authService.forgotPassword(any(ForgotPasswordRequest.class))).thenReturn(mockResponse);
+            MessageResponse mockResponse = new MessageResponse(
+                    "Nếu email của bạn hợp lệ, một liên kết đặt lại mật khẩu đã được gửi đến hộp thư.");
+            when(authService.forgotPassword(any(ForgotPasswordRequest.class))).thenReturn(mockResponse);
 
-        // When & Then
-        mockMvc.perform(post("/api/auth/forgot-password")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Nếu email của bạn hợp lệ, một liên kết đặt lại mật khẩu đã được gửi đến hộp thư."));
+            mockMvc.perform(post("/api/auth/forgot-password")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.message").value("Nếu email của bạn hợp lệ, một liên kết đặt lại mật khẩu đã được gửi đến hộp thư."));
 
-        verify(authService, times(1)).forgotPassword(any(ForgotPasswordRequest.class));
+            verify(authService, times(1)).forgotPassword(any(ForgotPasswordRequest.class));
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when email is invalid format")
+        void forgotPassword_InvalidEmail_Returns400BadRequest() throws Exception {
+            ForgotPasswordRequest request = new ForgotPasswordRequest();
+            request.setEmail("not-an-email");
+
+            mockMvc.perform(post("/api/auth/forgot-password")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest());
+
+            verify(authService, never()).forgotPassword(any());
+        }
     }
 
-    // ==========================================
-    // Tests for resetPassword
-    // ==========================================
+    @Nested
+    @DisplayName("POST /api/auth/reset-password Integration Tests")
+    class ResetPasswordEndpointTests {
 
-    @Test
-    @DisplayName("Should reset password and return success message")
-    void resetPassword_ValidRequest_ReturnsOkAndMessage() throws Exception {
-        // Given
-        ResetPasswordRequest request = new ResetPasswordRequest();
-        request.setToken("valid-token");
-        request.setNewPassword("SecurePassword123!");
+        @Test
+        @DisplayName("Should return 200 OK when token and strong password are provided")
+        void resetPassword_ValidRequest_Returns200AndMessage() throws Exception {
+            ResetPasswordRequest request = new ResetPasswordRequest();
+            request.setToken("valid-token-hash");
+            request.setNewPassword("StrongPass123!");
 
-        MessageResponse mockResponse = new MessageResponse("Mật khẩu của bạn đã được cập nhật thành công. Vui lòng đăng nhập bằng mật khẩu mới.");
-        when(authService.resetPassword(any(ResetPasswordRequest.class))).thenReturn(mockResponse);
+            MessageResponse mockResponse = new MessageResponse(
+                    "Mật khẩu của bạn đã được cập nhật thành công. Vui lòng đăng nhập bằng mật khẩu mới.");
+            when(authService.resetPassword(any(ResetPasswordRequest.class))).thenReturn(mockResponse);
 
-        // When & Then
-        mockMvc.perform(post("/api/auth/reset-password")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Mật khẩu của bạn đã được cập nhật thành công. Vui lòng đăng nhập bằng mật khẩu mới."));
+            mockMvc.perform(post("/api/auth/reset-password")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.message").value("Mật khẩu của bạn đã được cập nhật thành công. Vui lòng đăng nhập bằng mật khẩu mới."));
 
-        verify(authService, times(1)).resetPassword(any(ResetPasswordRequest.class));
+            verify(authService, times(1)).resetPassword(any(ResetPasswordRequest.class));
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when newPassword is weak (missing uppercase/digit or < 8 chars)")
+        void resetPassword_WeakPassword_Returns400BadRequest() throws Exception {
+            ResetPasswordRequest request = new ResetPasswordRequest();
+            request.setToken("valid-token-hash");
+            request.setNewPassword("123456"); // Weak password
+
+            mockMvc.perform(post("/api/auth/reset-password")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest());
+
+            verify(authService, never()).resetPassword(any());
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when token is blank")
+        void resetPassword_BlankToken_Returns400BadRequest() throws Exception {
+            ResetPasswordRequest request = new ResetPasswordRequest();
+            request.setToken(""); // Blank token
+            request.setNewPassword("StrongPass123!");
+
+            mockMvc.perform(post("/api/auth/reset-password")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest());
+
+            verify(authService, never()).resetPassword(any());
+        }
     }
 }

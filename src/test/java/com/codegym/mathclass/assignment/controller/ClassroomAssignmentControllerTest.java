@@ -6,6 +6,7 @@ import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -14,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.MethodParameter;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -74,53 +76,51 @@ class ClassroomAssignmentControllerTest {
                 .build();
     }
 
-    // ==========================================
-    // Tests for getClassroomAssignments
-    // ==========================================
+    @Nested
+    @DisplayName("GET /api/classrooms/{classCode}/assignments Integration Tests")
+    class GetClassroomAssignmentsEndpointTests {
 
-    @Test
-    @DisplayName("Should return list of assignments for a classroom")
-    void getClassroomAssignments_ValidRequest_ReturnsOkAndPage() throws Exception {
-        // Given
-        AssignmentResponse response = new AssignmentResponse();
-        response.setId(10L);
-        response.setTitle("Math Assignment");
+        @Test
+        @DisplayName("Should return list of assignments for a classroom")
+        void getClassroomAssignments_ValidRequest_ReturnsOkAndPage() throws Exception {
+            AssignmentResponse response = new AssignmentResponse();
+            response.setId(10L);
+            response.setTitle("Math Assignment");
 
-        Page<AssignmentResponse> page = new PageImpl<>(Collections.singletonList(response), org.springframework.data.domain.PageRequest.of(0, 10), 1);
+            Page<AssignmentResponse> page = new PageImpl<>(Collections.singletonList(response), PageRequest.of(0, 10), 1);
 
-        when(assignmentService.getAssignmentsByClassCode(eq("MATH101"), eq(2L), any(), any(), any(Pageable.class)))
-                .thenReturn(page);
+            when(assignmentService.getAssignmentsByClassCode(eq("MATH101"), eq(2L), any(), any(), any(Pageable.class)))
+                    .thenReturn(page);
 
-        // When & Then
-        mockMvc.perform(get("/api/classrooms/MATH101/assignments"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].id").value(10L))
-                .andExpect(jsonPath("$.content[0].title").value("Math Assignment"));
-                
-        verify(assignmentService, times(1)).getAssignmentsByClassCode(eq("MATH101"), eq(2L), any(), any(), any(Pageable.class));
+            mockMvc.perform(get("/api/classrooms/MATH101/assignments"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content[0].id").value(10L))
+                    .andExpect(jsonPath("$.content[0].title").value("Math Assignment"));
+
+            verify(assignmentService, times(1)).getAssignmentsByClassCode(eq("MATH101"), eq(2L), any(), any(), any(Pageable.class));
+        }
     }
 
-    // ==========================================
-    // Tests for getAssignmentDetail
-    // ==========================================
+    @Nested
+    @DisplayName("GET /api/classrooms/{classCode}/assignments/{id}/detail Integration Tests")
+    class GetAssignmentDetailEndpointTests {
 
-    @Test
-    @DisplayName("Should return assignment detail")
-    void getAssignmentDetail_ValidRequest_ReturnsOk() throws Exception {
-        // Given
-        AssignmentResponse response = new AssignmentResponse();
-        response.setId(10L);
-        response.setTitle("Math Assignment");
-        response.setClassCode("MATH101");
+        @Test
+        @DisplayName("Should return assignment detail")
+        void getAssignmentDetail_ValidRequest_ReturnsOk() throws Exception {
+            AssignmentResponse response = new AssignmentResponse();
+            response.setId(10L);
+            response.setTitle("Math Assignment");
+            response.setClassCode("MATH101");
 
-        when(assignmentService.getAssignmentById(eq(10L), eq(2L), eq("STUDENT"))).thenReturn(response);
+            when(assignmentService.getAssignmentById(eq(10L), eq(2L), eq("STUDENT"))).thenReturn(response);
 
-        // When & Then
-        mockMvc.perform(get("/api/classrooms/MATH101/assignments/10/detail"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(10L))
-                .andExpect(jsonPath("$.title").value("Math Assignment"));
-                
-        verify(assignmentService, times(1)).getAssignmentById(eq(10L), eq(2L), eq("STUDENT"));
+            mockMvc.perform(get("/api/classrooms/MATH101/assignments/10/detail"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(10L))
+                    .andExpect(jsonPath("$.title").value("Math Assignment"));
+
+            verify(assignmentService, times(1)).getAssignmentById(eq(10L), eq(2L), eq("STUDENT"));
+        }
     }
 }

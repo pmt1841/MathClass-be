@@ -63,9 +63,13 @@
 
 ### 7.2. Database & Data JPA Module
 
-- **Quy tắc Entity:**
+- **Quy tắc Entity & BaseEntity:**
+  - Tất cả các Class Entity bắt buộc phải kế thừa `com.codegym.mathclass.common.entity.BaseEntity` (tự động có `id`, `createdAt`, `updatedAt`). Tuyệt đối không khai báo lại trường `@Id id` hay các trường timestamp trong từng Entity riêng lẻ.
   - Tất cả các Class Entity phải sử dụng `@Table(name = "...")` để định nghĩa rõ tên bảng bằng tiếng Anh, chữ thường, số nhiều (ví dụ: `users`, `classrooms`).
   - Luôn sử dụng `@ManyToOne(fetch = FetchType.LAZY)` thay vì để mặc định (EAGER) để tránh lỗi n+1 query và tối ưu hiệu năng PostgreSQL.
+
+- **Quy tắc Transaction:**
+  - Lớp `ServiceImpl` thao tác dữ liệu nên đánh `@Transactional(readOnly = true)` ở cấp độ Class và đánh `@Transactional` trên các method ghi/sửa dữ liệu (`create`, `update`, `delete`).
 
 - **Quy tắc Query:**
   - Ưu tiên sử dụng Derived Query Methods của Spring Data JPA. Nếu query phức tạp (Join nhiều bảng), bắt buộc phải dùng `@Query` viết JPQL hoặc Native Query.

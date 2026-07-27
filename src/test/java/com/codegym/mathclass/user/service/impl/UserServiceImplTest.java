@@ -4,14 +4,16 @@ import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.user.dto.request.UpdateProfileRequest;
 import com.codegym.mathclass.user.dto.response.UserResponse;
 import com.codegym.mathclass.user.entity.Gender;
+import com.codegym.mathclass.user.entity.Provider;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
-import com.codegym.mathclass.user.entity.Provider;
 import com.codegym.mathclass.user.mapper.UserMapper;
+import com.codegym.mathclass.user.repository.RolePermissionRepository;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.SupabaseStorageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -21,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,6 +43,9 @@ class UserServiceImplTest {
     @Mock
     private SupabaseStorageService supabaseStorageService;
 
+    @Mock
+    private RolePermissionRepository rolePermissionRepository;
+
     @InjectMocks
     private UserServiceImpl userService;
 
@@ -53,6 +59,7 @@ class UserServiceImplTest {
         mockUser.setId(1L);
         mockUser.setFullName("Old Name");
         mockUser.setRole(Role.STUDENT);
+        mockUser.setProvider(Provider.LOCAL);
 
         mockUserResponse = new UserResponse();
         mockUserResponse.setId(1L);
@@ -66,205 +73,143 @@ class UserServiceImplTest {
         mockUpdateRequest.setAvatarUrl("https://example.com/avatar.png");
     }
 
-    // ==========================================
-    // Tests for getUserProfile
-    // ==========================================
+    @Nested
+    @DisplayName("getUserProfile Tests")
+    class GetUserProfileTests {
 
-    @Test
-    @DisplayName("Should return user profile when user exists")
-    void getUserProfile_UserExists_ReturnsUserResponse() {
-        // Given
-        Long userId = 1L;
-        when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
-        when(userMapper.toUserResponse(mockUser)).thenReturn(mockUserResponse);
+        @Test
+        @DisplayName("Should return user profile when user exists")
+        void getUserProfile_UserExists_ReturnsUserResponse() {
+            Long userId = 1L;
+            when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+            when(userMapper.toUserResponse(mockUser)).thenReturn(mockUserResponse);
+            when(rolePermissionRepository.findPermissionNamesByRole(Role.STUDENT)).thenReturn(List.of("assignment:read"));
 
-        // When
-        UserResponse result = userService.getUserProfile(userId);
+            UserResponse result = userService.getUserProfile(userId);
 
-        // Then
-        assertThat(result).isNotNull();
-        assertThat(result.getId()).isEqualTo(userId);
-        verify(userRepository, times(1)).findById(userId);
-        verify(userMapper, times(1)).toUserResponse(mockUser);
+            assertThat(result).isNotNull();
+            assertThat(result.getId()).isEqualTo(userId);
+            assertThat(result.getPermissions()).contains("assignment:read");
+            verify(userRepository, times(1)).findById(userId);
+            verify(userMapper, times(1)).toUserResponse(mockUser);
+        }
+
+        @Test
+        @DisplayName("Should throw BadRequestException when user does not exist")
+        void getUserProfile_UserDoesNotExist_ThrowsBadRequestException() {
+            Long userId = 99L;
+            when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> userService.getUserProfile(userId))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("Không tìm thấy người dùng với ID: " + userId);
+
+            verify(userRepository, times(1)).findById(userId);
+            verify(userMapper, never()).toUserResponse(any());
+        }
     }
 
-    @Test
-    @DisplayName("Should throw BadRequestException when user does not exist")
-    void getUserProfile_UserDoesNotExist_ThrowsBadRequestException() {
-        // Given
-        Long userId = 99L;
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+    @Nested
+    @DisplayName("updateProfile Tests")
+    class UpdateProfileTests {
 
-        // When & Then
-        assertThatThrownBy(() -> userService.getUserProfile(userId))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("Không tìm thấy người dùng với ID: " + userId);
-        
-        verify(userRepository, times(1)).findById(userId);
-        verify(userMapper, never()).toUserResponse(any());
+        @Test
+        @DisplayName("Should update profile successfully when user exists")
+        void updateProfile_UserExists_UpdatesAndReturnsUserResponse() {
+            Long userId = 1L;
+            when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+            when(userRepository.save(any(User.class))).thenReturn(mockUser);
+            when(userMapper.toUserResponse(mockUser)).thenReturn(mockUserResponse);
+            when(rolePermissionRepository.findPermissionNamesByRole(Role.STUDENT)).thenReturn(List.of("assignment:read"));
+
+            UserResponse result = userService.updateProfile(userId, mockUpdateRequest);
+
+            assertThat(result).isNotNull();
+            verify(userRepository, times(1)).save(mockUser);
+            verify(userMapper, times(1)).updateUserFromRequest(mockUser, mockUpdateRequest);
+        }
+
+        @Test
+        @DisplayName("Should throw BadRequestException when user not found on update")
+        void updateProfile_UserDoesNotExist_ThrowsBadRequestException() {
+            Long userId = 99L;
+            when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> userService.updateProfile(userId, mockUpdateRequest))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("Không tìm thấy người dùng với ID: " + userId);
+
+            verify(userRepository, never()).save(any());
+        }
     }
 
-    // ==========================================
-    // Tests for updateProfile
-    // ==========================================
+    @Nested
+    @DisplayName("uploadAvatar Tests")
+    class UploadAvatarTests {
 
-    @Test
-    @DisplayName("Should update profile successfully when user exists")
-    void updateProfile_UserExists_UpdatesAndReturnsUserResponse() {
-        // Given
-        Long userId = 1L;
-        when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
-        when(userRepository.save(any(User.class))).thenReturn(mockUser);
-        when(userMapper.toUserResponse(mockUser)).thenReturn(mockUserResponse);
+        @Test
+        @DisplayName("Should upload avatar successfully when user exists and storage works")
+        void uploadAvatar_UserExistsAndStorageSuccess_ReturnsAvatarUrl() throws IOException {
+            Long userId = 1L;
+            MultipartFile mockFile = mock(MultipartFile.class);
+            String expectedUrl = "https://example.com/new-avatar.png";
 
-        // When
-        UserResponse result = userService.updateProfile(userId, mockUpdateRequest);
+            when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+            when(supabaseStorageService.uploadImage(mockFile, "avatar")).thenReturn(expectedUrl);
 
-        // Then
-        assertThat(result).isNotNull();
-        assertThat(result.getFullName()).isEqualTo("New Name");
-        
-        verify(userRepository, times(1)).save(mockUser);
-        assertThat(mockUser.getFullName()).isEqualTo("New Name");
-        assertThat(mockUser.getPhoneNumber()).isEqualTo("0123456789");
-        assertThat(mockUser.getGender()).isEqualTo(Gender.MALE);
-        assertThat(mockUser.getAvatarUrl()).isEqualTo("https://example.com/avatar.png");
-    }
+            String resultUrl = userService.uploadAvatar(userId, mockFile);
 
-    @Test
-    @DisplayName("Should update profile successfully when avatarUrl is null")
-    void updateProfile_AvatarUrlIsNull_UpdatesOtherFieldsOnly() {
-        // Given
-        Long userId = 1L;
-        mockUpdateRequest.setAvatarUrl(null);
-        mockUser.setAvatarUrl("https://old-avatar.com/img.png");
-        
-        when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
-        when(userRepository.save(any(User.class))).thenReturn(mockUser);
-        when(userMapper.toUserResponse(mockUser)).thenReturn(mockUserResponse);
+            assertThat(resultUrl).isEqualTo(expectedUrl);
+            assertThat(mockUser.getAvatarUrl()).isEqualTo(expectedUrl);
+            verify(userRepository, times(1)).save(mockUser);
+        }
 
-        // When
-        userService.updateProfile(userId, mockUpdateRequest);
+        @Test
+        @DisplayName("Should throw BadRequestException when user not found on upload avatar")
+        void uploadAvatar_UserDoesNotExist_ThrowsBadRequestException() {
+            Long userId = 99L;
+            MultipartFile mockFile = mock(MultipartFile.class);
 
-        // Then
-        verify(userRepository, times(1)).save(mockUser);
-        assertThat(mockUser.getAvatarUrl()).isEqualTo("https://old-avatar.com/img.png"); // Should not change
-    }
+            when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
-    @Test
-    @DisplayName("Should throw BadRequestException when user not found on update")
-    void updateProfile_UserDoesNotExist_ThrowsBadRequestException() {
-        // Given
-        Long userId = 99L;
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+            assertThatThrownBy(() -> userService.uploadAvatar(userId, mockFile))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("Không tìm thấy người dùng với ID: " + userId);
 
-        // When & Then
-        assertThatThrownBy(() -> userService.updateProfile(userId, mockUpdateRequest))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("Không tìm thấy người dùng với ID: " + userId);
-                
-        verify(userRepository, never()).save(any());
-    }
+            verify(userRepository, never()).save(any());
+        }
 
-    // ==========================================
-    // Tests for uploadAvatar
-    // ==========================================
+        @Test
+        @DisplayName("Should throw RuntimeException when storage throws IOException")
+        void uploadAvatar_StorageThrowsIOException_ThrowsRuntimeException() throws IOException {
+            Long userId = 1L;
+            MultipartFile mockFile = mock(MultipartFile.class);
 
-    @Test
-    @DisplayName("Should upload avatar successfully when user exists and storage works")
-    void uploadAvatar_UserExistsAndStorageSuccess_ReturnsAvatarUrl() throws IOException {
-        // Given
-        Long userId = 1L;
-        MultipartFile mockFile = mock(MultipartFile.class);
-        String expectedUrl = "https://example.com/new-avatar.png";
+            when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+            when(supabaseStorageService.uploadImage(mockFile, "avatar")).thenThrow(new IOException("Upload failed"));
 
-        when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
-        when(supabaseStorageService.uploadImage(mockFile, "avatar")).thenReturn(expectedUrl);
+            assertThatThrownBy(() -> userService.uploadAvatar(userId, mockFile))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("Lỗi khi upload ảnh đại diện: Upload failed");
 
-        // When
-        String resultUrl = userService.uploadAvatar(userId, mockFile);
+            verify(userRepository, never()).save(any());
+        }
 
-        // Then
-        assertThat(resultUrl).isEqualTo(expectedUrl);
-        assertThat(mockUser.getAvatarUrl()).isEqualTo(expectedUrl);
-        verify(userRepository, times(1)).save(mockUser);
-    }
+        @Test
+        @DisplayName("Should throw BadRequestException when uploading avatar for GOOGLE provider user")
+        void uploadAvatar_UserIsGoogle_ThrowsBadRequestException() {
+            Long userId = 1L;
+            mockUser.setProvider(Provider.GOOGLE);
+            MultipartFile mockFile = mock(MultipartFile.class);
 
-    @Test
-    @DisplayName("Should throw BadRequestException when user not found on upload avatar")
-    void uploadAvatar_UserDoesNotExist_ThrowsBadRequestException() {
-        // Given
-        Long userId = 99L;
-        MultipartFile mockFile = mock(MultipartFile.class);
-        
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+            when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
 
-        // When & Then
-        assertThatThrownBy(() -> userService.uploadAvatar(userId, mockFile))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("Không tìm thấy người dùng với ID: " + userId);
-                
-        verify(userRepository, never()).save(any());
-    }
+            assertThatThrownBy(() -> userService.uploadAvatar(userId, mockFile))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("Không thể thay đổi ảnh đại diện cho tài khoản liên kết Google");
 
-    @Test
-    @DisplayName("Should throw RuntimeException when storage throws IOException")
-    void uploadAvatar_StorageThrowsIOException_ThrowsRuntimeException() throws IOException {
-        // Given
-        Long userId = 1L;
-        MultipartFile mockFile = mock(MultipartFile.class);
-
-        when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
-        when(supabaseStorageService.uploadImage(mockFile, "avatar")).thenThrow(new IOException("Upload failed"));
-
-        // When & Then
-        assertThatThrownBy(() -> userService.uploadAvatar(userId, mockFile))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Lỗi khi upload ảnh đại diện: Upload failed");
-                
-        verify(userRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("Should not update fullName and avatarUrl when user has GOOGLE provider")
-    void updateProfile_UserIsGoogle_DoesNotUpdateNameAndAvatar() {
-        // Given
-        Long userId = 1L;
-        mockUser.setProvider(Provider.GOOGLE);
-        mockUser.setFullName("Google User Name");
-        mockUser.setAvatarUrl("https://google.com/avatar.png");
-
-        when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
-        when(userRepository.save(any(User.class))).thenReturn(mockUser);
-        when(userMapper.toUserResponse(mockUser)).thenReturn(mockUserResponse);
-
-        // When
-        userService.updateProfile(userId, mockUpdateRequest);
-
-        // Then
-        verify(userRepository, times(1)).save(mockUser);
-        assertThat(mockUser.getFullName()).isEqualTo("Google User Name"); // Must NOT change
-        assertThat(mockUser.getAvatarUrl()).isEqualTo("https://google.com/avatar.png"); // Must NOT change
-        assertThat(mockUser.getPhoneNumber()).isEqualTo("0123456789"); // Should update
-        assertThat(mockUser.getGender()).isEqualTo(Gender.MALE); // Should update
-    }
-
-    @Test
-    @DisplayName("Should throw BadRequestException when uploading avatar for GOOGLE provider user")
-    void uploadAvatar_UserIsGoogle_ThrowsBadRequestException() {
-        // Given
-        Long userId = 1L;
-        mockUser.setProvider(Provider.GOOGLE);
-        MultipartFile mockFile = mock(MultipartFile.class);
-
-        when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
-
-        // When & Then
-        assertThatThrownBy(() -> userService.uploadAvatar(userId, mockFile))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("Không thể thay đổi ảnh đại diện cho tài khoản liên kết Google");
-
-        verify(userRepository, never()).save(any());
-        verifyNoInteractions(supabaseStorageService);
+            verify(userRepository, never()).save(any());
+            verifyNoInteractions(supabaseStorageService);
+        }
     }
 }

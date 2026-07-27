@@ -6,6 +6,7 @@ import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -70,43 +71,49 @@ class NotificationSettingsControllerTest {
                 .build();
     }
 
-    @Test
-    @DisplayName("Should return notification settings")
-    void getNotificationSettings_ValidUser_ReturnsOk() throws Exception {
-        // Given
-        NotificationSettingsDto dto = new NotificationSettingsDto();
-        dto.setMasterEmail(true);
+    @Nested
+    @DisplayName("GET /api/settings/notifications Integration Tests")
+    class GetNotificationSettingsEndpointTests {
 
-        when(notificationSettingsService.getNotificationSettings(1L)).thenReturn(dto);
+        @Test
+        @DisplayName("Should return notification settings for user and 200 OK")
+        void getNotificationSettings_ValidUser_ReturnsOk() throws Exception {
+            NotificationSettingsDto dto = new NotificationSettingsDto();
+            dto.setMasterEmail(true);
 
-        // When & Then
-        mockMvc.perform(get("/api/settings/notifications"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.masterEmail").value(true));
+            when(notificationSettingsService.getNotificationSettings(1L)).thenReturn(dto);
 
-        verify(notificationSettingsService, times(1)).getNotificationSettings(1L);
+            mockMvc.perform(get("/api/settings/notifications"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.masterEmail").value(true));
+
+            verify(notificationSettingsService, times(1)).getNotificationSettings(1L);
+        }
     }
 
-    @Test
-    @DisplayName("Should update notification settings")
-    void updateNotificationSettings_ValidRequest_ReturnsOk() throws Exception {
-        // Given
-        NotificationSettingsDto request = new NotificationSettingsDto();
-        request.setMasterEmail(false);
+    @Nested
+    @DisplayName("PUT /api/settings/notifications Integration Tests")
+    class UpdateNotificationSettingsEndpointTests {
 
-        NotificationSettingsDto response = new NotificationSettingsDto();
-        response.setMasterEmail(false);
+        @Test
+        @DisplayName("Should update notification settings for user and return 200 OK")
+        void updateNotificationSettings_ValidRequest_ReturnsOk() throws Exception {
+            NotificationSettingsDto request = new NotificationSettingsDto();
+            request.setMasterEmail(false);
 
-        when(notificationSettingsService.updateNotificationSettings(eq(1L), any(NotificationSettingsDto.class)))
-                .thenReturn(response);
+            NotificationSettingsDto response = new NotificationSettingsDto();
+            response.setMasterEmail(false);
 
-        // When & Then
-        mockMvc.perform(put("/api/settings/notifications")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.masterEmail").value(false));
+            when(notificationSettingsService.updateNotificationSettings(eq(1L), any(NotificationSettingsDto.class)))
+                    .thenReturn(response);
 
-        verify(notificationSettingsService, times(1)).updateNotificationSettings(eq(1L), any(NotificationSettingsDto.class));
+            mockMvc.perform(put("/api/settings/notifications")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.masterEmail").value(false));
+
+            verify(notificationSettingsService, times(1)).updateNotificationSettings(eq(1L), any(NotificationSettingsDto.class));
+        }
     }
 }

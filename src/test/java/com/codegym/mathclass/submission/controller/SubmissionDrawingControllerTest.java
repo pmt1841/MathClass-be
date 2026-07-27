@@ -7,6 +7,7 @@ import com.codegym.mathclass.submission.service.SubmissionDrawingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -24,6 +25,7 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
 import java.util.Collections;
+import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -71,59 +73,87 @@ class SubmissionDrawingControllerTest {
                 .build();
     }
 
-    // ==========================================
-    // Tests for saveOrUpdateDrawing
-    // ==========================================
+    @Nested
+    @DisplayName("PUT /api/submissions/{submissionId}/drawings Integration Tests")
+    class SaveOrUpdateDrawingEndpointTests {
 
-    @Test
-    @DisplayName("Should save or update drawing successfully")
-    void saveOrUpdateDrawing_ValidRequest_ReturnsOk() throws Exception {
-        // Given
-        SubmissionDrawingRequest request = new SubmissionDrawingRequest();
-        request.setShapeCode("data:image/png;base64,...");
-        request.setJsxGraphData(java.util.Collections.emptyMap());
+        @Test
+        @DisplayName("Should save or update drawing successfully and return 200 OK")
+        void saveOrUpdateDrawing_ValidRequest_ReturnsOk() throws Exception {
+            SubmissionDrawingRequest request = new SubmissionDrawingRequest();
+            request.setShapeCode("TRIANGLE");
+            request.setJsxGraphData(Map.of("key", "val"));
 
-        SubmissionDrawingResponse response = new SubmissionDrawingResponse();
-        response.setId(10L);
-        response.setShapeCode("data:image/png;base64,...");
+            SubmissionDrawingResponse response = new SubmissionDrawingResponse();
+            response.setId(10L);
+            response.setShapeCode("TRIANGLE");
 
-        when(submissionDrawingService.saveOrUpdateDrawing(eq(100L), any(SubmissionDrawingRequest.class), eq("student@gmail.com")))
-                .thenReturn(response);
+            when(submissionDrawingService.saveOrUpdateDrawing(eq(100L), any(SubmissionDrawingRequest.class), eq("student@gmail.com")))
+                    .thenReturn(response);
 
-        // When & Then
-        mockMvc.perform(put("/api/submissions/100/drawings")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Drawing saved successfully"))
-                .andExpect(jsonPath("$.data.id").value(10L))
-                .andExpect(jsonPath("$.data.shapeCode").value("data:image/png;base64,..."));
+            mockMvc.perform(put("/api/submissions/100/drawings")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.message").value("Drawing saved successfully"))
+                    .andExpect(jsonPath("$.data.id").value(10L))
+                    .andExpect(jsonPath("$.data.shapeCode").value("TRIANGLE"));
 
-        verify(submissionDrawingService, times(1)).saveOrUpdateDrawing(eq(100L), any(SubmissionDrawingRequest.class), eq("student@gmail.com"));
+            verify(submissionDrawingService, times(1)).saveOrUpdateDrawing(eq(100L), any(SubmissionDrawingRequest.class), eq("student@gmail.com"));
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when shapeCode is blank")
+        void saveOrUpdateDrawing_BlankShapeCode_Returns400BadRequest() throws Exception {
+            SubmissionDrawingRequest request = new SubmissionDrawingRequest();
+            request.setShapeCode("");
+            request.setJsxGraphData(Map.of("key", "val"));
+
+            mockMvc.perform(put("/api/submissions/100/drawings")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest());
+
+            verify(submissionDrawingService, never()).saveOrUpdateDrawing(anyLong(), any(), anyString());
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when jsxGraphData is null")
+        void saveOrUpdateDrawing_NullJsxGraphData_Returns400BadRequest() throws Exception {
+            SubmissionDrawingRequest request = new SubmissionDrawingRequest();
+            request.setShapeCode("TRIANGLE");
+            request.setJsxGraphData(null);
+
+            mockMvc.perform(put("/api/submissions/100/drawings")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest());
+
+            verify(submissionDrawingService, never()).saveOrUpdateDrawing(anyLong(), any(), anyString());
+        }
     }
 
-    // ==========================================
-    // Tests for getDrawing
-    // ==========================================
+    @Nested
+    @DisplayName("GET /api/submissions/{submissionId}/drawings Integration Tests")
+    class GetDrawingEndpointTests {
 
-    @Test
-    @DisplayName("Should get drawing successfully")
-    void getDrawing_ValidId_ReturnsOk() throws Exception {
-        // Given
-        SubmissionDrawingResponse response = new SubmissionDrawingResponse();
-        response.setId(10L);
-        response.setShapeCode("data:image/png;base64,...");
+        @Test
+        @DisplayName("Should get drawing successfully and return 200 OK")
+        void getDrawing_ValidId_ReturnsOk() throws Exception {
+            SubmissionDrawingResponse response = new SubmissionDrawingResponse();
+            response.setId(10L);
+            response.setShapeCode("TRIANGLE");
 
-        when(submissionDrawingService.getDrawingBySubmissionId(100L, "student@gmail.com")).thenReturn(response);
+            when(submissionDrawingService.getDrawingBySubmissionId(100L, "student@gmail.com")).thenReturn(response);
 
-        // When & Then
-        mockMvc.perform(get("/api/submissions/100/drawings"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.id").value(10L))
-                .andExpect(jsonPath("$.data.shapeCode").value("data:image/png;base64,..."));
+            mockMvc.perform(get("/api/submissions/100/drawings"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.id").value(10L))
+                    .andExpect(jsonPath("$.data.shapeCode").value("TRIANGLE"));
 
-        verify(submissionDrawingService, times(1)).getDrawingBySubmissionId(100L, "student@gmail.com");
+            verify(submissionDrawingService, times(1)).getDrawingBySubmissionId(100L, "student@gmail.com");
+        }
     }
 }

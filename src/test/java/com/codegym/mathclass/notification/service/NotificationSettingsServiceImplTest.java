@@ -6,6 +6,7 @@ import com.codegym.mathclass.notification.repository.NotificationSettingsReposit
 import com.codegym.mathclass.notification.service.impl.NotificationSettingsServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -38,56 +39,57 @@ class NotificationSettingsServiceImplTest {
                 .build();
     }
 
-    @Test
-    @DisplayName("Should get existing notification settings")
-    void getNotificationSettings_SettingsExist_ReturnsDto() {
-        // Given
-        when(notificationSettingsRepository.findByUserId(1L)).thenReturn(Optional.of(settings));
+    @Nested
+    @DisplayName("getNotificationSettings Tests")
+    class GetNotificationSettingsTests {
 
-        // When
-        NotificationSettingsDto result = notificationSettingsService.getNotificationSettings(1L);
+        @Test
+        @DisplayName("Should return existing notification settings for user")
+        void getNotificationSettings_SettingsExist_ReturnsDto() {
+            when(notificationSettingsRepository.findByUserId(1L)).thenReturn(Optional.of(settings));
 
-        // Then
-        assertThat(result).isNotNull();
-        assertThat(result.isMasterEmail()).isTrue();
-        assertThat(result.isTeacherJoinRequest()).isTrue();
-        verify(notificationSettingsRepository, never()).save(any(NotificationSettings.class));
+            NotificationSettingsDto result = notificationSettingsService.getNotificationSettings(1L);
+
+            assertThat(result).isNotNull();
+            assertThat(result.isMasterEmail()).isTrue();
+            assertThat(result.isTeacherJoinRequest()).isTrue();
+            verify(notificationSettingsRepository, never()).save(any(NotificationSettings.class));
+        }
+
+        @Test
+        @DisplayName("Should create and return default settings when user has no settings")
+        void getNotificationSettings_SettingsNotExist_CreatesAndReturnsDto() {
+            when(notificationSettingsRepository.findByUserId(1L)).thenReturn(Optional.empty());
+            when(notificationSettingsRepository.save(any(NotificationSettings.class))).thenReturn(settings);
+
+            NotificationSettingsDto result = notificationSettingsService.getNotificationSettings(1L);
+
+            assertThat(result).isNotNull();
+            verify(notificationSettingsRepository, times(1)).save(any(NotificationSettings.class));
+        }
     }
 
-    @Test
-    @DisplayName("Should create and return new notification settings if not exist")
-    void getNotificationSettings_SettingsNotExist_CreatesAndReturnsDto() {
-        // Given
-        when(notificationSettingsRepository.findByUserId(1L)).thenReturn(Optional.empty());
-        when(notificationSettingsRepository.save(any(NotificationSettings.class))).thenReturn(settings);
+    @Nested
+    @DisplayName("updateNotificationSettings Tests")
+    class UpdateNotificationSettingsTests {
 
-        // When
-        NotificationSettingsDto result = notificationSettingsService.getNotificationSettings(1L);
+        @Test
+        @DisplayName("Should update existing notification settings successfully")
+        void updateNotificationSettings_ValidData_ReturnsUpdatedDto() {
+            NotificationSettingsDto requestDto = NotificationSettingsDto.builder()
+                    .masterEmail(false)
+                    .teacherJoinRequest(false)
+                    .build();
 
-        // Then
-        assertThat(result).isNotNull();
-        verify(notificationSettingsRepository, times(1)).save(any(NotificationSettings.class));
-    }
+            when(notificationSettingsRepository.findByUserId(1L)).thenReturn(Optional.of(settings));
+            when(notificationSettingsRepository.save(any(NotificationSettings.class))).thenAnswer(i -> i.getArgument(0));
 
-    @Test
-    @DisplayName("Should update notification settings")
-    void updateNotificationSettings_ValidData_ReturnsUpdatedDto() {
-        // Given
-        NotificationSettingsDto requestDto = NotificationSettingsDto.builder()
-                .masterEmail(false)
-                .teacherJoinRequest(false)
-                .build();
+            NotificationSettingsDto result = notificationSettingsService.updateNotificationSettings(1L, requestDto);
 
-        when(notificationSettingsRepository.findByUserId(1L)).thenReturn(Optional.of(settings));
-        when(notificationSettingsRepository.save(any(NotificationSettings.class))).thenAnswer(i -> i.getArgument(0));
-
-        // When
-        NotificationSettingsDto result = notificationSettingsService.updateNotificationSettings(1L, requestDto);
-
-        // Then
-        assertThat(result).isNotNull();
-        assertThat(result.isMasterEmail()).isFalse();
-        assertThat(result.isTeacherJoinRequest()).isFalse();
-        verify(notificationSettingsRepository, times(1)).save(any(NotificationSettings.class));
+            assertThat(result).isNotNull();
+            assertThat(result.isMasterEmail()).isFalse();
+            assertThat(result.isTeacherJoinRequest()).isFalse();
+            verify(notificationSettingsRepository, times(1)).save(any(NotificationSettings.class));
+        }
     }
 }

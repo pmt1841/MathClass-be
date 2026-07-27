@@ -8,6 +8,7 @@ import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -71,127 +72,152 @@ class ClassroomControllerTest {
                 .build();
     }
 
-    // ==========================================
-    // Tests for createClassroom
-    // ==========================================
+    @Nested
+    @DisplayName("POST /api/classrooms/create Integration Tests")
+    class CreateClassroomEndpointTests {
 
-    @Test
-    @DisplayName("Should create classroom successfully")
-    void createClassroom_ValidRequest_ReturnsCreatedAndClassroomResponse() throws Exception {
-        // Given
-        CreateClassroomRequest request = new CreateClassroomRequest();
-        request.setName("Math 101");
-        request.setMaxStudents(30);
+        @Test
+        @DisplayName("Should create classroom successfully and return 201 Created")
+        void createClassroom_ValidRequest_ReturnsCreated() throws Exception {
+            CreateClassroomRequest request = new CreateClassroomRequest();
+            request.setName("Math 101");
+            request.setMaxStudents(30);
 
-        ClassroomResponse response = new ClassroomResponse();
-        response.setId(100L);
-        response.setClassCode("MATH101");
-        response.setClassName("Math 101");
+            ClassroomResponse response = new ClassroomResponse();
+            response.setId(100L);
+            response.setClassCode("MATH101");
+            response.setClassName("Math 101");
 
-        when(classroomService.createClassroom(any(CreateClassroomRequest.class), eq(1L))).thenReturn(response);
+            when(classroomService.createClassroom(any(CreateClassroomRequest.class), eq(1L))).thenReturn(response);
 
-        // When & Then
-        mockMvc.perform(post("/api/classrooms/create")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(100L))
-                .andExpect(jsonPath("$.classCode").value("MATH101"))
-                .andExpect(jsonPath("$.className").value("Math 101"));
-                
-        verify(classroomService, times(1)).createClassroom(any(CreateClassroomRequest.class), eq(1L));
+            mockMvc.perform(post("/api/classrooms/create")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.id").value(100L))
+                    .andExpect(jsonPath("$.classCode").value("MATH101"))
+                    .andExpect(jsonPath("$.className").value("Math 101"));
+
+            verify(classroomService, times(1)).createClassroom(any(CreateClassroomRequest.class), eq(1L));
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when name is blank")
+        void createClassroom_BlankName_Returns400BadRequest() throws Exception {
+            CreateClassroomRequest request = new CreateClassroomRequest();
+            request.setName("");
+            request.setMaxStudents(30);
+
+            mockMvc.perform(post("/api/classrooms/create")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest());
+
+            verify(classroomService, never()).createClassroom(any(), anyLong());
+        }
     }
 
-    // ==========================================
-    // Tests for getClassroomsList
-    // ==========================================
+    @Nested
+    @DisplayName("GET /api/classrooms/my-classroom Integration Tests")
+    class GetClassroomsListEndpointTests {
 
-    @Test
-    @DisplayName("Should return list of classrooms for user")
-    void getClassroomsList_ValidUser_ReturnsOkAndClassroomList() throws Exception {
-        // Given
-        ClassroomResponse response = new ClassroomResponse();
-        response.setId(100L);
-        response.setClassCode("MATH101");
+        @Test
+        @DisplayName("Should return list of classrooms for user and return 200 OK")
+        void getClassroomsList_ValidUser_ReturnsOk() throws Exception {
+            ClassroomResponse response = new ClassroomResponse();
+            response.setId(100L);
+            response.setClassCode("MATH101");
 
-        when(classroomService.getClassroomsListById(1L)).thenReturn(Collections.singletonList(response));
+            when(classroomService.getClassroomsListById(1L)).thenReturn(Collections.singletonList(response));
 
-        // When & Then
-        mockMvc.perform(get("/api/classrooms/my-classroom"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(100L))
-                .andExpect(jsonPath("$[0].classCode").value("MATH101"));
-                
-        verify(classroomService, times(1)).getClassroomsListById(1L);
+            mockMvc.perform(get("/api/classrooms/my-classroom"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].id").value(100L))
+                    .andExpect(jsonPath("$[0].classCode").value("MATH101"));
+
+            verify(classroomService, times(1)).getClassroomsListById(1L);
+        }
     }
 
-    // ==========================================
-    // Tests for getClassroomByClassCode
-    // ==========================================
+    @Nested
+    @DisplayName("GET /api/classrooms/{classCode} Integration Tests")
+    class GetClassroomByClassCodeEndpointTests {
 
-    @Test
-    @DisplayName("Should return classroom by classCode")
-    void getClassroomByClassCode_ValidClassCode_ReturnsOkAndClassroomResponse() throws Exception {
-        // Given
-        ClassroomResponse response = new ClassroomResponse();
-        response.setId(100L);
-        response.setClassCode("MATH101");
+        @Test
+        @DisplayName("Should return classroom by classCode and return 200 OK")
+        void getClassroomByClassCode_ValidClassCode_ReturnsOk() throws Exception {
+            ClassroomResponse response = new ClassroomResponse();
+            response.setId(100L);
+            response.setClassCode("MATH101");
 
-        when(classroomService.getClassroomByClassCode("MATH101", 1L)).thenReturn(response);
+            when(classroomService.getClassroomByClassCode("MATH101", 1L)).thenReturn(response);
 
-        // When & Then
-        mockMvc.perform(get("/api/classrooms/MATH101"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(100L))
-                .andExpect(jsonPath("$.classCode").value("MATH101"));
-                
-        verify(classroomService, times(1)).getClassroomByClassCode("MATH101", 1L);
+            mockMvc.perform(get("/api/classrooms/MATH101"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(100L))
+                    .andExpect(jsonPath("$.classCode").value("MATH101"));
+
+            verify(classroomService, times(1)).getClassroomByClassCode("MATH101", 1L);
+        }
     }
 
-    // ==========================================
-    // Tests for updateClassroom
-    // ==========================================
+    @Nested
+    @DisplayName("PUT /api/classrooms/{classCode} Integration Tests")
+    class UpdateClassroomEndpointTests {
 
-    @Test
-    @DisplayName("Should update classroom successfully")
-    void updateClassroom_ValidRequest_ReturnsOkAndClassroomResponse() throws Exception {
-        // Given
-        UpdateClassroomRequest request = new UpdateClassroomRequest();
-        request.setClassName("Updated Math");
-        request.setMaxStudents(30);
+        @Test
+        @DisplayName("Should update classroom successfully and return 200 OK")
+        void updateClassroom_ValidRequest_ReturnsOk() throws Exception {
+            UpdateClassroomRequest request = new UpdateClassroomRequest();
+            request.setClassName("Updated Math");
+            request.setMaxStudents(30);
 
-        ClassroomResponse response = new ClassroomResponse();
-        response.setId(100L);
-        response.setClassCode("MATH101");
-        response.setClassName("Updated Math");
+            ClassroomResponse response = new ClassroomResponse();
+            response.setId(100L);
+            response.setClassCode("MATH101");
+            response.setClassName("Updated Math");
 
-        when(classroomService.updateClassroom(eq("MATH101"), any(UpdateClassroomRequest.class), eq(1L)))
-                .thenReturn(response);
+            when(classroomService.updateClassroom(eq("MATH101"), any(UpdateClassroomRequest.class), eq(1L)))
+                    .thenReturn(response);
 
-        // When & Then
-        mockMvc.perform(put("/api/classrooms/MATH101")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.className").value("Updated Math"));
-                
-        verify(classroomService, times(1)).updateClassroom(eq("MATH101"), any(UpdateClassroomRequest.class), eq(1L));
+            mockMvc.perform(put("/api/classrooms/MATH101")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.className").value("Updated Math"));
+
+            verify(classroomService, times(1)).updateClassroom(eq("MATH101"), any(UpdateClassroomRequest.class), eq(1L));
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when className is blank")
+        void updateClassroom_BlankClassName_Returns400BadRequest() throws Exception {
+            UpdateClassroomRequest request = new UpdateClassroomRequest();
+            request.setClassName("");
+            request.setMaxStudents(30);
+
+            mockMvc.perform(put("/api/classrooms/MATH101")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest());
+
+            verify(classroomService, never()).updateClassroom(anyString(), any(), anyLong());
+        }
     }
 
-    // ==========================================
-    // Tests for deleteClassroom
-    // ==========================================
+    @Nested
+    @DisplayName("DELETE /api/classrooms/{classCode} Integration Tests")
+    class DeleteClassroomEndpointTests {
 
-    @Test
-    @DisplayName("Should delete classroom successfully")
-    void deleteClassroom_ValidClassCode_ReturnsNoContent() throws Exception {
-        // Given
-        doNothing().when(classroomService).deleteClassroom("MATH101", 1L);
+        @Test
+        @DisplayName("Should delete classroom successfully and return 204 No Content")
+        void deleteClassroom_ValidClassCode_ReturnsNoContent() throws Exception {
+            doNothing().when(classroomService).deleteClassroom("MATH101", 1L);
 
-        // When & Then
-        mockMvc.perform(delete("/api/classrooms/MATH101"))
-                .andExpect(status().isNoContent());
-                
-        verify(classroomService, times(1)).deleteClassroom("MATH101", 1L);
+            mockMvc.perform(delete("/api/classrooms/MATH101"))
+                    .andExpect(status().isNoContent());
+
+            verify(classroomService, times(1)).deleteClassroom("MATH101", 1L);
+        }
     }
 }
