@@ -274,8 +274,8 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
             Classroom classroom,
             List<Assignment> originals) {
 
-        AssignmentSheet clonedSheet = buildClassroomSheet(request, teacher, classroom, target.getDeadline());
-        clonedSheet = assignmentSheetRepository.save(clonedSheet);
+        final AssignmentSheet clonedSheet = assignmentSheetRepository.save(
+                buildClassroomSheet(request, teacher, classroom, target.getDeadline()));
 
         List<Assignment> clonedAssignments = originals.stream()
                 .map(original -> buildAssignmentClone(original, teacher, classroom, target.getDeadline()))
@@ -490,7 +490,7 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
      */
     private Specification<AssignmentSheet> buildKeywordSpec(String keyword) {
         if (keyword == null || keyword.isBlank()) {
-            return Specification.where(null);
+            return Specification.where((Specification<AssignmentSheet>) null);
         }
         String pattern = "%" + keyword.toLowerCase() + "%";
         return (root, query, cb) -> cb.like(cb.lower(root.get("title")), pattern);
@@ -502,7 +502,7 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
      */
     private Specification<AssignmentSheet> buildClassCodeSpec(String classCode) {
         if (classCode == null || classCode.isBlank()) {
-            return Specification.where(null);
+            return Specification.where((Specification<AssignmentSheet>) null);
         }
         return (root, query, cb) -> {
             Join<AssignmentSheet, Classroom> classroomJoin = root.join("classroom", JoinType.INNER);
@@ -751,10 +751,11 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
     @Override
     @Transactional(readOnly = true)
     public Page<AssignmentSheetResponse> getPublicAssignmentSheets(String keyword, Pageable pageable) {
-        Specification<AssignmentSheet> spec = Specification.where((root, query, cb) -> cb.and(
+        Specification<AssignmentSheet> baseSpec = (root, query, cb) -> cb.and(
                 cb.equal(root.get("visibility"), AssignmentVisibility.PUBLIC),
                 cb.isNull(root.get("classroom"))
-        )).and(buildKeywordSpec(keyword));
+        );
+        Specification<AssignmentSheet> spec = baseSpec.and(buildKeywordSpec(keyword));
 
         Page<AssignmentSheet> sheets = assignmentSheetRepository.findAll(spec, pageable);
         return sheets.map(sheet -> {

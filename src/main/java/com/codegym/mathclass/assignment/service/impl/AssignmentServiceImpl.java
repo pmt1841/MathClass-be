@@ -183,7 +183,7 @@ public class AssignmentServiceImpl implements AssignmentService {
             throw new AccessDeniedException("Bạn không có quyền xem bài tập của lớp này");
         }
 
-        Specification<Assignment> spec = Specification.where((root, query, cb) -> {
+        Specification<Assignment> spec = (root, query, cb) -> {
             Join<Assignment, Classroom> classroomJoin = root.join("classroom",
                     JoinType.LEFT);
             // Lấy các bài tập của lớp này
@@ -199,7 +199,7 @@ public class AssignmentServiceImpl implements AssignmentService {
                 // Học sinh chỉ thấy bài tập của lớp đó
                 return isClassCode;
             }
-        });
+        };
         
         spec = spec.and(AssignmentSpecification.isNotInSheet());
 
@@ -249,7 +249,7 @@ public class AssignmentServiceImpl implements AssignmentService {
     @Transactional(readOnly = true)
     public Page<AssignmentResponse> getAssignmentsForCurrentUser(long userId, String role, String keyword,
             String classCode, AssignmentStatus status, Pageable pageable) {
-        Specification<Assignment> spec = Specification.where((root, query, cb) -> cb.conjunction());
+        Specification<Assignment> spec = (root, query, cb) -> cb.conjunction();
         
         // Loại bỏ những bài tập đã nằm trong phiếu bài tập
         spec = spec.and(AssignmentSpecification.isNotInSheet());
@@ -812,11 +812,11 @@ public class AssignmentServiceImpl implements AssignmentService {
     @Override
     @Transactional(readOnly = true)
     public Page<AssignmentResponse> getPublicAssignments(String keyword, Pageable pageable) {
-        Specification<Assignment> spec = Specification.where((root, query, cb) -> cb.and(
+        Specification<Assignment> spec = (root, query, cb) -> cb.and(
                 cb.equal(root.get("visibility"), com.codegym.mathclass.assignment.entity.AssignmentVisibility.PUBLIC),
                 cb.isNull(root.get("classroom")),
                 cb.notEqual(root.get("status"), AssignmentStatus.DELETED)
-        ));
+        );
 
         if (keyword != null && !keyword.trim().isEmpty()) {
             spec = spec.and((root, query, cb) -> cb.like(cb.lower(root.get("title")), "%" + keyword.toLowerCase() + "%"));
