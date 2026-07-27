@@ -30,7 +30,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import com.codegym.mathclass.assignment.entity.AssignmentStatus;
 import org.springframework.security.core.GrantedAuthority;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(name = "Assignments", description = "APIs quản lý bài tập (Tạo nháp, xuất bản, chỉnh sửa, xóa, tìm kiếm, upload ảnh, trích xuất text PDF/DOCX)")
 @RestController
 @RequestMapping("/api/assignments")
 @RequiredArgsConstructor
@@ -38,10 +41,7 @@ public class AssignmentController {
 
     private final AssignmentService assignmentService;
 
-    /**
-     * Giáo viên tạo bài tập mới (trạng thái DRAFT).
-     * Chưa giao cho lớp nào.
-     */
+    @Operation(summary = "Tạo bài tập mới (DRAFT)", description = "Giáo viên tạo bài tập nháp mới, hỗ trợ công thức toán LaTeX")
     @PostMapping("/create")
     @PreAuthorize("hasAuthority('assignment:create')")
     public ResponseEntity<?> createAssignment(
@@ -53,15 +53,11 @@ public class AssignmentController {
             AssignmentResponse response = assignmentService.createAssignment(request, teacherId);
             return new ResponseEntity<>(response, HttpStatus.CREATED);
         } catch (IllegalArgumentException e) {
-            // Bắt lỗi từ validate LaTeX → trả 400 Bad Request
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
-    /**
-     * Giáo viên publish bài tập và chọn các lớp để giao.
-     * Chuyển trạng thái từ DRAFT → PUBLISHED.
-     */
+    @Operation(summary = "Giao bài tập cho các lớp (Publish)", description = "Chuyển trạng thái từ DRAFT sang PUBLISHED và chọn danh sách các lớp để giao bài")
     @PutMapping("/{id}/publish")
     @PreAuthorize("hasAuthority('assignment:publish')")
     public ResponseEntity<?> publishAssignment(
@@ -74,9 +70,7 @@ public class AssignmentController {
         return ResponseEntity.ok().build();
     }
 
-    /**
-     * Giáo viên xóa bài tập.
-     */
+    @Operation(summary = "Xóa bài tập", description = "Giáo viên xóa bài tập theo ID")
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('assignment:delete')")
     public ResponseEntity<?> deleteAssignment(
@@ -88,12 +82,7 @@ public class AssignmentController {
         return ResponseEntity.ok().build();
     }
 
-    /**
-     * 
-     * Lấy danh sách bài tập theo người dùng hiện tại (Giáo viên hoặc Học sinh).
-     * Hỗ trợ tìm kiếm theo từ khóa (tiêu đề), lọc theo mã lớp, lọc theo trạng thái
-     * và phân trang.
-     */
+    @Operation(summary = "Danh sách bài tập của người dùng", description = "Lấy danh sách bài tập của Giáo viên/Học sinh, hỗ trợ lọc từ khóa, mã lớp, trạng thái và phân trang")
     @GetMapping
     public ResponseEntity<Page<AssignmentResponse>> getAllAssignmentsForCurrentUser(
             @RequestParam(required = false) String keyword,
@@ -103,7 +92,6 @@ public class AssignmentController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         long userId = userDetails.getId();
-        // Lấy role đầu tiên (TEACHER hoặc STUDENT)
         String role = userDetails.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .map(r -> r.replace("ROLE_", ""))
@@ -116,9 +104,7 @@ public class AssignmentController {
         return ResponseEntity.ok(assignments);
     }
 
-    /**
-     * Lấy chi tiết bài tập theo ID
-     */
+    @Operation(summary = "Chi tiết bài tập theo ID", description = "Lấy chi tiết đề bài tập, danh sách câu hỏi và tài liệu đính kèm")
     @GetMapping("/{id}")
     public ResponseEntity<AssignmentResponse> getAssignmentById(
             @PathVariable long id,
@@ -135,12 +121,7 @@ public class AssignmentController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Giáo viên sửa bài tập nếu chưa có học sinh nộp bài.
-     * - DRAFT: sửa title + description tự do.
-     * - ARCHIVED: sửa title + description, đồng bộ sang tất cả PUBLISHED con.
-     * - PUBLISHED: sửa title + description + deadline.
-     */
+    @Operation(summary = "Cập nhật bài tập", description = "Chỉnh sửa nội dung bài tập, tiêu đề, mô tả hoặc thời hạn nộp bài")
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('assignment:update')")
     public ResponseEntity<?> updateAssignment(
@@ -152,11 +133,11 @@ public class AssignmentController {
             AssignmentResponse response = assignmentService.updateAssignment(id, request, teacherId);
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
-            // Bắt lỗi từ validate LaTeX → trả 400 Bad Request
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
+    @Operation(summary = "Tải lên hình ảnh bài tập", description = "Upload hình ảnh minh họa cho câu hỏi bài tập toán")
     @PostMapping("/images/upload")
     @PreAuthorize("hasAuthority('assignment:create')")
     public ResponseEntity<?> uploadImage(
@@ -172,6 +153,7 @@ public class AssignmentController {
         }
     }
 
+    @Operation(summary = "Trích xuất văn bản từ tài liệu (PDF/DOCX)", description = "Trích xuất nội dung đề bài và câu hỏi từ file PDF hoặc DOCX")
     @PostMapping("/extract-text")
     @PreAuthorize("hasAuthority('assignment:create')")
     public ResponseEntity<?> extractTextFromFile(

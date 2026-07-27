@@ -14,7 +14,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(name = "Classroom Join Requests", description = "APIs yêu cầu tham gia lớp học và phê duyệt yêu cầu từ giáo viên")
 @RestController
 @RequestMapping("/api/classrooms")
 @RequiredArgsConstructor
@@ -22,6 +25,7 @@ public class ClassroomJoinRequestController {
 
     private final ClassroomJoinRequestService joinRequestService;
 
+    @Operation(summary = "Gửi yêu cầu tham gia lớp học", description = "Học sinh gửi yêu cầu xin gia nhập lớp bằng mã lớp")
     @PostMapping("/join")
     @PreAuthorize("hasAuthority('classroom:join')")
     public ResponseEntity<JoinRequestResponse> requestToJoin(
@@ -31,6 +35,7 @@ public class ClassroomJoinRequestController {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
+    @Operation(summary = "Danh sách yêu cầu tham gia của tôi", description = "Học sinh xem lịch sử và trạng thái các yêu cầu xin gia nhập lớp")
     @GetMapping("/my-join-requests")
     @PreAuthorize("hasAuthority('classroom:join_status')")
     public ResponseEntity<List<JoinRequestResponse>> getMyJoinRequests(
@@ -39,6 +44,7 @@ public class ClassroomJoinRequestController {
         return new ResponseEntity<>(responses, HttpStatus.OK);
     }
 
+    @Operation(summary = "Danh sách yêu cầu chờ duyệt của lớp", description = "Giáo viên xem danh sách các học sinh đang chờ phê duyệt vào lớp")
     @GetMapping("/{classCode}/join-requests")
     @PreAuthorize("hasAuthority('classroom:manage_requests')")
     public ResponseEntity<List<JoinRequestResponse>> getPendingRequests(
@@ -48,6 +54,7 @@ public class ClassroomJoinRequestController {
         return new ResponseEntity<>(responses, HttpStatus.OK);
     }
 
+    @Operation(summary = "Phê duyệt hoặc Từ chối yêu cầu tham gia", description = "Giáo viên duyệt (ACCEPT) hoặc từ chối (REJECT) yêu cầu xin vào lớp")
     @PutMapping("/join-requests/{requestId}")
     @PreAuthorize("hasAuthority('classroom:manage_requests')")
     public ResponseEntity<JoinRequestResponse> processRequest(

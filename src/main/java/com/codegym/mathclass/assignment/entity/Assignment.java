@@ -50,9 +50,18 @@ public class Assignment extends BaseEntity {
     @Column(nullable = false)
     private AssignmentStatus status = AssignmentStatus.DRAFT;
 
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AssignmentVisibility visibility = AssignmentVisibility.PRIVATE;
+
     @ManyToOne
     @JoinColumn(name = "teacher_id", nullable = false)
     private User teacher;
+
+    @ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
+    @JoinColumn(name = "original_author_id")
+    private User originalAuthor;
 
     @Column(name = "parent_id")
     private Long parentId;

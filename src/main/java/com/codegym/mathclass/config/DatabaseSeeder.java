@@ -122,18 +122,24 @@ public class DatabaseSeeder implements CommandLineRunner {
         Permission dashTeacher = permissionRepository.save(Permission.builder().name("dashboard:teacher_view").description("Xem thống kê giáo viên").build());
         Permission dashStudent = permissionRepository.save(Permission.builder().name("dashboard:student_view").description("Xem thống kê học sinh").build());
 
+        // Library permissions
+        Permission libraryRead = permissionRepository.save(Permission.builder().name("library:read").description("Xem thư viện bài tập dùng chung").build());
+        Permission libraryClone = permissionRepository.save(Permission.builder().name("library:clone").description("Clone bài tập từ thư viện").build());
+
         // Admin permissions
         Permission manageUsers = permissionRepository.save(Permission.builder().name("user:manage").description("Quản lý người dùng").build());
 
         log.info("[DatabaseSeeder] Assigning permissions to roles...");
         // ADMIN
-        rolePermissionRepository.save(RolePermission.builder().role(Role.ADMIN).permission(manageUsers).build());
+        List<Permission> adminPerms = List.of(manageUsers, libraryRead, libraryClone);
+        adminPerms.forEach(p -> rolePermissionRepository.save(RolePermission.builder().role(Role.ADMIN).permission(p).build()));
         
         // TEACHER
         List<Permission> teacherPerms = List.of(
                 classCreate, classUpdate, classDelete, classManageReq, classRemoveStu,
                 assignCreate, assignUpdate, assignDelete, assignPublish, assignRead,
-                subGrade, subReadAll, subComment, dashTeacher
+                subGrade, subReadAll, subComment, dashTeacher,
+                libraryRead, libraryClone
         );
         teacherPerms.forEach(p -> rolePermissionRepository.save(RolePermission.builder().role(Role.TEACHER).permission(p).build()));
         

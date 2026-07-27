@@ -9,4 +9,5 @@ public class UpdateAssignmentSheetRequest {
     private String title;
     
     private String description;
+    private com.codegym.mathclass.assignment.entity.AssignmentVisibility visibility;
 }

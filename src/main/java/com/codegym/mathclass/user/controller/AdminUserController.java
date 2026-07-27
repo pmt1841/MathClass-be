@@ -21,7 +21,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(name = "Admin - Users", description = "APIs quản trị viên: Tìm kiếm, phân trang và quản lý trạng thái tài khoản")
 @RestController
 @RequestMapping("/api/admin/users")
 @RequiredArgsConstructor
@@ -30,6 +33,7 @@ public class AdminUserController {
 
     private final AdminUserService adminUserService;
 
+    @Operation(summary = "Danh sách tài khoản (Quản trị)", description = "Lấy danh sách tài khoản người dùng theo vai trò, trạng thái kích hoạt và từ khóa tìm kiếm")
     @GetMapping
     public ResponseEntity<Page<UserResponse>> getUsers(
             @RequestParam(required = false) Role role,
@@ -41,6 +45,7 @@ public class AdminUserController {
         return ResponseEntity.ok(users);
     }
 
+    @Operation(summary = "Khóa / Mở khóa tài khoản", description = "Cập nhật trạng thái isActive (hoạt động / bị khóa) của người dùng")
     @PatchMapping("/{id}/status")
     public ResponseEntity<MessageResponse> updateStatus(
             @PathVariable Long id,

@@ -15,7 +15,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(name = "Admin - Role Permissions", description = "APIs quản trị viên: Xem và gán quyền (Permissions) theo vai trò (Roles)")
 @RestController
 @RequestMapping("/api/admin/roles")
 @RequiredArgsConstructor
@@ -25,17 +28,20 @@ public class AdminPermissionController {
     private final RolePermissionService rolePermissionService;
     private final SystemLogService systemLogService;
 
+    @Operation(summary = "Lấy tất cả các Quyền hệ thống", description = "Danh sách tất cả các permission có sẵn")
     @GetMapping("/permissions")
     public ResponseEntity<List<PermissionDto>> getAllPermissions() {
         return ResponseEntity.ok(rolePermissionService.getAllPermissions());
     }
 
+    @Operation(summary = "Lấy danh sách Quyền theo Vai trò", description = "Truy vấn các quyền được gán cho vai trò cụ thể (VD: ADMIN, TEACHER, STUDENT)")
     @GetMapping("/{roleName}/permissions")
     public ResponseEntity<List<PermissionDto>> getPermissionsByRole(@PathVariable String roleName) {
         Role role = parseRole(roleName);
         return ResponseEntity.ok(rolePermissionService.getPermissionsByRole(role));
     }
 
+    @Operation(summary = "Cập nhật Quyền cho Vai trò", description = "Gán lại danh sách quyền (Permission IDs) cho một vai trò")
     @PutMapping("/{roleName}/permissions")
     public ResponseEntity<Map<String, String>> updateRolePermissions(
             @PathVariable String roleName,

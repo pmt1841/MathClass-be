@@ -44,26 +44,15 @@ public class ClassroomServiceImpl implements ClassroomService {
         User teacher = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
-        if (teacher.getRole() != Role.TEACHER) {
-            throw new AccessDeniedException("Chỉ giáo viên mới có quyền tạo lớp học");
-        }
-
-        String generatedClassCode;
-        do {
-            generatedClassCode = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        } while (classroomRepository.existsByClassCode(generatedClassCode));
-
         Classroom classroom = Classroom.builder()
                 .className(request.getName())
-                .classCode(generatedClassCode)
+                .classCode(generateUniqueClassCode())
                 .maxStudents(request.getMaxStudents())
                 .description(request.getDescription())
                 .teacher(teacher)
                 .build();
-        // Danh sách học sinh được khởi tạo rỗng mặc định trong entity
 
         Classroom savedClassroom = classroomRepository.save(classroom);
-
         return ClassroomResponse.fromEntity(savedClassroom);
     }
 
@@ -257,5 +246,9 @@ public class ClassroomServiceImpl implements ClassroomService {
         if (!isTeacher && !isStudent) {
             throw new AccessDeniedException("Bạn không có quyền xem thông tin lớp học này");
         }
+    }
+
+    private String generateUniqueClassCode() {
+        return UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
 }

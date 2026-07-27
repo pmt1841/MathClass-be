@@ -18,6 +18,8 @@ public class CreateAssignmentRequest {
     private String description;
     private String content;
 
+    private com.codegym.mathclass.assignment.entity.AssignmentVisibility visibility;
+
     private List<AssignmentDrawingRequest> drawings;
     private List<AssignmentImageRequest> images;
 }
