@@ -113,7 +113,8 @@ public class AuthServiceImpl implements AuthService {
         response.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE, jwtRefreshCookie.toString());
 
-        return userMapper.toUserInfoResponse(userDetails);
+        String jwtToken = jwtUtils.generateJwtToken(authentication);
+        return userMapper.toUserInfoResponse(userDetails, jwtToken);
     }
 
     @Override
@@ -429,7 +430,8 @@ public class AuthServiceImpl implements AuthService {
                 httpResponse.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
                 httpResponse.addHeader(HttpHeaders.SET_COOKIE, jwtRefreshCookie.toString());
 
-                return userMapper.toUserInfoResponse(userDetails);
+                String jwtToken = jwtUtils.generateJwtToken(authentication);
+                return userMapper.toUserInfoResponse(userDetails, jwtToken);
 
             } else {
                 throw new BadRequestException("Token xác thực Google không hợp lệ.");

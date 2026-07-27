@@ -64,6 +64,32 @@ public class UserMapper {
                 permissions);
     }
 
+    public UserInfoResponse toUserInfoResponse(CustomUserDetails userDetails, String token) {
+        if (userDetails == null) {
+            return null;
+        }
+        String role = userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .filter(a -> a.startsWith("ROLE_"))
+                .findFirst()
+                .map(r -> r.replace("ROLE_", ""))
+                .orElse("");
+
+        List<String> permissions = userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .filter(a -> !a.startsWith("ROLE_"))
+                .toList();
+
+        return new UserInfoResponse(
+                userDetails.getId(),
+                userDetails.getEmail(),
+                userDetails.getFullName(),
+                role,
+                userDetails.getAvatarUrl(),
+                permissions,
+                token);
+    }
+
     public void updateUserFromRequest(User user, UpdateProfileRequest request) {
         if (user == null || request == null) {
             return;
