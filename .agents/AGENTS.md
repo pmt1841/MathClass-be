@@ -16,11 +16,11 @@ Trước khi thực hiện bất kỳ nhiệm vụ nào (phát triển tính nă
 
 ## 2. Tech Stack & Môi trường Phát triển
 
-- **Language:** Java 21
-- **Framework:** Spring Boot 4.1.0 (Spring Web, Spring Security, Spring Data JPA, Spring Validation, Spring Mail, Spring Actuator)
-- **Build Tool:** Gradle Wrapper (`./gradlew`)
-- **Database:** PostgreSQL 16 (Port host: `5433`, Container port: `5423` / `5432`)
-- **ORM & Utilities:** Hibernate, Lombok, JWT, Apache POI / PDFBox, Supabase Cloud Storage SDK
+Chi tiết danh sách Tech Stack và thư viện được quản lý tập trung tại [README.md](../README.md) và [.antigravity/rules.md](../.antigravity/rules.md).
+
+- **Lưu ý nhanh về Môi trường (Operational Snapshot):**
+  - **Build Tool:** Gradle Wrapper (`./gradlew`)
+  - **Database Host Port:** `5433` (PostgreSQL Container port: `5423` / `5432`)
 
 ---
 
