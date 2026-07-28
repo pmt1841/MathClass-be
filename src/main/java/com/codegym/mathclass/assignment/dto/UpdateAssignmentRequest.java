@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import com.codegym.mathclass.assignment.entity.AssignmentVisibility;
 
 @Data
 @NoArgsConstructor
@@ -24,7 +25,7 @@ public class UpdateAssignmentRequest {
      */
     private LocalDateTime deadline;
 
-    private com.codegym.mathclass.assignment.entity.AssignmentVisibility visibility;
+    private AssignmentVisibility visibility;
 
     private List<AssignmentDrawingRequest> drawings;
     private List<AssignmentImageRequest> images;

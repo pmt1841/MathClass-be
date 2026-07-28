@@ -1,6 +1,7 @@
 package com.codegym.mathclass.submission.service;
 
 import com.codegym.mathclass.assignment.entity.Assignment;
+import com.codegym.mathclass.assignment.entity.AssignmentSheet;
 import com.codegym.mathclass.assignment.repository.AssignmentRepository;
 import com.codegym.mathclass.exception.AccessDeniedException;
 import com.codegym.mathclass.exception.BadRequestException;
@@ -103,6 +104,10 @@ public class SubmissionServiceImpl implements SubmissionService {
             throw new AccessDeniedException("Bạn không có quyền sửa bài nộp này");
         }
 
+        if (submission.getStatus() == SubmissionStatus.SUBMITTED && requestDto.getStatus() == SubmissionStatus.DRAFT) {
+            requestDto.setStatus(SubmissionStatus.SUBMITTED);
+        }
+
         boolean isNewlySubmitted = (submission.getStatus() != SubmissionStatus.SUBMITTED
                 && requestDto.getStatus() == SubmissionStatus.SUBMITTED);
 
@@ -189,6 +194,11 @@ public class SubmissionServiceImpl implements SubmissionService {
             throw new BadRequestException("Học sinh chưa nộp bài");
         }
 
+        Double maxScore = assignment.getMaxScore() != null ? assignment.getMaxScore() : 10.0;
+        if (requestDto.getScore() != null && requestDto.getScore() > maxScore) {
+            throw new BadRequestException("Điểm số không được vượt quá điểm tối đa (" + maxScore + ")");
+        }
+
         if (requestDto.getTeacherFeedback() != null && !LaTeXSanitizer.isSafe(requestDto.getTeacherFeedback())) {
             String dangerous = LaTeXSanitizer.findDangerousCommand(requestDto.getTeacherFeedback());
             throw new BadRequestException("Nội dung phản hồi chứa lệnh LaTeX không hợp lệ: " + dangerous);
@@ -244,6 +254,34 @@ public class SubmissionServiceImpl implements SubmissionService {
         Page<Submission> submissionPage = submissionRepository
                 .findSubmissionsByAssignment(
                         assignmentId, status, searchKeyword, pageable);
+
+        if (assignment.getMasterSheet() != null) {
+            java.util.List<Long> sheetAssignmentIds = assignment.getMasterSheet().getItems().stream()
+                    .map(Assignment::getId)
+                    .collect(java.util.stream.Collectors.toList());
+            int totalAssignments = sheetAssignmentIds.size();
+
+            java.util.List<Submission> allSheetSubmissions = submissionRepository.findAllByAssignmentIdIn(sheetAssignmentIds);
+            
+            java.util.Map<Long, Long> studentSubmissionCount = allSheetSubmissions.stream()
+                    .filter(s -> s.getStatus() == SubmissionStatus.SUBMITTED || s.getStatus() == SubmissionStatus.GRADED)
+                    .collect(java.util.stream.Collectors.groupingBy(s -> s.getStudent().getId(), java.util.stream.Collectors.counting()));
+
+            java.util.List<Long> eligibleStudentIds = studentSubmissionCount.entrySet().stream()
+                    .filter(entry -> entry.getValue() >= totalAssignments)
+                    .map(java.util.Map.Entry::getKey)
+                    .collect(java.util.stream.Collectors.toList());
+
+            java.util.List<Submission> filteredList = submissionPage.getContent().stream()
+                    .filter(sub -> eligibleStudentIds.contains(sub.getStudent().getId()))
+                    .collect(java.util.stream.Collectors.toList());
+
+            return new org.springframework.data.domain.PageImpl<>(
+                    filteredList.stream().map(this::mapToDto).collect(java.util.stream.Collectors.toList()), 
+                    pageable, 
+                    filteredList.size()
+            );
+        }
 
         return submissionPage.map(this::mapToDto);
     }

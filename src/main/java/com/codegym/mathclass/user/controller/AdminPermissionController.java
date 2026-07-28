@@ -5,6 +5,7 @@ import com.codegym.mathclass.user.dto.response.PermissionDto;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.service.RolePermissionService;
 import com.codegym.mathclass.systemlog.service.SystemLogService;
+import com.codegym.mathclass.exception.BadRequestException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -61,7 +62,7 @@ public class AdminPermissionController {
         try {
             return Role.valueOf(roleName.toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new com.codegym.mathclass.exception.BadRequestException("Role không hợp lệ: " + roleName);
+            throw new BadRequestException("Role không hợp lệ: " + roleName);
         }
     }
 }

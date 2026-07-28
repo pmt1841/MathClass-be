@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.codegym.mathclass.common.entity.BaseEntity;
+import lombok.Builder;
 
 @Entity
 @Table(name = "assignment_sheets")
@@ -20,6 +21,7 @@ import com.codegym.mathclass.common.entity.BaseEntity;
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class AssignmentSheet extends BaseEntity {
 
     @Column(nullable = false)
@@ -31,6 +33,7 @@ public class AssignmentSheet extends BaseEntity {
     @Column(nullable = true)
     private LocalDateTime deadline;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AssignmentVisibility visibility = AssignmentVisibility.PRIVATE;
@@ -46,7 +49,11 @@ public class AssignmentSheet extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "classroom_id")
     private Classroom classroom;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "master_sheet_id")
+    private AssignmentSheet masterSheet;
     
-    @OneToMany(mappedBy = "sheet", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<AssignmentSheetItem> items = new ArrayList<>();
+    @Builder.Default
+    @OneToMany(mappedBy = "masterSheet", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Assignment> items = new ArrayList<>();
 }

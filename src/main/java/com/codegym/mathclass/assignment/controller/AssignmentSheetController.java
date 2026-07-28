@@ -17,6 +17,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import com.codegym.mathclass.assignment.dto.UpdateAssignmentSheetRequest;
+import com.codegym.mathclass.assignment.dto.SheetCompletedStudentResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
@@ -79,5 +80,18 @@ public class AssignmentSheetController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         assignmentSheetService.deleteAssignmentSheet(id, userDetails.getId());
         return ResponseEntity.noContent().build();
+    }
+    @Operation(summary = "Danh sách học sinh hoàn thành phiếu", description = "Lấy danh sách các học sinh đã nộp toàn bộ bài tập trong phiếu")
+    @GetMapping("/{id}/completed-students")
+    @PreAuthorize("hasAuthority('assignment:read')")
+    public ResponseEntity<Page<SheetCompletedStudentResponse>> getCompletedStudentsBySheet(
+            @PathVariable long id,
+            @RequestParam(required = false) String classCode,
+            @PageableDefault(sort = "student.id", direction = Sort.Direction.DESC) Pageable pageable,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        
+        Page<SheetCompletedStudentResponse> response = 
+                assignmentSheetService.getCompletedStudentsBySheet(id, classCode, pageable, userDetails.getId());
+        return ResponseEntity.ok(response);
     }
 }
