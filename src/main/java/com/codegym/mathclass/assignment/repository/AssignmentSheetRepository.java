@@ -17,6 +17,8 @@ public interface AssignmentSheetRepository extends JpaRepository<AssignmentSheet
     
     Optional<AssignmentSheet> findFirstByTeacherIdAndTitleAndClassroomClassCode(long teacherId, String title, String classCode);
 
+    int countByTeacherIdAndClassroomIsNull(long teacherId);
+
     List<AssignmentSheet> findByTeacherIdAndTitle(long teacherId, String title);
 
     List<AssignmentSheet> findByMasterSheetId(long masterSheetId);

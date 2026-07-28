@@ -15,4 +15,5 @@ public class TeacherDashboardStatsDto {
     private int assignmentsToGrade;
     private int pendingJoinRequests;
     private int openAssignments;
+    private int originalAssignmentSheets;
 }
