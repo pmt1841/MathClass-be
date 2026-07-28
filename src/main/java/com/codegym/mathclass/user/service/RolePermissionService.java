@@ -72,8 +72,8 @@ public class RolePermissionService {
             rolePermissionRepository.saveAll(newRolePermissions);
         }
 
-        // Cache is not immediately evicted to allow in-flight operations (grace period)
-        // permissionCacheService.evictPermissionsCache(role);
+        // Evict all role permission caches immediately
+        permissionCacheService.evictAllPermissionsCache();
         log.info("Successfully updated permissions for role: {}", role);
     }
 }
