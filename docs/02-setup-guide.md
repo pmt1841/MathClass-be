@@ -56,8 +56,11 @@ docker-compose up --build
 ```
 
 Docker Compose sẽ khởi tạo 2 service:
-- `db`: PostgreSQL 16 (Port 5433 trên host map vào Port 5423 container).
+- `db`: PostgreSQL 16 (Port 5433 trên host map vào Port 5432 container).
 - `backend`: Spring Boot App (Port 8080).
+
+> Xem chi tiết tài liệu quản lý và vận hành Docker tại [Hướng dẫn Sử dụng Docker (05-docker-guide.md)](05-docker-guide.md).
+
 
 ### 4.2 Chạy thủ công với Gradle
 

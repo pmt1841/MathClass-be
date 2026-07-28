@@ -37,4 +37,6 @@ Hãy đọc các tài liệu hướng dẫn tiếp theo để bắt tay vào ph�
 1. [Hướng dẫn Cài đặt Môi trường (Setup Guide)](02-setup-guide.md)
 2. [Quy chuẩn và Hướng dẫn Code (Backend Guide)](03-backend-guide.md)
 3. [Tài liệu API Chi tiết (API Reference)](04-api-reference.md)
+4. [Hướng dẫn Sử dụng Docker (Docker Guide)](05-docker-guide.md)
+
 
