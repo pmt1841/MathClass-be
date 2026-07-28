@@ -103,7 +103,7 @@ Cuối mỗi session, tự động tạo summary với format:
 
 ## 9. Forbidden File
 
-- Không được phép đọc và chỉnh sửa các file sau: application-local.properties, .env
+- Không được phép đọc và chỉnh sửa các file sau: .env, env.local, .env.production, .env.development
 
 ## 10. Quy tắc Cấu trúc Code Java
 
