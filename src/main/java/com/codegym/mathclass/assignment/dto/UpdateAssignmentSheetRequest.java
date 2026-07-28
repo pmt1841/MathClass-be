@@ -10,4 +10,11 @@ public class UpdateAssignmentSheetRequest {
     
     private String description;
     private com.codegym.mathclass.assignment.entity.AssignmentVisibility visibility;
+    private java.util.List<ItemScoreDto> itemScores;
+
+    @Data
+    public static class ItemScoreDto {
+        private long assignmentId;
+        private Double maxScore;
+    }
 }

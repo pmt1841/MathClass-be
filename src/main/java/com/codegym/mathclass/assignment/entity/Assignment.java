@@ -70,8 +70,15 @@ public class Assignment extends BaseEntity {
     @JoinColumn(name = "classroom_id")
     private Classroom classroom;
 
+    @ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
+    @JoinColumn(name = "master_sheet_id")
+    private AssignmentSheet masterSheet;
+
     @Column(columnDefinition = "TEXT")
     private String content;
+
+    @Column(name = "max_score")
+    private Double maxScore;
 
     @Builder.Default
     @OneToMany(mappedBy = "assignment", cascade = CascadeType.ALL, orphanRemoval = true)

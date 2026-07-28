@@ -14,4 +14,5 @@ public interface AssignmentSheetService {
     AssignmentSheetResponse updateAssignmentSheet(long sheetId, UpdateAssignmentSheetRequest request, long teacherId);
     Page<AssignmentSheetResponse> getPublicAssignmentSheets(String keyword, Pageable pageable);
     AssignmentSheetResponse cloneAssignmentSheetFromLibrary(long sheetId, long teacherId);
+    Page<com.codegym.mathclass.assignment.dto.SheetCompletedStudentResponse> getCompletedStudentsBySheet(long sheetId, String classCode, Pageable pageable, long teacherId);
 }

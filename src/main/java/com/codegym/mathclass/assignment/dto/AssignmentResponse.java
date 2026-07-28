@@ -40,6 +40,7 @@ public class AssignmentResponse {
     private String submissionStatus;
     private LocalDateTime submissionCreatedAt;
     private LocalDateTime submissionUpdatedAt;
+    private Double submissionScore;
 
     private long teacherId;
     private String teacherName;
@@ -51,6 +52,12 @@ public class AssignmentResponse {
 
     private List<AssignmentDrawingResponse> drawings;
     private List<AssignmentImageDto> images;
+
+    private Double maxScore;
+
+    private Long sheetId;
+    private String sheetTitle;
+    private List<SheetSiblingDto> sheetSiblings;
 
     public static AssignmentResponse fromEntity(Assignment assignment) {
         if (assignment == null) {
@@ -72,6 +79,13 @@ public class AssignmentResponse {
             response.setOriginalAuthorId(assignment.getOriginalAuthor().getId());
             response.setOriginalAuthorName(assignment.getOriginalAuthor().getFullName());
         }
+
+
+        if (assignment.getMasterSheet() != null) {
+            response.setSheetId(assignment.getMasterSheet().getId());
+            response.setSheetTitle(assignment.getMasterSheet().getTitle());
+        }
+        response.setMaxScore(assignment.getMaxScore() != null ? assignment.getMaxScore() : 10.0);
 
         // Tính isOpen tự động: chỉ mở khi PUBLISHED và chưa quá deadline
         boolean open = assignment.getStatus() == AssignmentStatus.PUBLISHED

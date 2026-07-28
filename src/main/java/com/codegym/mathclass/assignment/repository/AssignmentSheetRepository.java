@@ -14,8 +14,12 @@ import java.util.Optional;
 public interface AssignmentSheetRepository extends JpaRepository<AssignmentSheet, Long>, JpaSpecificationExecutor<AssignmentSheet> {
 
     Optional<AssignmentSheet> findFirstByTeacherIdAndTitleAndClassroomIsNull(long teacherId, String title);
+    
+    Optional<AssignmentSheet> findFirstByTeacherIdAndTitleAndClassroomClassCode(long teacherId, String title, String classCode);
 
     List<AssignmentSheet> findByTeacherIdAndTitle(long teacherId, String title);
+
+    List<AssignmentSheet> findByMasterSheetId(long masterSheetId);
 
     /**
      * Batch query: lấy cặp (title, classCode) của tất cả sheet đã publish vào lớp

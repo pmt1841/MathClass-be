@@ -80,4 +80,17 @@ public class AssignmentSheetController {
         assignmentSheetService.deleteAssignmentSheet(id, userDetails.getId());
         return ResponseEntity.noContent().build();
     }
+    @Operation(summary = "Danh sách học sinh hoàn thành phiếu", description = "Lấy danh sách các học sinh đã nộp toàn bộ bài tập trong phiếu")
+    @GetMapping("/{id}/completed-students")
+    @PreAuthorize("hasAuthority('assignment:read')")
+    public ResponseEntity<Page<com.codegym.mathclass.assignment.dto.SheetCompletedStudentResponse>> getCompletedStudentsBySheet(
+            @PathVariable long id,
+            @RequestParam(required = false) String classCode,
+            @PageableDefault(sort = "student.id", direction = Sort.Direction.DESC) Pageable pageable,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        
+        Page<com.codegym.mathclass.assignment.dto.SheetCompletedStudentResponse> response = 
+                assignmentSheetService.getCompletedStudentsBySheet(id, classCode, pageable, userDetails.getId());
+        return ResponseEntity.ok(response);
+    }
 }

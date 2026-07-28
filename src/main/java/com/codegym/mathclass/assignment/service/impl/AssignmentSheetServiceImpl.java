@@ -8,12 +8,11 @@ import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.entity.AssignmentDrawing;
 import com.codegym.mathclass.assignment.entity.AssignmentImage;
 import com.codegym.mathclass.assignment.entity.AssignmentSheet;
-import com.codegym.mathclass.assignment.entity.AssignmentSheetItem;
 import com.codegym.mathclass.assignment.entity.AssignmentStatus;
 import com.codegym.mathclass.assignment.entity.AssignmentVisibility;
 import com.codegym.mathclass.assignment.repository.AssignmentRepository;
-import com.codegym.mathclass.assignment.repository.AssignmentSheetItemRepository;
 import com.codegym.mathclass.assignment.repository.AssignmentSheetRepository;
+import com.codegym.mathclass.assignment.repository.AssignmentSheetSpecification;
 import com.codegym.mathclass.assignment.service.AssignmentSheetService;
 import com.codegym.mathclass.classroom.entity.Classroom;
 import com.codegym.mathclass.classroom.repository.ClassroomRepository;
@@ -21,7 +20,9 @@ import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.ResourceNotFoundException;
 import com.codegym.mathclass.submission.entity.Submission;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
+import com.codegym.mathclass.submission.repository.CompletedStudentProjection;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
+import com.codegym.mathclass.assignment.dto.SheetCompletedStudentResponse;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
@@ -46,7 +47,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AssignmentSheetServiceImpl implements AssignmentSheetService {
 
     private final AssignmentSheetRepository assignmentSheetRepository;
-    private final AssignmentSheetItemRepository assignmentSheetItemRepository;
+
     private final AssignmentRepository assignmentRepository;
     private final ClassroomRepository classroomRepository;
     private final UserRepository userRepository;
@@ -77,10 +78,10 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
 
         List<Assignment> originalAssignments = resolveOriginalAssignments(request, teacherId);
 
-        upsertMasterSheet(request, teacher, originalAssignments);
+        AssignmentSheet masterSheet = upsertMasterSheet(request, teacher, originalAssignments);
 
         if (request.getTargets() != null) {
-            publishToClassrooms(request.getTargets(), request, teacher, originalAssignments);
+            publishToClassrooms(request.getTargets(), request, teacher, originalAssignments, masterSheet);
         }
 
         archiveDraftAssignments(originalAssignments);
@@ -143,8 +144,7 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
             List<Long> parentIds = new ArrayList<>();
             List<Assignment> directOriginals = new ArrayList<>();
 
-            for (AssignmentSheetItem item : sheet.getItems()) {
-                Assignment asgn = item.getAssignment();
+            for (Assignment asgn : sheet.getItems()) {
                 if (asgn == null) continue;
                 if (asgn.getParentId() != null) {
                     parentIds.add(asgn.getParentId());
@@ -172,16 +172,21 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
      * tiến hành xóa items cũ và tạo lại để đảm bảo tính nhất quán.
      * Điều này xử lý trường hợp phiếu bị chỉnh sửa sau khi tạo lần đầu.
      */
-    private void upsertMasterSheet(
+    private AssignmentSheet upsertMasterSheet(
             PublishAssignmentSheetRequest request, User teacher, List<Assignment> originals) {
 
-        AssignmentSheet masterSheet = assignmentSheetRepository
-                .findFirstByTeacherIdAndTitleAndClassroomIsNull(teacher.getId(), request.getTitle())
-                .orElseGet(() -> assignmentSheetRepository.save(buildMasterSheet(request, teacher)));
+        AssignmentSheet masterSheet;
+        if (request.getMasterSheetId() != null) {
+            masterSheet = assignmentSheetRepository.findById(request.getMasterSheetId())
+                    .orElseGet(() -> assignmentSheetRepository.save(buildMasterSheet(request, teacher)));
+        } else {
+            masterSheet = assignmentSheetRepository.save(buildMasterSheet(request, teacher));
+        }
 
         if (!masterSheetHasValidClones(masterSheet)) {
-            populateMasterSheetItems(masterSheet, originals, teacher);
+            populateMasterSheetItems(masterSheet, originals, teacher, request.getItemScores());
         }
+        return masterSheet;
     }
 
     /**
@@ -189,11 +194,13 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
      * Visibility chỉ được set nếu request cung cấp giá trị, tránh ghi đè giá trị mặc định của entity.
      */
     private AssignmentSheet buildMasterSheet(PublishAssignmentSheetRequest request, User teacher) {
-        AssignmentSheet sheet = new AssignmentSheet();
-        sheet.setTitle(request.getTitle());
-        sheet.setDescription(request.getDescription());
-        sheet.setTeacher(teacher);
-        sheet.setClassroom(null);
+        AssignmentSheet sheet = AssignmentSheet.builder()
+                .title(request.getTitle())
+                .description(request.getDescription())
+                .teacher(teacher)
+                .classroom(null)
+                .build();
+                
         if (request.getVisibility() != null) {
             sheet.setVisibility(request.getVisibility());
         }
@@ -210,8 +217,8 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
         return masterSheet.getItems() != null
                 && !masterSheet.getItems().isEmpty()
                 && masterSheet.getItems().stream()
-                        .allMatch(item -> item.getAssignment() != null
-                                && item.getAssignment().getParentId() != null);
+                        .allMatch(item -> item != null
+                                && item.getParentId() != null);
     }
 
     /**
@@ -222,22 +229,31 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
      * đảm bảo drawings/images được persist tự động khi save assignment clone.
      */
     private void populateMasterSheetItems(
-            AssignmentSheet masterSheet, List<Assignment> originals, User teacher) {
+            AssignmentSheet masterSheet, List<Assignment> originals, User teacher, List<PublishAssignmentSheetRequest.ItemScoreDto> itemScores) {
 
         if (masterSheet.getItems() != null && !masterSheet.getItems().isEmpty()) {
-            assignmentSheetItemRepository.deleteAll(masterSheet.getItems());
+            assignmentRepository.deleteAll(masterSheet.getItems());
             masterSheet.getItems().clear();
         }
 
+        Map<Long, Double> maxScoreMap = new HashMap<>();
+        if (itemScores != null) {
+            for (PublishAssignmentSheetRequest.ItemScoreDto score : itemScores) {
+                maxScoreMap.put(score.getAssignmentId(), score.getMaxScore());
+            }
+        }
+
         List<Assignment> masterClones = originals.stream()
-                .map(original -> buildAssignmentClone(original, teacher, null, null))
+                .map(original -> {
+                    Double maxScore = maxScoreMap.get(original.getId());
+                    Assignment clone = buildAssignmentClone(original, teacher, null, null, maxScore);
+                    clone.setMasterSheet(masterSheet);
+                    return clone;
+                })
                 .collect(Collectors.toList());
         List<Assignment> savedClones = assignmentRepository.saveAll(masterClones);
 
-        List<AssignmentSheetItem> items = savedClones.stream()
-                .map(clone -> buildSheetItem(masterSheet, clone))
-                .collect(Collectors.toList());
-        assignmentSheetItemRepository.saveAll(items);
+        masterSheet.getItems().addAll(savedClones);
     }
 
     // ─── Publish to classrooms ──────────────────────────────────────────────
@@ -251,13 +267,14 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
             List<PublishAssignmentSheetRequest.TargetClass> targets,
             PublishAssignmentSheetRequest request,
             User teacher,
-            List<Assignment> originals) {
+            List<Assignment> originals,
+            AssignmentSheet masterSheet) {
 
         for (PublishAssignmentSheetRequest.TargetClass target : targets) {
             Classroom classroom = classroomRepository.findByClassCode(target.getClassCode())
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Không tìm thấy lớp học: " + target.getClassCode()));
-            publishToClassroom(target, request, teacher, classroom, originals);
+            publishToClassroom(target, request, teacher, classroom, originals, masterSheet);
         }
     }
 
@@ -272,20 +289,41 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
             PublishAssignmentSheetRequest request,
             User teacher,
             Classroom classroom,
-            List<Assignment> originals) {
+            List<Assignment> originals,
+            AssignmentSheet masterSheet) {
 
-        final AssignmentSheet clonedSheet = assignmentSheetRepository.save(
-                buildClassroomSheet(request, teacher, classroom, target.getDeadline()));
+        AssignmentSheet clonedSheet = buildClassroomSheet(request, teacher, classroom, target.getDeadline(), masterSheet);
+        clonedSheet = assignmentSheetRepository.save(clonedSheet);
+
+        final AssignmentSheet finalClonedSheet = clonedSheet;
+        
+        Map<Long, Double> maxScoreMap = new HashMap<>();
+        if (request.getItemScores() != null) {
+            for (PublishAssignmentSheetRequest.ItemScoreDto score : request.getItemScores()) {
+                maxScoreMap.put(score.getAssignmentId(), score.getMaxScore());
+            }
+        }
+        
+        // fallback to master sheet
+        if (masterSheet != null && masterSheet.getItems() != null) {
+            for (Assignment item : masterSheet.getItems()) {
+                if (item != null && item.getParentId() != null && !maxScoreMap.containsKey(item.getParentId())) {
+                    maxScoreMap.put(item.getParentId(), item.getMaxScore());
+                }
+            }
+        }
 
         List<Assignment> clonedAssignments = originals.stream()
-                .map(original -> buildAssignmentClone(original, teacher, classroom, target.getDeadline()))
+                .map(original -> {
+                    Double maxScore = maxScoreMap.get(original.getId());
+                    Assignment clone = buildAssignmentClone(original, teacher, classroom, target.getDeadline(), maxScore);
+                    clone.setMasterSheet(finalClonedSheet);
+                    return clone;
+                })
                 .collect(Collectors.toList());
         List<Assignment> savedClones = assignmentRepository.saveAll(clonedAssignments);
 
-        List<AssignmentSheetItem> items = savedClones.stream()
-                .map(clone -> buildSheetItem(clonedSheet, clone))
-                .collect(Collectors.toList());
-        assignmentSheetItemRepository.saveAll(items);
+        finalClonedSheet.getItems().addAll(savedClones);
     }
 
     /**
@@ -294,15 +332,16 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
      */
     private AssignmentSheet buildClassroomSheet(
             PublishAssignmentSheetRequest request, User teacher,
-            Classroom classroom, LocalDateTime deadline) {
+            Classroom classroom, LocalDateTime deadline, AssignmentSheet masterSheet) {
 
-        AssignmentSheet sheet = new AssignmentSheet();
-        sheet.setTitle(request.getTitle());
-        sheet.setDescription(request.getDescription());
-        sheet.setDeadline(deadline);
-        sheet.setTeacher(teacher);
-        sheet.setClassroom(classroom);
-        return sheet;
+        return AssignmentSheet.builder()
+                .title(request.getTitle())
+                .description(request.getDescription())
+                .deadline(deadline)
+                .teacher(teacher)
+                .classroom(classroom)
+                .masterSheet(masterSheet)
+                .build();
     }
 
     // ─── Archive ────────────────────────────────────────────────────────────
@@ -351,17 +390,21 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
      * @return Entity chưa persist, sẵn sàng để {@code saveAll}.
      */
     private Assignment buildAssignmentClone(
-            Assignment original, User teacher, Classroom classroom, LocalDateTime deadline) {
+            Assignment original, User teacher, Classroom classroom, LocalDateTime deadline, Double maxScore) {
 
-        Assignment clone = new Assignment();
-        clone.setTitle(original.getTitle());
-        clone.setDescription(original.getDescription());
-        clone.setContent(original.getContent());
-        clone.setDeadline(deadline);
-        clone.setStatus(AssignmentStatus.PUBLISHED);
-        clone.setTeacher(teacher);
-        clone.setParentId(original.getId());
-        clone.setClassroom(classroom);
+        Assignment clone = Assignment.builder()
+                .title(original.getTitle())
+                .maxScore(maxScore)
+                .description(original.getDescription())
+                .content(original.getContent())
+                .deadline(deadline)
+                .status(AssignmentStatus.PUBLISHED)
+                .teacher(teacher)
+                .parentId(original.getId())
+                .classroom(classroom)
+                .build();
+
+        // maxScore is handled at the sheet item level
 
         if (original.getDrawings() != null) {
             for (AssignmentDrawing src : original.getDrawings()) {
@@ -386,16 +429,6 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
         return clone;
     }
 
-    /**
-     * Tạo một {@link AssignmentSheetItem} liên kết sheet với assignment.
-     * Entity chưa được persist — caller gọi {@code saveAll} sau khi build toàn bộ list.
-     */
-    private AssignmentSheetItem buildSheetItem(AssignmentSheet sheet, Assignment assignment) {
-        AssignmentSheetItem item = new AssignmentSheetItem();
-        item.setSheet(sheet);
-        item.setAssignment(assignment);
-        return item;
-    }
 
     /**
      * Lấy danh sách phiếu bài tập phân trang theo role của người dùng.
@@ -421,93 +454,25 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
     public Page<AssignmentSheetResponse> getAssignmentSheetsForCurrentUser(
             long userId, String role, String keyword, String classCode, Pageable pageable) {
 
-        Specification<AssignmentSheet> spec = buildSpecForRole(userId, role, classCode)
-                .and(buildKeywordSpec(keyword))
-                .and(buildClassCodeSpec(classCode));
+        Specification<AssignmentSheet> spec = AssignmentSheetSpecification.buildSpecForRole(userId, role, classCode)
+                .and(AssignmentSheetSpecification.buildKeywordSpec(keyword))
+                .and(AssignmentSheetSpecification.buildClassCodeSpec(classCode));
 
         Page<AssignmentSheet> sheetPage = assignmentSheetRepository.findAll(spec, pageable);
         Page<AssignmentSheetResponse> responsePage = sheetPage.map(AssignmentSheetResponse::fromEntity);
 
-        if (Role.STUDENT.name().equals(role)) {
-            enrichPageForStudent(responsePage, userId);
-        } else if (Role.TEACHER.name().equals(role)) {
-            enrichPageForTeacher(responsePage, userId);
+        try {
+            Role roleEnum = Role.valueOf(role);
+            if (roleEnum == Role.STUDENT) {
+                enrichPageForStudent(responsePage, userId);
+            } else if (roleEnum == Role.TEACHER) {
+                enrichPageForTeacher(responsePage, userId);
+            }
+        } catch (IllegalArgumentException e) {
+            // ignore
         }
 
         return responsePage;
-    }
-
-    // ─── Specification builders ───────────────────────────────────────────────
-
-    /**
-     * Chọn Specification phù hợp với role.
-     *
-     * @throws AccessDeniedException nếu {@code role} không phải TEACHER hoặc STUDENT.
-     */
-    private Specification<AssignmentSheet> buildSpecForRole(long userId, String role, String classCode) {
-        if (Role.TEACHER.name().equals(role)) {
-            return buildTeacherSpec(userId, classCode);
-        }
-        if (Role.STUDENT.name().equals(role)) {
-            return buildStudentSpec(userId);
-        }
-        throw new AccessDeniedException("Role không hợp lệ: " + role);
-    }
-
-    /**
-     * Spec cho giáo viên:
-     * <ul>
-     *   <li>Khi {@code classCode} null/blank → hiển thị kho cá nhân (classroom IS NULL).</li>
-     *   <li>Khi {@code classCode} được cung cấp → hiển thị phiếu thuộc lớp đó.</li>
-     * </ul>
-     */
-    private Specification<AssignmentSheet> buildTeacherSpec(long teacherId, String classCode) {
-        Specification<AssignmentSheet> spec = (root, query, cb) ->
-                cb.equal(root.get("teacher").get("id"), teacherId);
-
-        boolean isLibraryView = classCode == null || classCode.isBlank();
-        if (isLibraryView) {
-            spec = spec.and((root, query, cb) -> cb.isNull(root.get("classroom")));
-        }
-        return spec;
-    }
-
-    /**
-     * Spec cho học sinh: lấy phiếu thuộc các lớp mà học sinh đang tham gia.
-     * Dùng INNER JOIN để loại phiếu không gắn lớp (Master Sheets) ra khỏi kết quả.
-     */
-    private Specification<AssignmentSheet> buildStudentSpec(long studentId) {
-        return (root, query, cb) -> {
-            Join<AssignmentSheet, Classroom> classroomJoin = root.join("classroom", JoinType.INNER);
-            Join<Classroom, User> studentsJoin = classroomJoin.join("students", JoinType.INNER);
-            return cb.equal(studentsJoin.get("id"), studentId);
-        };
-    }
-
-    /**
-     * Spec tìm kiếm case-insensitive theo tiêu đề phiếu bài tập.
-     * Trả về {@code Specification.where(null)} (no-op) nếu keyword rỗng.
-     */
-    private Specification<AssignmentSheet> buildKeywordSpec(String keyword) {
-        if (keyword == null || keyword.isBlank()) {
-            return Specification.where((Specification<AssignmentSheet>) null);
-        }
-        String pattern = "%" + keyword.toLowerCase() + "%";
-        return (root, query, cb) -> cb.like(cb.lower(root.get("title")), pattern);
-    }
-
-    /**
-     * Spec lọc theo mã lớp, dùng INNER JOIN với classroom.
-     * Trả về {@code Specification.where(null)} (no-op) nếu classCode rỗng.
-     */
-    private Specification<AssignmentSheet> buildClassCodeSpec(String classCode) {
-        if (classCode == null || classCode.isBlank()) {
-            return Specification.where((Specification<AssignmentSheet>) null);
-        }
-        return (root, query, cb) -> {
-            Join<AssignmentSheet, Classroom> classroomJoin = root.join("classroom", JoinType.INNER);
-            return cb.equal(classroomJoin.get("classCode"), classCode);
-        };
     }
 
     // ─── Response enrichment ─────────────────────────────────────────────────
@@ -573,6 +538,7 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
             item.setSubmissionStatus(submission.getStatus().name());
             item.setSubmissionCreatedAt(submission.getCreatedAt());
             item.setSubmissionUpdatedAt(submission.getUpdatedAt());
+            item.setSubmissionScore(submission.getScore());
         }
     }
 
@@ -660,6 +626,24 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
             throw new AccessDeniedException("Bạn không có quyền xóa phiếu bài tập này");
         }
 
+        // Set master_sheet_id to null for all cloned assignments so they are not deleted
+        List<Assignment> clones = assignmentRepository.findByMasterSheetId(sheetId);
+        if (!clones.isEmpty()) {
+            for (Assignment clone : clones) {
+                clone.setMasterSheet(null);
+            }
+            assignmentRepository.saveAll(clones);
+        }
+
+        // Set master_sheet_id to null for all child sheets so they are not deleted
+        List<AssignmentSheet> childSheets = assignmentSheetRepository.findByMasterSheetId(sheetId);
+        if (!childSheets.isEmpty()) {
+            for (AssignmentSheet childSheet : childSheets) {
+                childSheet.setMasterSheet(null);
+            }
+            assignmentSheetRepository.saveAll(childSheets);
+        }
+
         assignmentSheetRepository.delete(sheet);
     }
 
@@ -696,6 +680,22 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
         if (request.getVisibility() != null) {
             sheet.setVisibility(request.getVisibility());
         }
+        
+        
+        if (request.getItemScores() != null) {
+            Map<Long, Double> maxScoreMap = new HashMap<>();
+            for (UpdateAssignmentSheetRequest.ItemScoreDto score : request.getItemScores()) {
+                maxScoreMap.put(score.getAssignmentId(), score.getMaxScore());
+            }
+            
+            for (Assignment asgn : sheet.getItems()) {
+                Double maxScore = maxScoreMap.get(asgn.getId());
+                if (maxScore != null) {
+                    asgn.setMaxScore(maxScore);
+                }
+            }
+        }
+        
         sheet = assignmentSheetRepository.save(sheet);
 
         String searchTitle = titleChanged ? oldTitle : sheet.getTitle();
@@ -751,11 +751,10 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
     @Override
     @Transactional(readOnly = true)
     public Page<AssignmentSheetResponse> getPublicAssignmentSheets(String keyword, Pageable pageable) {
-        Specification<AssignmentSheet> baseSpec = (root, query, cb) -> cb.and(
+        Specification<AssignmentSheet> spec = Specification.<AssignmentSheet>where((root, query, cb) -> cb.and(
                 cb.equal(root.get("visibility"), AssignmentVisibility.PUBLIC),
                 cb.isNull(root.get("classroom"))
-        );
-        Specification<AssignmentSheet> spec = baseSpec.and(buildKeywordSpec(keyword));
+        )).and(AssignmentSheetSpecification.buildKeywordSpec(keyword));
 
         Page<AssignmentSheet> sheets = assignmentSheetRepository.findAll(spec, pageable);
         return sheets.map(sheet -> {
@@ -763,9 +762,13 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
             if ((res.getItems() == null || res.getItems().isEmpty())
                     && sheet.getItems() != null && !sheet.getItems().isEmpty()) {
                 res.setItems(sheet.getItems().stream()
-                        .filter(item -> item.getAssignment() != null
-                                && item.getAssignment().getStatus() != AssignmentStatus.DELETED)
-                        .map(item -> AssignmentResponse.fromEntityWithoutContent(item.getAssignment()))
+                        .filter(asgn -> asgn != null
+                                && asgn.getStatus() != AssignmentStatus.DELETED)
+                        .map(asgn -> {
+                            AssignmentResponse ar = AssignmentResponse.fromEntityWithoutContent(asgn);
+                            ar.setMaxScore(asgn.getMaxScore() != null ? asgn.getMaxScore() : 10.0);
+                            return ar;
+                        })
                         .collect(Collectors.toList()));
             }
             return res;
@@ -820,14 +823,15 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
      */
     private AssignmentSheet buildLibraryCloneSheet(
             AssignmentSheet original, User teacher, User originalAuthor) {
-        AssignmentSheet sheet = new AssignmentSheet();
-        sheet.setTitle(original.getTitle());
-        sheet.setDescription(original.getDescription());
-        sheet.setTeacher(teacher);
-        sheet.setOriginalAuthor(originalAuthor);
-        sheet.setVisibility(AssignmentVisibility.PRIVATE);
-        sheet.setClassroom(null);
-        return sheet;
+        return AssignmentSheet.builder()
+                .title(original.getTitle())
+                .description(original.getDescription())
+                .teacher(teacher)
+                .originalAuthor(originalAuthor)
+                .visibility(AssignmentVisibility.PRIVATE)
+                .classroom(null)
+                .masterSheet(original)
+                .build();
     }
 
     /**
@@ -837,26 +841,78 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
      * Dùng {@code saveAll} để giảm N INSERT queries xuống còn 2 batch (assignments + items).
      */
     private void cloneLibrarySheetItems(
-            List<AssignmentSheetItem> sourceItems, AssignmentSheet clonedSheet,
+            List<Assignment> sourceItems, AssignmentSheet clonedSheet,
             User teacher, User originalAuthor) {
 
         List<Assignment> clonedAssignments = sourceItems.stream()
-                .map(AssignmentSheetItem::getAssignment)
                 .filter(asgn -> asgn != null && asgn.getStatus() != AssignmentStatus.DELETED)
                 .map(asgn -> {
-                    Assignment clone = buildAssignmentClone(asgn, teacher, null, null);
+                    Assignment clone = buildAssignmentClone(asgn, teacher, null, null, asgn.getMaxScore());
                     clone.setOriginalAuthor(originalAuthor);
                     clone.setStatus(AssignmentStatus.DRAFT);
                     clone.setVisibility(AssignmentVisibility.PRIVATE);
+                    clone.setMasterSheet(clonedSheet);
                     return clone;
                 })
                 .collect(Collectors.toList());
 
         List<Assignment> savedClones = assignmentRepository.saveAll(clonedAssignments);
+        clonedSheet.getItems().addAll(savedClones);
+    }
 
-        List<AssignmentSheetItem> items = savedClones.stream()
-                .map(clone -> buildSheetItem(clonedSheet, clone))
+    @Override
+    @Transactional(readOnly = true)
+    public Page<SheetCompletedStudentResponse> getCompletedStudentsBySheet(
+            long sheetId, String classCode, Pageable pageable, long teacherId) {
+
+        AssignmentSheet masterSheet = assignmentSheetRepository.findById(sheetId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phiếu bài tập"));
+
+        if (masterSheet.getTeacher().getId() != teacherId && masterSheet.getVisibility() != AssignmentVisibility.PUBLIC) {
+            throw new AccessDeniedException("Không có quyền truy cập phiếu này");
+        }
+
+        AssignmentSheet targetSheet = masterSheet;
+        if (classCode != null && !classCode.isEmpty()) {
+            if (masterSheet.getClassroom() != null && classCode.equals(masterSheet.getClassroom().getClassCode())) {
+                targetSheet = masterSheet;
+            } else {
+                targetSheet = assignmentSheetRepository.findFirstByTeacherIdAndTitleAndClassroomClassCode(
+                        masterSheet.getTeacher().getId(), masterSheet.getTitle(), classCode)
+                        .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phiếu bài tập cho lớp " + classCode));
+            }
+        }
+
+        List<Long> assignmentIds = targetSheet.getItems().stream()
+                .map(Assignment::getId)
                 .collect(Collectors.toList());
-        assignmentSheetItemRepository.saveAll(items);
+
+        if (assignmentIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        long totalExercises = assignmentIds.size();
+        Page<CompletedStudentProjection> projections = 
+                submissionRepository.findCompletedStudentsForSheet(assignmentIds, totalExercises, pageable);
+
+        long firstAssignmentId = targetSheet.getItems().get(0).getId();
+
+        return projections.map(p -> {
+            Long firstSubmissionId = submissionRepository.findFirstByAssignmentIdAndStudentId(firstAssignmentId, p.getStudentId())
+                    .map(Submission::getId)
+                    .orElse(0L);
+
+            return SheetCompletedStudentResponse.builder()
+                    .studentId(p.getStudentId())
+                    .studentName(p.getStudentName())
+                    .studentEmail(p.getStudentEmail())
+                    .completedExercisesCount(p.getCompletedCount())
+                    .totalExercisesCount((int) totalExercises)
+                    .latestSubmittedAt(p.getLatestSubmittedAt())
+                    .totalScore(p.getTotalScore())
+                    .firstAssignmentId(firstAssignmentId)
+                    .firstSubmissionId(firstSubmissionId)
+                    .build();
+        });
     }
 }

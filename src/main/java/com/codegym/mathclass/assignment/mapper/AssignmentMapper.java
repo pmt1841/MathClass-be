@@ -29,6 +29,7 @@ public class AssignmentMapper {
         response.setCreatedAt(assignment.getCreatedAt());
         response.setUpdatedAt(assignment.getUpdatedAt());
 
+
         boolean open = assignment.getStatus() == AssignmentStatus.PUBLISHED
                 && assignment.getDeadline() != null
                 && LocalDateTime.now().isBefore(assignment.getDeadline());
@@ -45,6 +46,14 @@ public class AssignmentMapper {
             response.setClassCode(assignment.getClassroom().getClassCode());
             response.setClassName(assignment.getClassroom().getClassName());
         }
+
+        if (assignment.getMasterSheet() != null) {
+            response.setSheetId(assignment.getMasterSheet().getId());
+            response.setSheetTitle(assignment.getMasterSheet().getTitle());
+        }
+        
+        response.setMaxScore(assignment.getMaxScore() != null ? assignment.getMaxScore() : 10.0);
+
         if (assignment.getDrawings() != null && !assignment.getDrawings().isEmpty()) {
             List<AssignmentDrawingResponse> drawingResponses = assignment.getDrawings().stream().map(drawing -> {
                 AssignmentDrawingResponse dr = new AssignmentDrawingResponse();

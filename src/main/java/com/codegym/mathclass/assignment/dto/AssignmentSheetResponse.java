@@ -23,6 +23,7 @@ public class AssignmentSheetResponse {
     private String originalAuthorName;
     private String classCode;
     private String className;
+    private Long masterSheetId;
 
     private List<AssignmentResponse> items;
     private String submissionStatus;
@@ -56,10 +57,18 @@ public class AssignmentSheetResponse {
             res.setClassName(sheet.getClassroom().getClassName());
         }
         
+        if (sheet.getMasterSheet() != null) {
+            res.setMasterSheetId(sheet.getMasterSheet().getId());
+        }
+        
         if (sheet.getItems() != null) {
             res.setItems(sheet.getItems().stream()
-                .filter(item -> item.getAssignment() != null && item.getAssignment().getStatus() != com.codegym.mathclass.assignment.entity.AssignmentStatus.DELETED)
-                .map(item -> AssignmentResponse.fromEntityWithoutContent(item.getAssignment()))
+                .filter(asgn -> asgn != null && asgn.getStatus() != com.codegym.mathclass.assignment.entity.AssignmentStatus.DELETED)
+                .map(asgn -> {
+                    AssignmentResponse ar = AssignmentResponse.fromEntityWithoutContent(asgn);
+                    ar.setMaxScore(asgn.getMaxScore() != null ? asgn.getMaxScore() : 10.0);
+                    return ar;
+                })
                 .collect(Collectors.toList()));
         }
         return res;

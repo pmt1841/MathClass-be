@@ -28,6 +28,8 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
             @Param("studentId") long studentId
     );
     
+    List<Submission> findAllByAssignmentIdIn(List<Long> assignmentIds);
+    
     // Lấy danh sách bài nộp và sắp xếp theo thời gian nộp hoặc cập nhật mới nhất
     List<Submission> findAllByAssignmentIdOrderByUpdatedAtDesc(long assignmentId);
 
@@ -46,6 +48,25 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
             @Param("status") SubmissionStatus status,
             @Param("keyword") String keyword,
             Pageable pageable);
+
+    @Query("""
+            SELECT s.student.id AS studentId,
+                   s.student.fullName AS studentName,
+                   s.student.email AS studentEmail,
+                   COUNT(s.id) AS completedCount,
+                   MAX(s.submittedAt) AS latestSubmittedAt,
+                   SUM(s.score) AS totalScore
+            FROM Submission s
+            WHERE s.assignment.id IN :assignmentIds
+              AND s.status <> 'DRAFT'
+            GROUP BY s.student.id, s.student.fullName, s.student.email
+            HAVING COUNT(s.id) = :totalExercises
+            """)
+    Page<CompletedStudentProjection> findCompletedStudentsForSheet(
+            @Param("assignmentIds") List<Long> assignmentIds,
+            @Param("totalExercises") long totalExercises,
+            Pageable pageable
+    );
 
     @Query("SELECT COUNT(s) FROM Submission s WHERE s.assignment.classroom.teacher.id = :teacherId AND s.status = :status")
     int countByTeacherAndStatus(@Param("teacherId") long teacherId, @Param("status") SubmissionStatus status);

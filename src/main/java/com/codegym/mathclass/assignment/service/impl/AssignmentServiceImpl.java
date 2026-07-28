@@ -57,15 +57,13 @@ import java.nio.charset.StandardCharsets;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 
-import com.codegym.mathclass.assignment.entity.AssignmentSheetItem;
-import com.codegym.mathclass.assignment.repository.AssignmentSheetItemRepository;
 
 @Service
 @RequiredArgsConstructor
 public class AssignmentServiceImpl implements AssignmentService {
 
     private final AssignmentRepository assignmentRepository;
-    private final AssignmentSheetItemRepository assignmentSheetItemRepository;
+
     private final UserRepository userRepository;
     private final ClassroomRepository classroomRepository;
     private final SubmissionRepository submissionRepository;
@@ -239,6 +237,7 @@ public class AssignmentServiceImpl implements AssignmentService {
                             response.setSubmissionStatus(sub.getStatus().name());
                             response.setSubmissionCreatedAt(sub.getCreatedAt());
                             response.setSubmissionUpdatedAt(sub.getUpdatedAt());
+                            response.setSubmissionScore(sub.getScore());
                         });
             }
             return response;
@@ -277,6 +276,9 @@ public class AssignmentServiceImpl implements AssignmentService {
         // 3. Lọc theo classCode
         if (classCode != null && !classCode.trim().isEmpty()) {
             spec = spec.and(AssignmentSpecification.hasClassCode(classCode));
+        } else if (Role.TEACHER.name().equals(role)) {
+            // Trong Kho bài tập (không filter theo classCode), chỉ lấy các bản gốc (không thuộc lớp nào)
+            spec = spec.and((root, query, cb) -> cb.isNull(root.get("classroom")));
         }
 
         // 4. Lọc theo status (nếu là TEACHER thì có thể filter tùy ý, STUDENT thì
@@ -316,6 +318,7 @@ public class AssignmentServiceImpl implements AssignmentService {
                             response.setSubmissionStatus(sub.getStatus().name());
                             response.setSubmissionCreatedAt(sub.getCreatedAt());
                             response.setSubmissionUpdatedAt(sub.getUpdatedAt());
+                            response.setSubmissionScore(sub.getScore());
                         });
             }
             return response;
@@ -339,11 +342,6 @@ public class AssignmentServiceImpl implements AssignmentService {
             throw new BadRequestException("Đã có học sinh nộp bài, không thể xóa bài tập này");
         }
 
-        // Xóa các liên kết trong assignment_sheet_items đối với bài tập này
-        List<AssignmentSheetItem> sheetItems = assignmentSheetItemRepository.findByAssignmentIdIn(List.of(assignmentId));
-        if (!sheetItems.isEmpty()) {
-            assignmentSheetItemRepository.deleteAll(sheetItems);
-        }
 
         // 3. Xử lý theo trạng thái
         if (assignment.getStatus() == AssignmentStatus.DRAFT) {
@@ -648,12 +646,27 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         AssignmentResponse response = assignmentMapper.toAssignmentResponse(assignment);
 
+        if (assignment.getMasterSheet() != null) {
+            List<com.codegym.mathclass.assignment.dto.SheetSiblingDto> siblings = assignment.getMasterSheet().getItems().stream()
+                    .map(item -> {
+                        com.codegym.mathclass.assignment.dto.SheetSiblingDto dto = new com.codegym.mathclass.assignment.dto.SheetSiblingDto(item.getId(), item.getTitle());
+                        if (Role.STUDENT.name().equals(role)) {
+                            submissionRepository.findFirstByAssignmentIdAndStudentId(item.getId(), userId)
+                                    .ifPresent(sub -> dto.setSubmissionStatus(sub.getStatus().name()));
+                        }
+                        return dto;
+                    })
+                    .collect(java.util.stream.Collectors.toList());
+            response.setSheetSiblings(siblings);
+        }
+
         if (Role.STUDENT.name().equals(role)) {
             submissionRepository.findFirstByAssignmentIdAndStudentId(assignment.getId(), userId)
                     .ifPresent(sub -> {
                         response.setSubmissionStatus(sub.getStatus().name());
                         response.setSubmissionCreatedAt(sub.getCreatedAt());
                         response.setSubmissionUpdatedAt(sub.getUpdatedAt());
+                        response.setSubmissionScore(sub.getScore());
                     });
         }
 
