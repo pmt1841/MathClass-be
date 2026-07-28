@@ -9,6 +9,7 @@ import com.codegym.mathclass.submission.repository.SubmissionRepository;
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.entity.AssignmentStatus;
 import com.codegym.mathclass.assignment.repository.AssignmentRepository;
+import com.codegym.mathclass.assignment.repository.AssignmentSheetRepository;
 import com.codegym.mathclass.dashboard.dto.PendingSubmissionDto;
 import com.codegym.mathclass.dashboard.dto.StudentDashboardStatsDto;
 import com.codegym.mathclass.dashboard.dto.StudentGradedTaskDto;
@@ -37,6 +38,7 @@ public class DashboardServiceImpl implements DashboardService {
     private final ClassroomJoinRequestRepository joinRequestRepository;
     private final SubmissionRepository submissionRepository;
     private final AssignmentRepository assignmentRepository;
+    private final AssignmentSheetRepository assignmentSheetRepository;
 
     @Override
     public TeacherDashboardStatsDto getTeacherDashboardStats(long teacherId) {
@@ -44,7 +46,8 @@ public class DashboardServiceImpl implements DashboardService {
         int managedStudents = classroomRepository.countDistinctStudentsByTeacherId(teacherId);
         int assignmentsToGrade = submissionRepository.countByTeacherAndStatus(teacherId, SubmissionStatus.SUBMITTED);
         int pendingJoinRequests = joinRequestRepository.countByClassroomTeacherIdAndStatus(teacherId, JoinRequestStatus.PENDING);
-        int openAssignments = assignmentRepository.countByTeacherIdAndStatus(teacherId, AssignmentStatus.PUBLISHED);
+        int openAssignments = assignmentRepository.countByTeacherIdAndStatus(teacherId, AssignmentStatus.ARCHIVED);
+        int originalAssignmentSheets = assignmentSheetRepository.countByTeacherIdAndClassroomIsNull(teacherId);
 
         return TeacherDashboardStatsDto.builder()
                 .teachingClasses(teachingClasses)
@@ -52,6 +55,7 @@ public class DashboardServiceImpl implements DashboardService {
                 .assignmentsToGrade(assignmentsToGrade)
                 .pendingJoinRequests(pendingJoinRequests)
                 .openAssignments(openAssignments)
+                .originalAssignmentSheets(originalAssignmentSheets)
                 .build();
     }
 
