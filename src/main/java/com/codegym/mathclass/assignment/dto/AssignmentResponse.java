@@ -2,6 +2,7 @@ package com.codegym.mathclass.assignment.dto;
 
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.entity.AssignmentStatus;
+import com.codegym.mathclass.assignment.entity.AssignmentVisibility;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -21,7 +22,7 @@ public class AssignmentResponse {
     private String content;
     private LocalDateTime deadline;
     private AssignmentStatus status;
-    private com.codegym.mathclass.assignment.entity.AssignmentVisibility visibility;
+    private AssignmentVisibility visibility;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

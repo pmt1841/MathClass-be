@@ -2,6 +2,8 @@ package com.codegym.mathclass.assignment.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
+import java.util.List;
+import com.codegym.mathclass.assignment.entity.AssignmentVisibility;
 
 @Data
 public class UpdateAssignmentSheetRequest {
@@ -9,8 +11,8 @@ public class UpdateAssignmentSheetRequest {
     private String title;
     
     private String description;
-    private com.codegym.mathclass.assignment.entity.AssignmentVisibility visibility;
-    private java.util.List<ItemScoreDto> itemScores;
+    private AssignmentVisibility visibility;
+    private List<ItemScoreDto> itemScores;
 
     @Data
     public static class ItemScoreDto {

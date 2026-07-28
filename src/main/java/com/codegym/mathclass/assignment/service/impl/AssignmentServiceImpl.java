@@ -34,6 +34,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import com.codegym.mathclass.assignment.entity.AssignmentVisibility;
+import com.codegym.mathclass.assignment.dto.SheetSiblingDto;
 
 import com.codegym.mathclass.assignment.mapper.AssignmentMapper;
 import com.codegym.mathclass.assignment.entity.AssignmentImage;
@@ -98,7 +101,7 @@ public class AssignmentServiceImpl implements AssignmentService {
                 .description(request.getDescription() != null ? request.getDescription() : "")
                 .content(request.getContent() != null ? request.getContent() : "")
                 .status(AssignmentStatus.DRAFT)
-                .visibility(request.getVisibility() != null ? request.getVisibility() : com.codegym.mathclass.assignment.entity.AssignmentVisibility.PRIVATE)
+                .visibility(request.getVisibility() != null ? request.getVisibility() : AssignmentVisibility.PRIVATE)
                 .teacher(teacher)
                 .classroom(null)
                 .build();
@@ -647,9 +650,9 @@ public class AssignmentServiceImpl implements AssignmentService {
         AssignmentResponse response = assignmentMapper.toAssignmentResponse(assignment);
 
         if (assignment.getMasterSheet() != null) {
-            List<com.codegym.mathclass.assignment.dto.SheetSiblingDto> siblings = assignment.getMasterSheet().getItems().stream()
+            List<SheetSiblingDto> siblings = assignment.getMasterSheet().getItems().stream()
                     .map(item -> {
-                        com.codegym.mathclass.assignment.dto.SheetSiblingDto dto = new com.codegym.mathclass.assignment.dto.SheetSiblingDto(item.getId(), item.getTitle());
+                        SheetSiblingDto dto = new SheetSiblingDto(item.getId(), item.getTitle());
                         if (Role.STUDENT.name().equals(role)) {
                             submissionRepository.findFirstByAssignmentIdAndStudentId(item.getId(), userId)
                                     .ifPresent(sub -> dto.setSubmissionStatus(sub.getStatus().name()));
@@ -826,7 +829,7 @@ public class AssignmentServiceImpl implements AssignmentService {
     @Transactional(readOnly = true)
     public Page<AssignmentResponse> getPublicAssignments(String keyword, Pageable pageable) {
         Specification<Assignment> spec = (root, query, cb) -> cb.and(
-                cb.equal(root.get("visibility"), com.codegym.mathclass.assignment.entity.AssignmentVisibility.PUBLIC),
+                cb.equal(root.get("visibility"), AssignmentVisibility.PUBLIC),
                 cb.isNull(root.get("classroom")),
                 cb.notEqual(root.get("status"), AssignmentStatus.DELETED)
         );
@@ -848,7 +851,7 @@ public class AssignmentServiceImpl implements AssignmentService {
         Assignment original = assignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập"));
 
-        if (original.getVisibility() != com.codegym.mathclass.assignment.entity.AssignmentVisibility.PUBLIC
+        if (original.getVisibility() != AssignmentVisibility.PUBLIC
                 || original.getStatus() == AssignmentStatus.DELETED) {
             throw new BadRequestException("Bài tập này không ở trạng thái công khai trong Thư viện");
         }
@@ -860,7 +863,7 @@ public class AssignmentServiceImpl implements AssignmentService {
                 .description(original.getDescription())
                 .content(original.getContent())
                 .status(AssignmentStatus.DRAFT)
-                .visibility(com.codegym.mathclass.assignment.entity.AssignmentVisibility.PRIVATE)
+                .visibility(AssignmentVisibility.PRIVATE)
                 .teacher(teacher)
                 .originalAuthor(originalAuthor)
                 .classroom(null)

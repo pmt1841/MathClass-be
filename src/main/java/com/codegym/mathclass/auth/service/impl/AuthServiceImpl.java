@@ -18,6 +18,8 @@ import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.service.PermissionCacheService;
 import java.util.List;
 import com.codegym.mathclass.notification.entity.NotificationSettings;
+import com.codegym.mathclass.user.repository.UserRepository;
+import com.codegym.mathclass.user.mapper.UserMapper;
 import com.codegym.mathclass.notification.repository.NotificationSettingsRepository;
 import com.codegym.mathclass.utils.EmailService;
 import com.codegym.mathclass.exception.BadRequestException;
@@ -63,7 +65,7 @@ public class AuthServiceImpl implements AuthService {
     private final EmailService emailService;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final RefreshTokenService refreshTokenService;
-    private final com.codegym.mathclass.user.mapper.UserMapper userMapper;
+    private final UserMapper userMapper;
 
     private final ConcurrentHashMap<String, LocalDateTime> forgotPasswordRateLimitMap = new ConcurrentHashMap<>();
 

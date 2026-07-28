@@ -4,6 +4,7 @@ import com.codegym.mathclass.assignment.dto.PublishAssignmentSheetRequest;
 import com.codegym.mathclass.assignment.dto.AssignmentSheetResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import com.codegym.mathclass.assignment.dto.SheetCompletedStudentResponse;
 
 import com.codegym.mathclass.assignment.dto.UpdateAssignmentSheetRequest;
 
@@ -14,5 +15,5 @@ public interface AssignmentSheetService {
     AssignmentSheetResponse updateAssignmentSheet(long sheetId, UpdateAssignmentSheetRequest request, long teacherId);
     Page<AssignmentSheetResponse> getPublicAssignmentSheets(String keyword, Pageable pageable);
     AssignmentSheetResponse cloneAssignmentSheetFromLibrary(long sheetId, long teacherId);
-    Page<com.codegym.mathclass.assignment.dto.SheetCompletedStudentResponse> getCompletedStudentsBySheet(long sheetId, String classCode, Pageable pageable, long teacherId);
+    Page<SheetCompletedStudentResponse> getCompletedStudentsBySheet(long sheetId, String classCode, Pageable pageable, long teacherId);
 }

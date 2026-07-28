@@ -1,6 +1,8 @@
 package com.codegym.mathclass.assignment.dto;
 
 import com.codegym.mathclass.assignment.entity.AssignmentSheet;
+import com.codegym.mathclass.assignment.entity.AssignmentStatus;
+import com.codegym.mathclass.assignment.entity.AssignmentVisibility;
 import lombok.Data;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -13,7 +15,7 @@ public class AssignmentSheetResponse {
     private String title;
     private String description;
     private LocalDateTime deadline;
-    private com.codegym.mathclass.assignment.entity.AssignmentVisibility visibility;
+    private AssignmentVisibility visibility;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     
@@ -63,7 +65,7 @@ public class AssignmentSheetResponse {
         
         if (sheet.getItems() != null) {
             res.setItems(sheet.getItems().stream()
-                .filter(asgn -> asgn != null && asgn.getStatus() != com.codegym.mathclass.assignment.entity.AssignmentStatus.DELETED)
+                .filter(asgn -> asgn != null && asgn.getStatus() != AssignmentStatus.DELETED)
                 .map(asgn -> {
                     AssignmentResponse ar = AssignmentResponse.fromEntityWithoutContent(asgn);
                     ar.setMaxScore(asgn.getMaxScore() != null ? asgn.getMaxScore() : 10.0);
