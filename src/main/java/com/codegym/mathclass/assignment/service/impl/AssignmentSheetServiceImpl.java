@@ -41,9 +41,11 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AssignmentSheetServiceImpl implements AssignmentSheetService {
 
     private final AssignmentSheetRepository assignmentSheetRepository;
@@ -347,10 +349,6 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
     // ─── Archive ────────────────────────────────────────────────────────────
 
     /**
-     * Archive tất cả bài tập gốc ở trạng thái DRAFT bằng một saveAll duy nhất.
-     * Được gọi sau khi toàn bộ clone đã hoàn tất, tránh duplicate update trong vòng lặp.
-     */
-    /**
      * Archive tất cả bài tập gốc đang ở trạng thái DRAFT sau khi publish hoàn tất.
      *
      * <p>Logic archive được tách ra gọi một lần duy nhất sau khi toàn bộ clone hoàn thành,
@@ -469,7 +467,7 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
                 enrichPageForTeacher(responsePage, userId);
             }
         } catch (IllegalArgumentException e) {
-            // ignore
+            log.warn("Invalid role passed for enrichment: {}", role);
         }
 
         return responsePage;
@@ -897,10 +895,19 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
 
         long defaultFirstAssignmentId = targetSheet.getItems().get(0).getId();
 
+        List<Long> studentIds = projections.getContent().stream()
+                .map(CompletedStudentProjection::getStudentId)
+                .collect(Collectors.toList());
+
+        final Map<Long, List<Submission>> submissionsByStudent = studentIds.isEmpty() ? new HashMap<>() :
+                submissionRepository.findAllByAssignmentIdInAndStudentIdIn(assignmentIds, studentIds)
+                        .stream()
+                        .filter(sub -> sub.getStatus() != SubmissionStatus.DRAFT)
+                        .collect(Collectors.groupingBy(sub -> sub.getStudent().getId()));
+
         return projections.map(p -> {
-            Submission firstSub = submissionRepository.findAllByAssignmentIdInAndStudentId(assignmentIds, p.getStudentId())
+            Submission firstSub = submissionsByStudent.getOrDefault(p.getStudentId(), new ArrayList<>())
                     .stream()
-                    .filter(sub -> sub.getStatus() != SubmissionStatus.DRAFT)
                     .findFirst()
                     .orElse(null);
 

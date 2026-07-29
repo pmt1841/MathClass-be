@@ -28,6 +28,17 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
             @Param("studentId") long studentId
     );
     
+    @Query("""
+            SELECT s FROM Submission s
+            WHERE s.assignment.id IN :assignmentIds
+            AND s.student.id IN :studentIds
+            """)
+    List<Submission> findAllByAssignmentIdInAndStudentIdIn(
+            @Param("assignmentIds") List<Long> assignmentIds,
+            @Param("studentIds") List<Long> studentIds
+    );
+
+
     List<Submission> findAllByAssignmentIdIn(List<Long> assignmentIds);
     
     // Lấy danh sách bài nộp và sắp xếp theo thời gian nộp hoặc cập nhật mới nhất
