@@ -21,6 +21,7 @@ import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import com.codegym.mathclass.submission.repository.SubmissionCommentRepository;
 import com.codegym.mathclass.submission.repository.SubmissionDrawingRepository;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
+import com.codegym.mathclass.user.config.DefaultRolePermissions;
 import com.codegym.mathclass.user.entity.Gender;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
@@ -152,25 +153,45 @@ public class DatabaseSeeder implements CommandLineRunner {
                 .save(Permission.builder().name("user:manage").description("Quản lý người dùng").build());
 
         log.info("[DatabaseSeeder] Assigning permissions to roles...");
-        // ADMIN
-        List<Permission> adminPerms = List.of(manageUsers, libraryRead, libraryClone);
-        adminPerms.forEach(
-                p -> rolePermissionRepository.save(RolePermission.builder().role(Role.ADMIN).permission(p).build()));
+        Map<String, Permission> permissionMap = Map.ofEntries(
+                Map.entry(classCreate.getName(), classCreate),
+                Map.entry(classUpdate.getName(), classUpdate),
+                Map.entry(classDelete.getName(), classDelete),
+                Map.entry(classManageReq.getName(), classManageReq),
+                Map.entry(classRemoveStu.getName(), classRemoveStu),
+                Map.entry(classJoin.getName(), classJoin),
+                Map.entry(classJoinStatus.getName(), classJoinStatus),
+                Map.entry(assignCreate.getName(), assignCreate),
+                Map.entry(assignUpdate.getName(), assignUpdate),
+                Map.entry(assignDelete.getName(), assignDelete),
+                Map.entry(assignPublish.getName(), assignPublish),
+                Map.entry(assignRead.getName(), assignRead),
+                Map.entry(subSubmit.getName(), subSubmit),
+                Map.entry(subReadOwn.getName(), subReadOwn),
+                Map.entry(subGrade.getName(), subGrade),
+                Map.entry(subReadAll.getName(), subReadAll),
+                Map.entry(subComment.getName(), subComment),
+                Map.entry(dashTeacher.getName(), dashTeacher),
+                Map.entry(dashStudent.getName(), dashStudent),
+                Map.entry(libraryRead.getName(), libraryRead),
+                Map.entry(libraryClone.getName(), libraryClone),
+                Map.entry(manageUsers.getName(), manageUsers)
+        );
 
-        // TEACHER
-        List<Permission> teacherPerms = List.of(
-                classCreate, classUpdate, classDelete, classManageReq, classRemoveStu,
-                assignCreate, assignUpdate, assignDelete, assignPublish, assignRead,
-                subGrade, subReadAll, subComment, dashTeacher,
-                libraryRead, libraryClone);
-        teacherPerms.forEach(
-                p -> rolePermissionRepository.save(RolePermission.builder().role(Role.TEACHER).permission(p).build()));
+        List<RolePermission> rolePermissionsToSave = new ArrayList<>();
+        for (Role role : Role.values()) {
+            List<String> defaultPermNames = DefaultRolePermissions.getDefaultPermissions(role);
+            for (String permName : defaultPermNames) {
+                Permission p = permissionMap.get(permName);
+                if (p != null) {
+                    rolePermissionsToSave.add(RolePermission.builder().role(role).permission(p).build());
+                }
+            }
+        }
 
-        // STUDENT
-        List<Permission> studentPerms = List.of(
-                classJoin, classJoinStatus, assignRead, subSubmit, subReadOwn, subComment, dashStudent);
-        studentPerms.forEach(
-                p -> rolePermissionRepository.save(RolePermission.builder().role(Role.STUDENT).permission(p).build()));
+        if (!rolePermissionsToSave.isEmpty()) {
+            rolePermissionRepository.saveAll(rolePermissionsToSave);
+        }
     }
 
     private void seedData() {

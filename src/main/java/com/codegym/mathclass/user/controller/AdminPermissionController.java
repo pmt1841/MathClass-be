@@ -58,6 +58,21 @@ public class AdminPermissionController {
         return ResponseEntity.ok(Map.of("message", "Cập nhật phân quyền thành công."));
     }
 
+    @Operation(summary = "Khôi phục Quyền mặc định cho Vai trò", description = "Đặt lại danh sách quyền của vai trò về cài đặt mặc định ban đầu")
+    @PostMapping("/{roleName}/reset-permissions")
+    public ResponseEntity<Map<String, String>> resetRolePermissions(
+            @PathVariable String roleName,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        
+        Role role = parseRole(roleName);
+        rolePermissionService.resetRolePermissionsToDefault(role);
+        
+        systemLogService.logWarning(userDetails.getUsername(), 
+            "Khôi phục cài đặt phân quyền mặc định cho nhóm " + role.name(), null);
+            
+        return ResponseEntity.ok(Map.of("message", "Khôi phục phân quyền mặc định thành công."));
+    }
+
     private Role parseRole(String roleName) {
         try {
             return Role.valueOf(roleName.toUpperCase());
