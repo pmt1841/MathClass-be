@@ -1,4 +1,4 @@
-package com.codegym.mathclass.submission.service;
+package com.codegym.mathclass.submission.service.impl;
 
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.entity.AssignmentSheet;
@@ -12,6 +12,7 @@ import com.codegym.mathclass.submission.dto.SubmissionResponse;
 import com.codegym.mathclass.submission.entity.Submission;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
+import com.codegym.mathclass.submission.service.SubmissionService;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.EmailService;
@@ -254,9 +255,7 @@ public class SubmissionServiceImpl implements SubmissionService {
         Page<Submission> submissionPage = submissionRepository
                 .findSubmissionsByAssignment(
                         assignmentId, status, searchKeyword, pageable);
-
-        // Logic loc sinh vien hoan thanh 100% sheet da duoc xoa de ho tro viec nop bai tung phan
-
+    
         return submissionPage.map(this::mapToDto);
     }
 

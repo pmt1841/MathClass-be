@@ -898,9 +898,9 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
         long defaultFirstAssignmentId = targetSheet.getItems().get(0).getId();
 
         return projections.map(p -> {
-            com.codegym.mathclass.submission.entity.Submission firstSub = submissionRepository.findAllByAssignmentIdInAndStudentId(assignmentIds, p.getStudentId())
+            Submission firstSub = submissionRepository.findAllByAssignmentIdInAndStudentId(assignmentIds, p.getStudentId())
                     .stream()
-                    .filter(sub -> sub.getStatus() != com.codegym.mathclass.submission.entity.SubmissionStatus.DRAFT)
+                    .filter(sub -> sub.getStatus() != SubmissionStatus.DRAFT)
                     .findFirst()
                     .orElse(null);
 

@@ -10,6 +10,7 @@ import com.codegym.mathclass.submission.entity.SubmissionDrawing;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import com.codegym.mathclass.submission.repository.SubmissionDrawingRepository;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
+import com.codegym.mathclass.submission.service.impl.SubmissionDrawingServiceImpl;
 import com.codegym.mathclass.user.entity.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
