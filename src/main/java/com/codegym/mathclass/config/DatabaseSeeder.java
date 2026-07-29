@@ -156,14 +156,19 @@ public class DatabaseSeeder implements CommandLineRunner {
                 Map.entry(manageUsers.getName(), manageUsers)
         );
 
+        List<RolePermission> rolePermissionsToSave = new ArrayList<>();
         for (Role role : Role.values()) {
             List<String> defaultPermNames = DefaultRolePermissions.getDefaultPermissions(role);
             for (String permName : defaultPermNames) {
                 Permission p = permissionMap.get(permName);
                 if (p != null) {
-                    rolePermissionRepository.save(RolePermission.builder().role(role).permission(p).build());
+                    rolePermissionsToSave.add(RolePermission.builder().role(role).permission(p).build());
                 }
             }
+        }
+
+        if (!rolePermissionsToSave.isEmpty()) {
+            rolePermissionRepository.saveAll(rolePermissionsToSave);
         }
     }
 
