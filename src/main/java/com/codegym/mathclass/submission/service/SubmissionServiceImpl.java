@@ -255,33 +255,7 @@ public class SubmissionServiceImpl implements SubmissionService {
                 .findSubmissionsByAssignment(
                         assignmentId, status, searchKeyword, pageable);
 
-        if (assignment.getMasterSheet() != null) {
-            java.util.List<Long> sheetAssignmentIds = assignment.getMasterSheet().getItems().stream()
-                    .map(Assignment::getId)
-                    .collect(java.util.stream.Collectors.toList());
-            int totalAssignments = sheetAssignmentIds.size();
-
-            java.util.List<Submission> allSheetSubmissions = submissionRepository.findAllByAssignmentIdIn(sheetAssignmentIds);
-            
-            java.util.Map<Long, Long> studentSubmissionCount = allSheetSubmissions.stream()
-                    .filter(s -> s.getStatus() == SubmissionStatus.SUBMITTED || s.getStatus() == SubmissionStatus.GRADED)
-                    .collect(java.util.stream.Collectors.groupingBy(s -> s.getStudent().getId(), java.util.stream.Collectors.counting()));
-
-            java.util.List<Long> eligibleStudentIds = studentSubmissionCount.entrySet().stream()
-                    .filter(entry -> entry.getValue() >= totalAssignments)
-                    .map(java.util.Map.Entry::getKey)
-                    .collect(java.util.stream.Collectors.toList());
-
-            java.util.List<Submission> filteredList = submissionPage.getContent().stream()
-                    .filter(sub -> eligibleStudentIds.contains(sub.getStudent().getId()))
-                    .collect(java.util.stream.Collectors.toList());
-
-            return new org.springframework.data.domain.PageImpl<>(
-                    filteredList.stream().map(this::mapToDto).collect(java.util.stream.Collectors.toList()), 
-                    pageable, 
-                    filteredList.size()
-            );
-        }
+        // Logic loc sinh vien hoan thanh 100% sheet da duoc xoa de ho tro viec nop bai tung phan
 
         return submissionPage.map(this::mapToDto);
     }

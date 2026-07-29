@@ -54,6 +54,6 @@ public class AssignmentSheet extends BaseEntity {
     private AssignmentSheet masterSheet;
     
     @Builder.Default
-    @OneToMany(mappedBy = "masterSheet", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "assignmentSheet", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Assignment> items = new ArrayList<>();
 }
