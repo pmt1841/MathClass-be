@@ -55,21 +55,35 @@ public class CustomUserDetails implements UserDetails {
                 authorities);
     }
 
+    /**
+     * Tài khoản chưa bị hết hạn (Mặc định luôn là true trong hệ thống này).
+     */
     @Override
     public boolean isAccountNonExpired() {
         return true;
     }
 
+    /**
+     * Kiểm tra tài khoản có đang KHÔNG bị khóa hay không.
+     * Trả về true nếu tài khoản hoạt động (isActive = true), ngược lại trả về false nếu đã bị Admin khóa (isActive = false).
+     */
     @Override
     public boolean isAccountNonLocked() {
-        return true;
+        return isActive;
     }
 
+    /**
+     * Mật khẩu/Credentials chưa bị hết hạn.
+     */
     @Override
     public boolean isCredentialsNonExpired() {
         return true;
     }
 
+    /**
+     * Kiểm tra tài khoản có được kích hoạt hay không.
+     * Trả về true nếu tài khoản đã được kích hoạt và chưa bị khóa.
+     */
     @Override
     public boolean isEnabled() {
         return isActive;

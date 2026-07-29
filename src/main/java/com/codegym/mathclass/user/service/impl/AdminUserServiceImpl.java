@@ -1,5 +1,7 @@
 package com.codegym.mathclass.user.service.impl;
 
+import com.codegym.mathclass.auth.service.RefreshTokenService;
+import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.ResourceNotFoundException;
 import com.codegym.mathclass.systemlog.service.SystemLogService;
 import com.codegym.mathclass.user.dto.response.UserResponse;
@@ -21,6 +23,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final SystemLogService systemLogService;
+    private final RefreshTokenService refreshTokenService;
 
     @Override
     @Transactional(readOnly = true)
@@ -48,8 +51,24 @@ public class AdminUserServiceImpl implements AdminUserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng với ID này."));
 
+        /*
+         * BẢO MẬT ADMIN: Chặn Admin tự khóa tài khoản của chính mình
+         */
+        if (user.getEmail().equalsIgnoreCase(currentAdminEmail) && Boolean.FALSE.equals(isActive)) {
+            throw new BadRequestException("Bạn không thể tự khóa tài khoản quản trị của chính mình.");
+        }
+
         user.setActive(isActive);
         userRepository.save(user);
+
+        /*
+         * VÔ HIỆU HÓA PHIÊN TỨC THÌ:
+         * Khi khóa tài khoản (!isActive), xóa toàn bộ RefreshToken của user trong Database
+         * để vô hiệu hóa ngay tất cả các phiên làm việc đã đăng nhập trước đó.
+         */
+        if (Boolean.FALSE.equals(isActive)) {
+            refreshTokenService.deleteByUserId(user.getId());
+        }
 
         String action = (isActive ? "Mở khóa" : "Khóa") + " tài khoản " + user.getEmail() + " (" + user.getRole() + ")";
         systemLogService.logInfo(currentAdminEmail, action, user.getId());

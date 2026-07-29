@@ -147,6 +147,14 @@ public class AuthServiceImpl implements AuthService {
                     .map(refreshTokenService::verifyExpiration)
                     .map(RefreshToken::getUser)
                     .map(user -> {
+                        /*
+                         * BẢO MẬT KHÓA TÀI KHOẢN:
+                         * Nếu tài khoản đã bị khóa (isActive = false), lập tức chặn và không cấp thêm JWT Cookie mới.
+                         */
+                        if (!user.isActive()) {
+                            throw new BadRequestException("Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ hỗ trợ.");
+                        }
+
                         List<String> permissions = permissionCacheService.getPermissionsByRole(user.getRole());
                         CustomUserDetails userDetails = CustomUserDetails.build(user, permissions);
                         ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails);
@@ -363,6 +371,14 @@ public class AuthServiceImpl implements AuthService {
 
                 if (userOptional.isPresent()) {
                     user = userOptional.get();
+
+                    /*
+                     * BẢO MẬT KHÓA TÀI KHOẢN (GOOGLE LOGIN):
+                     * Ngăn chặn tài khoản đã bị Admin khóa đăng nhập qua Google.
+                     */
+                    if (!user.isActive()) {
+                        throw new BadRequestException("Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ hỗ trợ.");
+                    }
 
                     if (request.getRole() != null && !request.getRole().isEmpty()) {
                         try {
