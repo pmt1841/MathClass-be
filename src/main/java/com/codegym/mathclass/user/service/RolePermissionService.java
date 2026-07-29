@@ -1,6 +1,7 @@
 package com.codegym.mathclass.user.service;
 
 import com.codegym.mathclass.exception.BadRequestException;
+import com.codegym.mathclass.user.config.DefaultRolePermissions;
 import com.codegym.mathclass.user.dto.response.PermissionDto;
 import com.codegym.mathclass.user.entity.Permission;
 import com.codegym.mathclass.user.entity.Role;
@@ -75,5 +76,32 @@ public class RolePermissionService {
         // Evict all role permission caches immediately
         permissionCacheService.evictAllPermissionsCache();
         log.info("Successfully updated permissions for role: {}", role);
+    }
+
+    @Transactional
+    public void resetRolePermissionsToDefault(Role role) {
+        log.info("Resetting permissions to default for role: {}", role);
+        
+        List<String> defaultPermissionNames = DefaultRolePermissions.getDefaultPermissions(role);
+        
+        List<RolePermission> existingRolePermissions = rolePermissionRepository.findByRole(role);
+        rolePermissionRepository.deleteAll(existingRolePermissions);
+        rolePermissionRepository.flush();
+
+        if (defaultPermissionNames != null && !defaultPermissionNames.isEmpty()) {
+            List<Permission> defaultPermissions = permissionRepository.findByNameIn(defaultPermissionNames);
+            
+            List<RolePermission> newRolePermissions = defaultPermissions.stream()
+                    .map(p -> RolePermission.builder()
+                            .role(role)
+                            .permission(p)
+                            .build())
+                    .collect(Collectors.toList());
+            
+            rolePermissionRepository.saveAll(newRolePermissions);
+        }
+
+        permissionCacheService.evictAllPermissionsCache();
+        log.info("Successfully reset permissions to default for role: {}", role);
     }
 }

@@ -58,9 +58,6 @@ class AssignmentServiceImplTest {
     @Mock
     private SubmissionRepository submissionRepository;
 
-    @Mock
-    private AssignmentSheetItemRepository assignmentSheetItemRepository;
-
     @InjectMocks
     private AssignmentServiceImpl assignmentService;
 
@@ -454,7 +451,6 @@ class AssignmentServiceImplTest {
             draftAssignment.setStatus(AssignmentStatus.DRAFT);
             when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(draftAssignment));
             when(submissionRepository.existsByAssignmentId(assignmentId)).thenReturn(false);
-            when(assignmentSheetItemRepository.findByAssignmentIdIn(any())).thenReturn(List.of());
 
             assignmentService.deleteAssignment(assignmentId, teacherId);
 
@@ -467,7 +463,6 @@ class AssignmentServiceImplTest {
             draftAssignment.setStatus(AssignmentStatus.PUBLISHED);
             when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(draftAssignment));
             when(submissionRepository.existsByAssignmentId(assignmentId)).thenReturn(false);
-            when(assignmentSheetItemRepository.findByAssignmentIdIn(any())).thenReturn(List.of());
 
             assignmentService.deleteAssignment(assignmentId, teacherId);
 

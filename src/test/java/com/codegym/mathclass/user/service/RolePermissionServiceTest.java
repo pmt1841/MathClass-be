@@ -148,4 +148,27 @@ class RolePermissionServiceTest {
             verify(rolePermissionRepository, never()).saveAll(anyList());
         }
     }
+
+    @Nested
+    @DisplayName("resetRolePermissionsToDefault Tests")
+    class ResetRolePermissionsToDefaultTests {
+
+        @Test
+        @DisplayName("Should reset role permissions to default values successfully")
+        void resetRolePermissionsToDefault_ValidRole_Success() {
+            when(rolePermissionRepository.findByRole(Role.TEACHER)).thenReturn(List.of(rolePermission1));
+            doNothing().when(rolePermissionRepository).deleteAll(anyList());
+            doNothing().when(rolePermissionRepository).flush();
+            when(permissionRepository.findByNameIn(anyList())).thenReturn(List.of(permission1, permission2));
+            when(rolePermissionRepository.saveAll(anyList())).thenAnswer(i -> i.getArgument(0));
+
+            rolePermissionService.resetRolePermissionsToDefault(Role.TEACHER);
+
+            verify(rolePermissionRepository, times(1)).deleteAll(anyList());
+            verify(rolePermissionRepository, times(1)).flush();
+            verify(permissionRepository, times(1)).findByNameIn(anyList());
+            verify(rolePermissionRepository, times(1)).saveAll(anyList());
+            verify(permissionCacheService, times(1)).evictAllPermissionsCache();
+        }
+    }
 }

@@ -168,4 +168,32 @@ class AdminPermissionControllerTest {
             verify(rolePermissionService, never()).updateRolePermissions(any(), any());
         }
     }
+
+    @Nested
+    @DisplayName("POST /api/admin/roles/{roleName}/reset-permissions Integration Tests")
+    class ResetRolePermissionsEndpointTests {
+
+        @Test
+        @DisplayName("Should reset role permissions to default and return 200 OK")
+        void resetRolePermissions_ValidRole_ReturnsOk() throws Exception {
+            doNothing().when(rolePermissionService).resetRolePermissionsToDefault(Role.TEACHER);
+
+            mockMvc.perform(post("/api/admin/roles/teacher/reset-permissions"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.message").value("Khôi phục phân quyền mặc định thành công."));
+
+            verify(rolePermissionService, times(1)).resetRolePermissionsToDefault(Role.TEACHER);
+            verify(systemLogService, times(1)).logWarning(eq("admin@test.com"), eq("Khôi phục cài đặt phân quyền mặc định cho nhóm TEACHER"), isNull());
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when roleName is invalid")
+        void resetRolePermissions_InvalidRole_Returns400BadRequest() throws Exception {
+            mockMvc.perform(post("/api/admin/roles/invalid_role/reset-permissions"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error").value("Role không hợp lệ: invalid_role"));
+
+            verify(rolePermissionService, never()).resetRolePermissionsToDefault(any());
+        }
+    }
 }
