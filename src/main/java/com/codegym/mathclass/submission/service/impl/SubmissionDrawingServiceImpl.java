@@ -1,4 +1,4 @@
-package com.codegym.mathclass.submission.service;
+package com.codegym.mathclass.submission.service.impl;
 
 import com.codegym.mathclass.exception.AccessDeniedException;
 import com.codegym.mathclass.exception.ResourceNotFoundException;
@@ -9,6 +9,7 @@ import com.codegym.mathclass.submission.entity.SubmissionDrawing;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import com.codegym.mathclass.submission.repository.SubmissionDrawingRepository;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
+import com.codegym.mathclass.submission.service.SubmissionDrawingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

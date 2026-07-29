@@ -649,8 +649,8 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         AssignmentResponse response = assignmentMapper.toAssignmentResponse(assignment);
 
-        if (assignment.getMasterSheet() != null) {
-            List<SheetSiblingDto> siblings = assignment.getMasterSheet().getItems().stream()
+        if (assignment.getAssignmentSheet() != null) {
+            List<SheetSiblingDto> siblings = assignment.getAssignmentSheet().getItems().stream()
                     .map(item -> {
                         SheetSiblingDto dto = new SheetSiblingDto(item.getId(), item.getTitle());
                         if (Role.STUDENT.name().equals(role)) {

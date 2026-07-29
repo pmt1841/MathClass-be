@@ -31,7 +31,7 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long>, J
 
     List<Assignment> findByParentId(Long parentId);
 
-    List<Assignment> findByMasterSheetId(Long masterSheetId);
+    List<Assignment> findByAssignmentSheetId(Long assignmentSheetId);
 
     @Query("SELECT COUNT(a) FROM Assignment a " +
            "JOIN a.classroom c " +

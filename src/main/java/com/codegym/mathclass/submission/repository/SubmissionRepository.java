@@ -60,7 +60,6 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
             WHERE s.assignment.id IN :assignmentIds
               AND s.status <> 'DRAFT'
             GROUP BY s.student.id, s.student.fullName, s.student.email
-            HAVING COUNT(s.id) = :totalExercises
             """)
     Page<CompletedStudentProjection> findCompletedStudentsForSheet(
             @Param("assignmentIds") List<Long> assignmentIds,

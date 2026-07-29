@@ -7,7 +7,6 @@ import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.entity.AssignmentSheet;
 import com.codegym.mathclass.assignment.entity.AssignmentStatus;
 import com.codegym.mathclass.assignment.repository.AssignmentRepository;
-import com.codegym.mathclass.assignment.repository.AssignmentSheetItemRepository;
 import com.codegym.mathclass.assignment.repository.AssignmentSheetRepository;
 import com.codegym.mathclass.assignment.service.impl.AssignmentSheetServiceImpl;
 import com.codegym.mathclass.classroom.entity.Classroom;
@@ -40,9 +39,6 @@ class AssignmentSheetServiceImplTest {
 
     @Mock
     private AssignmentSheetRepository assignmentSheetRepository;
-
-    @Mock
-    private AssignmentSheetItemRepository assignmentSheetItemRepository;
 
     @Mock
     private AssignmentRepository assignmentRepository;

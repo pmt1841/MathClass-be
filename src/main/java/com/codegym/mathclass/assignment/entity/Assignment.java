@@ -71,8 +71,8 @@ public class Assignment extends BaseEntity {
     private Classroom classroom;
 
     @ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
-    @JoinColumn(name = "master_sheet_id")
-    private AssignmentSheet masterSheet;
+    @JoinColumn(name = "assignment_sheet_id")
+    private AssignmentSheet assignmentSheet;
 
     @Column(columnDefinition = "TEXT")
     private String content;

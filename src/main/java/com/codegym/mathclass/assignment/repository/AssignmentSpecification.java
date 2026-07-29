@@ -62,6 +62,6 @@ public class AssignmentSpecification {
     }
 
     public static Specification<Assignment> isNotInSheet() {
-        return (root, query, cb) -> cb.isNull(root.get("masterSheet"));
+        return (root, query, cb) -> cb.isNull(root.get("assignmentSheet"));
     }
 }

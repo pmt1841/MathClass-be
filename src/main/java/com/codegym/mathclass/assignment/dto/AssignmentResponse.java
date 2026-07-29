@@ -82,9 +82,9 @@ public class AssignmentResponse {
         }
 
 
-        if (assignment.getMasterSheet() != null) {
-            response.setSheetId(assignment.getMasterSheet().getId());
-            response.setSheetTitle(assignment.getMasterSheet().getTitle());
+        if (assignment.getAssignmentSheet() != null) {
+            response.setSheetId(assignment.getAssignmentSheet().getId());
+            response.setSheetTitle(assignment.getAssignmentSheet().getTitle());
         }
         response.setMaxScore(assignment.getMaxScore() != null ? assignment.getMaxScore() : 10.0);
 

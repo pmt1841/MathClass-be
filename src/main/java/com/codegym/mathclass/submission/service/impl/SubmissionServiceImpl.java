@@ -1,4 +1,4 @@
-package com.codegym.mathclass.submission.service;
+package com.codegym.mathclass.submission.service.impl;
 
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.entity.AssignmentSheet;
@@ -12,6 +12,7 @@ import com.codegym.mathclass.submission.dto.SubmissionResponse;
 import com.codegym.mathclass.submission.entity.Submission;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
+import com.codegym.mathclass.submission.service.SubmissionService;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.EmailService;
@@ -254,35 +255,7 @@ public class SubmissionServiceImpl implements SubmissionService {
         Page<Submission> submissionPage = submissionRepository
                 .findSubmissionsByAssignment(
                         assignmentId, status, searchKeyword, pageable);
-
-        if (assignment.getMasterSheet() != null) {
-            java.util.List<Long> sheetAssignmentIds = assignment.getMasterSheet().getItems().stream()
-                    .map(Assignment::getId)
-                    .collect(java.util.stream.Collectors.toList());
-            int totalAssignments = sheetAssignmentIds.size();
-
-            java.util.List<Submission> allSheetSubmissions = submissionRepository.findAllByAssignmentIdIn(sheetAssignmentIds);
-            
-            java.util.Map<Long, Long> studentSubmissionCount = allSheetSubmissions.stream()
-                    .filter(s -> s.getStatus() == SubmissionStatus.SUBMITTED || s.getStatus() == SubmissionStatus.GRADED)
-                    .collect(java.util.stream.Collectors.groupingBy(s -> s.getStudent().getId(), java.util.stream.Collectors.counting()));
-
-            java.util.List<Long> eligibleStudentIds = studentSubmissionCount.entrySet().stream()
-                    .filter(entry -> entry.getValue() >= totalAssignments)
-                    .map(java.util.Map.Entry::getKey)
-                    .collect(java.util.stream.Collectors.toList());
-
-            java.util.List<Submission> filteredList = submissionPage.getContent().stream()
-                    .filter(sub -> eligibleStudentIds.contains(sub.getStudent().getId()))
-                    .collect(java.util.stream.Collectors.toList());
-
-            return new org.springframework.data.domain.PageImpl<>(
-                    filteredList.stream().map(this::mapToDto).collect(java.util.stream.Collectors.toList()), 
-                    pageable, 
-                    filteredList.size()
-            );
-        }
-
+    
         return submissionPage.map(this::mapToDto);
     }
 

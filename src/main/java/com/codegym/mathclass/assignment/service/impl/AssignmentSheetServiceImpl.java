@@ -247,7 +247,7 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
                 .map(original -> {
                     Double maxScore = maxScoreMap.get(original.getId());
                     Assignment clone = buildAssignmentClone(original, teacher, null, null, maxScore);
-                    clone.setMasterSheet(masterSheet);
+                    clone.setAssignmentSheet(masterSheet);
                     return clone;
                 })
                 .collect(Collectors.toList());
@@ -317,7 +317,7 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
                 .map(original -> {
                     Double maxScore = maxScoreMap.get(original.getId());
                     Assignment clone = buildAssignmentClone(original, teacher, classroom, target.getDeadline(), maxScore);
-                    clone.setMasterSheet(finalClonedSheet);
+                    clone.setAssignmentSheet(finalClonedSheet);
                     return clone;
                 })
                 .collect(Collectors.toList());
@@ -627,10 +627,10 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
         }
 
         // Set master_sheet_id to null for all cloned assignments so they are not deleted
-        List<Assignment> clones = assignmentRepository.findByMasterSheetId(sheetId);
+        List<Assignment> clones = assignmentRepository.findByAssignmentSheetId(sheetId);
         if (!clones.isEmpty()) {
             for (Assignment clone : clones) {
-                clone.setMasterSheet(null);
+                clone.setAssignmentSheet(null);
             }
             assignmentRepository.saveAll(clones);
         }
@@ -851,7 +851,7 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
                     clone.setOriginalAuthor(originalAuthor);
                     clone.setStatus(AssignmentStatus.DRAFT);
                     clone.setVisibility(AssignmentVisibility.PRIVATE);
-                    clone.setMasterSheet(clonedSheet);
+                    clone.setAssignmentSheet(clonedSheet);
                     return clone;
                 })
                 .collect(Collectors.toList());
@@ -895,12 +895,17 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
         Page<CompletedStudentProjection> projections = 
                 submissionRepository.findCompletedStudentsForSheet(assignmentIds, totalExercises, pageable);
 
-        long firstAssignmentId = targetSheet.getItems().get(0).getId();
+        long defaultFirstAssignmentId = targetSheet.getItems().get(0).getId();
 
         return projections.map(p -> {
-            Long firstSubmissionId = submissionRepository.findFirstByAssignmentIdAndStudentId(firstAssignmentId, p.getStudentId())
-                    .map(Submission::getId)
-                    .orElse(0L);
+            Submission firstSub = submissionRepository.findAllByAssignmentIdInAndStudentId(assignmentIds, p.getStudentId())
+                    .stream()
+                    .filter(sub -> sub.getStatus() != SubmissionStatus.DRAFT)
+                    .findFirst()
+                    .orElse(null);
+
+            long firstAssignmentIdToReturn = firstSub != null ? firstSub.getAssignment().getId() : defaultFirstAssignmentId;
+            Long firstSubmissionIdToReturn = firstSub != null ? firstSub.getId() : 0L;
 
             return SheetCompletedStudentResponse.builder()
                     .studentId(p.getStudentId())
@@ -910,8 +915,8 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
                     .totalExercisesCount((int) totalExercises)
                     .latestSubmittedAt(p.getLatestSubmittedAt())
                     .totalScore(p.getTotalScore())
-                    .firstAssignmentId(firstAssignmentId)
-                    .firstSubmissionId(firstSubmissionId)
+                    .firstAssignmentId(firstAssignmentIdToReturn)
+                    .firstSubmissionId(firstSubmissionIdToReturn)
                     .build();
         });
     }
