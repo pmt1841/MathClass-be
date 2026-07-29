@@ -96,72 +96,103 @@ public class DatabaseSeeder implements CommandLineRunner {
         // 0. Create Permissions and RolePermissions
         log.info("[DatabaseSeeder] Creating permissions...");
         // Classroom permissions
-        Permission classCreate = permissionRepository.save(Permission.builder().name("classroom:create").description("Tạo lớp học").build());
-        Permission classUpdate = permissionRepository.save(Permission.builder().name("classroom:update").description("Sửa lớp học").build());
-        Permission classDelete = permissionRepository.save(Permission.builder().name("classroom:delete").description("Xóa lớp học").build());
-        Permission classManageReq = permissionRepository.save(Permission.builder().name("classroom:manage_requests").description("Quản lý yêu cầu tham gia").build());
-        Permission classRemoveStu = permissionRepository.save(Permission.builder().name("classroom:remove_student").description("Xóa học sinh").build());
-        Permission classJoin = permissionRepository.save(Permission.builder().name("classroom:join").description("Tham gia lớp").build());
-        Permission classJoinStatus = permissionRepository.save(Permission.builder().name("classroom:join_status").description("Xem trạng thái tham gia").build());
+        Permission classCreate = permissionRepository
+                .save(Permission.builder().name("classroom:create").description("Tạo lớp học").build());
+        Permission classUpdate = permissionRepository
+                .save(Permission.builder().name("classroom:update").description("Sửa lớp học").build());
+        Permission classDelete = permissionRepository
+                .save(Permission.builder().name("classroom:delete").description("Xóa lớp học").build());
+        Permission classManageReq = permissionRepository.save(
+                Permission.builder().name("classroom:manage_requests").description("Quản lý yêu cầu tham gia").build());
+        Permission classRemoveStu = permissionRepository
+                .save(Permission.builder().name("classroom:remove_student").description("Xóa học sinh").build());
+        Permission classJoin = permissionRepository
+                .save(Permission.builder().name("classroom:join").description("Tham gia lớp").build());
+        Permission classJoinStatus = permissionRepository.save(
+                Permission.builder().name("classroom:join_status").description("Xem trạng thái tham gia").build());
 
         // Assignment permissions
-        Permission assignCreate = permissionRepository.save(Permission.builder().name("assignment:create").description("Tạo bài tập").build());
-        Permission assignUpdate = permissionRepository.save(Permission.builder().name("assignment:update").description("Sửa bài tập").build());
-        Permission assignDelete = permissionRepository.save(Permission.builder().name("assignment:delete").description("Xóa bài tập").build());
-        Permission assignPublish = permissionRepository.save(Permission.builder().name("assignment:publish").description("Xuất bản bài tập").build());
-        Permission assignRead = permissionRepository.save(Permission.builder().name("assignment:read").description("Xem bài tập").build());
+        Permission assignCreate = permissionRepository
+                .save(Permission.builder().name("assignment:create").description("Tạo bài tập").build());
+        Permission assignUpdate = permissionRepository
+                .save(Permission.builder().name("assignment:update").description("Sửa bài tập").build());
+        Permission assignDelete = permissionRepository
+                .save(Permission.builder().name("assignment:delete").description("Xóa bài tập").build());
+        Permission assignPublish = permissionRepository
+                .save(Permission.builder().name("assignment:publish").description("Xuất bản bài tập").build());
+        Permission assignRead = permissionRepository
+                .save(Permission.builder().name("assignment:read").description("Xem bài tập").build());
 
         // Submission permissions
-        Permission subSubmit = permissionRepository.save(Permission.builder().name("submission:submit").description("Nộp bài").build());
-        Permission subReadOwn = permissionRepository.save(Permission.builder().name("submission:read_own").description("Xem bài nộp của mình").build());
-        Permission subGrade = permissionRepository.save(Permission.builder().name("submission:grade").description("Chấm điểm").build());
-        Permission subReadAll = permissionRepository.save(Permission.builder().name("submission:read_all").description("Xem tất cả bài nộp").build());
-        Permission subComment = permissionRepository.save(Permission.builder().name("submission:comment").description("Bình luận bài nộp").build());
+        Permission subSubmit = permissionRepository
+                .save(Permission.builder().name("submission:submit").description("Nộp bài").build());
+        Permission subReadOwn = permissionRepository
+                .save(Permission.builder().name("submission:read_own").description("Xem bài nộp của mình").build());
+        Permission subGrade = permissionRepository
+                .save(Permission.builder().name("submission:grade").description("Chấm điểm").build());
+        Permission subReadAll = permissionRepository
+                .save(Permission.builder().name("submission:read_all").description("Xem tất cả bài nộp").build());
+        Permission subComment = permissionRepository
+                .save(Permission.builder().name("submission:comment").description("Bình luận bài nộp").build());
 
         // Dashboard permissions
-        Permission dashTeacher = permissionRepository.save(Permission.builder().name("dashboard:teacher_view").description("Xem thống kê giáo viên").build());
-        Permission dashStudent = permissionRepository.save(Permission.builder().name("dashboard:student_view").description("Xem thống kê học sinh").build());
+        Permission dashTeacher = permissionRepository.save(
+                Permission.builder().name("dashboard:teacher_view").description("Xem thống kê giáo viên").build());
+        Permission dashStudent = permissionRepository
+                .save(Permission.builder().name("dashboard:student_view").description("Xem thống kê học sinh").build());
 
         // Library permissions
-        Permission libraryRead = permissionRepository.save(Permission.builder().name("library:read").description("Xem thư viện bài tập dùng chung").build());
-        Permission libraryClone = permissionRepository.save(Permission.builder().name("library:clone").description("Clone bài tập từ thư viện").build());
+        Permission libraryRead = permissionRepository
+                .save(Permission.builder().name("library:read").description("Xem thư viện bài tập dùng chung").build());
+        Permission libraryClone = permissionRepository
+                .save(Permission.builder().name("library:clone").description("Clone bài tập từ thư viện").build());
 
         // Admin permissions
-        Permission manageUsers = permissionRepository.save(Permission.builder().name("user:manage").description("Quản lý người dùng").build());
+        Permission manageUsers = permissionRepository
+                .save(Permission.builder().name("user:manage").description("Quản lý người dùng").build());
 
         log.info("[DatabaseSeeder] Assigning permissions to roles...");
         // ADMIN
         List<Permission> adminPerms = List.of(manageUsers, libraryRead, libraryClone);
-        adminPerms.forEach(p -> rolePermissionRepository.save(RolePermission.builder().role(Role.ADMIN).permission(p).build()));
-        
+        adminPerms.forEach(
+                p -> rolePermissionRepository.save(RolePermission.builder().role(Role.ADMIN).permission(p).build()));
+
         // TEACHER
         List<Permission> teacherPerms = List.of(
                 classCreate, classUpdate, classDelete, classManageReq, classRemoveStu,
                 assignCreate, assignUpdate, assignDelete, assignPublish, assignRead,
                 subGrade, subReadAll, subComment, dashTeacher,
-                libraryRead, libraryClone
-        );
-        teacherPerms.forEach(p -> rolePermissionRepository.save(RolePermission.builder().role(Role.TEACHER).permission(p).build()));
-        
+                libraryRead, libraryClone);
+        teacherPerms.forEach(
+                p -> rolePermissionRepository.save(RolePermission.builder().role(Role.TEACHER).permission(p).build()));
+
         // STUDENT
         List<Permission> studentPerms = List.of(
-                classJoin, classJoinStatus, assignRead, subSubmit, subReadOwn, subComment, dashStudent
-        );
-        studentPerms.forEach(p -> rolePermissionRepository.save(RolePermission.builder().role(Role.STUDENT).permission(p).build()));
+                classJoin, classJoinStatus, assignRead, subSubmit, subReadOwn, subComment, dashStudent);
+        studentPerms.forEach(
+                p -> rolePermissionRepository.save(RolePermission.builder().role(Role.STUDENT).permission(p).build()));
     }
 
     private void seedData() {
         // 1. Create Users (Admin, Teachers, Students)
         log.info("[DatabaseSeeder] Creating sample users...");
-        User admin = createUser("admin@mathclass.com", "Admin Hệ Thống", "password123", "0901234567", Role.ADMIN, Gender.MALE, "https://api.dicebear.com/7.x/adventurer/svg?seed=admin");
-        User teacher1 = createUser("teacher1@mathclass.com", "Thầy Nguyễn Văn A", "password123", "0902234567", Role.TEACHER, Gender.MALE, "https://api.dicebear.com/7.x/adventurer/svg?seed=teacher1");
-        User teacher2 = createUser("teacher2@mathclass.com", "Cô Trần Thị B", "password123", "0903234567", Role.TEACHER, Gender.FEMALE, "https://api.dicebear.com/7.x/adventurer/svg?seed=teacher2");
+        User admin = createUser("admin@mathclass.com", "Admin Hệ Thống", "password123", "0901234567", Role.ADMIN,
+                Gender.MALE, "https://api.dicebear.com/7.x/adventurer/svg?seed=admin");
+        User teacher1 = createUser("teacher1@mathclass.com", "Thầy Nguyễn Văn A", "password123", "0902234567",
+                Role.TEACHER, Gender.MALE, "https://api.dicebear.com/7.x/adventurer/svg?seed=teacher1");
+        User teacher2 = createUser("teacher2@mathclass.com", "Cô Trần Thị B", "password123", "0903234567", Role.TEACHER,
+                Gender.FEMALE, "https://api.dicebear.com/7.x/adventurer/svg?seed=teacher2");
 
-        User student1 = createUser("student1@mathclass.com", "Học sinh Nguyễn Văn An", "password123", "0904234567", Role.STUDENT, Gender.MALE, "https://api.dicebear.com/7.x/adventurer/svg?seed=student1");
-        User student2 = createUser("student2@mathclass.com", "Học sinh Lê Thị Bình", "password123", "0905234567", Role.STUDENT, Gender.FEMALE, "https://api.dicebear.com/7.x/adventurer/svg?seed=student2");
-        User student3 = createUser("student3@mathclass.com", "Học sinh Phạm Văn Cường", "password123", "0906234567", Role.STUDENT, Gender.MALE, "https://api.dicebear.com/7.x/adventurer/svg?seed=student3");
-        User student4 = createUser("student4@mathclass.com", "Học sinh Hoàng Thị Dung", "password123", "0907234567", Role.STUDENT, Gender.FEMALE, "https://api.dicebear.com/7.x/adventurer/svg?seed=student4");
-        User student5 = createUser("student5@mathclass.com", "Học sinh Vũ Văn Em", "password123", "0908234567", Role.STUDENT, Gender.MALE, "https://api.dicebear.com/7.x/adventurer/svg?seed=student5");
+        User student1 = createUser("student1@mathclass.com", "Học sinh Nguyễn Văn An", "password123", "0904234567",
+                Role.STUDENT, Gender.MALE, "https://api.dicebear.com/7.x/adventurer/svg?seed=student1");
+        User student2 = createUser("student2@mathclass.com", "Học sinh Lê Thị Bình", "password123", "0905234567",
+                Role.STUDENT, Gender.FEMALE, "https://api.dicebear.com/7.x/adventurer/svg?seed=student2");
+        User student3 = createUser("student3@mathclass.com", "Học sinh Phạm Văn Cường", "password123", "0906234567",
+                Role.STUDENT, Gender.MALE, "https://api.dicebear.com/7.x/adventurer/svg?seed=student3");
+        User student4 = createUser("student4@mathclass.com", "Học sinh Hoàng Thị Dung", "password123", "0907234567",
+                Role.STUDENT, Gender.FEMALE, "https://api.dicebear.com/7.x/adventurer/svg?seed=student4");
+        User student5 = createUser("student5@mathclass.com", "Học sinh Vũ Văn Em", "password123", "0908234567",
+                Role.STUDENT, Gender.MALE, "https://api.dicebear.com/7.x/adventurer/svg?seed=student5");
 
         // 2. Create Classrooms
         log.info("[DatabaseSeeder] Creating classrooms...");
@@ -201,8 +232,10 @@ public class DatabaseSeeder implements CommandLineRunner {
         log.info("[DatabaseSeeder] Creating assignments...");
         Assignment assign1 = new Assignment();
         assign1.setTitle("Bài tập hàm số bậc hai");
-        assign1.setDescription("Các em hoàn thành các bài tập sau về hàm số bậc hai $y = ax^2 + bx + c$. Yêu cầu vẽ đồ thị phụ họa.");
-        assign1.setContent("1. Khảo sát sự biến thiên và vẽ đồ thị hàm số $y = x^2 - 4x + 3$.\n2. Tìm m để phương trình $x^2 - 2(m+1)x + m^2 + 2 = 0$ có hai nghiệm phân biệt.");
+        assign1.setDescription(
+                "Các em hoàn thành các bài tập sau về hàm số bậc hai $y = ax^2 + bx + c$. Yêu cầu vẽ đồ thị phụ họa.");
+        assign1.setContent(
+                "1. Khảo sát sự biến thiên và vẽ đồ thị hàm số $y = x^2 - 4x + 3$.\n2. Tìm m để phương trình $x^2 - 2(m+1)x + m^2 + 2 = 0$ có hai nghiệm phân biệt.");
         assign1.setTeacher(teacher1);
         assign1.setClassroom(class1);
         assign1.setStatus(AssignmentStatus.PUBLISHED);
@@ -223,8 +256,10 @@ public class DatabaseSeeder implements CommandLineRunner {
 
         Assignment assign2 = new Assignment();
         assign2.setTitle("Bài tập vectơ trong không gian");
-        assign2.setDescription("Học sinh thực hiện vẽ hình biểu diễn và tính tích vô hướng của hai vectơ $\\vec{u}$ và $\\vec{v}$ trong không gian Oxyz.");
-        assign2.setContent("Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh a. Cạnh bên SA vuông góc với mặt phẳng đáy và SA = a. Tính góc giữa đường thẳng SD và mặt phẳng (SBC).");
+        assign2.setDescription(
+                "Học sinh thực hiện vẽ hình biểu diễn và tính tích vô hướng của hai vectơ $\\vec{u}$ và $\\vec{v}$ trong không gian Oxyz.");
+        assign2.setContent(
+                "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh a. Cạnh bên SA vuông góc với mặt phẳng đáy và SA = a. Tính góc giữa đường thẳng SD và mặt phẳng (SBC).");
         assign2.setTeacher(teacher2);
         assign2.setClassroom(class2);
         assign2.setStatus(AssignmentStatus.PUBLISHED);
@@ -236,7 +271,6 @@ public class DatabaseSeeder implements CommandLineRunner {
         assign3.setDescription("Bài tập kiểm tra kiến thức về ước chung lớn nhất và bội chung nhỏ nhất.");
         assign3.setContent("Câu 1: Tìm UCLN(24, 36).\nCâu 2: Số nguyên tố là gì?");
         assign3.setTeacher(teacher1);
-        assign3.setClassroom(class1);
         assign3.setStatus(AssignmentStatus.DRAFT);
         assign3.setDeadline(null);
         assignmentRepository.save(assign3);
@@ -247,7 +281,8 @@ public class DatabaseSeeder implements CommandLineRunner {
         Submission sub1 = new Submission();
         sub1.setAssignment(assign1);
         sub1.setStudent(student1);
-        sub1.setContent("Em xin gửi bài làm hàm số bậc hai: \n1. Hàm số $y = x^2 - 4x + 3$ có tọa độ đỉnh $I(2, -1)$, cắt Oy tại $(0, 3)$, cắt Ox tại $(1, 0)$ và $(3, 0)$.");
+        sub1.setContent(
+                "Em xin gửi bài làm hàm số bậc hai: \n1. Hàm số $y = x^2 - 4x + 3$ có tọa độ đỉnh $I(2, -1)$, cắt Oy tại $(0, 3)$, cắt Ox tại $(1, 0)$ và $(3, 0)$.");
         sub1.setStatus(SubmissionStatus.GRADED);
         sub1.setScore(9.0);
         sub1.setSubmittedAt(LocalDateTime.now().minusDays(1));
@@ -283,7 +318,8 @@ public class DatabaseSeeder implements CommandLineRunner {
         Submission sub2 = new Submission();
         sub2.setAssignment(assign1);
         sub2.setStudent(student2);
-        sub2.setContent("Bài làm của em Lê Thị Bình: \nCâu 1: Hàm số có bảng biến thiên đi xuống từ $-\\infty$ đến $2$ và đi lên từ $2$ đến $+\\infty$.");
+        sub2.setContent(
+                "Bài làm của em Lê Thị Bình: \nCâu 1: Hàm số có bảng biến thiên đi xuống từ $-\\infty$ đến $2$ và đi lên từ $2$ đến $+\\infty$.");
         sub2.setStatus(SubmissionStatus.SUBMITTED);
         sub2.setSubmittedAt(LocalDateTime.now().minusHours(2));
         submissionRepository.save(sub2);
@@ -292,7 +328,8 @@ public class DatabaseSeeder implements CommandLineRunner {
         Submission sub3 = new Submission();
         sub3.setAssignment(assign2);
         sub3.setStudent(student3);
-        sub3.setContent("Lời giải hình học không gian S.ABCD: \nGóc giữa SD và (SBC) bằng góc $\\widehat{DSE}$ với E là hình chiếu của D lên SB...");
+        sub3.setContent(
+                "Lời giải hình học không gian S.ABCD: \nGóc giữa SD và (SBC) bằng góc $\\widehat{DSE}$ với E là hình chiếu của D lên SB...");
         sub3.setStatus(SubmissionStatus.GRADED);
         sub3.setScore(8.5);
         sub3.setSubmittedAt(LocalDateTime.now().minusDays(2));
@@ -304,7 +341,7 @@ public class DatabaseSeeder implements CommandLineRunner {
         Notification notif1 = Notification.builder()
                 .user(student1)
                 .message("Bài tập 'Bài tập hàm số bậc hai' của bạn đã được chấm điểm: 9.0")
-                .link("/student/assignments/" + assign1.getId())
+                .link("/assignments/" + assign1.getId() + "?classCode=" + assign1.getClassroom().getClassCode())
                 .isRead(false)
                 .build();
         notificationRepository.save(notif1);
@@ -312,13 +349,14 @@ public class DatabaseSeeder implements CommandLineRunner {
         Notification notif2 = Notification.builder()
                 .user(teacher1)
                 .message("Học sinh Lê Thị Bình đã nộp bài tập 'Bài tập hàm số bậc hai'")
-                .link("/teacher/submissions/" + sub2.getId())
+                .link("/assignments/" + assign1.getId() + "/submissions/" + sub2.getId())
                 .isRead(false)
                 .build();
         notificationRepository.save(notif2);
     }
 
-    private User createUser(String email, String fullName, String password, String phone, Role role, Gender gender, String avatarUrl) {
+    private User createUser(String email, String fullName, String password, String phone, Role role, Gender gender,
+            String avatarUrl) {
         User user = new User();
         user.setEmail(email);
         user.setFullName(fullName);
