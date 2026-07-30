@@ -4,6 +4,7 @@ import com.codegym.mathclass.assignment.dto.AssignmentResponse;
 import com.codegym.mathclass.assignment.dto.CreateAssignmentRequest;
 import com.codegym.mathclass.assignment.dto.PublishAssignmentRequest;
 import com.codegym.mathclass.assignment.dto.UpdateAssignmentRequest;
+import com.codegym.mathclass.assignment.dto.UpdateVisibilityRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import com.codegym.mathclass.assignment.entity.AssignmentStatus;
@@ -73,4 +74,10 @@ public interface AssignmentService {
      * Clone bài tập từ Thư viện về kho cá nhân của giáo viên
      */
     AssignmentResponse cloneAssignmentFromLibrary(long assignmentId, long teacherId);
+
+    /**
+     * Cập nhật trạng thái Visibility (PRIVATE | PUBLIC) của bài tập.
+     * Chỉ chủ sở hữu (teacher) mới được phép.
+     */
+    AssignmentResponse updateAssignmentVisibility(long assignmentId, UpdateVisibilityRequest request, long teacherId);
 }

@@ -18,12 +18,14 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import com.codegym.mathclass.assignment.dto.UpdateVisibilityRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -131,6 +133,22 @@ public class AssignmentController {
         try {
             long teacherId = userDetails.getId();
             AssignmentResponse response = assignmentService.updateAssignment(id, request, teacherId);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "Cập nhật Visibility bài tập", description = "Chuyển trạng thái bài tập giữa PRIVATE và PUBLIC (hiển thị trong Thư viện dùng chung)")
+    @PatchMapping("/{id}/visibility")
+    @PreAuthorize("hasAuthority('assignment:update')")
+    public ResponseEntity<?> updateAssignmentVisibility(
+            @PathVariable long id,
+            @Valid @RequestBody UpdateVisibilityRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        try {
+            long teacherId = userDetails.getId();
+            AssignmentResponse response = assignmentService.updateAssignmentVisibility(id, request, teacherId);
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
