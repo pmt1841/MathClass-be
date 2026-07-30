@@ -294,7 +294,7 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
             List<Assignment> originals,
             AssignmentSheet masterSheet) {
 
-        AssignmentSheet clonedSheet = buildClassroomSheet(request, teacher, classroom, target.getDeadline(), masterSheet);
+        AssignmentSheet clonedSheet = buildClassroomSheet(request, teacher, classroom, target.getDeadline() != null ? target.getDeadline().minusHours(7) : null, masterSheet);
         clonedSheet = assignmentSheetRepository.save(clonedSheet);
 
         final AssignmentSheet finalClonedSheet = clonedSheet;
@@ -318,7 +318,7 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
         List<Assignment> clonedAssignments = originals.stream()
                 .map(original -> {
                     Double maxScore = maxScoreMap.get(original.getId());
-                    Assignment clone = buildAssignmentClone(original, teacher, classroom, target.getDeadline(), maxScore);
+                    Assignment clone = buildAssignmentClone(original, teacher, classroom, target.getDeadline() != null ? target.getDeadline().minusHours(7) : null, maxScore);
                     clone.setAssignmentSheet(finalClonedSheet);
                     return clone;
                 })
