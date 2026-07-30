@@ -2,6 +2,7 @@ package com.codegym.mathclass.assignment.service;
 
 import com.codegym.mathclass.assignment.dto.PublishAssignmentSheetRequest;
 import com.codegym.mathclass.assignment.dto.AssignmentSheetResponse;
+import com.codegym.mathclass.assignment.dto.UpdateVisibilityRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import com.codegym.mathclass.assignment.dto.SheetCompletedStudentResponse;
@@ -16,4 +17,10 @@ public interface AssignmentSheetService {
     Page<AssignmentSheetResponse> getPublicAssignmentSheets(String keyword, Pageable pageable);
     AssignmentSheetResponse cloneAssignmentSheetFromLibrary(long sheetId, long teacherId);
     Page<SheetCompletedStudentResponse> getCompletedStudentsBySheet(long sheetId, String classCode, Pageable pageable, long teacherId);
+
+    /**
+     * Cập nhật trạng thái Visibility (PRIVATE | PUBLIC) của phiếu bài tập.
+     * Chỉ chủ sở hữu (teacher) mới được phép.
+     */
+    AssignmentSheetResponse updateAssignmentSheetVisibility(long sheetId, UpdateVisibilityRequest request, long teacherId);
 }

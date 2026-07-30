@@ -4,6 +4,7 @@ import com.codegym.mathclass.assignment.dto.AssignmentResponse;
 import com.codegym.mathclass.assignment.dto.AssignmentSheetResponse;
 import com.codegym.mathclass.assignment.dto.PublishAssignmentSheetRequest;
 import com.codegym.mathclass.assignment.dto.UpdateAssignmentSheetRequest;
+import com.codegym.mathclass.assignment.dto.UpdateVisibilityRequest;
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.entity.AssignmentDrawing;
 import com.codegym.mathclass.assignment.entity.AssignmentImage;
@@ -926,5 +927,20 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
                     .firstSubmissionId(firstSubmissionIdToReturn)
                     .build();
         });
+    }
+
+    @Override
+    @Transactional
+    public AssignmentSheetResponse updateAssignmentSheetVisibility(long sheetId, UpdateVisibilityRequest request, long teacherId) {
+        AssignmentSheet sheet = assignmentSheetRepository.findById(sheetId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phiếu bài tập"));
+
+        if (sheet.getTeacher().getId() != teacherId) {
+            throw new AccessDeniedException("Bạn không có quyền thay đổi visibility của phiếu bài tập này");
+        }
+
+        sheet.setVisibility(request.getVisibility());
+        AssignmentSheet saved = assignmentSheetRepository.save(sheet);
+        return AssignmentSheetResponse.fromEntity(saved);
     }
 }

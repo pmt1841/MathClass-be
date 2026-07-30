@@ -3,6 +3,7 @@ package com.codegym.mathclass.assignment.controller;
 import com.codegym.mathclass.assignment.dto.AssignmentSheetResponse;
 import com.codegym.mathclass.assignment.dto.PublishAssignmentSheetRequest;
 import com.codegym.mathclass.assignment.service.AssignmentSheetService;
+import com.codegym.mathclass.assignment.dto.UpdateVisibilityRequest;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,17 @@ public class AssignmentSheetController {
             @Valid @RequestBody UpdateAssignmentSheetRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         AssignmentSheetResponse response = assignmentSheetService.updateAssignmentSheet(id, request, userDetails.getId());
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Cập nhật Visibility phiếu bài tập", description = "Chuyển trạng thái phiếu giữa PRIVATE và PUBLIC (hiển thị trong Thư viện dùng chung)")
+    @PatchMapping("/{id}/visibility")
+    @PreAuthorize("hasAuthority('assignment:update')")
+    public ResponseEntity<?> updateAssignmentSheetVisibility(
+            @PathVariable long id,
+            @Valid @RequestBody UpdateVisibilityRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        AssignmentSheetResponse response = assignmentSheetService.updateAssignmentSheetVisibility(id, request, userDetails.getId());
         return ResponseEntity.ok(response);
     }
 

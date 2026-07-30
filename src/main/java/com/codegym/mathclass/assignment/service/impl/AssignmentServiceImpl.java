@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import com.codegym.mathclass.assignment.entity.AssignmentVisibility;
 import com.codegym.mathclass.assignment.dto.SheetSiblingDto;
+import com.codegym.mathclass.assignment.dto.UpdateVisibilityRequest;
 
 import com.codegym.mathclass.assignment.mapper.AssignmentMapper;
 import com.codegym.mathclass.assignment.entity.AssignmentImage;
@@ -890,6 +891,21 @@ public class AssignmentServiceImpl implements AssignmentService {
         }
 
         Assignment saved = assignmentRepository.save(clone);
+        return assignmentMapper.toAssignmentResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public AssignmentResponse updateAssignmentVisibility(long assignmentId, UpdateVisibilityRequest request, long teacherId) {
+        Assignment assignment = assignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập"));
+
+        if (assignment.getTeacher().getId() != teacherId) {
+            throw new AccessDeniedException("Bạn không có quyền thay đổi visibility của bài tập này");
+        }
+
+        assignment.setVisibility(request.getVisibility());
+        Assignment saved = assignmentRepository.save(assignment);
         return assignmentMapper.toAssignmentResponse(saved);
     }
 }
