@@ -28,7 +28,7 @@ public class AssignmentMapper {
         response.setStatus(assignment.getStatus());
         response.setCreatedAt(assignment.getCreatedAt());
         response.setUpdatedAt(assignment.getUpdatedAt());
-
+        response.setVisibility(assignment.getVisibility());
 
         boolean open = assignment.getStatus() == AssignmentStatus.PUBLISHED
                 && assignment.getDeadline() != null
@@ -45,6 +45,11 @@ public class AssignmentMapper {
         if (assignment.getClassroom() != null) {
             response.setClassCode(assignment.getClassroom().getClassCode());
             response.setClassName(assignment.getClassroom().getClassName());
+        }
+
+        if (assignment.getOriginalAuthor() != null) {
+            response.setOriginalAuthorId(assignment.getOriginalAuthor().getId());
+            response.setOriginalAuthorName(assignment.getOriginalAuthor().getFullName());
         }
 
         if (assignment.getAssignmentSheet() != null) {
