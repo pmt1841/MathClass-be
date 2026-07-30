@@ -1,5 +1,6 @@
 package com.codegym.mathclass.classroom.controller;
 
+import com.codegym.mathclass.common.annotation.ApiVersion;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,13 +30,14 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "Classroom Members", description = "APIs quản lý thành viên học sinh trong lớp học (Thêm học sinh trực tiếp, xem danh sách, xóa học sinh)")
 @RestController
-@RequestMapping("/api/classrooms/{classCode}")
+@ApiVersion(1)
+@RequestMapping("/classrooms/{classCode}")
 @RequiredArgsConstructor
 public class ClassroomMemberController {
     private final ClassroomService classroomService;
 
     @Operation(summary = "Thêm học sinh trực tiếp bằng Email", description = "Giáo viên trực tiếp thêm một học sinh vào lớp thông qua email của học sinh")
-    @PostMapping("/students/add")
+    @PostMapping("/students")
     @PreAuthorize("hasAuthority('classroom:manage_requests')")
     public ResponseEntity<Void> addStudentToClass(
             @PathVariable String classCode,

@@ -1,5 +1,6 @@
 package com.codegym.mathclass.notification.controller;
 
+import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.codegym.mathclass.notification.dto.NotificationSettingsDto;
 import com.codegym.mathclass.notification.service.NotificationSettingsService;
@@ -12,7 +13,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "Notification Settings", description = "APIs cài đặt bật/tắt nhận thông báo qua Email hoặc In-app")
 @RestController
-@RequestMapping("/api/settings")
+@ApiVersion(1)
+@RequestMapping("/settings")
 @RequiredArgsConstructor
 public class NotificationSettingsController {
 

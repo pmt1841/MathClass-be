@@ -1,5 +1,6 @@
 package com.codegym.mathclass.systemlog.controller;
 
+import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.systemlog.dto.response.SystemLogResponse;
 import com.codegym.mathclass.systemlog.entity.SystemLogLevel;
 import com.codegym.mathclass.systemlog.service.SystemLogService;
@@ -22,7 +23,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "Admin - System Logs", description = "APIs quản trị viên: Tra cứu và truy vấn nhật ký hoạt động hệ thống (System Logs)")
 @RestController
-@RequestMapping("/api/admin/logs")
+@ApiVersion(1)
+@RequestMapping("/admin/logs")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminLogController {

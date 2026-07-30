@@ -1,5 +1,6 @@
 package com.codegym.mathclass.user.controller;
 
+import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.user.dto.response.UserResponse;
 import com.codegym.mathclass.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -22,21 +23,22 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "User Profile", description = "APIs quản lý thông tin cá nhân và ảnh đại diện của người dùng")
 @RestController
-@RequestMapping("/api/users")
+@ApiVersion(1)
+@RequestMapping("/users")
 @RequiredArgsConstructor
 public class UserController {
 
     private final UserService userService;
 
     @Operation(summary = "Lấy thông tin tài khoản hiện tại", description = "Trả về thông tin chi tiết của người dùng đang đăng nhập")
-    @GetMapping("/profile")
+    @GetMapping("/me")
     public ResponseEntity<UserResponse> getCurrentUserProfile(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(userService.getUserProfile(userDetails.getId()));
     }
 
     @Operation(summary = "Cập nhật thông tin cá nhân", description = "Cập nhật họ tên, thông tin bổ sung của người dùng")
-    @PutMapping("/profile")
+    @PutMapping("/me")
     public ResponseEntity<UserResponse> updateProfile(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody UpdateProfileRequest request) {
@@ -44,7 +46,7 @@ public class UserController {
     }
 
     @Operation(summary = "Tải lên ảnh đại diện (Avatar)", description = "Upload file ảnh đại diện và lưu đường dẫn ảnh")
-    @PostMapping("/avatar")
+    @PostMapping("/me/avatar")
     public ResponseEntity<Map<String, String>> uploadAvatar(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam("file") MultipartFile file) {

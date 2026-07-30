@@ -1,5 +1,6 @@
 package com.codegym.mathclass.assignment.controller;
 
+import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.assignment.dto.AssignmentSheetResponse;
 import com.codegym.mathclass.assignment.dto.PublishAssignmentSheetRequest;
 import com.codegym.mathclass.assignment.service.AssignmentSheetService;
@@ -11,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.GrantedAuthority;
@@ -24,21 +26,22 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "Assignment Sheets", description = "APIs quản lý phiếu bài tập (Xuất bản phiếu bài tập, cập nhật, tìm kiếm và xóa phiếu bài tập)")
 @RestController
-@RequestMapping("/api/assignment-sheets")
+@ApiVersion(1)
+@RequestMapping("/assignment-sheets")
 @RequiredArgsConstructor
 public class AssignmentSheetController {
 
     private final AssignmentSheetService assignmentSheetService;
 
     @Operation(summary = "Xuất bản phiếu bài tập", description = "Giao danh sách bài tập dưới dạng một phiếu bài tập cho các lớp học")
-    @PostMapping("/publish")
+    @PostMapping
     @PreAuthorize("hasAuthority('assignment:publish')")
-    public ResponseEntity<?> publishAssignmentSheet(
+    public ResponseEntity<Void> publishAssignmentSheet(
             @Valid @RequestBody PublishAssignmentSheetRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         long teacherId = userDetails.getId();
         assignmentSheetService.publishAssignmentSheet(request, teacherId);
-        return ResponseEntity.ok().build();
+        return new ResponseEntity<>(HttpStatus.CREATED);
     }
 
     @Operation(summary = "Cập nhật phiếu bài tập", description = "Chỉnh sửa tên phiếu bài tập, danh sách bài tập thuộc phiếu hoặc thời hạn nộp bài")

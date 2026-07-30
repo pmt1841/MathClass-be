@@ -1,5 +1,6 @@
 package com.codegym.mathclass.notification.controller;
 
+import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.notification.dto.NotificationResponse;
 import com.codegym.mathclass.notification.service.NotificationService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
@@ -19,7 +20,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "Notifications", description = "APIs thông báo thời gian thực SSE, danh sách thông báo và đánh dấu đã đọc")
 @RestController
-@RequestMapping("/api/notifications")
+@ApiVersion(1)
+@RequestMapping("/notifications")
 @RequiredArgsConstructor
 public class NotificationController {
 
@@ -52,14 +54,14 @@ public class NotificationController {
     }
 
     @Operation(summary = "Đánh dấu tất cả thông báo là đã đọc", description = "Chuyển tất cả thông báo của người dùng sang trạng thái đã đọc")
-    @PutMapping("/read-all")
+    @PatchMapping("/read-all")
     public ResponseEntity<Void> markAllAsRead(@AuthenticationPrincipal CustomUserDetails userDetails) {
         notificationService.markAllAsRead(userDetails.getId());
         return ResponseEntity.ok().build();
     }
 
     @Operation(summary = "Đánh dấu một thông báo là đã đọc", description = "Chuyển trạng thái của thông báo theo ID sang đã đọc")
-    @PutMapping("/{id}/read")
+    @PatchMapping("/{id}/read")
     public ResponseEntity<Void> markAsRead(
             @PathVariable Long id,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
