@@ -149,7 +149,7 @@ public class AssignmentServiceImpl implements AssignmentService {
                         "Bạn không có quyền giao bài tập cho lớp: " + classCode);
             }
 
-            Assignment clone = cloneAssignmentForClassroom(originalAssignment, classroom, target.getDeadline());
+            Assignment clone = cloneAssignmentForClassroom(originalAssignment, classroom, target.getDeadline() != null ? target.getDeadline().minusHours(7) : null);
             clones.add(clone);
         }
 
@@ -760,14 +760,14 @@ public class AssignmentServiceImpl implements AssignmentService {
                 throw new BadRequestException("Bài tập đã có học sinh nộp bài, bạn chỉ có thể thay đổi hạn nộp");
             }
             if (request.getDeadline() != null) {
-                assignment.setDeadline(request.getDeadline());
+                assignment.setDeadline(request.getDeadline().minusHours(7));
             }
         } else {
             assignment.setTitle(request.getTitle());
             assignment.setDescription(request.getDescription());
             assignment.setContent(request.getContent());
             if (request.getDeadline() != null) {
-                assignment.setDeadline(request.getDeadline());
+                assignment.setDeadline(request.getDeadline().minusHours(7));
             }
             updateDrawings(assignment, request.getDrawings());
             updateImages(assignment, request.getImages());
