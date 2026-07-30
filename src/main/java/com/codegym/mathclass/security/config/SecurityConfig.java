@@ -74,7 +74,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/auth/**",
+                                "/api/v1/auth/**",
                                 "/error",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
@@ -82,7 +82,7 @@ public class SecurityConfig {
                                 "/swagger-resources/**",
                                 "/webjars/**"
                         ).permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated());
 
         http.authenticationProvider(authenticationProvider());
@@ -96,11 +96,11 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
 
-        // Cho phép tất cả các Method (GET, POST, PUT, DELETE, OPTIONS, PATCH)
-        configuration.setAllowedMethods(List.of("*"));
+        // Liệt kê cụ thể các HTTP Methods được phép (GET, POST, PUT, DELETE, PATCH, OPTIONS)
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 
-        // Cho phép tất cả các Headers (Authorization, Content-Type...)
-        configuration.setAllowedHeaders(List.of("*"));
+        // Liệt kê cụ thể các HTTP Headers được phép
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"));
 
         // Cho phép gửi kèm Cookie / Token tự động từ Frontend
         configuration.setAllowCredentials(true);

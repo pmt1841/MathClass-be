@@ -1,5 +1,6 @@
 package com.codegym.mathclass.user.controller;
 
+import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.auth.dto.response.MessageResponse;
 import com.codegym.mathclass.user.dto.request.UpdateUserStatusRequest;
 import com.codegym.mathclass.user.dto.response.UserResponse;
@@ -26,7 +27,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "Admin - Users", description = "APIs quản trị viên: Tìm kiếm, phân trang và quản lý trạng thái tài khoản")
 @RestController
-@RequestMapping("/api/admin/users")
+@ApiVersion(1)
+@RequestMapping("/admin/users")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminUserController {

@@ -1,14 +1,15 @@
 package com.codegym.mathclass.assignment.controller;
 
+import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.assignment.dto.AssignmentResponse;
 import com.codegym.mathclass.assignment.dto.CreateAssignmentRequest;
 import com.codegym.mathclass.assignment.dto.PublishAssignmentRequest;
 import com.codegym.mathclass.assignment.dto.UpdateAssignmentRequest;
+import com.codegym.mathclass.assignment.dto.AssignmentImageDto;
+import com.codegym.mathclass.assignment.dto.TextExtractionResponse;
 import com.codegym.mathclass.assignment.service.AssignmentService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
-import com.codegym.mathclass.assignment.dto.AssignmentImageDto;
 import org.springframework.web.multipart.MultipartFile;
-import java.io.IOException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -37,32 +38,29 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "Assignments", description = "APIs quản lý bài tập (Tạo nháp, xuất bản, chỉnh sửa, xóa, tìm kiếm, upload ảnh, trích xuất text PDF/DOCX)")
 @RestController
-@RequestMapping("/api/assignments")
+@ApiVersion(1)
+@RequestMapping("/assignments")
 @RequiredArgsConstructor
 public class AssignmentController {
 
     private final AssignmentService assignmentService;
 
     @Operation(summary = "Tạo bài tập mới (DRAFT)", description = "Giáo viên tạo bài tập nháp mới, hỗ trợ công thức toán LaTeX")
-    @PostMapping("/create")
+    @PostMapping
     @PreAuthorize("hasAuthority('assignment:create')")
-    public ResponseEntity<?> createAssignment(
+    public ResponseEntity<AssignmentResponse> createAssignment(
             @Valid @RequestBody CreateAssignmentRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        try {
-            long teacherId = userDetails.getId();
-            AssignmentResponse response = assignmentService.createAssignment(request, teacherId);
-            return new ResponseEntity<>(response, HttpStatus.CREATED);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        long teacherId = userDetails.getId();
+        AssignmentResponse response = assignmentService.createAssignment(request, teacherId);
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     @Operation(summary = "Giao bài tập cho các lớp (Publish)", description = "Chuyển trạng thái từ DRAFT sang PUBLISHED và chọn danh sách các lớp để giao bài")
     @PutMapping("/{id}/publish")
     @PreAuthorize("hasAuthority('assignment:publish')")
-    public ResponseEntity<?> publishAssignment(
+    public ResponseEntity<Void> publishAssignment(
             @PathVariable long id,
             @Valid @RequestBody PublishAssignmentRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -75,13 +73,13 @@ public class AssignmentController {
     @Operation(summary = "Xóa bài tập", description = "Giáo viên xóa bài tập theo ID")
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('assignment:delete')")
-    public ResponseEntity<?> deleteAssignment(
+    public ResponseEntity<Void> deleteAssignment(
             @PathVariable long id,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         long teacherId = userDetails.getId();
         assignmentService.deleteAssignment(id, teacherId);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "Danh sách bài tập của người dùng", description = "Lấy danh sách bài tập của Giáo viên/Học sinh, hỗ trợ lọc từ khóa, mã lớp, trạng thái và phân trang")
@@ -126,17 +124,14 @@ public class AssignmentController {
     @Operation(summary = "Cập nhật bài tập", description = "Chỉnh sửa nội dung bài tập, tiêu đề, mô tả hoặc thời hạn nộp bài")
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('assignment:update')")
-    public ResponseEntity<?> updateAssignment(
+    public ResponseEntity<AssignmentResponse> updateAssignment(
             @PathVariable long id,
             @Valid @RequestBody UpdateAssignmentRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        try {
-            long teacherId = userDetails.getId();
-            AssignmentResponse response = assignmentService.updateAssignment(id, request, teacherId);
-            return ResponseEntity.ok(response);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+
+        long teacherId = userDetails.getId();
+        AssignmentResponse response = assignmentService.updateAssignment(id, request, teacherId);
+        return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "Cập nhật Visibility bài tập", description = "Chuyển trạng thái bài tập giữa PRIVATE và PUBLIC (hiển thị trong Thư viện dùng chung)")
@@ -156,32 +151,24 @@ public class AssignmentController {
     }
 
     @Operation(summary = "Tải lên hình ảnh bài tập", description = "Upload hình ảnh minh họa cho câu hỏi bài tập toán")
-    @PostMapping("/images/upload")
+    @PostMapping("/images")
     @PreAuthorize("hasAuthority('assignment:create')")
-    public ResponseEntity<?> uploadImage(
+    public ResponseEntity<AssignmentImageDto> uploadImage(
             @RequestParam("file") MultipartFile file,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        try {
-            AssignmentImageDto imageDto = assignmentService.uploadImageForAssignment(file);
-            return ResponseEntity.ok(imageDto);
-        } catch (IOException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Lỗi upload ảnh: " + e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Lỗi: " + e.getMessage());
-        }
+            @AuthenticationPrincipal CustomUserDetails userDetails) throws Exception {
+
+        AssignmentImageDto imageDto = assignmentService.uploadImageForAssignment(file);
+        return ResponseEntity.ok(imageDto);
     }
 
     @Operation(summary = "Trích xuất văn bản từ tài liệu (PDF/DOCX)", description = "Trích xuất nội dung đề bài và câu hỏi từ file PDF hoặc DOCX")
     @PostMapping("/extract-text")
     @PreAuthorize("hasAuthority('assignment:create')")
-    public ResponseEntity<?> extractTextFromFile(
+    public ResponseEntity<TextExtractionResponse> extractTextFromFile(
             @RequestParam("file") MultipartFile file,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        try {
-            java.util.Map<String, Object> result = assignmentService.extractTextFromFile(file);
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(java.util.Map.of("error", "Lỗi trích xuất văn bản: " + e.getMessage()));
-        }
+            @AuthenticationPrincipal CustomUserDetails userDetails) throws Exception {
+
+        java.util.Map<String, Object> result = assignmentService.extractTextFromFile(file);
+        return ResponseEntity.ok(TextExtractionResponse.builder().data(result).build());
     }
 }

@@ -1,5 +1,6 @@
 package com.codegym.mathclass.assignment.controller;
 
+import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.assignment.dto.AssignmentResponse;
 import com.codegym.mathclass.assignment.entity.AssignmentStatus;
 import com.codegym.mathclass.assignment.service.AssignmentService;
@@ -22,7 +23,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "Classroom Assignments", description = "APIs truy vấn bài tập theo từng lớp học")
 @RestController
-@RequestMapping("/api/classrooms/{classCode}/assignments")
+@ApiVersion(1)
+@RequestMapping("/classrooms/{classCode}/assignments")
 @RequiredArgsConstructor
 public class ClassroomAssignmentController {
 
@@ -31,7 +33,7 @@ public class ClassroomAssignmentController {
     @Operation(summary = "Danh sách bài tập thuộc lớp học", description = "Lấy danh sách bài tập được giao trong một lớp học cụ thể")
     @GetMapping
     @PreAuthorize("hasAuthority('assignment:read')")
-    public ResponseEntity<?> getClassroomAssignments(
+    public ResponseEntity<Page<AssignmentResponse>> getClassroomAssignments(
             @PathVariable String classCode,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) AssignmentStatus status,
@@ -45,9 +47,9 @@ public class ClassroomAssignmentController {
     }
 
     @Operation(summary = "Chi tiết bài tập trong lớp học", description = "Lấy chi tiết một bài tập dựa trên mã lớp và ID bài tập")
-    @GetMapping("/{id}/detail")
+    @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('assignment:read')")
-    public ResponseEntity<?> getAssignmentDetail(
+    public ResponseEntity<AssignmentResponse> getAssignmentDetail(
             @PathVariable String classCode,
             @PathVariable long id,
             @AuthenticationPrincipal CustomUserDetails userDetails) {

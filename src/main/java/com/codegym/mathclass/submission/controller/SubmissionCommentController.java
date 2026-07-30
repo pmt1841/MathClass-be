@@ -1,5 +1,6 @@
 package com.codegym.mathclass.submission.controller;
 
+import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.codegym.mathclass.submission.dto.SubmissionCommentRequest;
 import com.codegym.mathclass.submission.dto.SubmissionCommentResponse;
@@ -18,7 +19,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "Submission Comments", description = "APIs bình luận và nhận xét cho bài nộp của học sinh")
 @RestController
-@RequestMapping("/api/submissions/{submissionId}/comments")
+@ApiVersion(1)
+@RequestMapping("/submissions/{submissionId}/comments")
 @RequiredArgsConstructor
 public class SubmissionCommentController {
 

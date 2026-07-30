@@ -1,5 +1,6 @@
 package com.codegym.mathclass.assignment.controller;
 
+import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.assignment.dto.AssignmentResponse;
 import com.codegym.mathclass.assignment.dto.AssignmentSheetResponse;
 import com.codegym.mathclass.assignment.service.AssignmentService;
@@ -20,7 +21,8 @@ import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Assignment Library", description = "APIs Thư viện bài tập dùng chung (Tìm kiếm và Clone bài tập/phiếu bài tập công khai)")
 @RestController
-@RequestMapping("/api/library")
+@ApiVersion(1)
+@RequestMapping("/library")
 @RequiredArgsConstructor
 public class AssignmentLibraryController {
 

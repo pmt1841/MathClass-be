@@ -1,5 +1,6 @@
 package com.codegym.mathclass.user.controller;
 
+import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.user.dto.request.UpdateRolePermissionsRequest;
 import com.codegym.mathclass.user.dto.response.PermissionDto;
 import com.codegym.mathclass.user.entity.Role;
@@ -21,7 +22,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "Admin - Role Permissions", description = "APIs quản trị viên: Xem và gán quyền (Permissions) theo vai trò (Roles)")
 @RestController
-@RequestMapping("/api/admin/roles")
+@ApiVersion(1)
+@RequestMapping("/admin/roles")
 @RequiredArgsConstructor
 @PreAuthorize("hasAuthority('user:manage') or hasRole('ADMIN')")
 public class AdminPermissionController {

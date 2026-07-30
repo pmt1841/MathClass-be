@@ -1,5 +1,6 @@
 package com.codegym.mathclass.dashboard.controller;
 
+import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.dashboard.dto.TeacherDashboardStatsDto;
 import com.codegym.mathclass.dashboard.service.DashboardService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
@@ -22,7 +23,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "Dashboard", description = "APIs bảng điều khiển thống kê cho Giáo viên và Học sinh")
 @RestController
-@RequestMapping("/api/dashboard")
+@ApiVersion(1)
+@RequestMapping("/dashboard")
 @RequiredArgsConstructor
 public class DashboardController {
 

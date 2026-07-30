@@ -1,5 +1,6 @@
 package com.codegym.mathclass.classroom.controller;
 
+import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.classroom.dto.JoinRequestRequest;
 import com.codegym.mathclass.classroom.dto.JoinRequestResponse;
 import com.codegym.mathclass.classroom.dto.ProcessJoinRequestDto;
@@ -19,14 +20,15 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "Classroom Join Requests", description = "APIs yêu cầu tham gia lớp học và phê duyệt yêu cầu từ giáo viên")
 @RestController
-@RequestMapping("/api/classrooms")
+@ApiVersion(1)
+@RequestMapping("/classrooms")
 @RequiredArgsConstructor
 public class ClassroomJoinRequestController {
 
     private final ClassroomJoinRequestService joinRequestService;
 
     @Operation(summary = "Gửi yêu cầu tham gia lớp học", description = "Học sinh gửi yêu cầu xin gia nhập lớp bằng mã lớp")
-    @PostMapping("/join")
+    @PostMapping("/join-requests")
     @PreAuthorize("hasAuthority('classroom:join')")
     public ResponseEntity<JoinRequestResponse> requestToJoin(
             @Valid @RequestBody JoinRequestRequest request,
@@ -36,7 +38,7 @@ public class ClassroomJoinRequestController {
     }
 
     @Operation(summary = "Danh sách yêu cầu tham gia của tôi", description = "Học sinh xem lịch sử và trạng thái các yêu cầu xin gia nhập lớp")
-    @GetMapping("/my-join-requests")
+    @GetMapping("/join-requests/me")
     @PreAuthorize("hasAuthority('classroom:join_status')")
     public ResponseEntity<List<JoinRequestResponse>> getMyJoinRequests(
             @AuthenticationPrincipal CustomUserDetails currentUser) {

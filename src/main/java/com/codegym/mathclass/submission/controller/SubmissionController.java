@@ -1,11 +1,13 @@
 package com.codegym.mathclass.submission.controller;
 
+import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.codegym.mathclass.submission.dto.GradeRequest;
 import com.codegym.mathclass.submission.dto.SubmissionRequest;
 import com.codegym.mathclass.submission.dto.SubmissionResponse;
 import com.codegym.mathclass.submission.service.SubmissionService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,7 +23,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "Submissions", description = "APIs quản lý bài làm của học sinh (Nộp bài, sửa bài làm, hủy nộp, chấm điểm, truy vấn bài nộp)")
 @RestController
-@RequestMapping("/api/submissions")
+@ApiVersion(1)
+@RequestMapping("/submissions")
 @RequiredArgsConstructor
 public class SubmissionController {
 
@@ -36,7 +39,7 @@ public class SubmissionController {
 
         long studentId = userDetails.getId();
         SubmissionResponse response = submissionService.createSubmission(studentId, requestDto);
-        return ResponseEntity.ok(response);
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     @Operation(summary = "Cập nhật bài làm", description = "Học sinh chỉnh sửa nội dung bài làm trước khi hết hạn hoặc trước khi giáo viên chấm điểm")
@@ -78,7 +81,7 @@ public class SubmissionController {
     }
 
     @Operation(summary = "Lấy bài làm cá nhân của học sinh", description = "Học sinh truy vấn bài làm của chính mình cho một bài tập")
-    @GetMapping("/my-submission")
+    @GetMapping("/me")
     @PreAuthorize("hasAuthority('submission:read_own')")
     public ResponseEntity<SubmissionResponse> getMySubmission(
             @RequestParam long assignmentId,

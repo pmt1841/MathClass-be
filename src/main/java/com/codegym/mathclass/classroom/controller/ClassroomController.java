@@ -1,5 +1,6 @@
 package com.codegym.mathclass.classroom.controller;
 
+import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.classroom.dto.ClassroomResponse;
 import com.codegym.mathclass.classroom.dto.CreateClassroomRequest;
 import com.codegym.mathclass.classroom.service.ClassroomService;
@@ -28,14 +29,15 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "Classroom Management", description = "APIs quản lý lớp học (Tạo mới, truy vấn, cập nhật, xóa lớp học)")
 @RestController
-@RequestMapping("/api/classrooms")
+@ApiVersion(1)
+@RequestMapping("/classrooms")
 @RequiredArgsConstructor
 public class ClassroomController {
 
     private final ClassroomService classroomService;
 
     @Operation(summary = "Tạo lớp học mới", description = "Tạo một lớp học mới và gán người tạo làm Giáo viên (Teacher)")
-    @PostMapping("/create")
+    @PostMapping
     @PreAuthorize("hasAuthority('classroom:create')")
     public ResponseEntity<ClassroomResponse> createClassroom(
             @Valid @RequestBody CreateClassroomRequest request,
@@ -48,7 +50,7 @@ public class ClassroomController {
     }
 
     @Operation(summary = "Lấy danh sách lớp học của người dùng", description = "Truy vấn tất cả các lớp học mà người dùng hiện tại đang tham gia hoặc giảng dạy")
-    @GetMapping("/my-classroom")
+    @GetMapping
     public ResponseEntity<List<ClassroomResponse>> getClassroomsList(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         long currentUserId = userDetails.getId();

@@ -120,25 +120,41 @@ docker-compose up --build
 
 ---
 
-## 📊 Danh sách API Endpoints Chính
+## 📊 Danh sách API Endpoints Chính (Prefix: `/api/v1`)
 
 | Phương thức | Endpoint | Access / Role | Mô tả Chức năng |
 | :--- | :--- | :--- | :--- |
-| **POST** | `/api/auth/login` | Public | Đăng nhập tài khoản & nhận JWT Cookie / Token |
-| **POST** | `/api/auth/register` | Public | Đăng ký tài khoản làm bài tập trực tuyến |
-| **POST** | `/api/auth/google` | Public | Đăng nhập nhanh bằng tài khoản Google |
-| **POST** | `/api/classrooms/create` | `TEACHER` | Tạo lớp học mới |
-| **POST** | `/api/classrooms/join` | `STUDENT` | Gửi yêu cầu gia nhập lớp bằng mã lớp |
-| **POST** | `/api/assignments/create` | `TEACHER` | Tạo đề bài tập Toán (Hỗ trợ LaTeX, Trắc nghiệm/Tự luận) |
-| **POST** | `/api/assignments/extract-text` | `TEACHER` | Bóc tách câu hỏi bài tập từ file DOCX/PDF |
-| **PUT** | `/api/assignments/{id}/publish` | `TEACHER` | Xuất bản & giao bài tập Toán cho lớp học |
-| **POST** | `/api/submissions` | `STUDENT` | Học sinh nộp bài làm (văn bản LaTeX, chọn đáp án, hình vẽ Canvas) |
-| **PUT** | `/api/submissions/{id}/unsubmit` | `STUDENT` | Hủy bài nộp để chỉnh sửa lại trước hạn |
-| **PUT** | `/api/submissions/{id}/grade` | `TEACHER` | Giáo viên chấm điểm và trả lời nhận xét |
-| **PUT** | `/api/submissions/{id}/drawings` | Authenticated | Lưu/cập nhật dữ liệu hình vẽ công cụ Canvas |
-| **GET** | `/api/dashboard/teacher-stats` | `TEACHER` | Xem báo cáo tổng quan tình hình bài tập & lớp học |
-| **GET** | `/api/dashboard/at-risk-students` | `TEACHER` | Cảnh báo học sinh học yếu/có nguy cơ tụt lại |
-| **GET** | `/api/notifications/stream` | Authenticated | Kết nối nhận thông báo real-time qua SSE Stream |
+| **POST** | `/api/v1/auth/login` | Public | Đăng nhập tài khoản & nhận JWT Cookie / Token |
+| **POST** | `/api/v1/auth/register` | Public | Đăng ký tài khoản làm bài tập trực tuyến |
+| **POST** | `/api/v1/auth/google` | Public | Đăng nhập nhanh bằng tài khoản Google |
+| **POST** | `/api/v1/classrooms` | `TEACHER` | Tạo lớp học mới (`201 CREATED`) |
+| **POST** | `/api/v1/classrooms/{classCode}/join-requests` | `STUDENT` | Gửi yêu cầu gia nhập lớp bằng mã lớp (`201 CREATED`) |
+| **POST** | `/api/v1/assignments` | `TEACHER` | Tạo đề bài tập Toán (`201 CREATED`) |
+| **POST** | `/api/v1/assignments/extract-text` | `TEACHER` | Bóc tách câu hỏi bài tập từ file DOCX/PDF |
+| **PUT** | `/api/v1/assignments/{id}/publish` | `TEACHER` | Xuất bản & giao bài tập Toán cho lớp học |
+| **POST** | `/api/v1/submissions` | `STUDENT` | Học sinh nộp bài làm (`201 CREATED`) |
+| **PUT** | `/api/v1/submissions/{id}/unsubmit` | `STUDENT` | Hủy bài nộp để chỉnh sửa lại trước hạn |
+| **PUT** | `/api/v1/submissions/{id}/grade` | `TEACHER` | Giáo viên chấm điểm và trả lời nhận xét |
+| **PUT** | `/api/v1/submissions/{id}/drawings` | Authenticated | Lưu/cập nhật dữ liệu hình vẽ công cụ Canvas |
+| **GET** | `/api/v1/dashboard/teacher-stats` | `TEACHER` | Xem báo cáo tổng quan tình hình bài tập & lớp học |
+| **GET** | `/api/v1/dashboard/at-risk-students` | `TEACHER` | Cảnh báo học sinh học yếu/có nguy cơ tụt lại |
+| **GET** | `/api/v1/notifications/stream` | Authenticated | Kết nối nhận thông báo real-time qua SSE Stream |
+
+---
+
+## 📚 Tài Liệu API Tương Tác (Swagger / OpenAPI UI)
+
+Ứng dụng tích hợp sẵn tài liệu Swagger UI tự động sinh theo OpenAPI 3.0:
+
+- **Đường dẫn Swagger UI:** `http://localhost:8080/swagger-ui.html`
+- **OpenAPI JSON Docs:** `http://localhost:8080/v3/api-docs`
+
+### Hướng dẫn thử nghiệm API trên Swagger UI:
+1. Khởi chạy Backend và truy cập `http://localhost:8080/swagger-ui.html`.
+2. Thực hiện gọi API `POST /api/v1/auth/login` để lấy JWT Token.
+3. Bấm nút **Authorize** (ở góc phải màn hình Swagger).
+4. Nhập chuỗi JWT Token nhận được (không bao gồm chữ `Bearer `) và chọn **Authorize**.
+5. Bây giờ bạn có thể thử nghiệm trực tiếp tất cả các APIs yêu cầu xác thực ngay trên giao diện Swagger.
 
 ---
 
