@@ -215,6 +215,12 @@ public class SubmissionServiceImpl implements SubmissionService {
         String subject = "Giáo viên đã chấm điểm bài tập: " + assignment.getTitle();
         String classCodeParam = assignment.getClassroom() != null ? "?classCode=" + assignment.getClassroom().getClassCode() : "";
         String relativeLink = "/assignments/" + assignment.getId() + classCodeParam;
+        
+        if (assignment.getAssignmentSheet() != null) {
+            String delimiter = relativeLink.contains("?") ? "&" : "?";
+            relativeLink += delimiter + "sheetId=" + assignment.getAssignmentSheet().getId();
+        }
+        
         String link = frontendUrl + relativeLink;
         Context context = new Context();
         context.setVariable("studentName", submission.getStudent().getFullName());
@@ -293,7 +299,13 @@ public class SubmissionServiceImpl implements SubmissionService {
         User student = submission.getStudent();
 
         String subject = "Học sinh " + student.getFullName() + " đã nộp bài tập: " + assignment.getTitle();
-        String link = frontendUrl + "/assignments/" + assignment.getId() + "/submissions/" + submission.getId();
+        String relativeLink = "/assignments/" + assignment.getId() + "/submissions/" + submission.getId();
+        
+        if (assignment.getAssignmentSheet() != null) {
+            relativeLink += "?sheetId=" + assignment.getAssignmentSheet().getId();
+        }
+        
+        String link = frontendUrl + relativeLink;
 
         Context context = new Context();
         context.setVariable("teacherName", teacher.getFullName());
@@ -302,6 +314,6 @@ public class SubmissionServiceImpl implements SubmissionService {
         context.setVariable("link", link);
 
         emailService.sendHtmlMailAsync(teacher.getEmail(), subject, "submission-submitted", context);
-        notificationService.saveAndSendNotification(teacher.getId(), subject, link);
+        notificationService.saveAndSendNotification(teacher.getId(), subject, relativeLink);
     }
 }
