@@ -29,6 +29,8 @@ public class AssignmentSheetResponse {
 
     private List<AssignmentResponse> items;
     private String submissionStatus;
+    private LocalDateTime submissionCreatedAt;
+    private LocalDateTime submissionUpdatedAt;
     private boolean hasSubmissions;
     private List<String> publishedClassCodes;
 
