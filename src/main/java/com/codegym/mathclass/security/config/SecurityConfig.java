@@ -42,6 +42,9 @@ public class SecurityConfig {
     @Value("${mathclass.app.cors.allowedOrigins:http://localhost:3000,http://localhost:5173}")
     private String[] allowedOrigins;
 
+    @Value("${mathclass.app.apiPrefix:/api/v1}")
+    private String apiPrefix;
+
     @Bean
     public AuthTokenFilter authenticationJwtTokenFilter() {
         return new AuthTokenFilter(jwtUtils, userDetailsService);
@@ -74,15 +77,15 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/v1/auth/**",
+                                apiPrefix + "/auth/**",
                                 "/error",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/swagger-resources/**",
-                                "/webjars/**"
-                        ).permitAll()
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                                "/webjars/**")
+                        .permitAll()
+                        .requestMatchers(apiPrefix + "/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated());
 
         http.authenticationProvider(authenticationProvider());
@@ -96,11 +99,12 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
 
-        // Liệt kê cụ thể các HTTP Methods được phép (GET, POST, PUT, DELETE, PATCH, OPTIONS)
+        // Liệt kê cụ thể các HTTP Methods được phép
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 
         // Liệt kê cụ thể các HTTP Headers được phép
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept",
+                "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"));
 
         // Cho phép gửi kèm Cookie / Token tự động từ Frontend
         configuration.setAllowCredentials(true);

@@ -36,6 +36,9 @@ public class JwtUtils {
     @Value("${mathclass.app.jwtRefreshCookieName:mathclass_jwt_refresh}")
     private String jwtRefreshCookie;
 
+    @Value("${mathclass.app.apiPrefix:/api/v1}")
+    private String apiPrefix;
+
     public String getJwtFromCookies(HttpServletRequest request) {
         return getCookieValueByName(request, jwtCookie);
     }
@@ -79,7 +82,7 @@ public class JwtUtils {
     }
 
     public ResponseCookie generateRefreshJwtCookie(String refreshToken) {
-        return generateCookie(jwtRefreshCookie, refreshToken, "/api/auth/refreshtoken", 7 * 24 * 60 * 60L);
+        return generateCookie(jwtRefreshCookie, refreshToken, apiPrefix + "/auth/refresh-token", 7 * 24 * 60 * 60L);
     }
 
     public ResponseCookie getCleanJwtCookie() {
@@ -87,7 +90,7 @@ public class JwtUtils {
     }
 
     public ResponseCookie getCleanJwtRefreshCookie() {
-        return ResponseCookie.from(jwtRefreshCookie, "").path("/api/auth/refreshtoken").maxAge(0).build();
+        return ResponseCookie.from(jwtRefreshCookie, "").path(apiPrefix + "/auth/refresh-token").maxAge(0).build();
     }
 
     private ResponseCookie generateCookie(String name, String value, String path, Long maxAge) {
