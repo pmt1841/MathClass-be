@@ -79,7 +79,7 @@ public class JwtUtils {
     }
 
     public ResponseCookie generateRefreshJwtCookie(String refreshToken) {
-        return generateCookie(jwtRefreshCookie, refreshToken, "/api/auth/refreshtoken", 7 * 24 * 60 * 60L);
+        return generateCookie(jwtRefreshCookie, refreshToken, "/api/v1/auth/refresh-token", 7 * 24 * 60 * 60L);
     }
 
     public ResponseCookie getCleanJwtCookie() {
@@ -87,7 +87,7 @@ public class JwtUtils {
     }
 
     public ResponseCookie getCleanJwtRefreshCookie() {
-        return ResponseCookie.from(jwtRefreshCookie, "").path("/api/auth/refreshtoken").maxAge(0).build();
+        return ResponseCookie.from(jwtRefreshCookie, "").path("/api/v1/auth/refresh-token").maxAge(0).build();
     }
 
     private ResponseCookie generateCookie(String name, String value, String path, Long maxAge) {
