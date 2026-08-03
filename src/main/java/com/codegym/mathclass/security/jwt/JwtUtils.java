@@ -56,15 +56,19 @@ public class JwtUtils {
         }
     }
 
-    public ResponseCookie generateJwtCookie(CustomUserDetails userPrincipal) {
+    public ResponseCookie generateJwtCookie(CustomUserDetails userPrincipal, boolean rememberMe) {
         String jwt = generateJwtToken(userPrincipal.getUsername());
-        return generateCookie(jwtCookie, jwt, "/", jwtExpirationMs / 1000L);
+        Long maxAge = rememberMe ? jwtExpirationMs / 1000L : -1L;
+        return generateCookie(jwtCookie, jwt, "/", maxAge);
+    }
+
+    public ResponseCookie generateJwtCookie(CustomUserDetails userPrincipal) {
+        return generateJwtCookie(userPrincipal, true);
     }
 
     public ResponseCookie generateJwtCookie(Authentication authentication) {
         CustomUserDetails userPrincipal = (CustomUserDetails) authentication.getPrincipal();
-        String jwt = generateJwtToken(userPrincipal.getUsername());
-        return generateCookie(jwtCookie, jwt, "/", jwtExpirationMs / 1000L);
+        return generateJwtCookie(userPrincipal, true);
     }
 
     public String generateJwtToken(Authentication authentication) {
@@ -81,8 +85,13 @@ public class JwtUtils {
                 .compact();
     }
 
+    public ResponseCookie generateRefreshJwtCookie(String refreshToken, boolean rememberMe) {
+        Long maxAge = rememberMe ? 7 * 24 * 60 * 60L : -1L;
+        return generateCookie(jwtRefreshCookie, refreshToken, "/", maxAge);
+    }
+
     public ResponseCookie generateRefreshJwtCookie(String refreshToken) {
-        return generateCookie(jwtRefreshCookie, refreshToken, apiPrefix + "/auth/refresh-token", 7 * 24 * 60 * 60L);
+        return generateRefreshJwtCookie(refreshToken, true);
     }
 
     public ResponseCookie getCleanJwtCookie() {
@@ -90,17 +99,21 @@ public class JwtUtils {
     }
 
     public ResponseCookie getCleanJwtRefreshCookie() {
-        return ResponseCookie.from(jwtRefreshCookie, "").path(apiPrefix + "/auth/refresh-token").maxAge(0).build();
+        return ResponseCookie.from(jwtRefreshCookie, "").path("/").maxAge(0).build();
     }
 
     private ResponseCookie generateCookie(String name, String value, String path, Long maxAge) {
-        return ResponseCookie.from(name, value)
+        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(name, value)
                 .path(path)
-                .maxAge(maxAge)
                 .httpOnly(true)
                 .secure(false) // Có thể đổi thành true nếu dùng HTTPS
-                .sameSite("Lax")
-                .build();
+                .sameSite("Lax");
+
+        if (maxAge != null && maxAge >= 0) {
+            builder.maxAge(maxAge);
+        }
+
+        return builder.build();
     }
 
     private javax.crypto.SecretKey key() {

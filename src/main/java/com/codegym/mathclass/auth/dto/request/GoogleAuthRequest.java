@@ -9,4 +9,6 @@ public class GoogleAuthRequest {
     private String credential;
 
     private String role;
+
+    private boolean rememberMe;
 }

@@ -108,9 +108,9 @@ public class AuthServiceImpl implements AuthService {
         SecurityContextHolder.getContext().setAuthentication(authentication);
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
 
-        ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails);
+        ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails, loginRequest.isRememberMe());
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(userDetails.getId());
-        ResponseCookie jwtRefreshCookie = jwtUtils.generateRefreshJwtCookie(refreshToken.getToken());
+        ResponseCookie jwtRefreshCookie = jwtUtils.generateRefreshJwtCookie(refreshToken.getToken(), loginRequest.isRememberMe());
 
         response.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE, jwtRefreshCookie.toString());
@@ -441,9 +441,9 @@ public class AuthServiceImpl implements AuthService {
                         userDetails, null, userDetails.getAuthorities());
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails);
+                ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails, request.isRememberMe());
                 RefreshToken refreshToken = refreshTokenService.createRefreshToken(userDetails.getId());
-                ResponseCookie jwtRefreshCookie = jwtUtils.generateRefreshJwtCookie(refreshToken.getToken());
+                ResponseCookie jwtRefreshCookie = jwtUtils.generateRefreshJwtCookie(refreshToken.getToken(), request.isRememberMe());
 
                 httpResponse.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
                 httpResponse.addHeader(HttpHeaders.SET_COOKIE, jwtRefreshCookie.toString());
