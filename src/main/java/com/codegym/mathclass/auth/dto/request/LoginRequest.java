@@ -19,4 +19,6 @@ public class LoginRequest {
     private String password;
 
     private String role; // "STUDENT" hoặc "TEACHER"
+
+    private boolean rememberMe;
 }

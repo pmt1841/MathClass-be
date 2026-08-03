@@ -146,9 +146,10 @@ class AuthServiceImplTest {
             when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(authentication);
             when(authentication.getPrincipal()).thenReturn(mockUserDetails);
             when(jwtUtils.generateJwtCookie(mockUserDetails)).thenReturn(ResponseCookie.from("mathclass_jwt", "jwt-token").build());
+            when(jwtUtils.generateJwtToken(authentication)).thenReturn("jwt-token");
             when(refreshTokenService.createRefreshToken(1L)).thenReturn(mockRefreshToken);
-            when(jwtUtils.generateRefreshJwtCookie("refresh-token-uuid")).thenReturn(ResponseCookie.from("mathclass_refresh", "refresh-token-uuid").build());
-            when(userMapper.toUserInfoResponse(mockUserDetails)).thenReturn(expectedUserInfo);
+            when(jwtUtils.generateRefreshJwtCookie(anyString(), anyBoolean())).thenReturn(ResponseCookie.from("mathclass_refresh", "refresh-token-uuid").build());
+            when(userMapper.toUserInfoResponse(eq(mockUserDetails), anyString())).thenReturn(expectedUserInfo);
 
             UserInfoResponse response = authService.authenticateUser(loginRequest, mockResponse);
 
