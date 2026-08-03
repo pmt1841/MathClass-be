@@ -497,7 +497,28 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
         for (AssignmentSheetResponse sheet : page.getContent()) {
             applySubmissionDataToSheetItems(sheet, submissionByAssignmentId);
             sheet.setSubmissionStatus(resolveSheetSubmissionStatus(sheet));
+            applySheetSubmissionTimes(sheet);
         }
+    }
+
+    private void applySheetSubmissionTimes(AssignmentSheetResponse sheet) {
+        if (sheet.getItems() == null || sheet.getItems().isEmpty()) return;
+
+        LocalDateTime latestSubmit = sheet.getItems().stream()
+                .map(AssignmentResponse::getSubmissionCreatedAt)
+                .filter(java.util.Objects::nonNull)
+                .max(LocalDateTime::compareTo)
+                .orElse(null);
+
+        LocalDateTime latestUpdate = sheet.getItems().stream()
+                .filter(item -> SubmissionStatus.GRADED.name().equals(item.getSubmissionStatus()))
+                .map(AssignmentResponse::getSubmissionUpdatedAt)
+                .filter(java.util.Objects::nonNull)
+                .max(LocalDateTime::compareTo)
+                .orElse(null);
+
+        sheet.setSubmissionCreatedAt(latestSubmit);
+        sheet.setSubmissionUpdatedAt(latestUpdate);
     }
 
     /**
@@ -555,11 +576,12 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
                 .allMatch(item -> SubmissionStatus.GRADED.name().equals(item.getSubmissionStatus()));
         if (allGraded) return SubmissionStatus.GRADED.name();
 
-        boolean allSubmittedOrGraded = items.stream()
+        boolean anySubmittedOrGraded = items.stream()
                 .map(AssignmentResponse::getSubmissionStatus)
-                .allMatch(status -> SubmissionStatus.SUBMITTED.name().equals(status)
-                        || SubmissionStatus.GRADED.name().equals(status));
-        if (allSubmittedOrGraded) return SubmissionStatus.SUBMITTED.name();
+                .anyMatch(status -> SubmissionStatus.SUBMITTED.name().equals(status)
+                        || SubmissionStatus.GRADED.name().equals(status)
+                        || SubmissionStatus.LATE.name().equals(status));
+        if (anySubmittedOrGraded) return SubmissionStatus.SUBMITTED.name();
 
         return null;
     }
