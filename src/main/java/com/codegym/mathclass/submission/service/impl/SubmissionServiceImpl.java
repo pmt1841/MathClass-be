@@ -27,6 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.thymeleaf.context.Context;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -298,22 +301,57 @@ public class SubmissionServiceImpl implements SubmissionService {
         User teacher = assignment.getTeacher();
         User student = submission.getStudent();
 
-        String subject = "Học sinh " + student.getFullName() + " đã nộp bài tập: " + assignment.getTitle();
-        String relativeLink = "/assignments/" + assignment.getId() + "/submissions/" + submission.getId();
-        
         if (assignment.getAssignmentSheet() != null) {
-            relativeLink += "?sheetId=" + assignment.getAssignmentSheet().getId();
+            AssignmentSheet sheet = assignment.getAssignmentSheet();
+            List<Assignment> sheetAssignments = assignmentRepository.findByAssignmentSheetId(sheet.getId());
+            
+            List<Long> assignmentIds = sheetAssignments.stream().map(Assignment::getId).collect(Collectors.toList());
+            List<Submission> submissions = submissionRepository.findAllByAssignmentIdInAndStudentId(assignmentIds, student.getId());
+            long submittedCount = submissions.stream().filter(s -> s.getStatus() != SubmissionStatus.DRAFT).count();
+            
+            if (submittedCount == sheetAssignments.size() && !sheetAssignments.isEmpty()) {
+                sheetAssignments.sort(Comparator.comparing(Assignment::getId));
+                Assignment firstAssignment = sheetAssignments.get(0);
+                
+                String subject = "Học sinh " + student.getFullName() + " đã hoàn thành phiếu bài tập: " + sheet.getTitle();
+                
+                Submission firstSubmission = submissions.stream()
+                        .filter(s -> s.getAssignment().getId() == firstAssignment.getId())
+                        .findFirst()
+                        .orElse(null);
+                
+                String relativeLink = "/assignments/" + firstAssignment.getId();
+                if (firstSubmission != null) {
+                    relativeLink += "/submissions/" + firstSubmission.getId() + "?sheetId=" + sheet.getId();
+                } else {
+                    relativeLink += "?sheetId=" + sheet.getId();
+                }
+                
+                String link = frontendUrl + relativeLink;
+
+                Context context = new Context();
+                context.setVariable("teacherName", teacher.getFullName());
+                context.setVariable("studentName", student.getFullName());
+                context.setVariable("assignmentName", sheet.getTitle());
+                context.setVariable("link", link);
+
+                emailService.sendHtmlMailAsync(teacher.getEmail(), subject, "submission-submitted", context);
+                notificationService.saveAndSendNotification(teacher.getId(), subject, relativeLink);
+            }
+        } else {
+            String subject = "Học sinh " + student.getFullName() + " đã nộp bài tập: " + assignment.getTitle();
+            String relativeLink = "/assignments/" + assignment.getId() + "/submissions/" + submission.getId();
+            
+            String link = frontendUrl + relativeLink;
+
+            Context context = new Context();
+            context.setVariable("teacherName", teacher.getFullName());
+            context.setVariable("studentName", student.getFullName());
+            context.setVariable("assignmentName", assignment.getTitle());
+            context.setVariable("link", link);
+
+            emailService.sendHtmlMailAsync(teacher.getEmail(), subject, "submission-submitted", context);
+            notificationService.saveAndSendNotification(teacher.getId(), subject, relativeLink);
         }
-        
-        String link = frontendUrl + relativeLink;
-
-        Context context = new Context();
-        context.setVariable("teacherName", teacher.getFullName());
-        context.setVariable("studentName", student.getFullName());
-        context.setVariable("assignmentName", assignment.getTitle());
-        context.setVariable("link", link);
-
-        emailService.sendHtmlMailAsync(teacher.getEmail(), subject, "submission-submitted", context);
-        notificationService.saveAndSendNotification(teacher.getId(), subject, relativeLink);
     }
 }
