@@ -79,6 +79,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 apiPrefix + "/auth/**",
                                 "/error",
+                                "/v3/api-docs",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
