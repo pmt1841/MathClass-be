@@ -17,11 +17,13 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void configurePathMatch(PathMatchConfigurer configurer) {
         configurer.addPathPrefix(apiPrefix,
-                HandlerTypePredicate.forAnnotation(RestController.class)
+                HandlerTypePredicate.forBasePackage("com.codegym.mathclass")
+                        .and(HandlerTypePredicate.forAnnotation(RestController.class))
                         .and(clazz -> !clazz.isAnnotationPresent(ApiVersion.class) || clazz.getAnnotation(ApiVersion.class).value() == 1));
 
         configurer.addPathPrefix("/api/v2",
-                HandlerTypePredicate.forAnnotation(ApiVersion.class)
+                HandlerTypePredicate.forBasePackage("com.codegym.mathclass")
+                        .and(HandlerTypePredicate.forAnnotation(ApiVersion.class))
                         .and(clazz -> clazz.getAnnotation(ApiVersion.class).value() == 2));
     }
 }
