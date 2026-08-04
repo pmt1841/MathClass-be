@@ -29,7 +29,7 @@ import org.thymeleaf.context.Context;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -51,17 +51,17 @@ public class SubmissionServiceImpl implements SubmissionService {
             throw new BadRequestException("Thiếu assignmentId");
         }
 
-        Assignment assignment = assignmentRepository.findById(requestDto.getAssignmentId())
+        var assignment = assignmentRepository.findById(requestDto.getAssignmentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập"));
 
         if (assignment.getDeadline() != null && LocalDateTime.now().isAfter(assignment.getDeadline())) {
             throw new BadRequestException("Đã hết hạn nộp bài tập");
         }
 
-        User student = userRepository.findById(studentId)
+        var student = userRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy học sinh"));
 
-        Submission submission = submissionRepository.findFirstByAssignmentIdAndStudentId(assignment.getId(), studentId)
+        var submission = submissionRepository.findFirstByAssignmentIdAndStudentId(assignment.getId(), studentId)
                 .orElse(new Submission());
 
         submission.setAssignment(assignment);
@@ -70,7 +70,7 @@ public class SubmissionServiceImpl implements SubmissionService {
         boolean isNewlySubmitted = (submission.getStatus() != SubmissionStatus.SUBMITTED
                 && requestDto.getStatus() == SubmissionStatus.SUBMITTED);
 
-        String content = requestDto.getContent() == null ? "" : requestDto.getContent();
+        var content = Objects.requireNonNullElse(requestDto.getContent(), "");
 
         if (content != null && !LaTeXSanitizer.isSafe(content)) {
             String dangerous = LaTeXSanitizer.findDangerousCommand(content);
@@ -215,33 +215,7 @@ public class SubmissionServiceImpl implements SubmissionService {
         Submission savedSubmission = submissionRepository.save(submission);
 
         if (assignment.getAssignmentSheet() != null) {
-            AssignmentSheet sheet = assignment.getAssignmentSheet();
-            List<Assignment> sheetAssignments = assignmentRepository.findByAssignmentSheetId(sheet.getId());
-            
-            List<Long> assignmentIds = sheetAssignments.stream().map(Assignment::getId).collect(Collectors.toList());
-            List<Submission> submissions = submissionRepository.findAllByAssignmentIdInAndStudentId(assignmentIds, submission.getStudent().getId());
-            long gradedCount = submissions.stream().filter(s -> s.getStatus() == SubmissionStatus.GRADED).count();
-            
-            if (gradedCount == sheetAssignments.size() && !sheetAssignments.isEmpty()) {
-                sheetAssignments.sort(Comparator.comparing(Assignment::getId));
-                Assignment firstAssignment = sheetAssignments.get(0);
-                
-                String subject = "Giáo viên đã chấm điểm phiếu bài tập: " + sheet.getTitle();
-                String classCodeParam = firstAssignment.getClassroom() != null ? "?classCode=" + firstAssignment.getClassroom().getClassCode() : "";
-                
-                String relativeLink = "/assignments/" + firstAssignment.getId() + classCodeParam;
-                String delimiter = relativeLink.contains("?") ? "&" : "?";
-                relativeLink += delimiter + "sheetId=" + sheet.getId();
-                
-                String link = frontendUrl + relativeLink;
-                Context context = new Context();
-                context.setVariable("studentName", submission.getStudent().getFullName());
-                context.setVariable("assignmentName", sheet.getTitle());
-                context.setVariable("link", link);
-                
-                emailService.sendHtmlMailAsync(submission.getStudent().getEmail(), subject, "submission-graded", context);
-                notificationService.saveAndSendNotification(submission.getStudent().getId(), subject, relativeLink);
-            }
+            checkAndProcessSheetNotification(assignment, submission, true);
         } else {
             String subject = "Giáo viên đã chấm điểm bài tập: " + assignment.getTitle();
             String classCodeParam = assignment.getClassroom() != null ? "?classCode=" + assignment.getClassroom().getClassCode() : "";
@@ -326,42 +300,7 @@ public class SubmissionServiceImpl implements SubmissionService {
         User student = submission.getStudent();
 
         if (assignment.getAssignmentSheet() != null) {
-            AssignmentSheet sheet = assignment.getAssignmentSheet();
-            List<Assignment> sheetAssignments = assignmentRepository.findByAssignmentSheetId(sheet.getId());
-            
-            List<Long> assignmentIds = sheetAssignments.stream().map(Assignment::getId).collect(Collectors.toList());
-            List<Submission> submissions = submissionRepository.findAllByAssignmentIdInAndStudentId(assignmentIds, student.getId());
-            long submittedCount = submissions.stream().filter(s -> s.getStatus() != SubmissionStatus.DRAFT).count();
-            
-            if (submittedCount == sheetAssignments.size() && !sheetAssignments.isEmpty()) {
-                sheetAssignments.sort(Comparator.comparing(Assignment::getId));
-                Assignment firstAssignment = sheetAssignments.get(0);
-                
-                String subject = "Học sinh " + student.getFullName() + " đã hoàn thành phiếu bài tập: " + sheet.getTitle();
-                
-                Submission firstSubmission = submissions.stream()
-                        .filter(s -> s.getAssignment().getId() == firstAssignment.getId())
-                        .findFirst()
-                        .orElse(null);
-                
-                String relativeLink = "/assignments/" + firstAssignment.getId();
-                if (firstSubmission != null) {
-                    relativeLink += "/submissions/" + firstSubmission.getId() + "?sheetId=" + sheet.getId();
-                } else {
-                    relativeLink += "?sheetId=" + sheet.getId();
-                }
-                
-                String link = frontendUrl + relativeLink;
-
-                Context context = new Context();
-                context.setVariable("teacherName", teacher.getFullName());
-                context.setVariable("studentName", student.getFullName());
-                context.setVariable("assignmentName", sheet.getTitle());
-                context.setVariable("link", link);
-
-                emailService.sendHtmlMailAsync(teacher.getEmail(), subject, "submission-submitted", context);
-                notificationService.saveAndSendNotification(teacher.getId(), subject, relativeLink);
-            }
+            checkAndProcessSheetNotification(assignment, submission, false);
         } else {
             String subject = "Học sinh " + student.getFullName() + " đã nộp bài tập: " + assignment.getTitle();
             String relativeLink = "/assignments/" + assignment.getId() + "/submissions/" + submission.getId();
@@ -376,6 +315,73 @@ public class SubmissionServiceImpl implements SubmissionService {
 
             emailService.sendHtmlMailAsync(teacher.getEmail(), subject, "submission-submitted", context);
             notificationService.saveAndSendNotification(teacher.getId(), subject, relativeLink);
+        }
+    }
+
+    private void checkAndProcessSheetNotification(Assignment assignment, Submission currentSubmission, boolean isGrading) {
+        var sheet = assignment.getAssignmentSheet();
+        var sheetAssignments = assignmentRepository.findByAssignmentSheetId(sheet.getId());
+        if (sheetAssignments.isEmpty()) return;
+        
+        var assignmentIds = sheetAssignments.stream().map(Assignment::getId).toList();
+        var submissions = submissionRepository.findAllByAssignmentIdInAndStudentId(assignmentIds, currentSubmission.getStudent().getId());
+        
+        long processedCount = submissions.stream()
+                .filter(s -> isGrading ? s.getStatus() == SubmissionStatus.GRADED : s.getStatus() != SubmissionStatus.DRAFT)
+                .map(s -> s.getAssignment().getId())
+                .distinct()
+                .count();
+                
+        if (processedCount == sheetAssignments.size()) {
+            sheetAssignments.sort(Comparator.comparing(Assignment::getId));
+            Assignment firstAssignment = sheetAssignments.get(0);
+            
+            User student = currentSubmission.getStudent();
+            Context context = new Context();
+            context.setVariable("studentName", student.getFullName());
+            context.setVariable("assignmentName", sheet.getTitle());
+            
+            String relativeLink;
+            String subject;
+            String templateName;
+            String emailTo;
+            Long notificationUserId;
+            
+            if (isGrading) {
+                subject = "Giáo viên đã chấm điểm phiếu bài tập: " + sheet.getTitle();
+                String classCodeParam = firstAssignment.getClassroom() != null ? "?classCode=" + firstAssignment.getClassroom().getClassCode() : "";
+                relativeLink = "/assignments/" + firstAssignment.getId() + classCodeParam;
+                String delimiter = relativeLink.contains("?") ? "&" : "?";
+                relativeLink += delimiter + "sheetId=" + sheet.getId();
+                
+                templateName = "submission-graded";
+                emailTo = student.getEmail();
+                notificationUserId = student.getId();
+            } else {
+                User teacher = assignment.getTeacher();
+                subject = "Học sinh " + student.getFullName() + " đã hoàn thành phiếu bài tập: " + sheet.getTitle();
+                
+                Submission firstSub = submissions.stream()
+                        .filter(s -> s.getAssignment().getId() == firstAssignment.getId())
+                        .findFirst()
+                        .orElse(null);
+                        
+                relativeLink = "/assignments/" + firstAssignment.getId();
+                if (firstSub != null) {
+                    relativeLink += "/submissions/" + firstSub.getId() + "?sheetId=" + sheet.getId();
+                } else {
+                    relativeLink += "?sheetId=" + sheet.getId();
+                }
+                
+                context.setVariable("teacherName", teacher.getFullName());
+                templateName = "submission-submitted";
+                emailTo = teacher.getEmail();
+                notificationUserId = teacher.getId();
+            }
+            
+            context.setVariable("link", frontendUrl + relativeLink);
+            emailService.sendHtmlMailAsync(emailTo, subject, templateName, context);
+            notificationService.saveAndSendNotification(notificationUserId, subject, relativeLink);
         }
     }
 }
