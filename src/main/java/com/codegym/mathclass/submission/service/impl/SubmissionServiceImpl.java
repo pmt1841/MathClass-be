@@ -51,17 +51,17 @@ public class SubmissionServiceImpl implements SubmissionService {
             throw new BadRequestException("Thiếu assignmentId");
         }
 
-        var assignment = assignmentRepository.findById(requestDto.getAssignmentId())
+        Assignment assignment = assignmentRepository.findById(requestDto.getAssignmentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập"));
 
         if (assignment.getDeadline() != null && LocalDateTime.now().isAfter(assignment.getDeadline())) {
             throw new BadRequestException("Đã hết hạn nộp bài tập");
         }
 
-        var student = userRepository.findById(studentId)
+        User student = userRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy học sinh"));
 
-        var submission = submissionRepository.findFirstByAssignmentIdAndStudentId(assignment.getId(), studentId)
+        Submission submission = submissionRepository.findFirstByAssignmentIdAndStudentId(assignment.getId(), studentId)
                 .orElse(new Submission());
 
         submission.setAssignment(assignment);
@@ -70,7 +70,7 @@ public class SubmissionServiceImpl implements SubmissionService {
         boolean isNewlySubmitted = (submission.getStatus() != SubmissionStatus.SUBMITTED
                 && requestDto.getStatus() == SubmissionStatus.SUBMITTED);
 
-        var content = Objects.requireNonNullElse(requestDto.getContent(), "");
+        String content = Objects.requireNonNullElse(requestDto.getContent(), "");
 
         if (content != null && !LaTeXSanitizer.isSafe(content)) {
             String dangerous = LaTeXSanitizer.findDangerousCommand(content);
@@ -319,12 +319,12 @@ public class SubmissionServiceImpl implements SubmissionService {
     }
 
     private void checkAndProcessSheetNotification(Assignment assignment, Submission currentSubmission, boolean isGrading) {
-        var sheet = assignment.getAssignmentSheet();
-        var sheetAssignments = assignmentRepository.findByAssignmentSheetId(sheet.getId());
+        AssignmentSheet sheet = assignment.getAssignmentSheet();
+        List<Assignment> sheetAssignments = assignmentRepository.findByAssignmentSheetId(sheet.getId());
         if (sheetAssignments.isEmpty()) return;
         
-        var assignmentIds = sheetAssignments.stream().map(Assignment::getId).toList();
-        var submissions = submissionRepository.findAllByAssignmentIdInAndStudentId(assignmentIds, currentSubmission.getStudent().getId());
+        List<Long> assignmentIds = sheetAssignments.stream().map(Assignment::getId).toList();
+        List<Submission> submissions = submissionRepository.findAllByAssignmentIdInAndStudentId(assignmentIds, currentSubmission.getStudent().getId());
         
         long processedCount = submissions.stream()
                 .filter(s -> isGrading ? s.getStatus() == SubmissionStatus.GRADED : s.getStatus() != SubmissionStatus.DRAFT)
