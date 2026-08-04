@@ -214,24 +214,48 @@ public class SubmissionServiceImpl implements SubmissionService {
 
         Submission savedSubmission = submissionRepository.save(submission);
 
-        // Send email notification to student
-        String subject = "Giáo viên đã chấm điểm bài tập: " + assignment.getTitle();
-        String classCodeParam = assignment.getClassroom() != null ? "?classCode=" + assignment.getClassroom().getClassCode() : "";
-        String relativeLink = "/assignments/" + assignment.getId() + classCodeParam;
-        
         if (assignment.getAssignmentSheet() != null) {
-            String delimiter = relativeLink.contains("?") ? "&" : "?";
-            relativeLink += delimiter + "sheetId=" + assignment.getAssignmentSheet().getId();
+            AssignmentSheet sheet = assignment.getAssignmentSheet();
+            List<Assignment> sheetAssignments = assignmentRepository.findByAssignmentSheetId(sheet.getId());
+            
+            List<Long> assignmentIds = sheetAssignments.stream().map(Assignment::getId).collect(Collectors.toList());
+            List<Submission> submissions = submissionRepository.findAllByAssignmentIdInAndStudentId(assignmentIds, submission.getStudent().getId());
+            long gradedCount = submissions.stream().filter(s -> s.getStatus() == SubmissionStatus.GRADED).count();
+            
+            if (gradedCount == sheetAssignments.size() && !sheetAssignments.isEmpty()) {
+                sheetAssignments.sort(Comparator.comparing(Assignment::getId));
+                Assignment firstAssignment = sheetAssignments.get(0);
+                
+                String subject = "Giáo viên đã chấm điểm phiếu bài tập: " + sheet.getTitle();
+                String classCodeParam = firstAssignment.getClassroom() != null ? "?classCode=" + firstAssignment.getClassroom().getClassCode() : "";
+                
+                String relativeLink = "/assignments/" + firstAssignment.getId() + classCodeParam;
+                String delimiter = relativeLink.contains("?") ? "&" : "?";
+                relativeLink += delimiter + "sheetId=" + sheet.getId();
+                
+                String link = frontendUrl + relativeLink;
+                Context context = new Context();
+                context.setVariable("studentName", submission.getStudent().getFullName());
+                context.setVariable("assignmentName", sheet.getTitle());
+                context.setVariable("link", link);
+                
+                emailService.sendHtmlMailAsync(submission.getStudent().getEmail(), subject, "submission-graded", context);
+                notificationService.saveAndSendNotification(submission.getStudent().getId(), subject, relativeLink);
+            }
+        } else {
+            String subject = "Giáo viên đã chấm điểm bài tập: " + assignment.getTitle();
+            String classCodeParam = assignment.getClassroom() != null ? "?classCode=" + assignment.getClassroom().getClassCode() : "";
+            String relativeLink = "/assignments/" + assignment.getId() + classCodeParam;
+            
+            String link = frontendUrl + relativeLink;
+            Context context = new Context();
+            context.setVariable("studentName", submission.getStudent().getFullName());
+            context.setVariable("assignmentName", assignment.getTitle());
+            context.setVariable("link", link);
+            
+            emailService.sendHtmlMailAsync(submission.getStudent().getEmail(), subject, "submission-graded", context);
+            notificationService.saveAndSendNotification(submission.getStudent().getId(), subject, relativeLink);
         }
-        
-        String link = frontendUrl + relativeLink;
-        Context context = new Context();
-        context.setVariable("studentName", submission.getStudent().getFullName());
-        context.setVariable("assignmentName", assignment.getTitle());
-        context.setVariable("link", link);
-        emailService.sendHtmlMailAsync(submission.getStudent().getEmail(), subject, "submission-graded", context);
-
-        notificationService.saveAndSendNotification(submission.getStudent().getId(), subject, relativeLink);
 
         return mapToDto(savedSubmission);
     }
