@@ -71,4 +71,10 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy User"));
         return refreshTokenRepository.deleteByUser(user);
     }
+
+    @Override
+    @Transactional
+    public void deleteToken(RefreshToken token) {
+        refreshTokenRepository.delete(token);
+    }
 }

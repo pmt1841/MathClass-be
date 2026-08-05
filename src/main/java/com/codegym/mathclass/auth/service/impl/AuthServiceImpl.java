@@ -123,9 +123,7 @@ public class AuthServiceImpl implements AuthService {
     public MessageResponse logoutUser(HttpServletRequest request, HttpServletResponse response) {
         String refreshCookie = jwtUtils.getJwtRefreshFromCookies(request);
         if (refreshCookie != null && !refreshCookie.isEmpty()) {
-            refreshTokenService.findByToken(refreshCookie).ifPresent(token -> {
-                refreshTokenService.deleteByUserId(token.getUser().getId());
-            });
+            refreshTokenService.findByToken(refreshCookie).ifPresent(refreshTokenService::deleteToken);
         }
 
         ResponseCookie cleanJwtCookie = jwtUtils.getCleanJwtCookie();
