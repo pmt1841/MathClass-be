@@ -47,6 +47,9 @@ class AdminUserServiceImplTest {
     @Mock
     private SystemLogService systemLogService;
 
+    @Mock
+    private com.codegym.mathclass.auth.service.RefreshTokenService refreshTokenService;
+
     @InjectMocks
     private AdminUserServiceImpl adminUserService;
 

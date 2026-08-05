@@ -145,7 +145,7 @@ class AuthServiceImplTest {
             when(userRepository.findByEmail("student@test.com")).thenReturn(Optional.of(mockUser));
             when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(authentication);
             when(authentication.getPrincipal()).thenReturn(mockUserDetails);
-            when(jwtUtils.generateJwtCookie(mockUserDetails)).thenReturn(ResponseCookie.from("mathclass_jwt", "jwt-token").build());
+            when(jwtUtils.generateJwtCookie(eq(mockUserDetails), anyBoolean())).thenReturn(ResponseCookie.from("mathclass_jwt", "jwt-token").build());
             when(jwtUtils.generateJwtToken(authentication)).thenReturn("jwt-token");
             when(refreshTokenService.createRefreshToken(1L)).thenReturn(mockRefreshToken);
             when(jwtUtils.generateRefreshJwtCookie(anyString(), anyBoolean())).thenReturn(ResponseCookie.from("mathclass_refresh", "refresh-token-uuid").build());
@@ -503,7 +503,7 @@ class AuthServiceImplTest {
             assertThat(response).isNotNull();
             assertThat(response.getMessage()).isEqualTo("Đăng xuất thành công!");
 
-            verify(refreshTokenService, times(1)).deleteByUserId(1L);
+            verify(refreshTokenService, times(1)).deleteToken(refreshToken);
             verify(mockResponse, times(2)).addHeader(eq(HttpHeaders.SET_COOKIE), anyString());
         }
 
@@ -519,6 +519,7 @@ class AuthServiceImplTest {
             assertThat(response).isNotNull();
             assertThat(response.getMessage()).isEqualTo("Đăng xuất thành công!");
 
+            verify(refreshTokenService, never()).deleteToken(any());
             verify(refreshTokenService, never()).deleteByUserId(any());
             verify(mockResponse, times(2)).addHeader(eq(HttpHeaders.SET_COOKIE), anyString());
         }
