@@ -36,20 +36,20 @@ public class AiPromptExecutionService {
     public String executePrompt(String taskCode, String prompt) {
         Optional<TaskConfig> configOpt = taskConfigRepository.findByTask(taskCode);
         if (configOpt.isEmpty()) {
-            log.warn("TaskConfig '{}' chưa được cấu hình. Sử dụng phản hồi fallback mặc định.", taskCode);
-            return fallbackResponse(prompt);
+            log.warn("TaskConfig '{}' chưa được cấu hình.", taskCode);
+            throw new RuntimeException("Tác vụ AI '" + taskCode + "' chưa được hệ thống cấu hình.");
         }
 
         TaskConfig config = configOpt.get();
         if (!Boolean.TRUE.equals(config.getEnabled())) {
-            log.warn("Tác vụ AI '{}' hiện đang bị vô hiệu hóa. Sử dụng phản hồi fallback.", taskCode);
-            return fallbackResponse(prompt);
+            log.warn("Tác vụ AI '{}' hiện đang bị vô hiệu hóa.", taskCode);
+            throw new RuntimeException("Tác vụ AI '" + taskCode + "' hiện đang bị tạm khóa.");
         }
 
         Provider provider = config.getProvider();
         if (provider == null || provider.getStatus() != com.codegym.mathclass.aiconfig.entity.ProviderStatus.ACTIVE) {
-            log.warn("Provider AI cho tác vụ '{}' không khả dụng. Sử dụng phản hồi fallback.", taskCode);
-            return fallbackResponse(prompt);
+            log.warn("Provider AI cho tác vụ '{}' không khả dụng.", taskCode);
+            throw new RuntimeException("Dịch vụ AI Provider hiện không khả dụng.");
         }
 
         try {
