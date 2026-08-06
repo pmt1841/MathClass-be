@@ -108,7 +108,7 @@ class SubmissionHintServiceImplTest {
 
             when(userRepository.findByEmail(studentEmail)).thenReturn(Optional.of(student));
             when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(assignment));
-            when(submissionRepository.findFirstByAssignmentIdAndStudentId(assignmentId, studentId))
+            when(submissionRepository.findFirstByAssignmentIdAndStudentIdWithLock(assignmentId, studentId))
                     .thenReturn(Optional.of(submission));
             when(submissionHintRepository.countBySubmissionId(submissionId)).thenReturn(0);
             when(aiPromptExecutionService.executePrompt(eq("STUDENT_HINT"), anyString()))
@@ -138,7 +138,7 @@ class SubmissionHintServiceImplTest {
 
             when(userRepository.findByEmail(studentEmail)).thenReturn(Optional.of(student));
             when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(assignment));
-            when(submissionRepository.findFirstByAssignmentIdAndStudentId(assignmentId, studentId))
+            when(submissionRepository.findFirstByAssignmentIdAndStudentIdWithLock(assignmentId, studentId))
                     .thenReturn(Optional.empty());
 
             when(submissionRepository.save(any(Submission.class))).thenAnswer(invocation -> {
@@ -170,7 +170,7 @@ class SubmissionHintServiceImplTest {
 
             when(userRepository.findByEmail(studentEmail)).thenReturn(Optional.of(student));
             when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(assignment));
-            when(submissionRepository.findFirstByAssignmentIdAndStudentId(assignmentId, studentId))
+            when(submissionRepository.findFirstByAssignmentIdAndStudentIdWithLock(assignmentId, studentId))
                     .thenReturn(Optional.of(submission));
             when(submissionHintRepository.countBySubmissionId(submissionId)).thenReturn(3);
 
@@ -188,7 +188,7 @@ class SubmissionHintServiceImplTest {
 
             when(userRepository.findByEmail(studentEmail)).thenReturn(Optional.of(student));
             when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(assignment));
-            when(submissionRepository.findFirstByAssignmentIdAndStudentId(assignmentId, studentId))
+            when(submissionRepository.findFirstByAssignmentIdAndStudentIdWithLock(assignmentId, studentId))
                     .thenReturn(Optional.of(submission));
             when(submissionHintRepository.countBySubmissionId(submissionId)).thenReturn(1);
             when(aiPromptExecutionService.executePrompt(eq("STUDENT_HINT"), anyString()))
@@ -209,7 +209,7 @@ class SubmissionHintServiceImplTest {
 
             when(userRepository.findByEmail(studentEmail)).thenReturn(Optional.of(student));
             when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(assignment));
-            when(submissionRepository.findFirstByAssignmentIdAndStudentId(assignmentId, studentId))
+            when(submissionRepository.findFirstByAssignmentIdAndStudentIdWithLock(assignmentId, studentId))
                     .thenReturn(Optional.of(submission));
 
             assertThatThrownBy(() -> submissionHintService.requestHint(assignmentId, request, studentEmail))
@@ -243,7 +243,7 @@ class SubmissionHintServiceImplTest {
 
             when(userRepository.findByEmail(studentEmail)).thenReturn(Optional.of(student));
             when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(assignment));
-            when(submissionRepository.findFirstByAssignmentIdAndStudentId(assignmentId, studentId))
+            when(submissionRepository.findFirstByAssignmentIdAndStudentIdWithLock(assignmentId, studentId))
                     .thenReturn(Optional.of(submission));
             when(submissionHintRepository.countBySubmissionId(submissionId)).thenReturn(0);
             when(aiPromptExecutionService.executePrompt(eq("STUDENT_HINT"), anyString()))
@@ -271,7 +271,7 @@ class SubmissionHintServiceImplTest {
 
             when(userRepository.findByEmail(studentEmail)).thenReturn(Optional.of(student));
             when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(assignment));
-            when(submissionRepository.findFirstByAssignmentIdAndStudentId(assignmentId, studentId))
+            when(submissionRepository.findFirstByAssignmentIdAndStudentIdWithLock(assignmentId, studentId))
                     .thenReturn(Optional.of(submission));
             when(submissionHintRepository.countBySubmissionId(submissionId)).thenReturn(0);
             when(aiPromptExecutionService.executePrompt(eq("STUDENT_HINT"), anyString()))
@@ -333,6 +333,32 @@ class SubmissionHintServiceImplTest {
             assertThatThrownBy(() -> submissionHintService.getHintHistory(submissionId, "other@codegym.com"))
                     .isInstanceOf(AccessDeniedException.class)
                     .hasMessageContaining("Bạn không có quyền xem lịch sử gợi ý này");
+        }
+
+        @Test
+        @DisplayName("UT-BE-10: Should correctly compare Long IDs > 127 using Objects.equals without false 403 blocks")
+        void getHintHistory_largeLongIds_success() {
+            long largeStudentId = 99999L;
+            long largeSubmissionId = 88888L;
+
+            User largeStudent = new User();
+            largeStudent.setId(largeStudentId);
+            largeStudent.setEmail("large@codegym.com");
+
+            Submission largeSubmission = new Submission();
+            largeSubmission.setId(largeSubmissionId);
+            largeSubmission.setStudent(largeStudent);
+            largeSubmission.setAssignment(assignment);
+
+            when(userRepository.findByEmail("large@codegym.com")).thenReturn(Optional.of(largeStudent));
+            when(submissionRepository.findById(largeSubmissionId)).thenReturn(Optional.of(largeSubmission));
+            when(submissionHintRepository.findBySubmissionIdOrderByHintNumberAsc(largeSubmissionId))
+                    .thenReturn(Collections.emptyList());
+
+            HintHistoryResponse history = submissionHintService.getHintHistory(largeSubmissionId, "large@codegym.com");
+
+            assertThat(history).isNotNull();
+            assertThat(history.getSubmissionId()).isEqualTo(largeSubmissionId);
         }
     }
 }

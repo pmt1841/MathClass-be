@@ -16,5 +16,5 @@ public class HintHistoryResponse {
     private Integer totalUsed;
     private Integer maxHints;
     private Integer remainingHints;
-    private List<SubmissionHintItemDTO> hints;
+    private List<SubmissionHintItemResponse> hints;
 }

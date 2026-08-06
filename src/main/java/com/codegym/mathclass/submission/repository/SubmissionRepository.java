@@ -11,8 +11,15 @@ import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import java.util.List;
 import java.util.Optional;
 
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
+
 public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     Optional<Submission> findFirstByAssignmentIdAndStudentId(long assignmentId, long studentId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM Submission s WHERE s.assignment.id = :assignmentId AND s.student.id = :studentId")
+    Optional<Submission> findFirstByAssignmentIdAndStudentIdWithLock(@Param("assignmentId") long assignmentId, @Param("studentId") long studentId);
 
     /**
      * Batch query: lấy submission của một học sinh cho nhiều assignments cùng lúc.

@@ -58,8 +58,8 @@ public class AiPromptExecutionService {
 
             return callLlmApi(provider, config, apiKey, prompt);
         } catch (Exception e) {
-            log.error("Lỗi khi thực thi prompt AI cho task '{}': {}. Chuyển sang phản hồi fallback.", taskCode, e.getMessage());
-            return fallbackResponse(prompt);
+            log.error("Lỗi khi thực thi prompt AI cho task '{}': {}", taskCode, e.getMessage());
+            throw new RuntimeException("Dịch vụ AI phản hồi lỗi hoặc gặp sự cố kết nối: " + e.getMessage(), e);
         }
     }
 

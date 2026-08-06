@@ -11,7 +11,7 @@ import com.codegym.mathclass.exception.ResourceNotFoundException;
 import com.codegym.mathclass.submission.dto.request.StudentHintRequest;
 import com.codegym.mathclass.submission.dto.response.HintHistoryResponse;
 import com.codegym.mathclass.submission.dto.response.StudentHintResponse;
-import com.codegym.mathclass.submission.dto.response.SubmissionHintItemDTO;
+import com.codegym.mathclass.submission.dto.response.SubmissionHintItemResponse;
 import com.codegym.mathclass.submission.entity.Submission;
 import com.codegym.mathclass.submission.entity.SubmissionHint;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -56,7 +57,7 @@ public class SubmissionHintServiceImpl implements SubmissionHintService {
                 throw new BadRequestException("Đã hết hạn làm bài tập, không thể xin gợi ý.");
             }
 
-            Submission submission = submissionRepository.findFirstByAssignmentIdAndStudentId(assignmentId, student.getId())
+            Submission submission = submissionRepository.findFirstByAssignmentIdAndStudentIdWithLock(assignmentId, student.getId())
                     .orElseGet(() -> {
                         Submission newSubmission = new Submission();
                         newSubmission.setAssignment(assignment);
@@ -119,8 +120,8 @@ public class SubmissionHintServiceImpl implements SubmissionHintService {
         Submission submission = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài nộp"));
 
-        boolean isOwner = submission.getStudent().getId() == currentUser.getId();
-        boolean isTeacherOrAdmin = submission.getAssignment().getTeacher().getId() == currentUser.getId();
+        boolean isOwner = Objects.equals(submission.getStudent().getId(), currentUser.getId());
+        boolean isTeacherOrAdmin = Objects.equals(submission.getAssignment().getTeacher().getId(), currentUser.getId());
 
         if (!isOwner && !isTeacherOrAdmin) {
             throw new AccessDeniedException("Bạn không có quyền xem lịch sử gợi ý này");
@@ -129,8 +130,8 @@ public class SubmissionHintServiceImpl implements SubmissionHintService {
         List<SubmissionHint> hints = submissionHintRepository.findBySubmissionIdOrderByHintNumberAsc(submissionId);
         int totalUsed = hints.size();
 
-        List<SubmissionHintItemDTO> items = hints.stream()
-                .map(h -> SubmissionHintItemDTO.builder()
+        List<SubmissionHintItemResponse> items = hints.stream()
+                .map(h -> SubmissionHintItemResponse.builder()
                         .id(h.getId())
                         .hintNumber(h.getHintNumber())
                         .studentSnapshotContent(h.getStudentSnapshotContent())

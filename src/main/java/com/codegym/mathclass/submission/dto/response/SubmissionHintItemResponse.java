@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class SubmissionHintItemDTO {
+public class SubmissionHintItemResponse {
     private Long id;
     private Integer hintNumber;
     private String studentSnapshotContent;
