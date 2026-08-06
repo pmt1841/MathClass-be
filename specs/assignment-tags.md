@@ -174,6 +174,20 @@ Mở rộng `GET /assignments`:
 - Không hardcode ID tag trong Java.
 - Tái sử dụng Security hiện có; endpoint đọc tag yêu cầu đăng nhập.
 
+## Decisions After Implementation
+
+- Bài nguồn `ARCHIVED` trong Kho bài tập vẫn là tài sản của giáo viên và được
+  phép cập nhật tag. Bản `PUBLISHED` đã giao cho lớp là snapshot, không sửa tag
+  trực tiếp từ lớp.
+- Khi cập nhật một tập tag, phải xóa và flush các liên kết `AssignmentTag` cũ
+  trước khi thêm liên kết mới. Điều này tránh PostgreSQL unique violation cho
+  cặp (`assignment_id`, `tag_id`) khi tag không thay đổi.
+- `AssignmentResponse.fromEntity` và biến thể không content phải map `tags`.
+  Đây là điều kiện để item trong `AssignmentSheetResponse` trả đúng tag của bài
+  con.
+- Giao lại bài chỉ cho lớp chưa có clone từ bài nguồn. Lớp đã giao phải được
+  coi là read-only trong publish dialog để tránh tạo assignment trùng.
+
 ## Acceptance Criteria
 
 - Tạo bài nháp không tag thành công.
