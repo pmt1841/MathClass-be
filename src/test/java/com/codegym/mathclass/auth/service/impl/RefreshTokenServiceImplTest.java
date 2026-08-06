@@ -11,6 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -113,10 +114,10 @@ class RefreshTokenServiceImplTest {
         }
 
         @Test
-        @DisplayName("Should delete oldest token when user already has 3 or more active tokens")
+        @DisplayName("Should delete oldest token when user already has 5 or more active tokens")
         void createRefreshToken_MaxDeviceLimitReached_DeletesOldestToken() {
             List<RefreshToken> existingTokens = new ArrayList<>();
-            for (long i = 1; i <= 3; i++) {
+            for (long i = 1; i <= 5; i++) {
                 existingTokens.add(RefreshToken.builder()
                         .id(i)
                         .user(mockUser)
@@ -132,7 +133,15 @@ class RefreshTokenServiceImplTest {
             RefreshToken createdToken = refreshTokenService.createRefreshToken(1L);
 
             assertThat(createdToken).isNotNull();
-            verify(refreshTokenRepository, times(1)).delete(existingTokens.get(0));
+            
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<RefreshToken>> captor = ArgumentCaptor.forClass(List.class);
+            verify(refreshTokenRepository).deleteAll(captor.capture());
+            
+            List<RefreshToken> deletedTokens = captor.getValue();
+            assertThat(deletedTokens).hasSize(1);
+            assertThat(deletedTokens.get(0).getId()).isEqualTo(1L); // Xóa đúng phần tử cũ nhất (id = 1)
+
             verify(refreshTokenRepository, times(1)).save(any(RefreshToken.class));
         }
 
