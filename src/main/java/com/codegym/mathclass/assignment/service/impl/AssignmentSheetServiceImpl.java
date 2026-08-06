@@ -15,6 +15,7 @@ import com.codegym.mathclass.assignment.repository.AssignmentRepository;
 import com.codegym.mathclass.assignment.repository.AssignmentSheetRepository;
 import com.codegym.mathclass.assignment.repository.AssignmentSheetSpecification;
 import com.codegym.mathclass.assignment.service.AssignmentSheetService;
+import com.codegym.mathclass.assignment.service.TagService;
 import com.codegym.mathclass.classroom.entity.Classroom;
 import com.codegym.mathclass.classroom.repository.ClassroomRepository;
 import com.codegym.mathclass.exception.BadRequestException;
@@ -55,6 +56,7 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
     private final ClassroomRepository classroomRepository;
     private final UserRepository userRepository;
     private final SubmissionRepository submissionRepository;
+    private final TagService tagService;
 
     /**
      * Xuất bản một phiếu bài tập tới kho cá nhân (Master Sheet) và tùy chọn tới các lớp học.
@@ -402,6 +404,7 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
                 .parentId(original.getId())
                 .classroom(classroom)
                 .build();
+        tagService.copyTags(original, clone);
 
         // maxScore is handled at the sheet item level
 

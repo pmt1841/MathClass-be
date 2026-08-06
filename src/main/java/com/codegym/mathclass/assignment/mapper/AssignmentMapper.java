@@ -5,6 +5,7 @@ import com.codegym.mathclass.assignment.dto.AssignmentImageDto;
 import com.codegym.mathclass.assignment.dto.AssignmentResponse;
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.entity.AssignmentStatus;
+import com.codegym.mathclass.assignment.dto.TagResponse;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -58,6 +59,11 @@ public class AssignmentMapper {
         }
         
         response.setMaxScore(assignment.getMaxScore() != null ? assignment.getMaxScore() : 10.0);
+        if (assignment.getAssignmentTags() != null) {
+            response.setTags(assignment.getAssignmentTags().stream()
+                    .map(assignmentTag -> TagResponse.fromEntity(assignmentTag.getTag()))
+                    .collect(Collectors.toList()));
+        }
 
         if (assignment.getDrawings() != null && !assignment.getDrawings().isEmpty()) {
             List<AssignmentDrawingResponse> drawingResponses = assignment.getDrawings().stream().map(drawing -> {

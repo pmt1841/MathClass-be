@@ -2,6 +2,7 @@ package com.codegym.mathclass.assignment.repository;
 
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.entity.AssignmentStatus;
+import com.codegym.mathclass.assignment.entity.AssignmentTag;
 import com.codegym.mathclass.classroom.entity.Classroom;
 import com.codegym.mathclass.user.entity.User;
 import jakarta.persistence.criteria.Join;
@@ -63,5 +64,14 @@ public class AssignmentSpecification {
 
     public static Specification<Assignment> isNotInSheet() {
         return (root, query, cb) -> cb.isNull(root.get("assignmentSheet"));
+    }
+
+    public static Specification<Assignment> hasTag(long tagId) {
+        return (root, query, cb) -> {
+            if (tagId <= 0) return null;
+            query.distinct(true);
+            Join<Assignment, AssignmentTag> tags = root.join("assignmentTags", JoinType.INNER);
+            return cb.equal(tags.get("tag").get("id"), tagId);
+        };
     }
 }

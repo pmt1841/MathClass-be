@@ -53,6 +53,7 @@ public class AssignmentResponse {
 
     private List<AssignmentDrawingResponse> drawings;
     private List<AssignmentImageDto> images;
+    private List<TagResponse> tags;
 
     private Double maxScore;
 
@@ -87,6 +88,11 @@ public class AssignmentResponse {
             response.setSheetTitle(assignment.getAssignmentSheet().getTitle());
         }
         response.setMaxScore(assignment.getMaxScore() != null ? assignment.getMaxScore() : 10.0);
+        if (assignment.getAssignmentTags() != null) {
+            response.setTags(assignment.getAssignmentTags().stream()
+                    .map(link -> TagResponse.fromEntity(link.getTag()))
+                    .collect(Collectors.toList()));
+        }
 
         // Tính isOpen tự động: chỉ mở khi PUBLISHED và chưa quá deadline
         boolean open = assignment.getStatus() == AssignmentStatus.PUBLISHED
