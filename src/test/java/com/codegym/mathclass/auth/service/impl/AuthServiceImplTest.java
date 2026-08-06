@@ -477,6 +477,8 @@ class AuthServiceImplTest {
         void refreshToken_TokenNotFound_ThrowsException() {
             when(jwtUtils.getJwtRefreshFromCookies(mockRequest)).thenReturn("not-found-token");
             when(refreshTokenService.findByToken("not-found-token")).thenReturn(Optional.empty());
+            when(jwtUtils.getCleanJwtCookie()).thenReturn(ResponseCookie.from("mathclass_jwt", "").build());
+            when(jwtUtils.getCleanJwtRefreshCookie()).thenReturn(ResponseCookie.from("mathclass_refresh", "").build());
 
             assertThatThrownBy(() -> authService.refreshToken(mockRequest, mockResponse))
                     .isInstanceOf(BadRequestException.class)

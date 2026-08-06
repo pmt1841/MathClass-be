@@ -18,7 +18,6 @@ import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.service.PermissionCacheService;
 import java.util.List;
 import com.codegym.mathclass.notification.entity.NotificationSettings;
-import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.user.mapper.UserMapper;
 import com.codegym.mathclass.notification.repository.NotificationSettingsRepository;
 import com.codegym.mathclass.utils.EmailService;
@@ -110,7 +109,8 @@ public class AuthServiceImpl implements AuthService {
 
         ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails, loginRequest.isRememberMe());
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(userDetails.getId());
-        ResponseCookie jwtRefreshCookie = jwtUtils.generateRefreshJwtCookie(refreshToken.getToken(), loginRequest.isRememberMe());
+        ResponseCookie jwtRefreshCookie = jwtUtils.generateRefreshJwtCookie(refreshToken.getToken(),
+                loginRequest.isRememberMe());
 
         response.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE, jwtRefreshCookie.toString());
@@ -147,10 +147,12 @@ public class AuthServiceImpl implements AuthService {
                     .map(user -> {
                         /*
                          * BẢO MẬT KHÓA TÀI KHOẢN:
-                         * Nếu tài khoản đã bị khóa (isActive = false), lập tức chặn và không cấp thêm JWT Cookie mới.
+                         * Nếu tài khoản đã bị khóa (isActive = false), lập tức chặn và không cấp thêm
+                         * JWT Cookie mới.
                          */
                         if (!user.isActive()) {
-                            throw new BadRequestException("Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ hỗ trợ.");
+                            throw new BadRequestException(
+                                    "Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ hỗ trợ.");
                         }
 
                         List<String> permissions = permissionCacheService.getPermissionsByRole(user.getRole());
@@ -160,7 +162,13 @@ public class AuthServiceImpl implements AuthService {
                         response.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
                         return new MessageResponse("Token is refreshed successfully!");
                     })
-                    .orElseThrow(() -> new BadRequestException("Refresh token không hợp lệ hoặc đã bị thu hồi!"));
+                    .orElseThrow(() -> {
+                        ResponseCookie cleanJwtCookie = jwtUtils.getCleanJwtCookie();
+                        ResponseCookie cleanJwtRefreshCookie = jwtUtils.getCleanJwtRefreshCookie();
+                        response.addHeader(HttpHeaders.SET_COOKIE, cleanJwtCookie.toString());
+                        response.addHeader(HttpHeaders.SET_COOKIE, cleanJwtRefreshCookie.toString());
+                        return new BadRequestException("Refresh token không hợp lệ hoặc đã bị thu hồi!");
+                    });
         }
 
         throw new BadRequestException("Refresh Token bị trống!");
@@ -375,7 +383,8 @@ public class AuthServiceImpl implements AuthService {
                      * Ngăn chặn tài khoản đã bị Admin khóa đăng nhập qua Google.
                      */
                     if (!user.isActive()) {
-                        throw new BadRequestException("Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ hỗ trợ.");
+                        throw new BadRequestException(
+                                "Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ hỗ trợ.");
                     }
 
                     if (request.getRole() != null && !request.getRole().isEmpty()) {
@@ -441,7 +450,8 @@ public class AuthServiceImpl implements AuthService {
 
                 ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails, request.isRememberMe());
                 RefreshToken refreshToken = refreshTokenService.createRefreshToken(userDetails.getId());
-                ResponseCookie jwtRefreshCookie = jwtUtils.generateRefreshJwtCookie(refreshToken.getToken(), request.isRememberMe());
+                ResponseCookie jwtRefreshCookie = jwtUtils.generateRefreshJwtCookie(refreshToken.getToken(),
+                        request.isRememberMe());
 
                 httpResponse.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
                 httpResponse.addHeader(HttpHeaders.SET_COOKIE, jwtRefreshCookie.toString());

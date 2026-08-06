@@ -37,14 +37,12 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy User"));
 
-        // Giới hạn tối đa 3 thiết bị đồng thời
+        // Giới hạn tối đa 5 thiết bị đồng thời
         List<RefreshToken> existingTokens = refreshTokenRepository.findAllByUserOrderByExpiryDateAsc(user);
-        if (existingTokens.size() >= 3) {
-            // Xóa các token cũ nhất, chỉ giữ lại 2 token mới nhất để lát nữa thêm 1 cái là đủ 3
-            int tokensToDelete = existingTokens.size() - 2;
-            for (int i = 0; i < tokensToDelete; i++) {
-                refreshTokenRepository.delete(existingTokens.get(i));
-            }
+        if (existingTokens.size() >= 5) {
+            // Xóa các token cũ nhất, chỉ giữ lại 4 token mới nhất
+            int tokensToDelete = existingTokens.size() - 4;
+            refreshTokenRepository.deleteAll(existingTokens.subList(0, tokensToDelete));
         }
 
         RefreshToken refreshToken = new RefreshToken();
