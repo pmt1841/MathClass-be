@@ -49,8 +49,7 @@ class AiQuestionControllerTest {
         assertNotNull(responseEntity);
         assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
         assertNotNull(responseEntity.getBody());
-        assertEquals(1000, responseEntity.getBody().getCode());
-        assertEquals(mockResponse, responseEntity.getBody().getResult());
+        assertEquals(mockResponse, responseEntity.getBody());
 
         verify(aiQuestionService).generateQuestion(req);
     }
