@@ -48,11 +48,11 @@ public class AiQuestionServiceImpl implements AiQuestionService {
 
         TaskConfig taskConfig = taskConfigRepository.findByTask(TASK_QUESTION_GEN)
                 .filter(TaskConfig::getEnabled)
-                .orElseThrow(() -> new AiGenerationException("Tính năng sinh đề chưa được cấu hình hoặc đã bị tắt trong AI Config."));
+                .orElseThrow(() -> new AiGenerationException(503, "Tính năng sinh đề chưa được cấu hình hoặc đã bị tắt trong AI Config."));
 
         Provider provider = taskConfig.getProvider();
         if (provider == null || provider.getStatus() != ProviderStatus.ACTIVE) {
-            throw new AiGenerationException("Provider cấu hình cho việc sinh đề không tồn tại hoặc đã bị tắt.");
+            throw new AiGenerationException(503, "Provider cấu hình cho việc sinh đề không tồn tại hoặc đã bị tắt.");
         }
 
         String rawModel = taskConfig.getModel();
@@ -114,22 +114,24 @@ public class AiQuestionServiceImpl implements AiQuestionService {
                     dto.setExplanation("");
                 }
 
-                if (!hasRequestedDrawing(request.getPrompt())) {
+                boolean shouldDraw = Boolean.TRUE.equals(request.getIncludeCanvasDiagram()) && hasRequestedDrawing(request.getPrompt());
+                if (!shouldDraw) {
                     dto.setCanvasData(null);
                 }
 
                 return dto;
             } catch (Exception e) {
                 lastException = e;
+                int statusCode = (e instanceof AiGenerationException aiEx) ? aiEx.getStatusCode() : 500;
                 String errorMsg = e.getMessage() != null ? e.getMessage() : "";
-                log.warn("Model '{}' với Key ID {} gặp lỗi khi sinh đề bài: {}", 
-                        modelToUse, (selectedKey != null ? selectedKey.getId() : "ENV"), errorMsg);
+                log.warn("Model '{}' với Key ID {} gặp lỗi khi sinh đề bài (HTTP {}): {}", 
+                        modelToUse, (selectedKey != null ? selectedKey.getId() : "ENV"), statusCode, errorMsg);
 
-                if (errorMsg.contains("401")) {
+                if (statusCode == 401) {
                     if (selectedKey != null) {
                         keySelectionService.markKeyAsInactive(selectedKey.getId());
                     }
-                } else if (errorMsg.contains("429")) {
+                } else if (statusCode == 429) {
                     hasQuotaError = true;
                 }
             }
@@ -137,23 +139,28 @@ public class AiQuestionServiceImpl implements AiQuestionService {
             if (hasQuotaError && selectedKey != null) {
                 keySelectionService.cooldownKey(selectedKey.getId(), 300); // Tạm nghỉ key này 5 phút
             } else if (selectedKey != null && lastException != null && !hasQuotaError) {
-                String errorMsg = lastException.getMessage() != null ? lastException.getMessage() : "";
-                if (!errorMsg.contains("401")) {
+                int lastStatus = (lastException instanceof AiGenerationException aiEx) ? aiEx.getStatusCode() : 500;
+                if (lastStatus != 401) {
                     keySelectionService.cooldownKey(selectedKey.getId(), 60); // Tạm nghỉ key 60s để tự động xoay key khác ở lượt thử sau
                 }
+            }
+
+            if (selectedKey == null) {
+                break; // Dùng ENV Key nhưng bị lỗi -> không còn key nào khác trong DB để xoay
             }
         }
 
         String detailedMsg = lastException != null ? lastException.getMessage() : "Không tìm thấy API Key khả dụng.";
-        if (detailedMsg.contains("429") || detailedMsg.contains("limit: 0")) {
-            throw new AiGenerationException("API Key hiện tại của bạn đã dùng hết Quota (Lỗi HTTP 429). Vui lòng cập nhật API Key mới trong trang Quản trị AI Config.");
+        int finalStatusCode = (lastException instanceof AiGenerationException aiEx) ? aiEx.getStatusCode() : 500;
+        if (finalStatusCode == 429 || detailedMsg.contains("429") || detailedMsg.contains("limit: 0")) {
+            throw new AiGenerationException(429, "API Key hiện tại của bạn đã dùng hết Quota (Lỗi HTTP 429). Vui lòng cập nhật API Key mới trong trang Quản trị AI Config.");
         }
 
-        throw new AiGenerationException("Không thể sinh đề bài toán bằng Gemini. Lỗi chi tiết: " + detailedMsg);
+        throw new AiGenerationException(finalStatusCode, "Không thể sinh đề bài toán bằng AI. Lỗi chi tiết: " + detailedMsg);
     }
 
     private String buildSystemPrompt(GenerateQuestionRequest request) {
-        boolean isDrawingRequested = hasRequestedDrawing(request.getPrompt());
+        boolean isDrawingRequested = Boolean.TRUE.equals(request.getIncludeCanvasDiagram()) && hasRequestedDrawing(request.getPrompt());
         String canvasRequirement = isDrawingRequested
                 ? "2. CHÚ Ý: Người dùng CÓ YÊU CẦU vẽ hình/đồ thị, bạn hãy sinh ra object 'canvasData' (chứa điểm, đoạn thẳng, đường tròn, đồ thị hàm số) theo chuẩn JSON."
                 : "2. CHÚ Ý: Bài toán này KHÔNG yêu cầu vẽ hình hay đồ thị, TUYỆT ĐỐI KHÔNG sinh ra object 'canvasData' (bỏ qua trường 'canvasData').";
@@ -254,7 +261,7 @@ public class AiQuestionServiceImpl implements AiQuestionService {
         HttpResponse<String> response = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new AiGenerationException("Gemini API returned HTTP " + response.statusCode() + ": " + response.body());
+            throw new AiGenerationException(response.statusCode(), "Gemini API returned HTTP " + response.statusCode() + ": " + response.body());
         }
 
         return response.body();
@@ -326,7 +333,7 @@ public class AiQuestionServiceImpl implements AiQuestionService {
         HttpResponse<String> response = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new AiGenerationException("OpenAI API returned HTTP " + response.statusCode() + ": " + response.body());
+            throw new AiGenerationException(response.statusCode(), "OpenAI API returned HTTP " + response.statusCode() + ": " + response.body());
         }
 
         return response.body();
@@ -368,9 +375,10 @@ public class AiQuestionServiceImpl implements AiQuestionService {
     private boolean hasRequestedDrawing(String prompt) {
         if (prompt == null || prompt.isBlank()) return false;
         String lower = prompt.toLowerCase();
-        return lower.contains("vẽ") || lower.contains("hình") || lower.contains("đồ thị")
+        return lower.contains("vẽ") || lower.contains("đồ thị")
                 || lower.contains("minh họa") || lower.contains("sơ đồ") || lower.contains("parabol")
-                || lower.contains("vẽ hình") || lower.contains("vẽ đồ thị") || lower.contains("kèm hình");
+                || lower.contains("vẽ hình") || lower.contains("vẽ đồ thị") || lower.contains("kèm hình") || lower.contains("có hình");
     }
 }
+
 

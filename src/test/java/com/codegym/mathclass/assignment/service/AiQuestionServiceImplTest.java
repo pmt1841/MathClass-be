@@ -75,4 +75,47 @@ public class AiQuestionServiceImplTest {
 
         assertThrows(IllegalArgumentException.class, () -> aiQuestionService.generateQuestion(invalidReq));
     }
+
+    @Test
+    @DisplayName("Should throw AiGenerationException (503) when TASK_QUESTION_GEN is disabled")
+    void testGenerateQuestion_DisabledTaskConfig_ThrowsException() {
+        com.codegym.mathclass.aiconfig.entity.TaskConfig disabledConfig = com.codegym.mathclass.aiconfig.entity.TaskConfig.builder()
+                .task("QUESTION_GEN")
+                .enabled(false)
+                .build();
+
+        when(taskConfigRepository.findByTask("QUESTION_GEN")).thenReturn(Optional.of(disabledConfig));
+
+        com.codegym.mathclass.assignment.exception.AiGenerationException ex = 
+                assertThrows(com.codegym.mathclass.assignment.exception.AiGenerationException.class, 
+                        () -> aiQuestionService.generateQuestion(requestDTO));
+
+        assertEquals(503, ex.getStatusCode());
+        assertTrue(ex.getMessage().contains("Tính năng sinh đề chưa được cấu hình hoặc đã bị tắt"));
+    }
+
+    @Test
+    @DisplayName("Should throw AiGenerationException (503) when Provider is INACTIVE")
+    void testGenerateQuestion_InactiveProvider_ThrowsException() {
+        Provider inactiveProvider = Provider.builder()
+                .code("GEMINI")
+                .status(ProviderStatus.INACTIVE)
+                .build();
+
+        com.codegym.mathclass.aiconfig.entity.TaskConfig config = com.codegym.mathclass.aiconfig.entity.TaskConfig.builder()
+                .task("QUESTION_GEN")
+                .enabled(true)
+                .provider(inactiveProvider)
+                .build();
+
+        when(taskConfigRepository.findByTask("QUESTION_GEN")).thenReturn(Optional.of(config));
+
+        com.codegym.mathclass.assignment.exception.AiGenerationException ex = 
+                assertThrows(com.codegym.mathclass.assignment.exception.AiGenerationException.class, 
+                        () -> aiQuestionService.generateQuestion(requestDTO));
+
+        assertEquals(503, ex.getStatusCode());
+        assertTrue(ex.getMessage().contains("Provider cấu hình cho việc sinh đề không tồn tại hoặc đã bị tắt"));
+    }
 }
+

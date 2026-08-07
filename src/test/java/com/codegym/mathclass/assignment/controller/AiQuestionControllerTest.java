@@ -54,4 +54,22 @@ class AiQuestionControllerTest {
 
         verify(aiQuestionService).generateQuestion(req);
     }
+
+    @Test
+    @DisplayName("Should forward exception when service throws AiGenerationException")
+    void testGenerateQuestion_ServiceThrowsException() {
+        GenerateQuestionRequest req = GenerateQuestionRequest.builder()
+                .prompt("Cho tam giác ABC...")
+                .grade(9)
+                .build();
+
+        when(aiQuestionService.generateQuestion(any()))
+                .thenThrow(new com.codegym.mathclass.assignment.exception.AiGenerationException(503, "Service unavailable"));
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                com.codegym.mathclass.assignment.exception.AiGenerationException.class,
+                () -> aiQuestionController.generateQuestion(req)
+        );
+    }
 }
+
