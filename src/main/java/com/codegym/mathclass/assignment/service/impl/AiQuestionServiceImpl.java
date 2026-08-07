@@ -34,7 +34,7 @@ public class AiQuestionServiceImpl implements AiQuestionService {
 
     private final KeySelectionService keySelectionService;
     private final TaskConfigRepository taskConfigRepository;
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(15))
@@ -194,7 +194,9 @@ public class AiQuestionServiceImpl implements AiQuestionService {
                     ]
                   }
                 }
-                Lưu ý quan trọng cho hình vẽ (canvasData): Khi đề toán có đường tròn, BẮT BUỘC phải tạo điểm tâm (dạng "point"), tạo các điểm trên đường tròn, và thêm phần tử "circle" với "centerId" và "radius" hoặc "pointId".
+                Lưu ý quan trọng cho hình vẽ (canvasData):
+                - Tọa độ (x, y) của tất cả điểm BẮT BUỘC nằm trong hệ tọa độ Đề-các nhỏ chuẩn mực từ -6.0 đến 6.0 (Ví dụ: A(-2, 3), B(3, 3), C(4, -1), D(-1, -1)). TUYỆT ĐỐI KHÔNG dùng tọa độ dạng pixel (như 100..500) hay số quá lớn (> 15).
+                - Khi đề toán có đường tròn, BẮT BUỘC phải tạo điểm tâm (dạng "point"), tạo các điểm trên đường tròn, và thêm phần tử "circle" với "centerId" và "radius" hoặc "pointId".
                 """.formatted(infoBuilder.toString(), canvasRequirement, grade, difficulty, topic);
     }
 
