@@ -26,6 +26,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -192,14 +194,32 @@ class AiGradingServiceImplTest {
         }
 
         @Test
-        @DisplayName("Should throw BadRequestException when AI returns blank response")
+        @DisplayName("Should retry once when AI returns empty first then succeed on second attempt")
+        void requestAiGrading_retriesOnEmptyThenSuccess() {
+            when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
+            when(aiPromptExecutionService.executePrompt(eq(GRADING_TASK_CODE), anyString()))
+                    .thenReturn("")
+                    .thenReturn("{\"suggestedScore\": 7.5, \"draftFeedback\": \"Sau khi thử lại\", \"drawingIssues\": []}");
+
+            AiGradingResponse response = aiGradingService.requestAiGrading(submissionId, new AiGradingRequest(), teacherId);
+
+            assertThat(response.getSuggestedScore()).isEqualTo(7.5);
+            assertThat(response.getDraftFeedback()).isEqualTo("Sau khi thử lại");
+            verify(aiPromptExecutionService, times(2)).executePrompt(eq(GRADING_TASK_CODE), anyString());
+        }
+
+        @Test
+        @DisplayName("Should throw BadRequestException when AI returns blank response (after retry)")
         void requestAiGrading_blankAiResponse() {
             when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
             when(aiPromptExecutionService.executePrompt(eq(GRADING_TASK_CODE), anyString())).thenReturn("   ");
 
             assertThatThrownBy(() -> aiGradingService.requestAiGrading(submissionId, new AiGradingRequest(), teacherId))
                     .isInstanceOf(BadRequestException.class)
-                    .hasMessageContaining("phản hồi rỗng");
+                    .hasMessageContaining("phản hồi rỗng")
+                    .hasMessageContaining(GRADING_TASK_CODE);
+
+            verify(aiPromptExecutionService, times(2)).executePrompt(eq(GRADING_TASK_CODE), anyString());
         }
     }
 }

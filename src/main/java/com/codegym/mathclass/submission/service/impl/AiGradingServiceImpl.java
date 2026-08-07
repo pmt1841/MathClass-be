@@ -46,6 +46,12 @@ public class AiGradingServiceImpl implements AiGradingService {
     /** Giới hạn độ dài văn bản (trừ block hình vẽ) gửi vào prompt để tiết kiệm token. */
     private static final int MAX_TEXT_LENGTH = 4000;
 
+    /** Giới hạn độ dài block hình vẽ Canvas gửi vào prompt (tránh vượt context của model). */
+    private static final int MAX_DRAWINGS_LENGTH = 8000;
+
+    /** Số lần thử tối đa khi AI trả về phản hồi rỗng (tránh lỗi tạm thời của LLM). */
+    private static final int MAX_EMPTY_RESPONSE_ATTEMPTS = 2;
+
     private static final Pattern DRAWINGS_BLOCK_PATTERN =
             Pattern.compile("(?s)<!-- DRAWINGS_DATA_START\\n.*?\\nDRAWINGS_DATA_END -->");
 
@@ -69,9 +75,28 @@ public class AiGradingServiceImpl implements AiGradingService {
         }
 
         String prompt = buildGradingPrompt(assignment, submission);
-        String rawAiResponse = aiPromptExecutionService.executePrompt(GRADING_TASK_CODE, prompt);
+        String rawAiResponse = executePromptWithRetryOnEmpty(prompt);
 
         return parseAiResponse(rawAiResponse, assignment, submission);
+    }
+
+    /**
+     * Gọi AI chấm bài, tự thử lại tối đa {@value #MAX_EMPTY_RESPONSE_ATTEMPTS} lần
+     * khi model trả về phản hồi rỗng (hiện tượng tạm thời phổ biến của LLM).
+     * Vẫn rỗng sau khi thử lại → ném lỗi rõ ràng kèm task code để admin kiểm tra config.
+     */
+    private String executePromptWithRetryOnEmpty(String prompt) {
+        String raw = null;
+        for (int attempt = 1; attempt <= MAX_EMPTY_RESPONSE_ATTEMPTS; attempt++) {
+            raw = aiPromptExecutionService.executePrompt(GRADING_TASK_CODE, prompt);
+            if (raw != null && !raw.isBlank()) {
+                return raw;
+            }
+            log.warn("AI chấm bài trả về phản hồi rỗng (lần thử {}/{}) cho task '{}'",
+                    attempt, MAX_EMPTY_RESPONSE_ATTEMPTS, GRADING_TASK_CODE);
+        }
+        throw new BadRequestException("AI phản hồi rỗng (task " + GRADING_TASK_CODE
+                + "). Vui lòng kiểm tra cấu hình Provider/Model trên trang Admin AI Config hoặc thử lại sau.");
     }
 
     private String buildGradingPrompt(Assignment assignment, Submission submission) {
@@ -163,7 +188,8 @@ public class AiGradingServiceImpl implements AiGradingService {
 
     /**
      * Giữ lại nội dung văn bản (giới hạn độ dài) + đính kèm block hình vẽ Canvas nếu có.
-     * Block hình vẽ là phần quan trọng để AI đối chiếu nên không được cắt.
+     * Block hình vẽ là phần quan trọng để AI đối chiếu nên không cắt hoàn toàn,
+     * nhưng vẫn giới hạn độ dài để tránh vượt context của model.
      */
     private String buildContentWithDrawings(String content) {
         if (content == null) return "[Không có nội dung]";
@@ -179,9 +205,15 @@ public class AiGradingServiceImpl implements AiGradingService {
             sb.append(clean);
         }
         if (drawingsBlock != null) {
-            sb.append("\n").append(drawingsBlock);
+            sb.append("\n").append(truncateHead(drawingsBlock, MAX_DRAWINGS_LENGTH));
         }
         return sb.toString();
+    }
+
+    /** Cắt bớt phần đuôi nếu chuỗi vượt quá maxLength (giữ phần đầu chứa shapeCode + elements). */
+    private String truncateHead(String value, int maxLength) {
+        if (value == null || value.length() <= maxLength) return value;
+        return value.substring(0, maxLength) + "\n...[dữ liệu hình vẽ bị cắt do quá dài]...";
     }
 
     /**
