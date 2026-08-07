@@ -285,7 +285,7 @@ class SubmissionHintServiceImplTest {
             StudentHintResponse response = submissionHintService.requestHint(assignmentId, request, studentEmail);
 
             assertThat(response).isNotNull();
-            verify(aiPromptExecutionService).executePrompt(eq("STUDENT_HINT"), contains("[Bài làm chưa có nội dung]"));
+            verify(aiPromptExecutionService).executePrompt(eq("STUDENT_HINT"), contains("[Học sinh chưa bắt đầu làm bài / Bài làm trống]"));
         }
     }
 
