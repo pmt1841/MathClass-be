@@ -70,7 +70,15 @@ public class OpenAiProviderStrategy implements AiProviderStrategy {
 
         if (status >= 200 && status < 300) {
             JsonNode root = objectMapper.readTree(response.body());
-            return root.path("choices").get(0).path("message").path("content").asText();
+            JsonNode choices = root.path("choices");
+            if (choices.isArray() && !choices.isEmpty()) {
+                JsonNode message = choices.get(0).path("message");
+                if (message.has("content")) {
+                    return message.path("content").asText("");
+                }
+            }
+            log.error("OpenAI Compatible Provider returned HTTP status {} but invalid payload: {}", status, response.body());
+            throw new RuntimeException("AI Provider phản hồi không đúng cấu trúc dữ liệu");
         } else {
             log.error("OpenAI Compatible Provider HTTP error status {}: {}", status, response.body());
             throw new RuntimeException("AI Provider phản hồi lỗi HTTP " + status);

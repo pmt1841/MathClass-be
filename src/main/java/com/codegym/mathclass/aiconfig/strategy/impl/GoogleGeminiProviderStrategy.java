@@ -63,7 +63,15 @@ public class GoogleGeminiProviderStrategy implements AiProviderStrategy {
 
         if (status >= 200 && status < 300) {
             JsonNode root = objectMapper.readTree(response.body());
-            return root.path("candidates").get(0).path("content").path("parts").get(0).path("text").asText();
+            JsonNode candidates = root.path("candidates");
+            if (candidates.isArray() && !candidates.isEmpty()) {
+                JsonNode parts = candidates.get(0).path("content").path("parts");
+                if (parts.isArray() && !parts.isEmpty()) {
+                    return parts.get(0).path("text").asText("");
+                }
+            }
+            log.error("Google Gemini Provider returned HTTP status {} but invalid payload: {}", status, response.body());
+            throw new RuntimeException("Google Gemini Provider phản hồi không đúng cấu trúc dữ liệu");
         } else {
             log.error("Google Gemini Provider HTTP error status {}: {}", status, response.body());
             throw new RuntimeException("Google Gemini Provider phản hồi lỗi HTTP " + status);

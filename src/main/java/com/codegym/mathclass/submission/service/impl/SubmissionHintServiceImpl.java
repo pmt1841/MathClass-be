@@ -105,9 +105,6 @@ public class SubmissionHintServiceImpl implements SubmissionHintService {
                     .build();
         } catch (BadRequestException | ResourceNotFoundException | AccessDeniedException e) {
             throw e;
-        } catch (Exception e) {
-            log.error("Lỗi hệ thống khi sinh gợi ý AI cho assignmentId {}: {}", assignmentId, e.getMessage(), e);
-            throw new BadRequestException("Không thể tạo gợi ý lúc này: " + (e.getMessage() != null ? e.getMessage() : "Lỗi hệ thống"));
         }
     }
 
