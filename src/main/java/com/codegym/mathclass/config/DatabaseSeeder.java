@@ -60,6 +60,8 @@ public class DatabaseSeeder implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
     private final PermissionRepository permissionRepository;
     private final RolePermissionRepository rolePermissionRepository;
+    private final com.codegym.mathclass.aiconfig.repository.TaskConfigRepository taskConfigRepository;
+    private final com.codegym.mathclass.aiconfig.repository.ProviderRepository providerRepository;
 
     @Value("${mathclass.seed.enabled:true}")
     private boolean isSeedEnabled;
@@ -76,6 +78,8 @@ public class DatabaseSeeder implements CommandLineRunner {
             log.info("[DatabaseSeeder] Permissions are empty. Seeding permissions...");
             seedPermissions();
         }
+
+        seedAiTaskConfigs();
 
         if (userRepository.count() > 0) {
             log.info("[DatabaseSeeder] Users exist in database. Skipping data seeding.");
@@ -191,6 +195,24 @@ public class DatabaseSeeder implements CommandLineRunner {
 
         if (!rolePermissionsToSave.isEmpty()) {
             rolePermissionRepository.saveAll(rolePermissionsToSave);
+        }
+    }
+
+    private void seedAiTaskConfigs() {
+        if (taskConfigRepository.findByTask("STUDENT_HINT").isEmpty()) {
+            log.info("[DatabaseSeeder] Seeding default TaskConfig for STUDENT_HINT...");
+            providerRepository.findAll().stream().findFirst().ifPresentOrElse(provider -> {
+                com.codegym.mathclass.aiconfig.entity.TaskConfig studentHintConfig = com.codegym.mathclass.aiconfig.entity.TaskConfig.builder()
+                        .task("STUDENT_HINT")
+                        .provider(provider)
+                        .model(provider.getProtocol() == com.codegym.mathclass.aiconfig.entity.ProviderProtocol.GOOGLE_GEMINI_COMPATIBLE ? "gemini-1.5-flash" : "gpt-3.5-turbo")
+                        .temperature(java.math.BigDecimal.valueOf(0.4))
+                        .maxToken(512)
+                        .enabled(true)
+                        .build();
+                taskConfigRepository.save(studentHintConfig);
+                log.info("[DatabaseSeeder] Seeded STUDENT_HINT TaskConfig with Provider '{}'.", provider.getName());
+            }, () -> log.warn("[DatabaseSeeder] No AI Provider found in DB. Skipping STUDENT_HINT default seeding."));
         }
     }
 
