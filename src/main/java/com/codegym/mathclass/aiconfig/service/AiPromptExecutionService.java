@@ -71,7 +71,9 @@ public class AiPromptExecutionService {
         ProviderProtocol protocol = provider.getProtocol() != null ? provider.getProtocol() : ProviderProtocol.OPENAI_COMPATIBLE;
         String model = config.getModel() != null ? config.getModel() : "gpt-3.5-turbo";
 
-        HttpRequest.Builder reqBuilder = HttpRequest.newBuilder().timeout(Duration.ofSeconds(30));
+        // Timeout 120s: prompt dài (ví dụ chấm bài tự luận MAT-250 kèm dữ liệu hình vẽ Canvas)
+        // cần thời gian generate lâu hơn nhiều so với 30s mặc định. Ảnh hưởng tất cả task AI.
+        HttpRequest.Builder reqBuilder = HttpRequest.newBuilder().timeout(Duration.ofSeconds(120));
         String reqBody;
 
         if (protocol == ProviderProtocol.GOOGLE_GEMINI_COMPATIBLE) {

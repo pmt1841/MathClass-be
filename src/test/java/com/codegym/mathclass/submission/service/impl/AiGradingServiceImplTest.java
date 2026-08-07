@@ -209,6 +209,18 @@ class AiGradingServiceImplTest {
         }
 
         @Test
+        @DisplayName("Should wrap AI service runtime error (e.g. request timed out) into BadRequestException with cause")
+        void requestAiGrading_aiRuntimeException_wrappedAsBadRequest() {
+            when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
+            when(aiPromptExecutionService.executePrompt(eq(GRADING_TASK_CODE), anyString()))
+                    .thenThrow(new RuntimeException("Dịch vụ AI phản hồi lỗi hoặc gặp sự cố kết nối: request timed out"));
+
+            assertThatThrownBy(() -> aiGradingService.requestAiGrading(submissionId, new AiGradingRequest(), teacherId))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("request timed out");
+        }
+
+        @Test
         @DisplayName("Should throw BadRequestException when AI returns blank response (after retry)")
         void requestAiGrading_blankAiResponse() {
             when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));

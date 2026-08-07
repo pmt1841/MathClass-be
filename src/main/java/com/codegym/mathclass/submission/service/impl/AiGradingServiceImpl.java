@@ -84,11 +84,19 @@ public class AiGradingServiceImpl implements AiGradingService {
      * Gọi AI chấm bài, tự thử lại tối đa {@value #MAX_EMPTY_RESPONSE_ATTEMPTS} lần
      * khi model trả về phản hồi rỗng (hiện tượng tạm thời phổ biến của LLM).
      * Vẫn rỗng sau khi thử lại → ném lỗi rõ ràng kèm task code để admin kiểm tra config.
+     * Lỗi runtime từ dịch vụ AI (timeout, kết nối...) được bọc thành BadRequestException
+     * kèm nguyên nhân thật để frontend hiển thị được (thay vì 500 mặc định).
      */
     private String executePromptWithRetryOnEmpty(String prompt) {
         String raw = null;
         for (int attempt = 1; attempt <= MAX_EMPTY_RESPONSE_ATTEMPTS; attempt++) {
-            raw = aiPromptExecutionService.executePrompt(GRADING_TASK_CODE, prompt);
+            try {
+                raw = aiPromptExecutionService.executePrompt(GRADING_TASK_CODE, prompt);
+            } catch (RuntimeException e) {
+                String cause = e.getMessage() != null ? e.getMessage() : "Lỗi không xác định từ dịch vụ AI";
+                log.error("Gọi AI chấm bài thất bại (lần thử {}/{}): {}", attempt, MAX_EMPTY_RESPONSE_ATTEMPTS, cause, e);
+                throw new BadRequestException("AI chấm bài tạm thời không khả dụng: " + cause);
+            }
             if (raw != null && !raw.isBlank()) {
                 return raw;
             }
