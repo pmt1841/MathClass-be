@@ -41,6 +41,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 @Slf4j
@@ -60,6 +61,8 @@ public class DatabaseSeeder implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
     private final PermissionRepository permissionRepository;
     private final RolePermissionRepository rolePermissionRepository;
+    private final com.codegym.mathclass.aiconfig.repository.TaskConfigRepository taskConfigRepository;
+    private final com.codegym.mathclass.aiconfig.repository.ProviderRepository providerRepository;
 
     @Value("${mathclass.seed.enabled:true}")
     private boolean isSeedEnabled;
@@ -72,13 +75,13 @@ public class DatabaseSeeder implements CommandLineRunner {
             return;
         }
 
-        if (permissionRepository.count() == 0) {
-            log.info("[DatabaseSeeder] Permissions are empty. Seeding permissions...");
-            seedPermissions();
-        }
+        // Always ensure permissions and role permissions are up to date (idempotent)
+        seedPermissions();
+
+        seedAiTaskConfigs();
 
         if (userRepository.count() > 0) {
-            log.info("[DatabaseSeeder] Users exist in database. Skipping data seeding.");
+            log.info("[DatabaseSeeder] Users exist in database. Skipping sample data seeding.");
             return;
         }
 
@@ -94,103 +97,88 @@ public class DatabaseSeeder implements CommandLineRunner {
     }
 
     private void seedPermissions() {
-        // 0. Create Permissions and RolePermissions
-        log.info("[DatabaseSeeder] Creating permissions...");
-        // Classroom permissions
-        Permission classCreate = permissionRepository
-                .save(Permission.builder().name("classroom:create").description("Tạo lớp học").build());
-        Permission classUpdate = permissionRepository
-                .save(Permission.builder().name("classroom:update").description("Sửa lớp học").build());
-        Permission classDelete = permissionRepository
-                .save(Permission.builder().name("classroom:delete").description("Xóa lớp học").build());
-        Permission classManageReq = permissionRepository.save(
-                Permission.builder().name("classroom:manage_requests").description("Quản lý yêu cầu tham gia").build());
-        Permission classRemoveStu = permissionRepository
-                .save(Permission.builder().name("classroom:remove_student").description("Xóa học sinh").build());
-        Permission classJoin = permissionRepository
-                .save(Permission.builder().name("classroom:join").description("Tham gia lớp").build());
-        Permission classJoinStatus = permissionRepository.save(
-                Permission.builder().name("classroom:join_status").description("Xem trạng thái tham gia").build());
+        log.info("[DatabaseSeeder] Synchronizing permissions and role permissions...");
 
-        // Assignment permissions
-        Permission assignCreate = permissionRepository
-                .save(Permission.builder().name("assignment:create").description("Tạo bài tập").build());
-        Permission assignUpdate = permissionRepository
-                .save(Permission.builder().name("assignment:update").description("Sửa bài tập").build());
-        Permission assignDelete = permissionRepository
-                .save(Permission.builder().name("assignment:delete").description("Xóa bài tập").build());
-        Permission assignPublish = permissionRepository
-                .save(Permission.builder().name("assignment:publish").description("Xuất bản bài tập").build());
-        Permission assignRead = permissionRepository
-                .save(Permission.builder().name("assignment:read").description("Xem bài tập").build());
+        List<Permission> requiredPermissions = List.of(
+                Permission.builder().name("classroom:create").description("Tạo lớp học").build(),
+                Permission.builder().name("classroom:update").description("Sửa lớp học").build(),
+                Permission.builder().name("classroom:delete").description("Xóa lớp học").build(),
+                Permission.builder().name("classroom:manage_requests").description("Quản lý yêu cầu tham gia").build(),
+                Permission.builder().name("classroom:remove_student").description("Xóa học sinh").build(),
+                Permission.builder().name("classroom:join").description("Tham gia lớp").build(),
+                Permission.builder().name("classroom:join_status").description("Xem trạng thái tham gia").build(),
 
-        // Submission permissions
-        Permission subSubmit = permissionRepository
-                .save(Permission.builder().name("submission:submit").description("Nộp bài").build());
-        Permission subReadOwn = permissionRepository
-                .save(Permission.builder().name("submission:read_own").description("Xem bài nộp của mình").build());
-        Permission subGrade = permissionRepository
-                .save(Permission.builder().name("submission:grade").description("Chấm điểm").build());
-        Permission subReadAll = permissionRepository
-                .save(Permission.builder().name("submission:read_all").description("Xem tất cả bài nộp").build());
-        Permission subComment = permissionRepository
-                .save(Permission.builder().name("submission:comment").description("Bình luận bài nộp").build());
+                Permission.builder().name("assignment:create").description("Tạo bài tập").build(),
+                Permission.builder().name("assignment:update").description("Sửa bài tập").build(),
+                Permission.builder().name("assignment:delete").description("Xóa bài tập").build(),
+                Permission.builder().name("assignment:publish").description("Xuất bản bài tập").build(),
+                Permission.builder().name("assignment:read").description("Xem bài tập").build(),
 
-        // Dashboard permissions
-        Permission dashTeacher = permissionRepository.save(
-                Permission.builder().name("dashboard:teacher_view").description("Xem thống kê giáo viên").build());
-        Permission dashStudent = permissionRepository
-                .save(Permission.builder().name("dashboard:student_view").description("Xem thống kê học sinh").build());
+                Permission.builder().name("submission:submit").description("Nộp bài").build(),
+                Permission.builder().name("submission:read_own").description("Xem bài nộp của mình").build(),
+                Permission.builder().name("submission:grade").description("Chấm điểm").build(),
+                Permission.builder().name("submission:read_all").description("Xem tất cả bài nộp").build(),
+                Permission.builder().name("submission:comment").description("Bình luận bài nộp").build(),
 
-        // Library permissions
-        Permission libraryRead = permissionRepository
-                .save(Permission.builder().name("library:read").description("Xem thư viện bài tập dùng chung").build());
-        Permission libraryClone = permissionRepository
-                .save(Permission.builder().name("library:clone").description("Clone bài tập từ thư viện").build());
+                Permission.builder().name("dashboard:teacher_view").description("Xem thống kê giáo viên").build(),
+                Permission.builder().name("dashboard:student_view").description("Xem thống kê học sinh").build(),
 
-        // Admin permissions
-        Permission manageUsers = permissionRepository
-                .save(Permission.builder().name("user:manage").description("Quản lý người dùng").build());
+                Permission.builder().name("library:read").description("Xem thư viện bài tập dùng chung").build(),
+                Permission.builder().name("library:clone").description("Clone bài tập từ thư viện").build(),
 
-        log.info("[DatabaseSeeder] Assigning permissions to roles...");
-        Map<String, Permission> permissionMap = Map.ofEntries(
-                Map.entry(classCreate.getName(), classCreate),
-                Map.entry(classUpdate.getName(), classUpdate),
-                Map.entry(classDelete.getName(), classDelete),
-                Map.entry(classManageReq.getName(), classManageReq),
-                Map.entry(classRemoveStu.getName(), classRemoveStu),
-                Map.entry(classJoin.getName(), classJoin),
-                Map.entry(classJoinStatus.getName(), classJoinStatus),
-                Map.entry(assignCreate.getName(), assignCreate),
-                Map.entry(assignUpdate.getName(), assignUpdate),
-                Map.entry(assignDelete.getName(), assignDelete),
-                Map.entry(assignPublish.getName(), assignPublish),
-                Map.entry(assignRead.getName(), assignRead),
-                Map.entry(subSubmit.getName(), subSubmit),
-                Map.entry(subReadOwn.getName(), subReadOwn),
-                Map.entry(subGrade.getName(), subGrade),
-                Map.entry(subReadAll.getName(), subReadAll),
-                Map.entry(subComment.getName(), subComment),
-                Map.entry(dashTeacher.getName(), dashTeacher),
-                Map.entry(dashStudent.getName(), dashStudent),
-                Map.entry(libraryRead.getName(), libraryRead),
-                Map.entry(libraryClone.getName(), libraryClone),
-                Map.entry(manageUsers.getName(), manageUsers)
+                Permission.builder().name("user:manage").description("Quản lý người dùng").build()
         );
 
-        List<RolePermission> rolePermissionsToSave = new ArrayList<>();
+        Map<String, Permission> existingPermMap = permissionRepository.findAll().stream()
+                .collect(Collectors.toMap(Permission::getName, p -> p));
+
+        List<Permission> newPermissionsToSave = requiredPermissions.stream()
+                .filter(p -> !existingPermMap.containsKey(p.getName()))
+                .toList();
+
+        if (!newPermissionsToSave.isEmpty()) {
+            List<Permission> savedNew = permissionRepository.saveAll(newPermissionsToSave);
+            savedNew.forEach(p -> existingPermMap.put(p.getName(), p));
+            log.info("[DatabaseSeeder] Added {} new permissions via batch insert.", savedNew.size());
+        }
+
+        Set<String> existingRolePermKeys = rolePermissionRepository.findAll().stream()
+                .map(rp -> rp.getRole().name() + ":" + rp.getPermission().getName())
+                .collect(Collectors.toSet());
+
+        List<RolePermission> newRolePermissions = new ArrayList<>();
         for (Role role : Role.values()) {
             List<String> defaultPermNames = DefaultRolePermissions.getDefaultPermissions(role);
             for (String permName : defaultPermNames) {
-                Permission p = permissionMap.get(permName);
-                if (p != null) {
-                    rolePermissionsToSave.add(RolePermission.builder().role(role).permission(p).build());
+                String key = role.name() + ":" + permName;
+                Permission p = existingPermMap.get(permName);
+                if (p != null && !existingRolePermKeys.contains(key)) {
+                    newRolePermissions.add(RolePermission.builder().role(role).permission(p).build());
                 }
             }
         }
 
-        if (!rolePermissionsToSave.isEmpty()) {
-            rolePermissionRepository.saveAll(rolePermissionsToSave);
+        if (!newRolePermissions.isEmpty()) {
+            rolePermissionRepository.saveAll(newRolePermissions);
+            log.info("[DatabaseSeeder] Assigned {} new role-permission mappings via batch insert.", newRolePermissions.size());
+        }
+    }
+
+    private void seedAiTaskConfigs() {
+        if (taskConfigRepository.findByTask("STUDENT_HINT").isEmpty()) {
+            log.info("[DatabaseSeeder] Seeding default TaskConfig for STUDENT_HINT...");
+            providerRepository.findAll().stream().findFirst().ifPresentOrElse(provider -> {
+                com.codegym.mathclass.aiconfig.entity.TaskConfig studentHintConfig = com.codegym.mathclass.aiconfig.entity.TaskConfig.builder()
+                        .task("STUDENT_HINT")
+                        .provider(provider)
+                        .model(provider.getProtocol() == com.codegym.mathclass.aiconfig.entity.ProviderProtocol.GOOGLE_GEMINI_COMPATIBLE ? "gemini-1.5-flash" : "gpt-3.5-turbo")
+                        .temperature(java.math.BigDecimal.valueOf(0.4))
+                        .maxToken(512)
+                        .enabled(true)
+                        .build();
+                taskConfigRepository.save(studentHintConfig);
+                log.info("[DatabaseSeeder] Seeded STUDENT_HINT TaskConfig with Provider '{}'.", provider.getName());
+            }, () -> log.warn("[DatabaseSeeder] No AI Provider found in DB. Skipping STUDENT_HINT default seeding."));
         }
     }
 
