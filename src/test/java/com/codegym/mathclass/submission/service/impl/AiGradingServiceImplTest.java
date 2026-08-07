@@ -11,7 +11,6 @@ import com.codegym.mathclass.submission.entity.Submission;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
 import com.codegym.mathclass.user.entity.User;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -19,7 +18,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
@@ -40,9 +38,6 @@ class AiGradingServiceImplTest {
 
     @Mock
     private AiPromptExecutionService aiPromptExecutionService;
-
-    @Spy
-    private ObjectMapper objectMapper = new ObjectMapper();
 
     @InjectMocks
     private AiGradingServiceImpl aiGradingService;

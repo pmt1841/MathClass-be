@@ -51,7 +51,7 @@ public class AiGradingServiceImpl implements AiGradingService {
 
     private final SubmissionRepository submissionRepository;
     private final AiPromptExecutionService aiPromptExecutionService;
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public AiGradingResponse requestAiGrading(long submissionId, AiGradingRequest request, long teacherId) {
