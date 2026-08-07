@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.WebUtils;
 
@@ -57,7 +58,7 @@ public class JwtUtils {
     }
 
     public ResponseCookie generateJwtCookie(CustomUserDetails userPrincipal, boolean rememberMe) {
-        String jwt = generateJwtToken(userPrincipal.getUsername());
+        String jwt = generateJwtToken(userPrincipal.getUsername(), extractRole(userPrincipal));
         Long maxAge = rememberMe ? jwtExpirationMs / 1000L : -1L;
         return generateCookie(jwtCookie, jwt, "/", maxAge);
     }
@@ -73,16 +74,37 @@ public class JwtUtils {
 
     public String generateJwtToken(Authentication authentication) {
         CustomUserDetails userPrincipal = (CustomUserDetails) authentication.getPrincipal();
-        return generateJwtToken(userPrincipal.getUsername());
+        return generateJwtToken(userPrincipal.getUsername(), extractRole(userPrincipal));
+    }
+
+    /**
+     * Ghi claim {@code role} (ADMIN/TEACHER/STUDENT) vào JWT để proxy/middleware phía frontend
+     * có thể xác thực vai trò dựa trên token đã ký, thay vì cookie {@code mathclass_role}
+     * do client tự đặt (dễ bị giả mạo).
+     * Tương thích ngược: token cũ không có claim role vẫn hợp lệ — frontend sẽ fallback sang cookie.
+     */
+    public String generateJwtToken(String username, String role) {
+        var builder = Jwts.builder()
+                .subject(username)
+                .issuedAt(new Date())
+                .expiration(new Date((new Date()).getTime() + jwtExpirationMs));
+        if (role != null && !role.isEmpty()) {
+            builder.claim("role", role);
+        }
+        return builder.signWith(key()).compact();
     }
 
     public String generateJwtToken(String username) {
-        return Jwts.builder()
-                .subject(username)
-                .issuedAt(new Date())
-                .expiration(new Date((new Date()).getTime() + jwtExpirationMs))
-                .signWith(key())
-                .compact();
+        return generateJwtToken(username, null);
+    }
+
+    private String extractRole(CustomUserDetails principal) {
+        return principal.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .filter(authority -> authority.startsWith("ROLE_"))
+                .findFirst()
+                .map(authority -> authority.substring("ROLE_".length()))
+                .orElse(null);
     }
 
     public ResponseCookie generateRefreshJwtCookie(String refreshToken, boolean rememberMe) {
