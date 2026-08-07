@@ -114,6 +114,10 @@ public class AiQuestionServiceImpl implements AiQuestionService {
                     dto.setExplanation("");
                 }
 
+                if (!hasRequestedDrawing(request.getPrompt())) {
+                    dto.setCanvasData(null);
+                }
+
                 return dto;
             } catch (Exception e) {
                 lastException = e;
@@ -149,9 +153,10 @@ public class AiQuestionServiceImpl implements AiQuestionService {
     }
 
     private String buildSystemPrompt(GenerateQuestionRequest request) {
-        String canvasRequirement = Boolean.TRUE.equals(request.getIncludeCanvasDiagram())
-                ? "2. CHÚ Ý: CHỈ KHI người dùng có nhắc đến việc vẽ hình (vd: yêu cầu vẽ minh họa), bạn mới sinh ra object 'canvasData' (chứa điểm, đoạn thẳng, đường tròn) theo chuẩn JSON. Nếu đề bài không yêu cầu vẽ, hãy bỏ qua 'canvasData'."
-                : "2. Bài toán này KHÔNG yêu cầu hình vẽ minh họa, TUYỆT ĐỐI KHÔNG sinh ra object 'canvasData'.";
+        boolean isDrawingRequested = hasRequestedDrawing(request.getPrompt());
+        String canvasRequirement = isDrawingRequested
+                ? "2. CHÚ Ý: Người dùng CÓ YÊU CẦU vẽ hình/đồ thị, bạn hãy sinh ra object 'canvasData' (chứa điểm, đoạn thẳng, đường tròn, đồ thị hàm số) theo chuẩn JSON."
+                : "2. CHÚ Ý: Bài toán này KHÔNG yêu cầu vẽ hình hay đồ thị, TUYỆT ĐỐI KHÔNG sinh ra object 'canvasData' (bỏ qua trường 'canvasData').";
 
         int grade = request.getGrade() != null ? request.getGrade() : 9;
         String difficulty = request.getDifficulty() != null ? request.getDifficulty() : "THONG_HIEU";
@@ -196,6 +201,7 @@ public class AiQuestionServiceImpl implements AiQuestionService {
                 }
                 Lưu ý quan trọng cho hình vẽ (canvasData):
                 - Tọa độ (x, y) của tất cả điểm BẮT BUỘC nằm trong hệ tọa độ Đề-các nhỏ chuẩn mực từ -6.0 đến 6.0 (Ví dụ: A(-2, 3), B(3, 3), C(4, -1), D(-1, -1)). TUYỆT ĐỐI KHÔNG dùng tọa độ dạng pixel (như 100..500) hay số quá lớn (> 15).
+                - Khi đề toán có đồ thị hàm số (parabol, đường thẳng, hàm số...): Tạo element có `type: "functiongraph"`, `id: "fg1"`, và `parsedFunc` là biểu thức hàm số theo biến x (ví dụ: `x**2 - 2*x + 1`, `2*x - 3`, `-x**2 + 4`). Đồng thời có thể tạo thêm các điểm đỉnh Parabol, điểm thuộc đồ thị (dạng "point").
                 - Khi đề toán có đường tròn, BẮT BUỘC phải tạo điểm tâm (dạng "point"), tạo các điểm trên đường tròn, và thêm phần tử "circle" với "centerId" và "radius" hoặc "pointId".
                 """.formatted(infoBuilder.toString(), canvasRequirement, grade, difficulty, topic);
     }
@@ -357,6 +363,14 @@ public class AiQuestionServiceImpl implements AiQuestionService {
         return lower.contains("lời giải") || lower.contains("giải chi tiết") || lower.contains("hướng dẫn giải")
                 || lower.contains("trình bày") || lower.contains("đáp án") || lower.contains("kèm lời giải")
                 || lower.contains("có lời giải") || lower.contains("bài giải") || lower.contains("hướng dẫn");
+    }
+
+    private boolean hasRequestedDrawing(String prompt) {
+        if (prompt == null || prompt.isBlank()) return false;
+        String lower = prompt.toLowerCase();
+        return lower.contains("vẽ") || lower.contains("hình") || lower.contains("đồ thị")
+                || lower.contains("minh họa") || lower.contains("sơ đồ") || lower.contains("parabol")
+                || lower.contains("vẽ hình") || lower.contains("vẽ đồ thị") || lower.contains("kèm hình");
     }
 }
 

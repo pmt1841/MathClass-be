@@ -26,4 +26,6 @@ public class CanvasElementResponse {
     @JsonAlias({"toId", "endId"})
     private String toId;          // Id điểm kết thúc (dành cho segment)
     private String style;         // "solid", "dashed"
+    @JsonAlias({"func", "parsedFunc", "formula", "expression"})
+    private String parsedFunc;    // Biểu thức hàm số (vd: "x**2 - 2*x + 1")
 }
