@@ -53,7 +53,9 @@ public class OpenAiProviderStrategy implements AiProviderStrategy {
         String reqBody = objectMapper.writeValueAsString(openAiPayload);
         
         HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
-                .timeout(Duration.ofSeconds(30))
+                // Timeout 120s: prompt dài (ví dụ chấm bài tự luận MAT-250 kèm dữ liệu hình vẽ Canvas)
+                // cần thời gian generate lâu hơn nhiều so với 30s mặc định. Áp dụng cho mọi task AI.
+                .timeout(Duration.ofSeconds(120))
                 .uri(URI.create(targetUrl))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(reqBody));
