@@ -24,6 +24,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
@@ -90,7 +91,7 @@ class AiGradingServiceImplTest {
         @DisplayName("Should return AI draft with drawing issues and score")
         void requestAiGrading_success_withDrawings() {
             when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
-            when(aiPromptExecutionService.executePrompt(eq(GRADING_TASK_CODE), anyString()))
+            when(aiPromptExecutionService.executePrompt(eq(GRADING_TASK_CODE), anyString(), anyLong()))
                     .thenReturn("{\"suggestedScore\": 8.5, \"draftFeedback\": \"Lời giải đúng hướng.\", "
                             + "\"drawingIssues\": [{\"issue\": \"Thiếu đường cao AH\", \"detail\": \"Cần kẻ AH vuông góc BC\"}]}");
 
@@ -109,7 +110,7 @@ class AiGradingServiceImplTest {
         @DisplayName("Should parse AI response wrapped in markdown code fence")
         void requestAiGrading_success_fencedJson() {
             when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
-            when(aiPromptExecutionService.executePrompt(eq(GRADING_TASK_CODE), anyString()))
+            when(aiPromptExecutionService.executePrompt(eq(GRADING_TASK_CODE), anyString(), anyLong()))
                     .thenReturn("```json\n{\"suggestedScore\": 7, \"draftFeedback\": \"Khá tốt\", \"drawingIssues\": []}\n```");
 
             AiGradingResponse response = aiGradingService.requestAiGrading(submissionId, new AiGradingRequest(), teacherId);
@@ -123,7 +124,7 @@ class AiGradingServiceImplTest {
         @DisplayName("Should clamp score to maxScore and round to 1 decimal")
         void requestAiGrading_clampsScore() {
             when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
-            when(aiPromptExecutionService.executePrompt(eq(GRADING_TASK_CODE), anyString()))
+            when(aiPromptExecutionService.executePrompt(eq(GRADING_TASK_CODE), anyString(), anyLong()))
                     .thenReturn("{\"suggestedScore\": 12.55, \"draftFeedback\": \"Quá điểm tối đa\", \"drawingIssues\": []}");
 
             AiGradingResponse response = aiGradingService.requestAiGrading(submissionId, new AiGradingRequest(), teacherId);
@@ -136,7 +137,7 @@ class AiGradingServiceImplTest {
         void requestAiGrading_noCanvasComparison() {
             assignment.setContent("Chỉ có văn bản, không có hình vẽ mẫu.");
             when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
-            when(aiPromptExecutionService.executePrompt(eq(GRADING_TASK_CODE), anyString()))
+            when(aiPromptExecutionService.executePrompt(eq(GRADING_TASK_CODE), anyString(), anyLong()))
                     .thenReturn("{\"suggestedScore\": 6, \"draftFeedback\": \"OK\", "
                             + "\"drawingIssues\": [{\"issue\": \"Hallucinated\", \"detail\": \"x\"}]}");
 
@@ -185,7 +186,7 @@ class AiGradingServiceImplTest {
         @DisplayName("Should throw BadRequestException when AI returns invalid text (not JSON)")
         void requestAiGrading_invalidAiResponse() {
             when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
-            when(aiPromptExecutionService.executePrompt(eq(GRADING_TASK_CODE), anyString()))
+            when(aiPromptExecutionService.executePrompt(eq(GRADING_TASK_CODE), anyString(), anyLong()))
                     .thenReturn("Tôi không hiểu bài này lắm.");
 
             assertThatThrownBy(() -> aiGradingService.requestAiGrading(submissionId, new AiGradingRequest(), teacherId))
@@ -197,7 +198,7 @@ class AiGradingServiceImplTest {
         @DisplayName("Should retry once when AI returns empty first then succeed on second attempt")
         void requestAiGrading_retriesOnEmptyThenSuccess() {
             when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
-            when(aiPromptExecutionService.executePrompt(eq(GRADING_TASK_CODE), anyString()))
+            when(aiPromptExecutionService.executePrompt(eq(GRADING_TASK_CODE), anyString(), anyLong()))
                     .thenReturn("")
                     .thenReturn("{\"suggestedScore\": 7.5, \"draftFeedback\": \"Sau khi thử lại\", \"drawingIssues\": []}");
 
@@ -205,14 +206,14 @@ class AiGradingServiceImplTest {
 
             assertThat(response.getSuggestedScore()).isEqualTo(7.5);
             assertThat(response.getDraftFeedback()).isEqualTo("Sau khi thử lại");
-            verify(aiPromptExecutionService, times(2)).executePrompt(eq(GRADING_TASK_CODE), anyString());
+            verify(aiPromptExecutionService, times(2)).executePrompt(eq(GRADING_TASK_CODE), anyString(), anyLong());
         }
 
         @Test
         @DisplayName("Should wrap AI service runtime error (e.g. request timed out) into BadRequestException with cause")
         void requestAiGrading_aiRuntimeException_wrappedAsBadRequest() {
             when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
-            when(aiPromptExecutionService.executePrompt(eq(GRADING_TASK_CODE), anyString()))
+            when(aiPromptExecutionService.executePrompt(eq(GRADING_TASK_CODE), anyString(), anyLong()))
                     .thenThrow(new RuntimeException("Dịch vụ AI phản hồi lỗi hoặc gặp sự cố kết nối: request timed out"));
 
             assertThatThrownBy(() -> aiGradingService.requestAiGrading(submissionId, new AiGradingRequest(), teacherId))
@@ -224,14 +225,14 @@ class AiGradingServiceImplTest {
         @DisplayName("Should throw BadRequestException when AI returns blank response (after retry)")
         void requestAiGrading_blankAiResponse() {
             when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
-            when(aiPromptExecutionService.executePrompt(eq(GRADING_TASK_CODE), anyString())).thenReturn("   ");
+            when(aiPromptExecutionService.executePrompt(eq(GRADING_TASK_CODE), anyString(), anyLong())).thenReturn("   ");
 
             assertThatThrownBy(() -> aiGradingService.requestAiGrading(submissionId, new AiGradingRequest(), teacherId))
                     .isInstanceOf(BadRequestException.class)
                     .hasMessageContaining("phản hồi rỗng")
                     .hasMessageContaining(GRADING_TASK_CODE);
 
-            verify(aiPromptExecutionService, times(2)).executePrompt(eq(GRADING_TASK_CODE), anyString());
+            verify(aiPromptExecutionService, times(2)).executePrompt(eq(GRADING_TASK_CODE), anyString(), anyLong());
         }
     }
 }

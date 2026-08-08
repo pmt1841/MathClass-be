@@ -6,5 +6,10 @@ import com.codegym.mathclass.aiconfig.entity.TaskConfig;
 
 public interface AiProviderStrategy {
     boolean supports(ProviderProtocol protocol);
-    String executePrompt(Provider provider, TaskConfig config, String apiKey, String prompt) throws Exception;
+
+    /**
+     * Thực thi prompt với provider. Trả về kết quả kèm số token đầu ra
+     * (completionTokens) để hệ thống credit tính phí theo token (MAT-255).
+     */
+    AiExecutionResult executePrompt(Provider provider, TaskConfig config, String apiKey, String prompt) throws Exception;
 }

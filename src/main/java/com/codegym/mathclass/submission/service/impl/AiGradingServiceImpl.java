@@ -75,7 +75,7 @@ public class AiGradingServiceImpl implements AiGradingService {
         }
 
         String prompt = buildGradingPrompt(assignment, submission);
-        String rawAiResponse = executePromptWithRetryOnEmpty(prompt);
+        String rawAiResponse = executePromptWithRetryOnEmpty(prompt, teacherId);
 
         return parseAiResponse(rawAiResponse, assignment, submission);
     }
@@ -87,11 +87,11 @@ public class AiGradingServiceImpl implements AiGradingService {
      * Lỗi runtime từ dịch vụ AI (timeout, kết nối...) được bọc thành BadRequestException
      * kèm nguyên nhân thật để frontend hiển thị được (thay vì 500 mặc định).
      */
-    private String executePromptWithRetryOnEmpty(String prompt) {
+    private String executePromptWithRetryOnEmpty(String prompt, long teacherId) {
         String raw = null;
         for (int attempt = 1; attempt <= MAX_EMPTY_RESPONSE_ATTEMPTS; attempt++) {
             try {
-                raw = aiPromptExecutionService.executePrompt(GRADING_TASK_CODE, prompt);
+                raw = aiPromptExecutionService.executePrompt(GRADING_TASK_CODE, prompt, teacherId);
             } catch (RuntimeException e) {
                 String cause = e.getMessage() != null ? e.getMessage() : "Lỗi không xác định từ dịch vụ AI";
                 log.error("Gọi AI chấm bài thất bại (lần thử {}/{}): {}", attempt, MAX_EMPTY_RESPONSE_ATTEMPTS, cause, e);

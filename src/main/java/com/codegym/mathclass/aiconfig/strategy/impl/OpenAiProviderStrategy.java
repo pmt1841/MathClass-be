@@ -3,6 +3,7 @@ package com.codegym.mathclass.aiconfig.strategy.impl;
 import com.codegym.mathclass.aiconfig.entity.Provider;
 import com.codegym.mathclass.aiconfig.entity.ProviderProtocol;
 import com.codegym.mathclass.aiconfig.entity.TaskConfig;
+import com.codegym.mathclass.aiconfig.strategy.AiExecutionResult;
 import com.codegym.mathclass.aiconfig.strategy.AiProviderStrategy;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,7 +33,7 @@ public class OpenAiProviderStrategy implements AiProviderStrategy {
     }
 
     @Override
-    public String executePrompt(Provider provider, TaskConfig config, String apiKey, String prompt) throws Exception {
+    public AiExecutionResult executePrompt(Provider provider, TaskConfig config, String apiKey, String prompt) throws Exception {
         String baseUrlStr = provider.getBaseUrl() != null && !provider.getBaseUrl().trim().isEmpty()
                 ? provider.getBaseUrl().trim().replaceAll("/+$", "")
                 : "https://api.openai.com/v1";
@@ -76,7 +77,9 @@ public class OpenAiProviderStrategy implements AiProviderStrategy {
             if (choices.isArray() && !choices.isEmpty()) {
                 JsonNode message = choices.get(0).path("message");
                 if (message.has("content")) {
-                    return message.path("content").asText("");
+                    String content = message.path("content").asText("");
+                    Integer completionTokens = parseCompletionTokens(root);
+                    return new AiExecutionResult(content, completionTokens);
                 }
             }
             log.error("OpenAI Compatible Provider returned HTTP status {} but invalid payload: {}", status, response.body());
@@ -85,5 +88,25 @@ public class OpenAiProviderStrategy implements AiProviderStrategy {
             log.error("OpenAI Compatible Provider HTTP error status {}: {}", status, response.body());
             throw new RuntimeException("AI Provider phản hồi lỗi HTTP " + status);
         }
+    }
+
+    /**
+     * Đọc số token đầu ra từ response OpenAI-compatible:
+     * ưu tiên {@code usage.completion_tokens}, fallback {@code usage.output_tokens}.
+     * Trả về {@code null} khi không có thông tin usage.
+     */
+    static Integer parseCompletionTokens(JsonNode root) {
+        if (root == null) {
+            return null;
+        }
+        JsonNode usage = root.path("usage");
+        if (usage.isMissingNode() || usage.isNull()) {
+            return null;
+        }
+        int completion = usage.path("completion_tokens").asInt(0);
+        if (completion == 0) {
+            completion = usage.path("output_tokens").asInt(0);
+        }
+        return completion > 0 ? completion : null;
     }
 }

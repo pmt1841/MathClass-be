@@ -111,7 +111,7 @@ class SubmissionHintServiceImplTest {
             when(submissionRepository.findFirstByAssignmentIdAndStudentIdWithLock(assignmentId, studentId))
                     .thenReturn(Optional.of(submission));
             when(submissionHintRepository.countBySubmissionId(submissionId)).thenReturn(0);
-            when(aiPromptExecutionService.executePrompt(eq("STUDENT_HINT"), anyString()))
+            when(aiPromptExecutionService.executePrompt(eq("STUDENT_HINT"), anyString(), anyLong()))
                     .thenReturn("Vì Delta = 1 > 0, hãy áp dụng công thức x1, x2 = (-b ± sqrt(Delta)) / 2a.");
             when(submissionHintRepository.save(any(SubmissionHint.class))).thenAnswer(invocation -> {
                 SubmissionHint sh = invocation.getArgument(0);
@@ -147,7 +147,7 @@ class SubmissionHintServiceImplTest {
                 return s;
             });
             when(submissionHintRepository.countBySubmissionId(submissionId)).thenReturn(0);
-            when(aiPromptExecutionService.executePrompt(eq("STUDENT_HINT"), anyString()))
+            when(aiPromptExecutionService.executePrompt(eq("STUDENT_HINT"), anyString(), anyLong()))
                     .thenReturn("Bước 1: Hãy xác định các hệ số a, b, c trong phương trình bậc 2.");
             when(submissionHintRepository.save(any(SubmissionHint.class))).thenAnswer(invocation -> {
                 SubmissionHint sh = invocation.getArgument(0);
@@ -191,7 +191,7 @@ class SubmissionHintServiceImplTest {
             when(submissionRepository.findFirstByAssignmentIdAndStudentIdWithLock(assignmentId, studentId))
                     .thenReturn(Optional.of(submission));
             when(submissionHintRepository.countBySubmissionId(submissionId)).thenReturn(1);
-            when(aiPromptExecutionService.executePrompt(eq("STUDENT_HINT"), anyString()))
+            when(aiPromptExecutionService.executePrompt(eq("STUDENT_HINT"), anyString(), anyLong()))
                     .thenThrow(new RuntimeException("AI Provider 429 Rate Limit"));
 
             assertThatThrownBy(() -> submissionHintService.requestHint(assignmentId, request, studentEmail))
@@ -246,7 +246,7 @@ class SubmissionHintServiceImplTest {
             when(submissionRepository.findFirstByAssignmentIdAndStudentIdWithLock(assignmentId, studentId))
                     .thenReturn(Optional.of(submission));
             when(submissionHintRepository.countBySubmissionId(submissionId)).thenReturn(0);
-            when(aiPromptExecutionService.executePrompt(eq("STUDENT_HINT"), anyString()))
+            when(aiPromptExecutionService.executePrompt(eq("STUDENT_HINT"), anyString(), anyLong()))
                     .thenReturn("Hãy kiểm tra tọa độ đỉnh của đồ thị.");
             when(submissionHintRepository.save(any(SubmissionHint.class))).thenAnswer(i -> {
                 SubmissionHint sh = i.getArgument(0);
@@ -257,7 +257,7 @@ class SubmissionHintServiceImplTest {
             submissionHintService.requestHint(assignmentId, request, studentEmail);
 
             ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
-            verify(aiPromptExecutionService).executePrompt(eq("STUDENT_HINT"), promptCaptor.capture());
+            verify(aiPromptExecutionService).executePrompt(eq("STUDENT_HINT"), promptCaptor.capture(), anyLong());
 
             String sentPrompt = promptCaptor.getValue();
             assertThat(sentPrompt).doesNotContain("DRAWINGS_DATA_START");
@@ -274,7 +274,7 @@ class SubmissionHintServiceImplTest {
             when(submissionRepository.findFirstByAssignmentIdAndStudentIdWithLock(assignmentId, studentId))
                     .thenReturn(Optional.of(submission));
             when(submissionHintRepository.countBySubmissionId(submissionId)).thenReturn(0);
-            when(aiPromptExecutionService.executePrompt(eq("STUDENT_HINT"), anyString()))
+            when(aiPromptExecutionService.executePrompt(eq("STUDENT_HINT"), anyString(), anyLong()))
                     .thenReturn("Bắt đầu bằng việc xác định dạng bài toán.");
             when(submissionHintRepository.save(any(SubmissionHint.class))).thenAnswer(i -> {
                 SubmissionHint sh = i.getArgument(0);
@@ -285,7 +285,7 @@ class SubmissionHintServiceImplTest {
             StudentHintResponse response = submissionHintService.requestHint(assignmentId, request, studentEmail);
 
             assertThat(response).isNotNull();
-            verify(aiPromptExecutionService).executePrompt(eq("STUDENT_HINT"), contains("[Học sinh chưa bắt đầu làm bài / Bài làm trống]"));
+            verify(aiPromptExecutionService).executePrompt(eq("STUDENT_HINT"), contains("[Học sinh chưa bắt đầu làm bài / Bài làm trống]"), anyLong());
         }
     }
 
