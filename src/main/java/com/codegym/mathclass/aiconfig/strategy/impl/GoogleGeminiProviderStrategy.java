@@ -3,6 +3,7 @@ package com.codegym.mathclass.aiconfig.strategy.impl;
 import com.codegym.mathclass.aiconfig.entity.Provider;
 import com.codegym.mathclass.aiconfig.entity.ProviderProtocol;
 import com.codegym.mathclass.aiconfig.entity.TaskConfig;
+import com.codegym.mathclass.aiconfig.strategy.AiExecutionResult;
 import com.codegym.mathclass.aiconfig.strategy.AiProviderStrategy;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,7 +33,7 @@ public class GoogleGeminiProviderStrategy implements AiProviderStrategy {
     }
 
     @Override
-    public String executePrompt(Provider provider, TaskConfig config, String apiKey, String prompt) throws Exception {
+    public AiExecutionResult executePrompt(Provider provider, TaskConfig config, String apiKey, String prompt) throws Exception {
         String baseUrlStr = provider.getBaseUrl() != null && !provider.getBaseUrl().trim().isEmpty()
                 ? provider.getBaseUrl().trim().replaceAll("/+$", "")
                 : "https://generativelanguage.googleapis.com/v1beta";
@@ -69,7 +70,9 @@ public class GoogleGeminiProviderStrategy implements AiProviderStrategy {
             if (candidates.isArray() && !candidates.isEmpty()) {
                 JsonNode parts = candidates.get(0).path("content").path("parts");
                 if (parts.isArray() && !parts.isEmpty()) {
-                    return parts.get(0).path("text").asText("");
+                    String content = parts.get(0).path("text").asText("");
+                    Integer completionTokens = parseCandidatesTokenCount(root);
+                    return new AiExecutionResult(content, completionTokens);
                 }
             }
             log.error("Google Gemini Provider returned HTTP status {} but invalid payload: {}", status, response.body());
@@ -78,5 +81,24 @@ public class GoogleGeminiProviderStrategy implements AiProviderStrategy {
             log.error("Google Gemini Provider HTTP error status {}: {}", status, response.body());
             throw new RuntimeException("Google Gemini Provider phản hồi lỗi HTTP " + status);
         }
+    }
+
+    /**
+     * Đọc số token đầu ra từ response Gemini:
+     * {@code usageMetadata.candidatesTokenCount}. Trả về {@code null} khi thiếu thông tin.
+     */
+    static Integer parseCandidatesTokenCount(JsonNode root) {
+        if (root == null) {
+            return null;
+        }
+        JsonNode usage = root.path("usageMetadata");
+        if (usage.isMissingNode() || usage.isNull()) {
+            return null;
+        }
+        int count = usage.path("candidatesTokenCount").asInt(0);
+        if (count == 0) {
+            count = usage.path("candidates_token_count").asInt(0);
+        }
+        return count > 0 ? count : null;
     }
 }

@@ -20,6 +20,7 @@ import java.util.List;
 import com.codegym.mathclass.notification.entity.NotificationSettings;
 import com.codegym.mathclass.user.mapper.UserMapper;
 import com.codegym.mathclass.notification.repository.NotificationSettingsRepository;
+import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
 import com.codegym.mathclass.utils.EmailService;
 import com.codegym.mathclass.exception.BadRequestException;
 
@@ -65,6 +66,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final RefreshTokenService refreshTokenService;
     private final UserMapper userMapper;
+    private final AiCreditService aiCreditService;
 
     private final ConcurrentHashMap<String, LocalDateTime> forgotPasswordRateLimitMap = new ConcurrentHashMap<>();
 
@@ -197,6 +199,8 @@ public class AuthServiceImpl implements AuthService {
                 .build();
 
         userRepository.save(user);
+
+        aiCreditService.grantDefaultForNewUser(user.getId(), user.getRole());
 
         NotificationSettings settings = NotificationSettings.builder()
                 .userId(user.getId())
@@ -434,6 +438,8 @@ public class AuthServiceImpl implements AuthService {
                             .build();
 
                     userRepository.save(user);
+
+                    aiCreditService.grantDefaultForNewUser(user.getId(), user.getRole());
 
                     NotificationSettings settings = NotificationSettings.builder()
                             .userId(user.getId())

@@ -56,6 +56,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(response);
     }
 
+    @ExceptionHandler(InsufficientCreditException.class)
+    public ResponseEntity<Map<String, String>> handleInsufficientCreditException(InsufficientCreditException ex) {
+        Map<String, String> response = new HashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("errorCode", "INSUFFICIENT_CREDITS");
+        return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(response);
+    }
+
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<Map<String, String>> handleNoResourceFoundException(NoResourceFoundException ex) {
         Map<String, String> response = new HashMap<>();

@@ -30,6 +30,13 @@ import com.codegym.mathclass.user.entity.RolePermission;
 import com.codegym.mathclass.user.repository.PermissionRepository;
 import com.codegym.mathclass.user.repository.RolePermissionRepository;
 import com.codegym.mathclass.user.repository.UserRepository;
+import com.codegym.mathclass.aiconfig.credit.entity.AiCreditConfig;
+import com.codegym.mathclass.aiconfig.credit.entity.AiCreditDefault;
+import com.codegym.mathclass.aiconfig.credit.entity.CreditPackage;
+import com.codegym.mathclass.aiconfig.credit.repository.AiCreditConfigRepository;
+import com.codegym.mathclass.aiconfig.credit.repository.AiCreditDefaultRepository;
+import com.codegym.mathclass.aiconfig.credit.repository.CreditPackageRepository;
+import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -63,6 +70,10 @@ public class DatabaseSeeder implements CommandLineRunner {
     private final RolePermissionRepository rolePermissionRepository;
     private final com.codegym.mathclass.aiconfig.repository.TaskConfigRepository taskConfigRepository;
     private final com.codegym.mathclass.aiconfig.repository.ProviderRepository providerRepository;
+    private final AiCreditService aiCreditService;
+    private final AiCreditDefaultRepository aiCreditDefaultRepository;
+    private final AiCreditConfigRepository aiCreditConfigRepository;
+    private final CreditPackageRepository creditPackageRepository;
 
     @Value("${mathclass.seed.enabled:true}")
     private boolean isSeedEnabled;
@@ -80,6 +91,8 @@ public class DatabaseSeeder implements CommandLineRunner {
 
         seedAiTaskConfigs();
 
+        seedAiCreditData();
+
         if (userRepository.count() > 0) {
             log.info("[DatabaseSeeder] Users exist in database. Skipping sample data seeding.");
             return;
@@ -89,6 +102,7 @@ public class DatabaseSeeder implements CommandLineRunner {
 
         try {
             seedData();
+            aiCreditService.backfillExistingUsers();
             log.info("[DatabaseSeeder] Database seeded successfully.");
         } catch (Exception e) {
             log.error("[DatabaseSeeder] Error during database seeding!", e);
@@ -179,6 +193,62 @@ public class DatabaseSeeder implements CommandLineRunner {
                 taskConfigRepository.save(studentHintConfig);
                 log.info("[DatabaseSeeder] Seeded STUDENT_HINT TaskConfig with Provider '{}'.", provider.getName());
             }, () -> log.warn("[DatabaseSeeder] No AI Provider found in DB. Skipping STUDENT_HINT default seeding."));
+        }
+    }
+
+    private void seedAiCreditData() {
+        seedCreditDefaults();
+        seedCreditConfigs();
+        seedCreditPackages();
+        // Backfill cho các user đã tồn tại trước khi deploy tính năng credit (idempotent)
+        aiCreditService.backfillExistingUsers();
+    }
+
+    private void seedCreditDefaults() {
+        for (Role role : List.of(Role.STUDENT, Role.TEACHER)) {
+            if (aiCreditDefaultRepository.findByRole(role).isEmpty()) {
+                int defaultCredits = role == Role.TEACHER ? 500 : 100;
+                aiCreditDefaultRepository.save(AiCreditDefault.builder()
+                        .role(role)
+                        .defaultCredits(defaultCredits)
+                        .build());
+                log.info("[DatabaseSeeder] Seeded default credits for role {} = {}.", role, defaultCredits);
+            }
+        }
+    }
+
+    private void seedCreditConfigs() {
+        int defaultTokensPerCredit = 1000;
+        Map<String, Integer> defaults = Map.of(
+                "STUDENT_HINT", 1,
+                "CANVAS_LATEX", 2,
+                "QUESTION_GEN", 3,
+                "ASSIGNMENT_GRADING", 5);
+        defaults.forEach((task, cost) -> {
+            AiCreditConfig existing = aiCreditConfigRepository.findByTask(task).orElse(null);
+            if (existing == null) {
+                aiCreditConfigRepository.save(AiCreditConfig.builder()
+                        .task(task)
+                        .costPerCall(cost)
+                        .tokensPerCredit(defaultTokensPerCredit)
+                        .enabled(true)
+                        .build());
+                log.info("[DatabaseSeeder] Seeded credit config for task {} = {} credit.", task, cost);
+            } else if (existing.getTokensPerCredit() == null) {
+                existing.setTokensPerCredit(defaultTokensPerCredit);
+                aiCreditConfigRepository.save(existing);
+                log.info("[DatabaseSeeder] Backfilled tokensPerCredit={} for task {}.", defaultTokensPerCredit, task);
+            }
+        });
+    }
+
+    private void seedCreditPackages() {
+        if (creditPackageRepository.count() == 0) {
+            creditPackageRepository.saveAll(List.of(
+                    CreditPackage.builder().name("Gói Cơ bản").credits(100).price(20000).enabled(true).sortOrder(1).build(),
+                    CreditPackage.builder().name("Gói Pro").credits(300).price(50000).enabled(true).sortOrder(2).build(),
+                    CreditPackage.builder().name("Gói VIP").credits(1000).price(150000).enabled(true).sortOrder(3).build()));
+            log.info("[DatabaseSeeder] Seeded 3 default credit packages.");
         }
     }
 

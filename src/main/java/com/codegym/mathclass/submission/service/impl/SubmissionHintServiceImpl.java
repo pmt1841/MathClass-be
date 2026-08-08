@@ -81,7 +81,7 @@ public class SubmissionHintServiceImpl implements SubmissionHintService {
 
             String prompt = buildSocraticPrompt(assignment, sanitizedContent);
 
-            String aiHintContent = aiPromptExecutionService.executePrompt("STUDENT_HINT", prompt);
+            String aiHintContent = aiPromptExecutionService.executePrompt("STUDENT_HINT", prompt, student.getId());
 
             int hintNumber = usedCount + 1;
             SubmissionHint hintRecord = SubmissionHint.builder()
