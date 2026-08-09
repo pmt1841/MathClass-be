@@ -8,6 +8,7 @@ import com.codegym.mathclass.aiconfig.entity.Provider;
 import com.codegym.mathclass.aiconfig.entity.ProviderProtocol;
 import com.codegym.mathclass.aiconfig.repository.ApiKeyRepository;
 import com.codegym.mathclass.aiconfig.repository.ProviderRepository;
+import com.codegym.mathclass.exception.ResourceNotFoundException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -120,7 +121,7 @@ public class ConnectionTestService {
     @Transactional(readOnly = true)
     public TestConnectionResponse verifyKey(Long keyId) {
         ApiKey apiKey = apiKeyRepository.findById(keyId)
-                .orElseThrow(() -> new IllegalArgumentException("API Key không tồn tại với ID: " + keyId));
+                .orElseThrow(() -> new ResourceNotFoundException("API Key không tồn tại với ID: " + keyId));
 
         Provider provider = apiKey.getProvider();
         String plainKey = apiKey.getEncryptedKey(); // Auto decrypted by ApiKeyCryptoConverter
@@ -142,7 +143,7 @@ public class ConnectionTestService {
     @Transactional(readOnly = true)
     public List<String> fetchAvailableModels(Long providerId) {
         Provider provider = providerRepository.findById(providerId)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Provider với ID: " + providerId));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Provider với ID: " + providerId));
 
         List<ApiKey> keys = provider.getApiKeys();
         if (keys == null || keys.isEmpty()) {

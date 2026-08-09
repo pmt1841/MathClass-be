@@ -14,8 +14,14 @@ import java.util.Optional;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.Lock;
 
+import org.springframework.data.jpa.repository.EntityGraph;
+
 public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     Optional<Submission> findFirstByAssignmentIdAndStudentId(long assignmentId, long studentId);
+
+    @EntityGraph(attributePaths = {"assignment", "assignment.teacher", "student"})
+    @Query("SELECT s FROM Submission s WHERE s.id = :id")
+    Optional<Submission> findByIdWithDetails(@Param("id") long id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT s FROM Submission s WHERE s.assignment.id = :assignmentId AND s.student.id = :studentId")

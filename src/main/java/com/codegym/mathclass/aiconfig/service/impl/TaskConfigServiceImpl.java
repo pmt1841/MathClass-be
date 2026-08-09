@@ -7,6 +7,7 @@ import com.codegym.mathclass.aiconfig.entity.TaskConfig;
 import com.codegym.mathclass.aiconfig.repository.ProviderRepository;
 import com.codegym.mathclass.aiconfig.repository.TaskConfigRepository;
 import com.codegym.mathclass.aiconfig.service.TaskConfigService;
+import com.codegym.mathclass.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -25,7 +26,7 @@ public class TaskConfigServiceImpl implements TaskConfigService {
     @Cacheable(value = "ai_task_configs_cache", key = "#task")
     public TaskConfigResponse getTaskConfig(String task) {
         TaskConfig taskConfig = taskConfigRepository.findByTask(task.toUpperCase())
-                .orElseThrow(() -> new IllegalArgumentException("Chưa có cấu hình cho Task: " + task));
+                .orElseThrow(() -> new ResourceNotFoundException("Chưa có cấu hình cho Task: " + task));
         return mapToResponse(taskConfig);
     }
 
@@ -34,7 +35,7 @@ public class TaskConfigServiceImpl implements TaskConfigService {
     @CacheEvict(value = "ai_task_configs_cache", key = "#task")
     public TaskConfigResponse updateTaskConfig(String task, TaskConfigUpdateRequest request) {
         Provider provider = providerRepository.findById(request.getProviderId())
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Provider với ID: " + request.getProviderId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Provider với ID: " + request.getProviderId()));
 
         TaskConfig taskConfig = taskConfigRepository.findByTask(task.toUpperCase())
                 .orElse(TaskConfig.builder().task(task.toUpperCase()).build());

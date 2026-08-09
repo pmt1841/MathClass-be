@@ -50,6 +50,14 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import com.codegym.mathclass.aiconfig.entity.SystemPrompt;
+import com.codegym.mathclass.aiconfig.entity.SystemPromptHistory;
+import com.codegym.mathclass.aiconfig.entity.SystemPromptStatus;
+import com.codegym.mathclass.aiconfig.repository.ProviderRepository;
+import com.codegym.mathclass.aiconfig.repository.SystemPromptHistoryRepository;
+import com.codegym.mathclass.aiconfig.repository.SystemPromptRepository;
+import com.codegym.mathclass.aiconfig.repository.TaskConfigRepository;
+
 @Component
 @Slf4j
 @RequiredArgsConstructor
@@ -68,12 +76,14 @@ public class DatabaseSeeder implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
     private final PermissionRepository permissionRepository;
     private final RolePermissionRepository rolePermissionRepository;
-    private final com.codegym.mathclass.aiconfig.repository.TaskConfigRepository taskConfigRepository;
-    private final com.codegym.mathclass.aiconfig.repository.ProviderRepository providerRepository;
+    private final TaskConfigRepository taskConfigRepository;
+    private final ProviderRepository providerRepository;
     private final AiCreditService aiCreditService;
     private final AiCreditDefaultRepository aiCreditDefaultRepository;
     private final AiCreditConfigRepository aiCreditConfigRepository;
     private final CreditPackageRepository creditPackageRepository;
+    private final SystemPromptRepository systemPromptRepository;
+    private final SystemPromptHistoryRepository systemPromptHistoryRepository;
 
     @Value("${mathclass.seed.enabled:true}")
     private boolean isSeedEnabled;
@@ -432,6 +442,92 @@ public class DatabaseSeeder implements CommandLineRunner {
                 .isRead(false)
                 .build();
         notificationRepository.save(notif2);
+
+        // 7. Create System Prompts
+        seedSystemPrompts();
+    }
+
+    private void seedSystemPrompts() {
+        if (systemPromptRepository.count() > 0) {
+            return;
+        }
+        log.info("[DatabaseSeeder] Creating sample system prompts...");
+
+        SystemPrompt p1 = SystemPrompt.builder()
+                .code("PROMPT_SOLVE_HINT")
+                .name("Prompt Gợi ý giải toán từng bước")
+                .taskCode("HINT_EXPLANATION")
+                .defaultContent("Bạn là trợ lý giảng dạy môn {{subject}} cho học sinh {{grade_level}}. Khi nhận bài giải với câu hỏi: {{question_content}} và câu trả lời của học sinh: {{student_answer}}, hãy chỉ đưa ra gợi ý gợi mở hướng giải từng bước, tuyệt đối không cho đáp án trực tiếp.")
+                .currentContent("Bạn là trợ lý giảng dạy môn {{subject}} cho học sinh {{grade_level}}. Khi nhận bài giải với câu hỏi: {{question_content}} và câu trả lời của học sinh: {{student_answer}}, hãy chỉ đưa ra gợi ý gợi mở hướng giải từng bước, tuyệt đối không cho đáp án trực tiếp.")
+                .allowedVariables("grade_level,subject,student_answer,question_content")
+                .description("Chỉ đưa ra gợi ý hướng giải, tuyệt đối không giải hộ đáp án chi tiết.")
+                .status(SystemPromptStatus.ACTIVE)
+                .build();
+        SystemPrompt savedP1 = systemPromptRepository.save(p1);
+        systemPromptHistoryRepository.save(SystemPromptHistory.builder()
+                .prompt(savedP1)
+                .version(1)
+                .content(savedP1.getDefaultContent())
+                .changeReason("Khởi tạo System Prompt ban đầu")
+                .createdBy("SYSTEM")
+                .build());
+
+        SystemPrompt p2 = SystemPrompt.builder()
+                .code("PROMPT_LATEX_CANVAS")
+                .name("Prompt Ép chuẩn mã LaTeX / Canvas")
+                .taskCode("LATEX_CANVAS_FORMAT")
+                .defaultContent("Hãy chuyển đổi biểu thức toán sau: {{math_expression}} sang định dạng {{math_format}} chuẩn.")
+                .currentContent("Hãy chuyển đổi biểu thức toán sau: {{math_expression}} sang định dạng {{math_format}} chuẩn.")
+                .allowedVariables("math_expression,math_format")
+                .description("Đảm bảo AI chỉ trả về mã LaTeX/KaTeX hợp lệ.")
+                .status(SystemPromptStatus.ACTIVE)
+                .build();
+        SystemPrompt savedP2 = systemPromptRepository.save(p2);
+        systemPromptHistoryRepository.save(SystemPromptHistory.builder()
+                .prompt(savedP2)
+                .version(1)
+                .content(savedP2.getDefaultContent())
+                .changeReason("Khởi tạo System Prompt ban đầu")
+                .createdBy("SYSTEM")
+                .build());
+
+        SystemPrompt p3 = SystemPrompt.builder()
+                .code("PROMPT_SUBMISSION_GRADING")
+                .name("Prompt Chấm bài tự luận tự động")
+                .taskCode("SUBMISSION_GRADING")
+                .defaultContent("Bạn là giáo viên Toán lớp {{grade_level}}. Hãy chấm bài tập môn {{subject}} với câu hỏi: {{question_content}}, đáp án chuẩn: {{correct_answer}}, và bài làm học sinh: {{student_answer}}. Điểm tối đa: {{max_score}}.")
+                .currentContent("Bạn là giáo viên Toán lớp {{grade_level}}. Hãy chấm bài tập môn {{subject}} với câu hỏi: {{question_content}}, đáp án chuẩn: {{correct_answer}}, và bài làm học sinh: {{student_answer}}. Điểm tối đa: {{max_score}}.")
+                .allowedVariables("grade_level,subject,question_content,correct_answer,student_answer,max_score")
+                .description("Chấm điểm và nhận xét chi tiết bài làm tự luận.")
+                .status(SystemPromptStatus.ACTIVE)
+                .build();
+        SystemPrompt savedP3 = systemPromptRepository.save(p3);
+        systemPromptHistoryRepository.save(SystemPromptHistory.builder()
+                .prompt(savedP3)
+                .version(1)
+                .content(savedP3.getDefaultContent())
+                .changeReason("Khởi tạo System Prompt ban đầu")
+                .createdBy("SYSTEM")
+                .build());
+
+        SystemPrompt p4 = SystemPrompt.builder()
+                .code("PROMPT_QUESTION_GEN")
+                .name("Prompt Sinh Bài tập Toán")
+                .taskCode("QUESTION_GEN")
+                .defaultContent("Bạn là chuyên gia biên soạn bài tập môn {{subject}} cho học sinh {{grade_level}}. Hãy khởi tạo bộ câu hỏi theo chủ đề: {{topic}}, mức độ khó: {{difficulty}}, với số lượng: {{question_count}} câu. Yêu cầu trả về kết quả dưới định dạng {{output_format}} và đảm bảo các công thức toán học được trình bày chuẩn theo dạng {{math_format}}.")
+                .currentContent("Bạn là chuyên gia biên soạn bài tập môn {{subject}} cho học sinh {{grade_level}}. Hãy khởi tạo bộ câu hỏi theo chủ đề: {{topic}}, mức độ khó: {{difficulty}}, với số lượng: {{question_count}} câu. Yêu cầu trả về kết quả dưới định dạng {{output_format}} và đảm bảo các công thức toán học được trình bày chuẩn theo dạng {{math_format}}.")
+                .allowedVariables("grade_level,subject,topic,difficulty,question_count,output_format,math_format")
+                .description("Tự động tạo bộ câu hỏi trắc nghiệm và tự luận môn Toán.")
+                .status(SystemPromptStatus.ACTIVE)
+                .build();
+        SystemPrompt savedP4 = systemPromptRepository.save(p4);
+        systemPromptHistoryRepository.save(SystemPromptHistory.builder()
+                .prompt(savedP4)
+                .version(1)
+                .content(savedP4.getDefaultContent())
+                .changeReason("Khởi tạo System Prompt ban đầu")
+                .createdBy("SYSTEM")
+                .build());
     }
 
     private User createUser(String email, String fullName, String password, String phone, Role role, Gender gender,

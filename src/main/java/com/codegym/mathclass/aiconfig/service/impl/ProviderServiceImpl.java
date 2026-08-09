@@ -11,6 +11,7 @@ import com.codegym.mathclass.aiconfig.repository.ApiKeyRepository;
 import com.codegym.mathclass.aiconfig.repository.ProviderRepository;
 import com.codegym.mathclass.aiconfig.repository.TaskConfigRepository;
 import com.codegym.mathclass.aiconfig.service.ProviderService;
+import com.codegym.mathclass.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -41,7 +42,7 @@ public class ProviderServiceImpl implements ProviderService {
     @Transactional(readOnly = true)
     public ProviderResponse getProviderById(Long id) {
         Provider provider = providerRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Provider với ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Provider với ID: " + id));
         return mapToResponse(provider);
     }
 
@@ -85,7 +86,7 @@ public class ProviderServiceImpl implements ProviderService {
     @CacheEvict(value = "ai_providers_cache", allEntries = true)
     public ProviderResponse updateProvider(Long id, ProviderUpdateRequest request) {
         Provider provider = providerRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Provider với ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Provider với ID: " + id));
 
         provider.setName(request.getName());
         provider.setBaseUrl(request.getBaseUrl());
@@ -108,7 +109,7 @@ public class ProviderServiceImpl implements ProviderService {
     @CacheEvict(value = "ai_providers_cache", allEntries = true)
     public void deleteProvider(Long id) {
         Provider provider = providerRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Provider với ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Provider với ID: " + id));
 
         List<TaskConfig> usingTasks = taskConfigRepository.findByProviderId(id);
         if (!usingTasks.isEmpty()) {
