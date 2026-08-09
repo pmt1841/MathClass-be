@@ -21,6 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.codegym.mathclass.aiconfig.entity.ApiKeyStatus;
+import com.codegym.mathclass.aiconfig.entity.ProviderStatus;
+
 @Service
 @RequiredArgsConstructor
 public class ProviderServiceImpl implements ProviderService {
@@ -88,6 +91,9 @@ public class ProviderServiceImpl implements ProviderService {
         Provider provider = providerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Provider với ID: " + id));
 
+        ProviderStatus oldStatus = provider.getStatus();
+        ProviderStatus newStatus = request.getStatus();
+
         provider.setName(request.getName());
         provider.setBaseUrl(request.getBaseUrl());
         if (request.getProtocol() != null) {
@@ -98,9 +104,17 @@ public class ProviderServiceImpl implements ProviderService {
         provider.setAuthQueryParam(request.getAuthQueryParam());
         provider.setHealthCheckPath(request.getHealthCheckPath());
         provider.setStrategy(request.getStrategy());
-        provider.setStatus(request.getStatus());
+        if (newStatus != null) {
+            provider.setStatus(newStatus);
+        }
 
         Provider updated = providerRepository.save(provider);
+
+        if (newStatus != null && newStatus != oldStatus) {
+            ApiKeyStatus targetKeyStatus = (newStatus == ProviderStatus.ACTIVE) ? ApiKeyStatus.ACTIVE : ApiKeyStatus.INACTIVE;
+            apiKeyRepository.updateStatusByProviderId(id, targetKeyStatus);
+        }
+
         return mapToResponse(updated);
     }
 
