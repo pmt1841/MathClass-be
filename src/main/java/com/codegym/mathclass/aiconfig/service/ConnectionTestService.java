@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -118,7 +119,8 @@ public class ConnectionTestService {
         }
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
+    @CacheEvict(value = "ai_providers_cache", allEntries = true)
     public TestConnectionResponse verifyKey(Long keyId) {
         ApiKey apiKey = apiKeyRepository.findById(keyId)
                 .orElseThrow(() -> new ResourceNotFoundException("API Key không tồn tại với ID: " + keyId));
@@ -137,7 +139,16 @@ public class ConnectionTestService {
                 .healthCheckPath(provider.getHealthCheckPath())
                 .build();
 
-        return testConnection(testReq);
+        TestConnectionResponse response = testConnection(testReq);
+
+        boolean isFailed = !Boolean.TRUE.equals(response.getSuccess()) || !Boolean.TRUE.equals(response.getValid());
+        if (isFailed && apiKey.getStatus() != ApiKeyStatus.INACTIVE) {
+            apiKey.setStatus(ApiKeyStatus.INACTIVE);
+            apiKeyRepository.save(apiKey);
+            log.info("API Key ID {} bị lỗi kết nối ({}), đã tự động chuyển trạng thái sang INACTIVE", keyId, response.getMessage());
+        }
+
+        return response;
     }
 
     @Transactional(readOnly = true)

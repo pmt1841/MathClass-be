@@ -86,6 +86,32 @@ class ConnectionTestServiceTest {
     }
 
     @Test
+    @DisplayName("TC-CONN-02B: verifyKey tự động chuyển trạng thái API Key sang INACTIVE khi kết nối thất bại")
+    void testVerifyKey_Failure_AutoSetsInactive() {
+        Provider provider = Provider.builder()
+                .code("OPENAI")
+                .baseUrl("https://invalid.openai.domain")
+                .protocol(com.codegym.mathclass.aiconfig.entity.ProviderProtocol.OPENAI_COMPATIBLE)
+                .build();
+
+        ApiKey apiKey = ApiKey.builder()
+                .encryptedKey("sk-invalidkey")
+                .provider(provider)
+                .status(ApiKeyStatus.ACTIVE)
+                .build();
+        apiKey.setId(10L);
+
+        when(apiKeyRepository.findById(10L)).thenReturn(Optional.of(apiKey));
+
+        TestConnectionResponse response = connectionTestService.verifyKey(10L);
+
+        assertNotNull(response);
+        assertFalse(response.getSuccess());
+        assertEquals(ApiKeyStatus.INACTIVE, apiKey.getStatus());
+        org.mockito.Mockito.verify(apiKeyRepository).save(apiKey);
+    }
+
+    @Test
     @DisplayName("TC-CONN-03: fetchAvailableModels trả về danh sách rỗng khi Provider không có API Key active")
     void testFetchAvailableModels_NoApiKeys_ReturnsEmptyList() {
         Provider emptyProvider = Provider.builder().code("CUSTOM").apiKeys(Collections.emptyList()).build();

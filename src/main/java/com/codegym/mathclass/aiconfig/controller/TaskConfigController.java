@@ -4,6 +4,7 @@ import com.codegym.mathclass.aiconfig.dto.request.TaskConfigUpdateRequest;
 import com.codegym.mathclass.aiconfig.dto.response.TaskConfigResponse;
 import com.codegym.mathclass.aiconfig.service.TaskConfigService;
 import com.codegym.mathclass.common.annotation.ApiVersion;
+import com.codegym.mathclass.systemlog.annotation.AuditLog;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -30,6 +31,7 @@ public class TaskConfigController {
 
     @Operation(summary = "Cập nhật cấu hình Task", description = "Gán Provider, Model và thiết lập tham số hoạt động cho tác vụ")
     @PutMapping("/{task}")
+    @AuditLog(action = "UPDATE_AI_TASK_CONFIG", resourceType = "AI_CONFIG")
     public ResponseEntity<TaskConfigResponse> updateTaskConfig(@PathVariable String task, @Valid @RequestBody TaskConfigUpdateRequest request) {
         return ResponseEntity.ok(taskConfigService.updateTaskConfig(task, request));
     }

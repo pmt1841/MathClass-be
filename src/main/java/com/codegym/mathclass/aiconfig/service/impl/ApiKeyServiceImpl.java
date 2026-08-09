@@ -10,6 +10,7 @@ import com.codegym.mathclass.aiconfig.repository.ProviderRepository;
 import com.codegym.mathclass.aiconfig.service.ApiKeyService;
 import com.codegym.mathclass.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ApiKeyServiceImpl implements ApiKeyService {
@@ -50,7 +52,9 @@ public class ApiKeyServiceImpl implements ApiKeyService {
                 .build();
 
         ApiKey saved = apiKeyRepository.save(apiKey);
-        return mapToResponse(saved);
+        ApiKeyResponse response = mapToResponse(saved);
+        log.info("[AI_AUDIT] Thêm API Key mới cho Provider ID={} (code='{}'): KeyID={}, name='{}', maskedKey='{}'", providerId, provider.getCode(), saved.getId(), saved.getName(), response.getMaskedApiKey());
+        return response;
     }
 
     @Override
@@ -59,7 +63,10 @@ public class ApiKeyServiceImpl implements ApiKeyService {
     public void deleteKey(Long keyId) {
         ApiKey apiKey = apiKeyRepository.findById(keyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy API Key với ID: " + keyId));
+        String masked = maskKey(apiKey.getEncryptedKey());
+        Long providerId = apiKey.getProvider() != null ? apiKey.getProvider().getId() : null;
         apiKeyRepository.delete(apiKey);
+        log.warn("[AI_AUDIT] Xóa vĩnh viễn API Key ID={} (ProviderID={}, maskedKey='{}')", keyId, providerId, masked);
     }
 
     @Override
@@ -71,6 +78,7 @@ public class ApiKeyServiceImpl implements ApiKeyService {
 
         apiKey.setStatus(request.getStatus());
         ApiKey updated = apiKeyRepository.save(apiKey);
+        log.info("[AI_AUDIT] Đổi trạng thái API Key ID={} sang {}", keyId, request.getStatus());
         return mapToResponse(updated);
     }
 

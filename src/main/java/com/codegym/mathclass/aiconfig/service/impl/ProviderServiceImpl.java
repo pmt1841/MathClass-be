@@ -13,6 +13,7 @@ import com.codegym.mathclass.aiconfig.repository.TaskConfigRepository;
 import com.codegym.mathclass.aiconfig.service.ProviderService;
 import com.codegym.mathclass.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
 import com.codegym.mathclass.aiconfig.entity.ApiKeyStatus;
 import com.codegym.mathclass.aiconfig.entity.ProviderStatus;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProviderServiceImpl implements ProviderService {
@@ -81,6 +83,7 @@ public class ProviderServiceImpl implements ProviderService {
             apiKeyRepository.save(key);
         }
 
+        log.info("[AI_AUDIT] Tạo Provider thành công: ID={}, code='{}', name='{}', protocol='{}'", saved.getId(), saved.getCode(), saved.getName(), saved.getProtocol());
         return mapToResponse(saved);
     }
 
@@ -113,6 +116,9 @@ public class ProviderServiceImpl implements ProviderService {
         if (newStatus != null && newStatus != oldStatus) {
             ApiKeyStatus targetKeyStatus = (newStatus == ProviderStatus.ACTIVE) ? ApiKeyStatus.ACTIVE : ApiKeyStatus.INACTIVE;
             apiKeyRepository.updateStatusByProviderId(id, targetKeyStatus);
+            log.info("[AI_AUDIT] Đổi trạng thái Provider ID={} (code='{}') từ {} sang {}. Đã đồng bộ API Keys sang {}", id, provider.getCode(), oldStatus, newStatus, targetKeyStatus);
+        } else {
+            log.info("[AI_AUDIT] Cập nhật thông tin Provider ID={} (code='{}')", id, provider.getCode());
         }
 
         return mapToResponse(updated);
@@ -132,6 +138,7 @@ public class ProviderServiceImpl implements ProviderService {
         }
 
         providerRepository.delete(provider);
+        log.warn("[AI_AUDIT] Xóa vĩnh viễn Provider ID={} (code='{}', name='{}')", id, provider.getCode(), provider.getName());
     }
 
     private ProviderResponse mapToResponse(Provider provider) {
