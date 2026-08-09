@@ -285,98 +285,94 @@ public class DatabaseSeeder implements CommandLineRunner {
 
         // 2. Create Classrooms
         log.info("[DatabaseSeeder] Creating classrooms...");
-        Classroom class1 = new Classroom();
-        class1.setClassCode("MATH101");
-        class1.setClassName("Lớp Toán Đại số 10");
-        class1.setTeacher(teacher1);
-        class1.setMaxStudents(30);
-        class1.setDescription("Lớp toán đại số cơ bản dành cho học sinh lớp 10 năm học 2026-2027.");
-        class1.setStudents(new HashSet<>(Arrays.asList(student1, student2, student3)));
-        class1 = classroomRepository.save(class1);
+        Classroom class1 = classroomRepository.save(Classroom.builder()
+                .classCode("MATH101")
+                .className("Lớp Toán Đại số 10")
+                .teacher(teacher1)
+                .maxStudents(30)
+                .description("Lớp toán đại số cơ bản dành cho học sinh lớp 10 năm học 2026-2027.")
+                .students(new HashSet<>(Arrays.asList(student1, student2, student3)))
+                .build());
 
-        Classroom class2 = new Classroom();
-        class2.setClassCode("MATH102");
-        class2.setClassName("Lớp Toán Hình học 11");
-        class2.setTeacher(teacher2);
-        class2.setMaxStudents(25);
-        class2.setDescription("Lớp học chuyên đề hình học không gian và phương pháp tọa độ lớp 11.");
-        class2.setStudents(new HashSet<>(Arrays.asList(student3, student4, student5)));
-        class2 = classroomRepository.save(class2);
+        Classroom class2 = classroomRepository.save(Classroom.builder()
+                .classCode("MATH102")
+                .className("Lớp Toán Hình học 11")
+                .teacher(teacher2)
+                .maxStudents(25)
+                .description("Lớp học chuyên đề hình học không gian và phương pháp tọa độ lớp 11.")
+                .students(new HashSet<>(Arrays.asList(student3, student4, student5)))
+                .build());
 
         // 3. Create Classroom Join Requests
         log.info("[DatabaseSeeder] Creating join requests...");
-        ClassroomJoinRequest req1 = new ClassroomJoinRequest();
-        req1.setClassroom(class1);
-        req1.setStudent(student4);
-        req1.setStatus(JoinRequestStatus.PENDING);
-        classroomJoinRequestRepository.save(req1);
+        classroomJoinRequestRepository.save(ClassroomJoinRequest.builder()
+                .classroom(class1)
+                .student(student4)
+                .status(JoinRequestStatus.PENDING)
+                .build());
 
-        ClassroomJoinRequest req2 = new ClassroomJoinRequest();
-        req2.setClassroom(class1);
-        req2.setStudent(student5);
-        req2.setStatus(JoinRequestStatus.REJECTED);
-        classroomJoinRequestRepository.save(req2);
+        classroomJoinRequestRepository.save(ClassroomJoinRequest.builder()
+                .classroom(class1)
+                .student(student5)
+                .status(JoinRequestStatus.REJECTED)
+                .build());
 
         // 4. Create Assignments
         log.info("[DatabaseSeeder] Creating assignments...");
-        Assignment assign1 = new Assignment();
-        assign1.setTitle("Bài tập hàm số bậc hai");
-        assign1.setDescription(
-                "Các em hoàn thành các bài tập sau về hàm số bậc hai $y = ax^2 + bx + c$. Yêu cầu vẽ đồ thị phụ họa.");
-        assign1.setContent(
-                "1. Khảo sát sự biến thiên và vẽ đồ thị hàm số $y = x^2 - 4x + 3$.\n2. Tìm m để phương trình $x^2 - 2(m+1)x + m^2 + 2 = 0$ có hai nghiệm phân biệt.");
-        assign1.setTeacher(teacher1);
-        assign1.setClassroom(class1);
-        assign1.setStatus(AssignmentStatus.PUBLISHED);
-        assign1.setDeadline(LocalDateTime.now().plusDays(7));
-        assign1 = assignmentRepository.save(assign1);
+        Assignment assign1 = assignmentRepository.save(Assignment.builder()
+                .title("Bài tập hàm số bậc hai")
+                .description("Các em hoàn thành các bài tập sau về hàm số bậc hai $y = ax^2 + bx + c$. Yêu cầu vẽ đồ thị phụ họa.")
+                .content("1. Khảo sát sự biến thiên và vẽ đồ thị hàm số $y = x^2 - 4x + 3$.\n2. Tìm m để phương trình $x^2 - 2(m+1)x + m^2 + 2 = 0$ có hai nghiệm phân biệt.")
+                .teacher(teacher1)
+                .classroom(class1)
+                .status(AssignmentStatus.PUBLISHED)
+                .deadline(LocalDateTime.now().plusDays(7))
+                .build());
 
         // Add drawing to Assignment 1
-        AssignmentDrawing draw1 = new AssignmentDrawing();
-        draw1.setAssignment(assign1);
-        draw1.setShapeCode("PARABOLA_01");
         Map<String, Object> graphData = new HashMap<>();
         graphData.put("type", "parabola");
         graphData.put("a", 1.0);
         graphData.put("b", -4.0);
         graphData.put("c", 3.0);
-        draw1.setJsxGraphData(graphData);
-        assignmentDrawingRepository.save(draw1);
 
-        Assignment assign2 = new Assignment();
-        assign2.setTitle("Bài tập vectơ trong không gian");
-        assign2.setDescription(
-                "Học sinh thực hiện vẽ hình biểu diễn và tính tích vô hướng của hai vectơ $\\vec{u}$ và $\\vec{v}$ trong không gian Oxyz.");
-        assign2.setContent(
-                "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh a. Cạnh bên SA vuông góc với mặt phẳng đáy và SA = a. Tính góc giữa đường thẳng SD và mặt phẳng (SBC).");
-        assign2.setTeacher(teacher2);
-        assign2.setClassroom(class2);
-        assign2.setStatus(AssignmentStatus.PUBLISHED);
-        assign2.setDeadline(LocalDateTime.now().plusDays(5));
-        assign2 = assignmentRepository.save(assign2);
+        assignmentDrawingRepository.save(AssignmentDrawing.builder()
+                .assignment(assign1)
+                .shapeCode("PARABOLA_01")
+                .jsxGraphData(graphData)
+                .build());
 
-        Assignment assign3 = new Assignment();
-        assign3.setTitle("Bài tập trắc nghiệm số học (DRAFT)");
-        assign3.setDescription("Bài tập kiểm tra kiến thức về ước chung lớn nhất và bội chung nhỏ nhất.");
-        assign3.setContent("Câu 1: Tìm UCLN(24, 36).\nCâu 2: Số nguyên tố là gì?");
-        assign3.setTeacher(teacher1);
-        assign3.setStatus(AssignmentStatus.DRAFT);
-        assign3.setDeadline(null);
-        assignmentRepository.save(assign3);
+        Assignment assign2 = assignmentRepository.save(Assignment.builder()
+                .title("Bài tập vectơ trong không gian")
+                .description("Học sinh thực hiện vẽ hình biểu diễn và tính tích vô hướng của hai vectơ $\\vec{u}$ và $\\vec{v}$ trong không gian Oxyz.")
+                .content("Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh a. Cạnh bên SA vuông góc với mặt phẳng đáy và SA = a. Tính góc giữa đường thẳng SD và mặt phẳng (SBC).")
+                .teacher(teacher2)
+                .classroom(class2)
+                .status(AssignmentStatus.PUBLISHED)
+                .deadline(LocalDateTime.now().plusDays(5))
+                .build());
+
+        Assignment assign3 = assignmentRepository.save(Assignment.builder()
+                .title("Bài tập trắc nghiệm số học (DRAFT)")
+                .description("Bài tập kiểm tra kiến thức về ước chung lớn nhất và bội chung nhỏ nhất.")
+                .content("Câu 1: Tìm UCLN(24, 36).\nCâu 2: Số nguyên tố là gì?")
+                .teacher(teacher1)
+                .status(AssignmentStatus.DRAFT)
+                .deadline(null)
+                .build());
 
         // 5. Create Submissions
         log.info("[DatabaseSeeder] Creating submissions...");
         // Submission 1: Graded
-        Submission sub1 = new Submission();
-        sub1.setAssignment(assign1);
-        sub1.setStudent(student1);
-        sub1.setContent(
-                "Em xin gửi bài làm hàm số bậc hai: \n1. Hàm số $y = x^2 - 4x + 3$ có tọa độ đỉnh $I(2, -1)$, cắt Oy tại $(0, 3)$, cắt Ox tại $(1, 0)$ và $(3, 0)$.");
-        sub1.setStatus(SubmissionStatus.GRADED);
-        sub1.setScore(9.0);
-        sub1.setSubmittedAt(LocalDateTime.now().minusDays(1));
-        sub1.setTeacherFeedback("Bài làm tốt, trình bày sạch sẽ và giải toán chính xác.");
-        sub1 = submissionRepository.save(sub1);
+        Submission sub1 = submissionRepository.save(Submission.builder()
+                .assignment(assign1)
+                .student(student1)
+                .content("Em xin gửi bài làm hàm số bậc hai: \n1. Hàm số $y = x^2 - 4x + 3$ có tọa độ đỉnh $I(2, -1)$, cắt Oy tại $(0, 3)$, cắt Ox tại $(1, 0)$ và $(3, 0)$.")
+                .status(SubmissionStatus.GRADED)
+                .score(9.0)
+                .submittedAt(LocalDateTime.now().minusDays(1))
+                .teacherFeedback("Bài làm tốt, trình bày sạch sẽ và giải toán chính xác.")
+                .build());
 
         // Add Submission Comment
         SubmissionComment comment1 = SubmissionComment.builder()
@@ -404,26 +400,24 @@ public class DatabaseSeeder implements CommandLineRunner {
         submissionDrawingRepository.save(subDraw1);
 
         // Submission 2: Submitted (Ungraded)
-        Submission sub2 = new Submission();
-        sub2.setAssignment(assign1);
-        sub2.setStudent(student2);
-        sub2.setContent(
-                "Bài làm của em Lê Thị Bình: \nCâu 1: Hàm số có bảng biến thiên đi xuống từ $-\\infty$ đến $2$ và đi lên từ $2$ đến $+\\infty$.");
-        sub2.setStatus(SubmissionStatus.SUBMITTED);
-        sub2.setSubmittedAt(LocalDateTime.now().minusHours(2));
-        submissionRepository.save(sub2);
+        Submission sub2 = submissionRepository.save(Submission.builder()
+                .assignment(assign1)
+                .student(student2)
+                .content("Bài làm của em Lê Thị Bình: \nCâu 1: Hàm số có bảng biến thiên đi xuống từ $-\\infty$ đến $2$ và đi lên từ $2$ đến $+\\infty$.")
+                .status(SubmissionStatus.SUBMITTED)
+                .submittedAt(LocalDateTime.now().minusHours(2))
+                .build());
 
         // Submission 3: Graded
-        Submission sub3 = new Submission();
-        sub3.setAssignment(assign2);
-        sub3.setStudent(student3);
-        sub3.setContent(
-                "Lời giải hình học không gian S.ABCD: \nGóc giữa SD và (SBC) bằng góc $\\widehat{DSE}$ với E là hình chiếu của D lên SB...");
-        sub3.setStatus(SubmissionStatus.GRADED);
-        sub3.setScore(8.5);
-        sub3.setSubmittedAt(LocalDateTime.now().minusDays(2));
-        sub3.setTeacherFeedback("Phân tích góc tốt, tính toán chính xác.");
-        submissionRepository.save(sub3);
+        Submission sub3 = submissionRepository.save(Submission.builder()
+                .assignment(assign2)
+                .student(student3)
+                .content("Lời giải hình học không gian S.ABCD: \nGóc giữa SD và (SBC) bằng góc $\\widehat{DSE}$ với E là hình chiếu của D lên SB...")
+                .status(SubmissionStatus.GRADED)
+                .score(8.5)
+                .submittedAt(LocalDateTime.now().minusDays(2))
+                .teacherFeedback("Phân tích góc tốt, tính toán chính xác.")
+                .build());
 
         // 6. Create Notifications
         log.info("[DatabaseSeeder] Creating notifications...");
@@ -532,17 +526,17 @@ public class DatabaseSeeder implements CommandLineRunner {
 
     private User createUser(String email, String fullName, String password, String phone, Role role, Gender gender,
             String avatarUrl) {
-        User user = new User();
-        user.setEmail(email);
-        user.setFullName(fullName);
-        user.setPassword(passwordEncoder.encode(password));
-        user.setPhoneNumber(phone);
-        user.setRole(role);
-        user.setActive(true);
-        user.setDateOfBirth(LocalDate.of(1995, 1, 1));
-        user.setGender(gender);
-        user.setAvatarUrl(avatarUrl);
-        user = userRepository.save(user);
+        User user = userRepository.save(User.builder()
+                .email(email)
+                .fullName(fullName)
+                .password(passwordEncoder.encode(password))
+                .phoneNumber(phone)
+                .role(role)
+                .isActive(true)
+                .dateOfBirth(LocalDate.of(1995, 1, 1))
+                .gender(gender)
+                .avatarUrl(avatarUrl)
+                .build());
 
         NotificationSettings settings = NotificationSettings.builder()
                 .userId(user.getId())

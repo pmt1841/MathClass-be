@@ -62,10 +62,12 @@ public class SubmissionServiceImpl implements SubmissionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy học sinh"));
 
         Submission submission = submissionRepository.findFirstByAssignmentIdAndStudentId(assignment.getId(), studentId)
-                .orElse(new Submission());
-
-        submission.setAssignment(assignment);
-        submission.setStudent(student);
+                .orElseGet(() -> Submission.builder()
+                        .assignment(assignment)
+                        .student(student)
+                        .status(SubmissionStatus.DRAFT)
+                        .content("")
+                        .build());
 
         boolean isNewlySubmitted = (submission.getStatus() != SubmissionStatus.SUBMITTED
                 && requestDto.getStatus() == SubmissionStatus.SUBMITTED);

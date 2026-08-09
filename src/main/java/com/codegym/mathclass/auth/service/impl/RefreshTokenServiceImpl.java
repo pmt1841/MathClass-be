@@ -45,10 +45,11 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
             refreshTokenRepository.deleteAll(existingTokens.subList(0, tokensToDelete));
         }
 
-        RefreshToken refreshToken = new RefreshToken();
-        refreshToken.setUser(user);
-        refreshToken.setExpiryDate(Instant.now().plusMillis(refreshTokenDurationMs));
-        refreshToken.setToken(UUID.randomUUID().toString());
+        RefreshToken refreshToken = RefreshToken.builder()
+                .user(user)
+                .expiryDate(Instant.now().plusMillis(refreshTokenDurationMs))
+                .token(UUID.randomUUID().toString())
+                .build();
 
         return refreshTokenRepository.save(refreshToken);
     }
