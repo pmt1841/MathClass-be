@@ -153,10 +153,12 @@ public class AiQuestionServiceImpl implements AiQuestionService {
         String detailedMsg = lastException != null ? lastException.getMessage() : "Không tìm thấy API Key khả dụng.";
         int finalStatusCode = (lastException instanceof AiGenerationException aiEx) ? aiEx.getStatusCode() : 500;
         if (finalStatusCode == 429 || detailedMsg.contains("429") || detailedMsg.contains("limit: 0")) {
-            throw new AiGenerationException(429, "API Key hiện tại của bạn đã dùng hết Quota (Lỗi HTTP 429). Vui lòng cập nhật API Key mới trong trang Quản trị AI Config.");
+            log.error("API Key hiện tại của bạn đã dùng hết Quota (Lỗi HTTP 429): {}", detailedMsg);
+            throw new AiGenerationException(429, "Hệ thống đang bảo trì. Vui lòng thử lại sau!");
         }
 
-        throw new AiGenerationException(finalStatusCode, "Không thể sinh đề bài toán bằng AI. Lỗi chi tiết: " + detailedMsg);
+        log.error("Không thể sinh đề bài toán bằng AI (Lỗi HTTP {}): {}", finalStatusCode, detailedMsg);
+        throw new AiGenerationException(finalStatusCode, "Hệ thống đang bảo trì. Vui lòng thử lại sau!");
     }
 
     private String buildSystemPrompt(GenerateQuestionRequest request) {
@@ -171,7 +173,7 @@ public class AiQuestionServiceImpl implements AiQuestionService {
 
         StringBuilder infoBuilder = new StringBuilder();
         if (request.getGrade() != null) infoBuilder.append("- Khối lớp: ").append(request.getGrade()).append("\n");
-        if (request.getDifficulty() != null) infoBuilder.append("- Mức độ tư duy: ").append(request.getDifficulty()).append("\n");
+        if (request.getDifficulty() != null) infoBuilder.append("- Mức độ tư duy: ").append(formatDifficultyDescription(request.getDifficulty())).append("\n");
         if (request.getTopic() != null) infoBuilder.append("- Chủ đề: ").append(request.getTopic()).append("\n");
         if (request.getQuestionType() != null) infoBuilder.append("- Dạng bài: ").append(request.getQuestionType()).append("\n");
 
@@ -378,6 +380,19 @@ public class AiQuestionServiceImpl implements AiQuestionService {
         return lower.contains("vẽ") || lower.contains("đồ thị")
                 || lower.contains("minh họa") || lower.contains("sơ đồ") || lower.contains("parabol")
                 || lower.contains("vẽ hình") || lower.contains("vẽ đồ thị") || lower.contains("kèm hình") || lower.contains("có hình");
+    }
+
+    private String formatDifficultyDescription(String difficulty) {
+        if (difficulty == null || difficulty.isBlank()) {
+            return "Thông hiểu (Hiểu bản chất, áp dụng quy tắc trực tiếp, biến đổi đơn giản)";
+        }
+        return switch (difficulty.toUpperCase().trim()) {
+            case "NHAN_BIET" -> "Nhận biết (Tái hiện kiến thức, nhận diện khái niệm/công thức cơ bản, tính toán 1 bước)";
+            case "THONG_HIEU" -> "Thông hiểu (Hiểu bản chất, giải thích, biến đổi công thức đơn giản hoặc áp dụng quy tắc trực tiếp)";
+            case "VAN_DUNG" -> "Vận dụng (Kết hợp nhiều kiến thức, biến đổi qua nhiều bước tính toán, bài toán ứng dụng thực tế hoặc chứng minh cơ bản)";
+            case "VAN_DUNG_CAO" -> "Vận dụng cao (Bài toán nâng cao phân loại học sinh giỏi, tư duy logic phức tạp, kết hợp nhiều chuyên đề hoặc biến đổi khéo léo)";
+            default -> difficulty;
+        };
     }
 }
 
