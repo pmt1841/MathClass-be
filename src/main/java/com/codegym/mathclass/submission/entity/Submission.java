@@ -4,9 +4,9 @@ import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 
 import java.time.LocalDateTime;
 
@@ -16,6 +16,7 @@ import lombok.EqualsAndHashCode;
 @Entity
 @Table(name = "submissions")
 @Data
+@Builder
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
@@ -32,6 +33,7 @@ public class Submission extends BaseEntity {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private SubmissionStatus status = SubmissionStatus.DRAFT;

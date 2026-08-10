@@ -11,7 +11,9 @@ import com.codegym.mathclass.aiconfig.repository.ApiKeyRepository;
 import com.codegym.mathclass.aiconfig.repository.ProviderRepository;
 import com.codegym.mathclass.aiconfig.repository.TaskConfigRepository;
 import com.codegym.mathclass.aiconfig.service.ProviderService;
+import com.codegym.mathclass.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -20,6 +22,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.codegym.mathclass.aiconfig.entity.ApiKeyStatus;
+import com.codegym.mathclass.aiconfig.entity.ProviderStatus;
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProviderServiceImpl implements ProviderService {
@@ -41,7 +47,7 @@ public class ProviderServiceImpl implements ProviderService {
     @Transactional(readOnly = true)
     public ProviderResponse getProviderById(Long id) {
         Provider provider = providerRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Provider với ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Provider với ID: " + id));
         return mapToResponse(provider);
     }
 
@@ -77,6 +83,7 @@ public class ProviderServiceImpl implements ProviderService {
             apiKeyRepository.save(key);
         }
 
+        log.info("[AI_AUDIT] Tạo Provider thành công: ID={}, code='{}', name='{}', protocol='{}'", saved.getId(), saved.getCode(), saved.getName(), saved.getProtocol());
         return mapToResponse(saved);
     }
 
@@ -85,7 +92,10 @@ public class ProviderServiceImpl implements ProviderService {
     @CacheEvict(value = "ai_providers_cache", allEntries = true)
     public ProviderResponse updateProvider(Long id, ProviderUpdateRequest request) {
         Provider provider = providerRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Provider với ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Provider với ID: " + id));
+
+        ProviderStatus oldStatus = provider.getStatus();
+        ProviderStatus newStatus = request.getStatus();
 
         provider.setName(request.getName());
         provider.setBaseUrl(request.getBaseUrl());
@@ -97,9 +107,20 @@ public class ProviderServiceImpl implements ProviderService {
         provider.setAuthQueryParam(request.getAuthQueryParam());
         provider.setHealthCheckPath(request.getHealthCheckPath());
         provider.setStrategy(request.getStrategy());
-        provider.setStatus(request.getStatus());
+        if (newStatus != null) {
+            provider.setStatus(newStatus);
+        }
 
         Provider updated = providerRepository.save(provider);
+
+        if (newStatus != null && newStatus != oldStatus) {
+            ApiKeyStatus targetKeyStatus = (newStatus == ProviderStatus.ACTIVE) ? ApiKeyStatus.ACTIVE : ApiKeyStatus.INACTIVE;
+            apiKeyRepository.updateStatusByProviderId(id, targetKeyStatus);
+            log.info("[AI_AUDIT] Đổi trạng thái Provider ID={} (code='{}') từ {} sang {}. Đã đồng bộ API Keys sang {}", id, provider.getCode(), oldStatus, newStatus, targetKeyStatus);
+        } else {
+            log.info("[AI_AUDIT] Cập nhật thông tin Provider ID={} (code='{}')", id, provider.getCode());
+        }
+
         return mapToResponse(updated);
     }
 
@@ -108,7 +129,7 @@ public class ProviderServiceImpl implements ProviderService {
     @CacheEvict(value = "ai_providers_cache", allEntries = true)
     public void deleteProvider(Long id) {
         Provider provider = providerRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Provider với ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Provider với ID: " + id));
 
         List<TaskConfig> usingTasks = taskConfigRepository.findByProviderId(id);
         if (!usingTasks.isEmpty()) {
@@ -117,6 +138,7 @@ public class ProviderServiceImpl implements ProviderService {
         }
 
         providerRepository.delete(provider);
+        log.warn("[AI_AUDIT] Xóa vĩnh viễn Provider ID={} (code='{}', name='{}')", id, provider.getCode(), provider.getName());
     }
 
     private ProviderResponse mapToResponse(Provider provider) {

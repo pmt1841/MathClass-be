@@ -7,6 +7,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -18,6 +19,7 @@ import java.util.Map;
 @Entity
 @Table(name = "assignment_drawings")
 @Data
+@Builder
 @EqualsAndHashCode(callSuper = true, exclude = "assignment")
 @NoArgsConstructor
 @AllArgsConstructor

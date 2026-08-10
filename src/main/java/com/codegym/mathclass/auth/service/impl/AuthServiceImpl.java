@@ -194,7 +194,6 @@ public class AuthServiceImpl implements AuthService {
                 .phoneNumber(signUpRequest.getPhoneNumber())
                 .password(encoder.encode(signUpRequest.getPassword()))
                 .role(requestedRole != null ? requestedRole : Role.STUDENT)
-                .isActive(false)
                 .verificationCode(token)
                 .build();
 

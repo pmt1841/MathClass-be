@@ -8,6 +8,8 @@ import com.codegym.mathclass.aiconfig.dto.response.TestConnectionResponse;
 import com.codegym.mathclass.aiconfig.service.ConnectionTestService;
 import com.codegym.mathclass.aiconfig.service.ProviderService;
 import com.codegym.mathclass.common.annotation.ApiVersion;
+import com.codegym.mathclass.systemlog.annotation.AuditLog;
+import com.codegym.mathclass.systemlog.entity.SystemLogLevel;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -45,18 +47,21 @@ public class ProviderController {
 
     @Operation(summary = "Tạo mới Provider", description = "Tạo mới một Provider (code duy nhất, viết hoa)")
     @PostMapping
+    @AuditLog(action = "CREATE_AI_PROVIDER", resourceType = "AI_CONFIG")
     public ResponseEntity<ProviderResponse> createProvider(@Valid @RequestBody ProviderCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(providerService.createProvider(request));
     }
 
     @Operation(summary = "Cập nhật Provider", description = "Cập nhật thông tin Provider theo ID (không cho phép sửa code)")
     @PutMapping("/{id}")
+    @AuditLog(action = "UPDATE_AI_PROVIDER", resourceType = "AI_CONFIG")
     public ResponseEntity<ProviderResponse> updateProvider(@PathVariable Long id, @Valid @RequestBody ProviderUpdateRequest request) {
         return ResponseEntity.ok(providerService.updateProvider(id, request));
     }
 
     @Operation(summary = "Xóa Provider", description = "Xóa vĩnh viễn Provider nếu không được Task nào sử dụng")
     @DeleteMapping("/{id}")
+    @AuditLog(action = "DELETE_AI_PROVIDER", resourceType = "AI_CONFIG", level = SystemLogLevel.WARNING)
     public ResponseEntity<Void> deleteProvider(@PathVariable Long id) {
         providerService.deleteProvider(id);
         return ResponseEntity.noContent().build();

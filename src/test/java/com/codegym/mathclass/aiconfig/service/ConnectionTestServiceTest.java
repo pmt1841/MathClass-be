@@ -8,6 +8,7 @@ import com.codegym.mathclass.aiconfig.entity.Provider;
 import com.codegym.mathclass.aiconfig.entity.ProviderProtocol;
 import com.codegym.mathclass.aiconfig.repository.ApiKeyRepository;
 import com.codegym.mathclass.aiconfig.repository.ProviderRepository;
+import com.codegym.mathclass.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -81,7 +82,33 @@ class ConnectionTestServiceTest {
     void testVerifyKey_NotFound_ThrowsException() {
         when(apiKeyRepository.findById(999L)).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> connectionTestService.verifyKey(999L));
+        assertThrows(ResourceNotFoundException.class, () -> connectionTestService.verifyKey(999L));
+    }
+
+    @Test
+    @DisplayName("TC-CONN-02B: verifyKey tự động chuyển trạng thái API Key sang INACTIVE khi kết nối thất bại")
+    void testVerifyKey_Failure_AutoSetsInactive() {
+        Provider provider = Provider.builder()
+                .code("OPENAI")
+                .baseUrl("https://invalid.openai.domain")
+                .protocol(com.codegym.mathclass.aiconfig.entity.ProviderProtocol.OPENAI_COMPATIBLE)
+                .build();
+
+        ApiKey apiKey = ApiKey.builder()
+                .encryptedKey("sk-invalidkey")
+                .provider(provider)
+                .status(ApiKeyStatus.ACTIVE)
+                .build();
+        apiKey.setId(10L);
+
+        when(apiKeyRepository.findById(10L)).thenReturn(Optional.of(apiKey));
+
+        TestConnectionResponse response = connectionTestService.verifyKey(10L);
+
+        assertNotNull(response);
+        assertFalse(response.getSuccess());
+        assertEquals(ApiKeyStatus.INACTIVE, apiKey.getStatus());
+        org.mockito.Mockito.verify(apiKeyRepository).save(apiKey);
     }
 
     @Test
@@ -102,6 +129,6 @@ class ConnectionTestServiceTest {
     void testFetchAvailableModels_ProviderNotFound_ThrowsException() {
         when(providerRepository.findById(999L)).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> connectionTestService.fetchAvailableModels(999L));
+        assertThrows(ResourceNotFoundException.class, () -> connectionTestService.fetchAvailableModels(999L));
     }
 }

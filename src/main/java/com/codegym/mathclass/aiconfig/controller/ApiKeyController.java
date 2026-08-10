@@ -7,6 +7,8 @@ import com.codegym.mathclass.aiconfig.dto.response.TestConnectionResponse;
 import com.codegym.mathclass.aiconfig.service.ApiKeyService;
 import com.codegym.mathclass.aiconfig.service.ConnectionTestService;
 import com.codegym.mathclass.common.annotation.ApiVersion;
+import com.codegym.mathclass.systemlog.annotation.AuditLog;
+import com.codegym.mathclass.systemlog.entity.SystemLogLevel;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -37,12 +39,14 @@ public class ApiKeyController {
 
     @Operation(summary = "Thêm API Key cho Provider", description = "Nhập API Key mới dạng plaintext, tự động mã hóa lưu CSDL")
     @PostMapping("/providers/{providerId}/keys")
+    @AuditLog(action = "ADD_AI_API_KEY", resourceType = "AI_CONFIG")
     public ResponseEntity<ApiKeyResponse> addKey(@PathVariable Long providerId, @Valid @RequestBody ApiKeyCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(apiKeyService.addKey(providerId, request));
     }
 
     @Operation(summary = "Xóa API Key", description = "Xóa vĩnh viễn API Key khỏi hệ thống")
     @DeleteMapping("/keys/{keyId}")
+    @AuditLog(action = "DELETE_AI_API_KEY", resourceType = "AI_CONFIG", level = SystemLogLevel.WARNING)
     public ResponseEntity<Void> deleteKey(@PathVariable Long keyId) {
         apiKeyService.deleteKey(keyId);
         return ResponseEntity.noContent().build();
@@ -50,12 +54,14 @@ public class ApiKeyController {
 
     @Operation(summary = "Cập nhật trạng thái Key", description = "Bật/Tắt trạng thái ACTIVE / INACTIVE cho API Key")
     @PatchMapping("/keys/{keyId}")
+    @AuditLog(action = "PATCH_AI_API_KEY_STATUS", resourceType = "AI_CONFIG")
     public ResponseEntity<ApiKeyResponse> updateKeyStatus(@PathVariable Long keyId, @Valid @RequestBody ApiKeyStatusPatchRequest request) {
         return ResponseEntity.ok(apiKeyService.updateKeyStatus(keyId, request));
     }
 
     @Operation(summary = "Kiểm tra trạng thái Key (/verify)", description = "Giải mã Key trong CSDL và gửi request thử nghiệm tới Provider để xác thực còn hiệu lực và quota")
     @PostMapping("/keys/{keyId}/verify")
+    @AuditLog(action = "VERIFY_AI_API_KEY", resourceType = "AI_CONFIG")
     public ResponseEntity<TestConnectionResponse> verifyKey(@PathVariable Long keyId) {
         return ResponseEntity.ok(connectionTestService.verifyKey(keyId));
     }

@@ -58,14 +58,12 @@ public class SubmissionHintServiceImpl implements SubmissionHintService {
             }
 
             Submission submission = submissionRepository.findFirstByAssignmentIdAndStudentIdWithLock(assignmentId, student.getId())
-                    .orElseGet(() -> {
-                        Submission newSubmission = new Submission();
-                        newSubmission.setAssignment(assignment);
-                        newSubmission.setStudent(student);
-                        newSubmission.setContent("");
-                        newSubmission.setStatus(SubmissionStatus.DRAFT);
-                        return submissionRepository.save(newSubmission);
-                    });
+                    .orElseGet(() -> submissionRepository.save(Submission.builder()
+                            .assignment(assignment)
+                            .student(student)
+                            .content("")
+                            .status(SubmissionStatus.DRAFT)
+                            .build()));
 
             if (submission.getStatus() == SubmissionStatus.SUBMITTED || submission.getStatus() == SubmissionStatus.GRADED) {
                 throw new InvalidSubmissionStateException("Bài nộp đã gửi hoặc đã được chấm điểm, không thể xin gợi ý.");
@@ -114,7 +112,7 @@ public class SubmissionHintServiceImpl implements SubmissionHintService {
         User currentUser = userRepository.findByEmail(currentUserEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
-        Submission submission = submissionRepository.findById(submissionId)
+        Submission submission = submissionRepository.findByIdWithDetails(submissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài nộp"));
 
         boolean isOwner = Objects.equals(submission.getStudent().getId(), currentUser.getId());
