@@ -1,13 +1,15 @@
 package com.codegym.mathclass.assignment.service;
 
-import com.codegym.mathclass.assignment.dto.GenerateQuestionRequest;
-import com.codegym.mathclass.assignment.dto.AiGeneratedQuestionResponse;
-import com.codegym.mathclass.assignment.service.impl.AiQuestionServiceImpl;
 import com.codegym.mathclass.aiconfig.entity.ApiKey;
 import com.codegym.mathclass.aiconfig.entity.Provider;
 import com.codegym.mathclass.aiconfig.entity.ProviderStatus;
+import com.codegym.mathclass.aiconfig.entity.TaskConfig;
 import com.codegym.mathclass.aiconfig.repository.TaskConfigRepository;
 import com.codegym.mathclass.aiconfig.service.KeySelectionService;
+import com.codegym.mathclass.assignment.dto.AiGeneratedQuestionResponse;
+import com.codegym.mathclass.assignment.dto.GenerateQuestionRequest;
+import com.codegym.mathclass.assignment.exception.AiGenerationException;
+import com.codegym.mathclass.assignment.service.impl.AiQuestionServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -79,15 +81,15 @@ public class AiQuestionServiceImplTest {
     @Test
     @DisplayName("Should throw AiGenerationException (503) when TASK_QUESTION_GEN is disabled")
     void testGenerateQuestion_DisabledTaskConfig_ThrowsException() {
-        com.codegym.mathclass.aiconfig.entity.TaskConfig disabledConfig = com.codegym.mathclass.aiconfig.entity.TaskConfig.builder()
+        TaskConfig disabledConfig = TaskConfig.builder()
                 .task("QUESTION_GEN")
                 .enabled(false)
                 .build();
 
         when(taskConfigRepository.findByTask("QUESTION_GEN")).thenReturn(Optional.of(disabledConfig));
 
-        com.codegym.mathclass.assignment.exception.AiGenerationException ex = 
-                assertThrows(com.codegym.mathclass.assignment.exception.AiGenerationException.class, 
+        AiGenerationException ex = 
+                assertThrows(AiGenerationException.class, 
                         () -> aiQuestionService.generateQuestion(requestDTO));
 
         assertEquals(503, ex.getStatusCode());
@@ -102,7 +104,7 @@ public class AiQuestionServiceImplTest {
                 .status(ProviderStatus.INACTIVE)
                 .build();
 
-        com.codegym.mathclass.aiconfig.entity.TaskConfig config = com.codegym.mathclass.aiconfig.entity.TaskConfig.builder()
+        TaskConfig config = TaskConfig.builder()
                 .task("QUESTION_GEN")
                 .enabled(true)
                 .provider(inactiveProvider)
@@ -110,12 +112,11 @@ public class AiQuestionServiceImplTest {
 
         when(taskConfigRepository.findByTask("QUESTION_GEN")).thenReturn(Optional.of(config));
 
-        com.codegym.mathclass.assignment.exception.AiGenerationException ex = 
-                assertThrows(com.codegym.mathclass.assignment.exception.AiGenerationException.class, 
+        AiGenerationException ex = 
+                assertThrows(AiGenerationException.class, 
                         () -> aiQuestionService.generateQuestion(requestDTO));
 
         assertEquals(503, ex.getStatusCode());
         assertTrue(ex.getMessage().contains("Provider cấu hình cho việc sinh đề không tồn tại hoặc đã bị tắt"));
     }
 }
-
