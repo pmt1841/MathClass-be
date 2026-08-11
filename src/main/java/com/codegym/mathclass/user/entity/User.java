@@ -10,6 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import com.codegym.mathclass.common.entity.BaseEntity;
 import lombok.EqualsAndHashCode;
@@ -65,7 +66,7 @@ public class User extends BaseEntity {
     private String lockReason;
 
     @Column(name = "locked_at")
-    private java.time.LocalDateTime lockedAt;
+    private LocalDateTime lockedAt;
 
     @Column(name = "locked_by")
     private String lockedBy;

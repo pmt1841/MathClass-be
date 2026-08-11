@@ -7,6 +7,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
 import com.codegym.mathclass.user.entity.Gender;
 import com.codegym.mathclass.user.entity.Provider;
 
@@ -25,11 +27,11 @@ public class UserResponse {
     @JsonFormat(pattern = "dd-MM-yyyy")
     private LocalDate dateOfBirth;
     private Gender gender;
-    private java.util.List<String> permissions;
+    private List<String> permissions;
     private Provider provider;
     private String lockReason;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private java.time.LocalDateTime lockedAt;
+    private LocalDateTime lockedAt;
     private String lockedBy;
 }
 

@@ -9,6 +9,9 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import org.springframework.web.util.HtmlUtils;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
@@ -43,7 +46,7 @@ public class EmailService {
     }
 
     @Async
-    public void sendAccountLockedEmail(String toEmail, String fullName, String reason, java.time.LocalDateTime lockedAt) {
+    public void sendAccountLockedEmail(String toEmail, String fullName, String reason, LocalDateTime lockedAt) {
         try {
             MimeMessage mimeMessage = javaMailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
@@ -52,8 +55,10 @@ public class EmailService {
             helper.setTo(toEmail);
             helper.setSubject("[MathClass] Thông báo tạm khóa tài khoản người dùng");
 
-            String formattedTime = lockedAt != null ? lockedAt.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy")) : "";
-            String escapedReason = org.springframework.web.util.HtmlUtils.htmlEscape(reason != null ? reason : "Không có lý do chi tiết");
+            String formattedTime = lockedAt != null ? lockedAt.format(DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy")) : "";
+            String escapedReason = HtmlUtils.htmlEscape(reason != null && !reason.isBlank() ? reason.trim() : "Không có lý do chi tiết");
+
+
 
             String htmlContent = """
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; rounded-radius: 8px;">
@@ -70,8 +75,8 @@ public class EmailService {
                     <p style="font-size: 12px; color: #94a3b8; margin-top: 20px;">Trân trọng,<br/>Đội ngũ Quản trị MathClass</p>
                 </div>
                 """.formatted(
-                    org.springframework.web.util.HtmlUtils.htmlEscape(fullName != null ? fullName : "Nguoidung"),
-                    org.springframework.web.util.HtmlUtils.htmlEscape(toEmail),
+                    HtmlUtils.htmlEscape(fullName != null ? fullName : "Nguoidung"),
+                    HtmlUtils.htmlEscape(toEmail),
                     escapedReason,
                     formattedTime
                 );
@@ -86,7 +91,7 @@ public class EmailService {
     }
 
     @Async
-    public void sendAccountUnlockedEmail(String toEmail, String fullName, String unlockReason, java.time.LocalDateTime unlockedAt) {
+    public void sendAccountUnlockedEmail(String toEmail, String fullName, String unlockReason, LocalDateTime unlockedAt) {
         try {
             MimeMessage mimeMessage = javaMailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
@@ -95,9 +100,12 @@ public class EmailService {
             helper.setTo(toEmail);
             helper.setSubject("[MathClass] Thông báo khôi phục / mở khóa tài khoản người dùng");
 
-            String formattedTime = unlockedAt != null ? unlockedAt.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy")) : "";
+            String formattedTime = unlockedAt != null ? unlockedAt.format(DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy")) : "";
             boolean hasReason = unlockReason != null && !unlockReason.trim().isEmpty();
-            String escapedReason = hasReason ? org.springframework.web.util.HtmlUtils.htmlEscape(unlockReason.trim()) : "";
+            String escapedReason = hasReason ? HtmlUtils.htmlEscape(unlockReason.trim()) : "";
+
+
+
 
             String reasonBlock = hasReason ? """
                     <div style="background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 12px; margin: 16px 0;">
@@ -118,8 +126,8 @@ public class EmailService {
                     <p style="font-size: 12px; color: #94a3b8; margin-top: 20px;">Trân trọng,<br/>Đội ngũ Quản trị MathClass</p>
                 </div>
                 """.formatted(
-                    org.springframework.web.util.HtmlUtils.htmlEscape(fullName != null ? fullName : "Nguoidung"),
-                    org.springframework.web.util.HtmlUtils.htmlEscape(toEmail),
+                    HtmlUtils.htmlEscape(fullName != null ? fullName : "Nguoidung"),
+                    HtmlUtils.htmlEscape(toEmail),
                     reasonBlock,
                     formattedTime
                 );

@@ -90,12 +90,14 @@ public class AdminUserServiceImpl implements AdminUserService {
             sanitizedReason = sanitizeReason(request.getReason());
         }
 
+        LocalDateTime actionTimestamp = LocalDateTime.now();
+
         if (Boolean.FALSE.equals(targetIsActive)) {
             if (request.getReason() == null || request.getReason().trim().length() < 5) {
                 throw new BadRequestException("Lý do khóa tài khoản không được để trống và phải có ít nhất 5 ký tự.");
             }
             user.setLockReason(sanitizedReason);
-            user.setLockedAt(LocalDateTime.now());
+            user.setLockedAt(actionTimestamp);
             user.setLockedBy(currentAdminEmail);
         } else {
             // Khi mở khóa tài khoản (isActive = true), reset lại các trường thông tin khóa trên User entity
@@ -128,7 +130,7 @@ public class AdminUserServiceImpl implements AdminUserService {
                     user.getEmail(),
                     user.getFullName(),
                     sanitizedReason,
-                    LocalDateTime.now(),
+                    actionTimestamp,
                     currentAdminEmail
             ));
         } else {
@@ -137,10 +139,11 @@ public class AdminUserServiceImpl implements AdminUserService {
                     user.getEmail(),
                     user.getFullName(),
                     sanitizedReason,
-                    LocalDateTime.now(),
+                    actionTimestamp,
                     currentAdminEmail
             ));
         }
+
 
         String action = (targetIsActive ? "Mở khóa" : "Khóa") + " tài khoản " + user.getEmail() + " (" + user.getRole() + ")";
 
@@ -149,12 +152,9 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     private String sanitizeReason(String reason) {
         if (reason == null) return null;
-        return reason.trim()
-                .replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace("\"", "&quot;")
-                .replace("'", "&#39;");
+        // Loại bỏ thẻ HTML nguy hiểm nhưng giữ nguyên văn bản thô (tránh lỗi double escaping &amp;)
+        return reason.replaceAll("<[^>]*>", "").trim();
     }
 }
+
 

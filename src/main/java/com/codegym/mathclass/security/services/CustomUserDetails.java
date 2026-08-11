@@ -13,6 +13,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,7 +38,7 @@ public class CustomUserDetails implements UserDetails {
 
     private String lockReason;
 
-    private java.time.LocalDateTime lockedAt;
+    private LocalDateTime lockedAt;
 
     private Collection<? extends GrantedAuthority> authorities;
 
