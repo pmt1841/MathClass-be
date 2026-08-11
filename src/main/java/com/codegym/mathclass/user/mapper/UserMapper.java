@@ -35,9 +35,13 @@ public class UserMapper {
                 .dateOfBirth(user.getDateOfBirth())
                 .gender(user.getGender())
                 .provider(user.getProvider())
+                .lockReason(user.getLockReason())
+                .lockedAt(user.getLockedAt())
+                .lockedBy(user.getLockedBy())
                 .permissions(permissionCacheService.getPermissionsByRole(user.getRole()))
                 .build();
     }
+
 
     public UserInfoResponse toUserInfoResponse(CustomUserDetails userDetails) {
         if (userDetails == null) {

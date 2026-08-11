@@ -13,6 +13,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,9 +36,18 @@ public class CustomUserDetails implements UserDetails {
 
     private String avatarUrl;
 
+    private String lockReason;
+
+    private LocalDateTime lockedAt;
+
     private Collection<? extends GrantedAuthority> authorities;
 
+    public CustomUserDetails(long id, String fullName, String email, String password, boolean isActive, String avatarUrl, Collection<? extends GrantedAuthority> authorities) {
+        this(id, fullName, email, password, isActive, avatarUrl, null, null, authorities);
+    }
+
     public static CustomUserDetails build(User user, List<String> permissions) {
+
         List<GrantedAuthority> authorities = new ArrayList<>();
         authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
         
@@ -52,8 +62,11 @@ public class CustomUserDetails implements UserDetails {
                 user.getPassword(),
                 user.isActive(),
                 user.getAvatarUrl(),
+                user.getLockReason(),
+                user.getLockedAt(),
                 authorities);
     }
+
 
     /**
      * Tài khoản chưa bị hết hạn (Mặc định luôn là true trong hệ thống này).

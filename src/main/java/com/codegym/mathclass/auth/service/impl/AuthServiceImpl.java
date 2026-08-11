@@ -97,6 +97,13 @@ public class AuthServiceImpl implements AuthService {
             }
         }
 
+        if (!user.isActive()) {
+            String reasonText = user.getLockReason() != null && !user.getLockReason().trim().isEmpty()
+                    ? user.getLockReason()
+                    : "Vi phạm tiêu chuẩn sử dụng hệ thống.";
+            throw new BadRequestException("Tài khoản của bạn đã bị khóa. Lý do: " + reasonText);
+        }
+
         Authentication authentication;
         try {
             authentication = authenticationManager.authenticate(
@@ -106,6 +113,7 @@ public class AuthServiceImpl implements AuthService {
         } catch (Exception e) {
             throw new BadRequestException("Lỗi đăng nhập: Tài khoản của bạn có thể đã bị khóa hoặc chưa kích hoạt.");
         }
+
         SecurityContextHolder.getContext().setAuthentication(authentication);
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
 

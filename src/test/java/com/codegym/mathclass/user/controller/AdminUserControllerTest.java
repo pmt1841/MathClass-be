@@ -138,7 +138,7 @@ class AdminUserControllerTest {
                     .thenReturn(page);
 
             // When & Then
-            mockMvc.perform(get("/api/admin/users"))
+            mockMvc.perform(get("/admin/users"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.content[0].email").value("student@test.com"))
                     .andExpect(jsonPath("$.content[0].role").value("STUDENT"))
@@ -157,7 +157,7 @@ class AdminUserControllerTest {
                     .thenReturn(page);
 
             // When & Then
-            mockMvc.perform(get("/api/admin/users").param("role", "STUDENT"))
+            mockMvc.perform(get("/admin/users").param("role", "STUDENT"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.totalElements").value(1));
 
@@ -173,7 +173,7 @@ class AdminUserControllerTest {
                     .thenReturn(page);
 
             // When & Then
-            mockMvc.perform(get("/api/admin/users").param("isActive", "true"))
+            mockMvc.perform(get("/admin/users").param("isActive", "true"))
                     .andExpect(status().isOk());
 
             verify(adminUserService).getUsersForAdmin(isNull(), eq(true), isNull(), any(Pageable.class));
@@ -188,7 +188,7 @@ class AdminUserControllerTest {
                     .thenReturn(page);
 
             // When & Then
-            mockMvc.perform(get("/api/admin/users").param("search", "admin"))
+            mockMvc.perform(get("/admin/users").param("search", "admin"))
                     .andExpect(status().isOk());
 
             verify(adminUserService).getUsersForAdmin(isNull(), isNull(), eq("admin"), any(Pageable.class));
@@ -203,7 +203,7 @@ class AdminUserControllerTest {
                     .thenReturn(page);
 
             // When & Then
-            mockMvc.perform(get("/api/admin/users")
+            mockMvc.perform(get("/admin/users")
                             .param("role", "STUDENT")
                             .param("isActive", "true")
                             .param("search", "student"))
@@ -221,7 +221,7 @@ class AdminUserControllerTest {
                     .thenReturn(emptyPage);
 
             // When & Then
-            mockMvc.perform(get("/api/admin/users").param("role", "ADMIN"))
+            mockMvc.perform(get("/admin/users").param("role", "ADMIN"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.totalElements").value(0))
                     .andExpect(jsonPath("$.content").isEmpty());
@@ -236,7 +236,7 @@ class AdminUserControllerTest {
                     .thenReturn(page);
 
             // When & Then
-            mockMvc.perform(get("/api/admin/users"))
+            mockMvc.perform(get("/admin/users"))
                     .andExpect(status().isOk());
 
             // Verify default page size = 10 (page=0, size=10)
@@ -248,11 +248,11 @@ class AdminUserControllerTest {
     }
 
     // ==========================================
-    // Tests for PATCH /api/admin/users/{id}/status
+    // Tests for PATCH /admin/users/{id}/status
     // ==========================================
 
     @Nested
-    @DisplayName("PATCH /api/admin/users/{id}/status")
+    @DisplayName("PATCH /admin/users/{id}/status")
     class UpdateStatus {
 
         @Test
@@ -263,14 +263,14 @@ class AdminUserControllerTest {
             request.setIsActive(false);
 
             // When & Then
-            mockMvc.perform(patch("/api/admin/users/1/status")
+            mockMvc.perform(patch("/admin/users/1/status")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.message").value("Trạng thái tài khoản đã được cập nhật thành công."));
 
             verify(adminUserService, times(1))
-                    .updateUserStatus(eq(1L), eq(false), eq("admin@test.com"));
+                    .updateUserStatus(eq(1L), any(UpdateUserStatusRequest.class), eq("admin@test.com"));
         }
 
         @Test
@@ -281,15 +281,16 @@ class AdminUserControllerTest {
             request.setIsActive(true);
 
             // When & Then
-            mockMvc.perform(patch("/api/admin/users/2/status")
+            mockMvc.perform(patch("/admin/users/2/status")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.message").value("Trạng thái tài khoản đã được cập nhật thành công."));
 
             verify(adminUserService, times(1))
-                    .updateUserStatus(eq(2L), eq(true), eq("admin@test.com"));
+                    .updateUserStatus(eq(2L), any(UpdateUserStatusRequest.class), eq("admin@test.com"));
         }
+
 
         @Test
         @DisplayName("Should return 400 Bad Request when isActive is missing")
@@ -298,7 +299,7 @@ class AdminUserControllerTest {
             String requestJson = "{}";
 
             // When & Then
-            mockMvc.perform(patch("/api/admin/users/1/status")
+            mockMvc.perform(patch("/admin/users/1/status")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(requestJson))
                     .andExpect(status().isBadRequest());

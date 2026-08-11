@@ -13,6 +13,7 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.codegym.mathclass.security.services.CustomUserDetailsService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -67,10 +68,20 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                     Map<String, Object> errorBody = new HashMap<>();
                     errorBody.put("code", "ACCOUNT_LOCKED");
                     errorBody.put("message", "Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ hỗ trợ.");
+                    
+                    if (userDetails instanceof CustomUserDetails customUser) {
+                        if (customUser.getLockReason() != null) {
+                            errorBody.put("lockReason", customUser.getLockReason());
+                        }
+                        if (customUser.getLockedAt() != null) {
+                            errorBody.put("lockedAt", customUser.getLockedAt().toString());
+                        }
+                    }
 
                     OBJECT_MAPPER.writeValue(response.getOutputStream(), errorBody);
                     return;
                 }
+
 
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                         userDetails,
