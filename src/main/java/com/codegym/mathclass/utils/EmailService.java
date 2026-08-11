@@ -41,4 +41,97 @@ public class EmailService {
             log.error("Failed to send email to {}", toEmail, e);
         }
     }
+
+    @Async
+    public void sendAccountLockedEmail(String toEmail, String fullName, String reason, java.time.LocalDateTime lockedAt) {
+        try {
+            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
+
+            helper.setFrom(senderEmail);
+            helper.setTo(toEmail);
+            helper.setSubject("[MathClass] Thông báo tạm khóa tài khoản người dùng");
+
+            String formattedTime = lockedAt != null ? lockedAt.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy")) : "";
+            String escapedReason = org.springframework.web.util.HtmlUtils.htmlEscape(reason != null ? reason : "Không có lý do chi tiết");
+
+            String htmlContent = """
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; rounded-radius: 8px;">
+                    <h2 style="color: #dc2626;">Thông báo tạm khóa tài khoản</h2>
+                    <p>Xin chào <strong>%s</strong> (%s),</p>
+                    <p>Tài khoản của bạn trên hệ thống <strong>MathClass</strong> đã bị tạm khóa bởi Quản trị viên.</p>
+                    <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 12px; margin: 16px 0;">
+                        <p style="margin: 0; font-weight: bold; color: #991b1b;">Lý do khóa:</p>
+                        <p style="margin: 4px 0 0 0; color: #7f1d1d;">%s</p>
+                    </div>
+                    <p style="font-size: 13px; color: #64748b;">Thời điểm thực hiện: %s</p>
+                    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+                    <p style="font-size: 13px; color: #475569;">Nếu bạn tin rằng đây là sự nhầm lẫn hoặc cần giải trình thêm, vui lòng liên hệ Ban quản trị qua email support@mathclass.edu.vn.</p>
+                    <p style="font-size: 12px; color: #94a3b8; margin-top: 20px;">Trân trọng,<br/>Đội ngũ Quản trị MathClass</p>
+                </div>
+                """.formatted(
+                    org.springframework.web.util.HtmlUtils.htmlEscape(fullName != null ? fullName : "Nguoidung"),
+                    org.springframework.web.util.HtmlUtils.htmlEscape(toEmail),
+                    escapedReason,
+                    formattedTime
+                );
+
+            helper.setText(htmlContent, true);
+            javaMailSender.send(mimeMessage);
+            log.info("Account locked email sent successfully to {}", toEmail);
+        } catch (Exception e) {
+            log.error("Failed to send account locked email to {}", toEmail, e);
+            throw new RuntimeException("Email delivery failed: " + e.getMessage(), e);
+        }
+    }
+
+    @Async
+    public void sendAccountUnlockedEmail(String toEmail, String fullName, String unlockReason, java.time.LocalDateTime unlockedAt) {
+        try {
+            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
+
+            helper.setFrom(senderEmail);
+            helper.setTo(toEmail);
+            helper.setSubject("[MathClass] Thông báo khôi phục / mở khóa tài khoản người dùng");
+
+            String formattedTime = unlockedAt != null ? unlockedAt.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy")) : "";
+            boolean hasReason = unlockReason != null && !unlockReason.trim().isEmpty();
+            String escapedReason = hasReason ? org.springframework.web.util.HtmlUtils.htmlEscape(unlockReason.trim()) : "";
+
+            String reasonBlock = hasReason ? """
+                    <div style="background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 12px; margin: 16px 0;">
+                        <p style="margin: 0; font-weight: bold; color: #15803d;">Ghi chú / Lý do mở khóa:</p>
+                        <p style="margin: 4px 0 0 0; color: #166534;">%s</p>
+                    </div>
+                    """.formatted(escapedReason) : "";
+
+            String htmlContent = """
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <h2 style="color: #16a34a;">Thông báo khôi phục tài khoản</h2>
+                    <p>Xin chào <strong>%s</strong> (%s),</p>
+                    <p>Tài khoản của bạn trên hệ thống <strong>MathClass</strong> đã được Quản trị viên khôi phục và mở khóa thành công. Giờ đây bạn đã có thể tiếp tục sử dụng tất cả các dịch vụ của hệ thống.</p>
+                    %s
+                    <p style="font-size: 13px; color: #64748b;">Thời điểm thực hiện: %s</p>
+                    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+                    <p style="font-size: 13px; color: #475569;">Vui lòng truy cập trang web MathClass để đăng nhập và tiếp tục công việc của bạn.</p>
+                    <p style="font-size: 12px; color: #94a3b8; margin-top: 20px;">Trân trọng,<br/>Đội ngũ Quản trị MathClass</p>
+                </div>
+                """.formatted(
+                    org.springframework.web.util.HtmlUtils.htmlEscape(fullName != null ? fullName : "Nguoidung"),
+                    org.springframework.web.util.HtmlUtils.htmlEscape(toEmail),
+                    reasonBlock,
+                    formattedTime
+                );
+
+            helper.setText(htmlContent, true);
+            javaMailSender.send(mimeMessage);
+            log.info("Account unlocked email sent successfully to {}", toEmail);
+        } catch (Exception e) {
+            log.error("Failed to send account unlocked email to {}", toEmail, e);
+            throw new RuntimeException("Email delivery failed: " + e.getMessage(), e);
+        }
+    }
 }
+
+

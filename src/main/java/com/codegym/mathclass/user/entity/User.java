@@ -60,4 +60,14 @@ public class User extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "gender")
     private Gender gender;
+
+    @Column(name = "lock_reason", columnDefinition = "TEXT")
+    private String lockReason;
+
+    @Column(name = "locked_at")
+    private java.time.LocalDateTime lockedAt;
+
+    @Column(name = "locked_by")
+    private String lockedBy;
 }
+

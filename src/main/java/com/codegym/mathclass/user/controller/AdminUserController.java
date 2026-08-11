@@ -54,7 +54,8 @@ public class AdminUserController {
             @Valid @RequestBody UpdateUserStatusRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         
-        adminUserService.updateUserStatus(id, request.getIsActive(), userDetails.getUsername());
+        adminUserService.updateUserStatus(id, request, userDetails.getUsername());
         return ResponseEntity.ok(new MessageResponse("Trạng thái tài khoản đã được cập nhật thành công."));
     }
 }
+
