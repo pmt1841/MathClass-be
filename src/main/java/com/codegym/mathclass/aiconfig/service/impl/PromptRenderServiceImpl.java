@@ -6,7 +6,6 @@ import com.codegym.mathclass.aiconfig.entity.SystemPrompt;
 import com.codegym.mathclass.aiconfig.entity.SystemPromptStatus;
 import com.codegym.mathclass.aiconfig.repository.SystemPromptRepository;
 import com.codegym.mathclass.aiconfig.service.PromptRenderService;
-import com.codegym.mathclass.aiconfig.validator.SystemPromptValidator;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.PromptNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +24,6 @@ import java.util.regex.Pattern;
 public class PromptRenderServiceImpl implements PromptRenderService {
 
     private final SystemPromptRepository systemPromptRepository;
-    private final SystemPromptValidator systemPromptValidator;
 
     private static final Pattern VARIABLE_PATTERN = Pattern.compile("\\{\\{([a-zA-Z0-9_]+)\\}\\}");
 
@@ -40,7 +38,6 @@ public class PromptRenderServiceImpl implements PromptRenderService {
             throw new BadRequestException("System Prompt " + request.getPromptCode() + " đang ở trạng thái INACTIVE và không thể sử dụng.");
         }
 
-        List<String> allowedVariables = systemPromptValidator.parseAllowedVariables(prompt.getAllowedVariables());
         Map<String, Object> inputVariables = request.getVariables() != null ? request.getVariables() : Collections.emptyMap();
 
         String rawContent = prompt.getCurrentContent();

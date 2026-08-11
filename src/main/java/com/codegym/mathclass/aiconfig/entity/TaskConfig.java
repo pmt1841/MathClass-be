@@ -35,5 +35,17 @@ public class TaskConfig extends BaseEntity {
 
     @Column(name = "enabled", nullable = false)
     @Builder.Default
-    private Boolean enabled = true;
+    private Boolean enabled = false;
+
+    public void updateConfig(Provider provider, String model, BigDecimal temperature, Integer maxToken, Boolean enabled) {
+        this.provider = provider;
+        this.model = model;
+        this.temperature = temperature;
+        this.maxToken = maxToken;
+        if (enabled != null) {
+            this.enabled = enabled;
+        } else if (this.enabled == null) {
+            this.enabled = false;
+        }
+    }
 }

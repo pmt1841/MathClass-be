@@ -109,7 +109,6 @@ class AiFeatureControllerTest {
                     .andExpect(jsonPath("$.STUDENT_HINT").value(false))
                     .andExpect(jsonPath("$.QUESTION_GEN").value(false))
                     .andExpect(jsonPath("$.CANVAS_LATEX").value(false))
-                    .andExpect(jsonPath("$.CONTENT_SUMMARIZATION").value(false))
                     .andExpect(jsonPath("$.ERROR_ANALYSIS").value(false));
         }
     }

@@ -38,6 +38,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import com.codegym.mathclass.aiconfig.service.PromptRenderService;
+
+import com.codegym.mathclass.aiconfig.dto.response.RenderPromptResponse;
+
 @ExtendWith(MockitoExtension.class)
 class SubmissionHintServiceImplTest {
 
@@ -56,6 +60,9 @@ class SubmissionHintServiceImplTest {
     @Mock
     private AiPromptExecutionService aiPromptExecutionService;
 
+    @Mock
+    private PromptRenderService promptRenderService;
+
     @InjectMocks
     private SubmissionHintServiceImpl submissionHintService;
 
@@ -72,6 +79,14 @@ class SubmissionHintServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(promptRenderService.renderPrompt(any())).thenAnswer(invocation -> {
+            com.codegym.mathclass.aiconfig.dto.request.RenderPromptRequest req = invocation.getArgument(0);
+            Object studentContent = req.getVariables() != null ? req.getVariables().get("student_content") : "";
+            return RenderPromptResponse.builder()
+                    .renderedPrompt("Test Socratic prompt rendered. Student content: " + studentContent)
+                    .build();
+        });
+
         teacher = new User();
         teacher.setId(teacherId);
         teacher.setFullName("Nguyen Teacher");
@@ -287,6 +302,23 @@ class SubmissionHintServiceImplTest {
             assertThat(response).isNotNull();
             verify(aiPromptExecutionService).executePrompt(eq("STUDENT_HINT"), contains("[Học sinh chưa bắt đầu làm bài / Bài làm trống]"), anyLong());
         }
+
+        @Test
+        @DisplayName("Should throw ResourceNotFoundException when System Prompt is not configured in DB")
+        void requestHint_promptNotFoundInDb_throwsResourceNotFoundException() {
+            StudentHintRequest request = new StudentHintRequest("Phân tích bài toán.");
+            when(userRepository.findByEmail(studentEmail)).thenReturn(Optional.of(student));
+            when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(assignment));
+            when(submissionRepository.findFirstByAssignmentIdAndStudentIdWithLock(assignmentId, studentId))
+                    .thenReturn(Optional.of(submission));
+            when(submissionHintRepository.countBySubmissionId(submissionId)).thenReturn(0);
+
+            doReturn(null).when(promptRenderService).renderPrompt(any());
+
+            assertThatThrownBy(() -> submissionHintService.requestHint(assignmentId, request, studentEmail))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("Chưa cấu hình System Prompt 'PROMPT_STUDENT_HINT'");
+        }
     }
 
     @Nested
@@ -307,7 +339,7 @@ class SubmissionHintServiceImplTest {
             hint1.setCreatedAt(LocalDateTime.now().minusMinutes(10));
 
             when(userRepository.findByEmail(studentEmail)).thenReturn(Optional.of(student));
-            when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
+            when(submissionRepository.findByIdWithDetails(submissionId)).thenReturn(Optional.of(submission));
             when(submissionHintRepository.findBySubmissionIdOrderByHintNumberAsc(submissionId))
                     .thenReturn(Collections.singletonList(hint1));
 
@@ -325,12 +357,12 @@ class SubmissionHintServiceImplTest {
         void getHintHistory_otherStudent_throwsAccessDeniedException() {
             User otherStudent = new User();
             otherStudent.setId(99L);
-            otherStudent.setEmail("other@codegym.com");
+            otherStudent.setEmail("other@other.com");
 
-            when(userRepository.findByEmail("other@codegym.com")).thenReturn(Optional.of(otherStudent));
-            when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
+            when(userRepository.findByEmail("other@other.com")).thenReturn(Optional.of(otherStudent));
+            when(submissionRepository.findByIdWithDetails(submissionId)).thenReturn(Optional.of(submission));
 
-            assertThatThrownBy(() -> submissionHintService.getHintHistory(submissionId, "other@codegym.com"))
+            assertThatThrownBy(() -> submissionHintService.getHintHistory(submissionId, "other@other.com"))
                     .isInstanceOf(AccessDeniedException.class)
                     .hasMessageContaining("Bạn không có quyền xem lịch sử gợi ý này");
         }
@@ -351,7 +383,7 @@ class SubmissionHintServiceImplTest {
             largeSubmission.setAssignment(assignment);
 
             when(userRepository.findByEmail("large@codegym.com")).thenReturn(Optional.of(largeStudent));
-            when(submissionRepository.findById(largeSubmissionId)).thenReturn(Optional.of(largeSubmission));
+            when(submissionRepository.findByIdWithDetails(largeSubmissionId)).thenReturn(Optional.of(largeSubmission));
             when(submissionHintRepository.findBySubmissionIdOrderByHintNumberAsc(largeSubmissionId))
                     .thenReturn(Collections.emptyList());
 

@@ -1,6 +1,9 @@
 package com.codegym.mathclass.submission.service.impl;
 
+import com.codegym.mathclass.aiconfig.dto.request.RenderPromptRequest;
+import com.codegym.mathclass.aiconfig.dto.response.RenderPromptResponse;
 import com.codegym.mathclass.aiconfig.service.AiPromptExecutionService;
+import com.codegym.mathclass.aiconfig.service.PromptRenderService;
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.repository.AssignmentRepository;
 import com.codegym.mathclass.exception.AccessDeniedException;
@@ -27,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -40,6 +44,7 @@ public class SubmissionHintServiceImpl implements SubmissionHintService {
     private final AssignmentRepository assignmentRepository;
     private final UserRepository userRepository;
     private final AiPromptExecutionService aiPromptExecutionService;
+    private final PromptRenderService promptRenderService;
 
     private static final int MAX_HINTS = 3;
 
@@ -158,24 +163,23 @@ public class SubmissionHintServiceImpl implements SubmissionHintService {
         String problemContent = assignment.getContent() != null ? assignment.getContent() : "Không có nội dung chi tiết";
         String contentText = studentContent.isBlank() ? "[Học sinh chưa bắt đầu làm bài / Bài làm trống]" : studentContent;
 
-        return String.format("""
-                Bạn là một trợ lý giáo viên Toán học xuất sắc và kiên nhẫn.
-                Nhiệm vụ của bạn là đưa ra 01 GỢI Ý TƯ DUY NGẮN (từ 50 đến 120 từ) định hướng BƯỚC TIẾP THEO bám sát chính xác bài toán dưới đây.
+        Map<String, Object> vars = Map.of(
+                "title", title,
+                "problem_content", problemContent,
+                "student_content", contentText,
+                "subject", "Toán học"
+        );
 
-                [ĐỀ BÀI TOÁN CẦN GIẢI]:
-                - Tiêu đề: %s
-                - Nội dung đề bài: %s
+        RenderPromptRequest renderReq = RenderPromptRequest.builder()
+                .promptCode("PROMPT_STUDENT_HINT")
+                .variables(vars)
+                .build();
+        RenderPromptResponse renderRes = promptRenderService.renderPrompt(renderReq);
 
-                [TIẾN ĐỘ BÀI LÀM HIỆN TẠI CỦA HỌC SINH]:
-                %s
+        if (renderRes == null || renderRes.getRenderedPrompt() == null || renderRes.getRenderedPrompt().isBlank()) {
+            throw new ResourceNotFoundException("Chưa cấu hình System Prompt 'PROMPT_STUDENT_HINT' trong CSDL.");
+        }
 
-                YÊU CẦU BẮT BUỘC:
-                1. Đọc và phân tích kỹ bài toán cụ thể nêu ở trên.
-                2. Phân tích tiến độ bài làm của học sinh:
-                   - Nếu bài làm trống: hãy chỉ rõ giả thiết, phương pháp hoặc công thức đầu tiên học sinh cần áp dụng để bắt đầu.
-                   - Nếu học sinh đã viết bài làm: hãy nhận xét ngắn gọn bước làm hiện tại và đưa ra câu hỏi gợi mở hoặc nhắc lại định lý/công thức cho bước kế tiếp.
-                3. TUYỆT ĐỐI KHÔNG đưa ra lời giải hoàn chỉnh hoặc đáp số số học cuối cùng.
-                4. Trả lời trực tiếp vào gợi ý bằng tiếng Việt, văn phong thân thiện, động viên. Dùng KaTeX cho công thức toán (ví dụ: $x^2 + 1$).
-                """, title, problemContent, contentText);
+        return renderRes.getRenderedPrompt();
     }
 }

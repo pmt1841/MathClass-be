@@ -33,7 +33,8 @@ public class GoogleGeminiProviderStrategy implements AiProviderStrategy {
     }
 
     @Override
-    public AiExecutionResult executePrompt(Provider provider, TaskConfig config, String apiKey, String prompt) throws Exception {
+    public AiExecutionResult executePrompt(Provider provider, TaskConfig config, String apiKey, String prompt)
+            throws Exception {
         String baseUrlStr = provider.getBaseUrl() != null && !provider.getBaseUrl().trim().isEmpty()
                 ? provider.getBaseUrl().trim().replaceAll("/+$", "")
                 : "https://generativelanguage.googleapis.com/v1beta";
@@ -45,16 +46,26 @@ public class GoogleGeminiProviderStrategy implements AiProviderStrategy {
         String model = config.getModel() != null ? config.getModel() : "gemini-1.5-flash";
         String targetUrl = baseUrlStr + "/models/" + model + ":generateContent?key=" + apiKey;
 
-        Map<String, Object> geminiPayload = Map.of(
-                "contents", List.of(
-                        Map.of("parts", List.of(Map.of("text", prompt)))
-                )
-        );
+        Map<String, Object> generationConfig = new java.util.HashMap<>();
+        if (config.getTemperature() != null) {
+            generationConfig.put("temperature", config.getTemperature().doubleValue());
+        }
+        if (config.getMaxToken() != null) {
+            generationConfig.put("maxOutputTokens", config.getMaxToken());
+        }
+
+        Map<String, Object> geminiPayload = new java.util.HashMap<>();
+        geminiPayload.put("contents", List.of(
+                Map.of("parts", List.of(Map.of("text", prompt)))));
+        if (!generationConfig.isEmpty()) {
+            geminiPayload.put("generationConfig", generationConfig);
+        }
 
         String reqBody = objectMapper.writeValueAsString(geminiPayload);
         HttpRequest request = HttpRequest.newBuilder()
-                // Timeout 120s: prompt dài (ví dụ chấm bài tự luận MAT-250 kèm dữ liệu hình vẽ Canvas)
-                // cần thời gian generate lâu hơn nhiều so với 30s mặc định. Áp dụng cho mọi task AI.
+                // Timeout 120s: prompt dài (ví dụ chấm bài tự luận kèm dữ liệu hình vẽ Canvas)
+                // cần thời gian generate lâu hơn nhiều so với 30s mặc định. Áp dụng cho mọi
+                // task AI.
                 .timeout(Duration.ofSeconds(120))
                 .uri(URI.create(targetUrl))
                 .header("Content-Type", "application/json")
@@ -75,7 +86,8 @@ public class GoogleGeminiProviderStrategy implements AiProviderStrategy {
                     return new AiExecutionResult(content, completionTokens);
                 }
             }
-            log.error("Google Gemini Provider returned HTTP status {} but invalid payload: {}", status, response.body());
+            log.error("Google Gemini Provider returned HTTP status {} but invalid payload: {}", status,
+                    response.body());
             throw new RuntimeException("Google Gemini Provider phản hồi không đúng cấu trúc dữ liệu");
         } else {
             log.error("Google Gemini Provider HTTP error status {}: {}", status, response.body());
@@ -85,7 +97,8 @@ public class GoogleGeminiProviderStrategy implements AiProviderStrategy {
 
     /**
      * Đọc số token đầu ra từ response Gemini:
-     * {@code usageMetadata.candidatesTokenCount}. Trả về {@code null} khi thiếu thông tin.
+     * {@code usageMetadata.candidatesTokenCount}. Trả về {@code null} khi thiếu
+     * thông tin.
      */
     static Integer parseCandidatesTokenCount(JsonNode root) {
         if (root == null) {
