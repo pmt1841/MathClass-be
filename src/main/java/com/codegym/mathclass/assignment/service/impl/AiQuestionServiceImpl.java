@@ -4,26 +4,25 @@ import com.codegym.mathclass.assignment.dto.GenerateQuestionRequest;
 import com.codegym.mathclass.assignment.dto.AiGeneratedQuestionResponse;
 import com.codegym.mathclass.assignment.exception.AiGenerationException;
 import com.codegym.mathclass.assignment.service.AiQuestionService;
+import com.codegym.mathclass.aiconfig.dto.request.RenderPromptRequest;
 import com.codegym.mathclass.aiconfig.entity.ApiKey;
 import com.codegym.mathclass.aiconfig.entity.Provider;
-import com.codegym.mathclass.aiconfig.entity.ProviderProtocol;
 import com.codegym.mathclass.aiconfig.entity.ProviderStatus;
 import com.codegym.mathclass.aiconfig.entity.TaskConfig;
 import com.codegym.mathclass.aiconfig.repository.TaskConfigRepository;
 import com.codegym.mathclass.aiconfig.service.KeySelectionService;
+import com.codegym.mathclass.aiconfig.service.PromptRenderService;
+import com.codegym.mathclass.aiconfig.strategy.AiExecutionResult;
+import com.codegym.mathclass.aiconfig.strategy.AiProviderStrategy;
+import com.codegym.mathclass.aiconfig.strategy.AiProviderStrategyFactory;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -34,11 +33,9 @@ public class AiQuestionServiceImpl implements AiQuestionService {
 
     private final KeySelectionService keySelectionService;
     private final TaskConfigRepository taskConfigRepository;
+    private final AiProviderStrategyFactory aiProviderStrategyFactory;
+    private final PromptRenderService promptRenderService;
     private final ObjectMapper objectMapper = new ObjectMapper();
-
-    private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(15))
-            .build();
 
     @Override
     public AiGeneratedQuestionResponse generateQuestion(GenerateQuestionRequest request) {
@@ -56,9 +53,10 @@ public class AiQuestionServiceImpl implements AiQuestionService {
         }
 
         String rawModel = taskConfig.getModel();
-        String modelToUse = rawModel.startsWith("models/") ? rawModel.substring(7) : rawModel;
+        String modelToUse = rawModel != null && rawModel.startsWith("models/") ? rawModel.substring(7) : rawModel;
 
         String systemPrompt = buildSystemPrompt(request);
+        String fullPrompt = systemPrompt + "\n\nYêu cầu từ người dùng:\n" + request.getPrompt();
 
         Exception lastException = null;
         int maxKeyAttempts = 5;
@@ -92,18 +90,10 @@ public class AiQuestionServiceImpl implements AiQuestionService {
                 log.info("Đang sinh đề bằng model '{}' (Protocol: {}) với Key ID: {}", 
                         modelToUse, provider.getProtocol(), (selectedKey != null ? selectedKey.getId() : "ENV"));
 
-                String responseBody;
-                AiGeneratedQuestionResponse dto;
+                AiProviderStrategy strategy = aiProviderStrategyFactory.getStrategy(provider.getProtocol());
+                AiExecutionResult result = strategy.executePrompt(provider, taskConfig, apiKeyString, fullPrompt);
 
-                if (provider.getProtocol() == ProviderProtocol.OPENAI_COMPATIBLE) {
-                    responseBody = callOpenAiApi(provider, taskConfig, apiKeyString, systemPrompt, request.getPrompt());
-                    dto = parseOpenAiResponse(responseBody);
-                } else if (provider.getProtocol() == ProviderProtocol.GOOGLE_GEMINI_COMPATIBLE) {
-                    responseBody = callGemini2Api(provider, taskConfig, apiKeyString, systemPrompt, request.getPrompt());
-                    dto = parseGeminiResponse(responseBody);
-                } else {
-                    throw new AiGenerationException("Giao thức " + provider.getProtocol() + " chưa được hỗ trợ.");
-                }
+                AiGeneratedQuestionResponse dto = parseQuestionResponse(result.content());
 
                 if (dto.getGrade() == null) dto.setGrade(request.getGrade());
                 if (dto.getDifficulty() == null) dto.setDifficulty(request.getDifficulty());
@@ -161,209 +151,42 @@ public class AiQuestionServiceImpl implements AiQuestionService {
         throw new AiGenerationException(finalStatusCode, "Hệ thống đang bảo trì. Vui lòng thử lại sau!");
     }
 
-    private String buildSystemPrompt(GenerateQuestionRequest request) {
-        boolean isDrawingRequested = Boolean.TRUE.equals(request.getIncludeCanvasDiagram()) && hasRequestedDrawing(request.getPrompt());
-        String canvasRequirement = isDrawingRequested
-                ? "2. CHÚ Ý: Người dùng CÓ YÊU CẦU vẽ hình/đồ thị, bạn hãy sinh ra object 'canvasData' (chứa điểm, đoạn thẳng, đường tròn, đồ thị hàm số) theo chuẩn JSON."
-                : "2. CHÚ Ý: Bài toán này KHÔNG yêu cầu vẽ hình hay đồ thị, TUYỆT ĐỐI KHÔNG sinh ra object 'canvasData' (bỏ qua trường 'canvasData').";
-
-        int grade = request.getGrade() != null ? request.getGrade() : 9;
-        String difficulty = request.getDifficulty() != null ? request.getDifficulty() : "THONG_HIEU";
-        String topic = request.getTopic() != null ? request.getTopic() : "Toán học";
-
-        StringBuilder infoBuilder = new StringBuilder();
-        if (request.getGrade() != null) infoBuilder.append("- Khối lớp: ").append(request.getGrade()).append("\n");
-        if (request.getDifficulty() != null) infoBuilder.append("- Mức độ tư duy: ").append(formatDifficultyDescription(request.getDifficulty())).append("\n");
-        if (request.getTopic() != null) infoBuilder.append("- Chủ đề: ").append(request.getTopic()).append("\n");
-        if (request.getQuestionType() != null) infoBuilder.append("- Dạng bài: ").append(request.getQuestionType()).append("\n");
-
-        return """
-                Bạn là một chuyên gia Toán học và biên soạn đề thi xuất sắc.
-                Nhiệm vụ của bạn là sinh ra một bài toán chuẩn sư phạm theo đúng thông tin dưới đây:
-                %s
-                Yêu cầu định dạng bắt buộc:
-                1. Tất cả công thức toán học phải viết dạng KaTeX kẹp giữa dấu $...$ (inline) hoặc $$...$$ (block math). Ví dụ: $x^2 + 2x + 1 = 0$, $\\frac{a}{b}$.
-                %s
-                3. Về phần lời giải ('explanation'): CHỈ sinh ra nội dung lời giải chi tiết KHI yêu cầu (prompt) của người dùng có đề nghị/nhắc tới việc cung cấp lời giải (ví dụ: 'kèm lời giải', 'giải chi tiết', 'hướng dẫn giải', 'trình bày giải'). Nếu người dùng KHÔNG yêu cầu lời giải, hãy để trường 'explanation' là chuỗi rỗng "".
-                4. Trả về ĐÚNG MỘT JSON OBJECT duy nhất, KHÔNG kèm theo văn bản giải thích ngoài JSON, KHÔNG dùng markdown block ```json.
-
-                JSON Schema quy định:
-                {
-                  "title": "Tiêu đề ngắn gọn cho bài toán",
-                  "content": "Nội dung đề bài chi tiết dạng Markdown + KaTeX",
-                  "explanation": "Lời giải chi tiết từng bước (nếu người dùng yêu cầu, ngược lại để rỗng \"\")",
-                  "grade": %d,
-                  "difficulty": "%s",
-                  "topic": "%s",
-                  "canvasData": {
-                    "width": 500,
-                    "height": 400,
-                    "elements": [
-                      { "type": "point", "id": "O", "x": 0.0, "y": 0.0, "label": "O" },
-                      { "type": "point", "id": "A", "x": 3.0, "y": 0.0, "label": "A" },
-                      { "type": "point", "id": "B", "x": 1.5, "y": 2.598, "label": "B" },
-                      { "type": "circle", "id": "c1", "centerId": "O", "radius": 3.0, "pointId": "A" },
-                      { "type": "segment", "id": "s1", "fromId": "O", "toId": "A" },
-                      { "type": "segment", "id": "s2", "fromId": "O", "toId": "B" }
-                    ]
-                  }
-                }
-                Lưu ý quan trọng cho hình vẽ (canvasData):
-                - Tọa độ (x, y) của tất cả điểm BẮT BUỘC nằm trong hệ tọa độ Đề-các nhỏ chuẩn mực từ -6.0 đến 6.0 (Ví dụ: A(-2, 3), B(3, 3), C(4, -1), D(-1, -1)). TUYỆT ĐỐI KHÔNG dùng tọa độ dạng pixel (như 100..500) hay số quá lớn (> 15).
-                - Khi đề toán có đồ thị hàm số (parabol, đường thẳng, hàm số...): Tạo element có `type: "functiongraph"`, `id: "fg1"`, và `parsedFunc` là biểu thức hàm số theo biến x (ví dụ: `x**2 - 2*x + 1`, `2*x - 3`, `-x**2 + 4`). Đồng thời có thể tạo thêm các điểm đỉnh Parabol, điểm thuộc đồ thị (dạng "point").
-                - Khi đề toán có đường tròn, BẮT BUỘC phải tạo điểm tâm (dạng "point"), tạo các điểm trên đường tròn, và thêm phần tử "circle" với "centerId" và "radius" hoặc "pointId".
-                """.formatted(infoBuilder.toString(), canvasRequirement, grade, difficulty, topic);
-    }
-
-    private String callGemini2Api(Provider provider, TaskConfig taskConfig, String apiKey, String systemPrompt, String userPrompt) throws Exception {
-        String rawModel = taskConfig.getModel();
-        
-        String baseUrl = provider.getBaseUrl();
-        if (baseUrl == null || baseUrl.isBlank()) {
-            baseUrl = "https://generativelanguage.googleapis.com/v1beta/";
-        }
-        if (!baseUrl.endsWith("/")) {
-            baseUrl += "/";
-        }
-
-        String urlPath = rawModel.startsWith("models/") ? rawModel : "models/" + rawModel;
-        if (baseUrl.endsWith("models/")) {
-            urlPath = urlPath.substring(7);
-        }
-
-        String url = baseUrl + urlPath + ":generateContent";
-
-        Map<String, Object> systemPart = Map.of("text", systemPrompt + "\n\nYêu cầu từ người dùng:\n" + userPrompt);
-        Map<String, Object> contentPart = Map.of("role", "user", "parts", List.of(systemPart));
-
-        Map<String, Object> genConfig = new HashMap<>();
-        genConfig.put("responseMimeType", "application/json");
-        if (taskConfig.getTemperature() != null) {
-            genConfig.put("temperature", taskConfig.getTemperature());
-        }
-        if (taskConfig.getMaxToken() != null) {
-            genConfig.put("maxOutputTokens", taskConfig.getMaxToken());
-        }
-
-        Map<String, Object> requestBodyMap = Map.of(
-                "contents", List.of(contentPart),
-                "generationConfig", genConfig
-        );
-
-        String jsonBody = objectMapper.writeValueAsString(requestBodyMap);
-
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .header("Content-Type", "application/json")
-                .header("x-goog-api-key", apiKey)
-                .timeout(Duration.ofSeconds(30))
-                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
-                .build();
-
-        HttpResponse<String> response = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
-
-        if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new AiGenerationException(response.statusCode(), "Gemini API returned HTTP " + response.statusCode() + ": " + response.body());
-        }
-
-        return response.body();
-    }
-
-    private AiGeneratedQuestionResponse parseGeminiResponse(String rawResponseBody) {
+    private AiGeneratedQuestionResponse parseQuestionResponse(String rawResponseBody) {
         try {
-            JsonNode root = objectMapper.readTree(rawResponseBody);
-            JsonNode candidates = root.get("candidates");
-            if (candidates == null || !candidates.isArray() || candidates.isEmpty()) {
-                throw new AiGenerationException("Không nhận được phản hồi phù hợp từ Gemini");
+            if (rawResponseBody == null || rawResponseBody.isBlank()) {
+                throw new AiGenerationException("Phản hồi từ AI bị rỗng.");
             }
-
-            JsonNode textNode = candidates.get(0).path("content").path("parts").get(0).path("text");
-            if (textNode.isMissingNode() || textNode.asText().isBlank()) {
-                throw new AiGenerationException("Nội dung phản hồi từ Gemini bị rỗng");
-            }
-
-            String jsonText = textNode.asText().trim();
+            String jsonText = rawResponseBody.trim();
             jsonText = jsonText.replaceAll("(?s)^```[a-z]*\\s*|\\s*```$", "").trim();
-
             return objectMapper.readValue(jsonText, AiGeneratedQuestionResponse.class);
         } catch (JsonProcessingException e) {
-            log.error("Không thể parse JSON từ Gemini: {}", e.getMessage());
+            log.error("Không thể parse JSON từ AI response: {}", e.getMessage());
             throw new AiGenerationException("Dữ liệu phản hồi từ AI không đúng định dạng JSON chuẩn", e);
         } catch (Exception e) {
             throw new AiGenerationException("Lỗi xử lý kết quả sinh bài toán từ AI: " + e.getMessage(), e);
         }
     }
 
-    private String callOpenAiApi(Provider provider, TaskConfig taskConfig, String apiKey, String systemPrompt, String userPrompt) throws Exception {
-        String rawModel = taskConfig.getModel();
-        String model = rawModel.startsWith("models/") ? rawModel.substring(7) : rawModel;
-        String url = provider.getBaseUrl();
-        if (url == null || url.isBlank()) {
-            throw new IllegalArgumentException("Base URL không được để trống đối với giao thức OPENAI_COMPATIBLE");
-        }
-        if (!url.endsWith("/chat/completions")) {
-            url = url.endsWith("/") ? url + "chat/completions" : url + "/chat/completions";
-        }
+    private String buildSystemPrompt(GenerateQuestionRequest request) {
+        boolean isDrawingRequested = Boolean.TRUE.equals(request.getIncludeCanvasDiagram()) && hasRequestedDrawing(request.getPrompt());
+        String canvasRequirement = isDrawingRequested
+                ? "2. CHÚ Ý: Người dùng CÓ YÊU CẦU vẽ hình/đồ thị, bạn hãy sinh ra object 'canvasData' (chứa điểm, đoạn thẳng, đường tròn, đồ thị hàm số) theo chuẩn JSON."
+                : "2. CHÚ Ý: Bài toán này KHÔNG yêu cầu vẽ hình hay đồ thị, TUYỆT ĐỐI KHÔNG sinh ra object 'canvasData' (bỏ qua trường 'canvasData').";
 
-        Map<String, Object> systemMessage = Map.of("role", "system", "content", systemPrompt);
-        Map<String, Object> userMessage = Map.of("role", "user", "content", userPrompt);
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("grade_level", request.getGrade() != null ? request.getGrade() : 9);
+        variables.put("difficulty", formatDifficultyDescription(request.getDifficulty()));
+        variables.put("difficulty_code", request.getDifficulty() != null ? request.getDifficulty() : "THONG_HIEU");
+        variables.put("topic", request.getTopic() != null ? request.getTopic() : "Toán học");
+        variables.put("question_type", request.getQuestionType() != null ? request.getQuestionType() : "Tự luận");
+        variables.put("canvas_requirement", canvasRequirement);
 
-        Map<String, Object> requestBodyMap = new HashMap<>();
-        requestBodyMap.put("model", model);
-        requestBodyMap.put("messages", List.of(systemMessage, userMessage));
-        if (taskConfig.getTemperature() != null) {
-            requestBodyMap.put("temperature", taskConfig.getTemperature());
-        }
-        if (taskConfig.getMaxToken() != null) {
-            requestBodyMap.put("max_tokens", taskConfig.getMaxToken());
-        }
-        requestBodyMap.put("response_format", Map.of("type", "json_object"));
-
-        String jsonBody = objectMapper.writeValueAsString(requestBodyMap);
-
-        String authHeaderName = provider.getAuthHeaderName() != null && !provider.getAuthHeaderName().isBlank() ? provider.getAuthHeaderName() : "Authorization";
-        String authHeaderPrefix = provider.getAuthHeaderPrefix() != null && !provider.getAuthHeaderPrefix().isBlank() ? provider.getAuthHeaderPrefix() + " " : "Bearer ";
-
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .header("Content-Type", "application/json")
-                .header(authHeaderName, authHeaderPrefix + apiKey)
-                .timeout(Duration.ofSeconds(30))
-                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+        RenderPromptRequest renderRequest = RenderPromptRequest.builder()
+                .promptCode("PROMPT_QUESTION_GEN")
+                .variables(variables)
                 .build();
 
-        HttpResponse<String> response = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
-
-        if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new AiGenerationException(response.statusCode(), "OpenAI API returned HTTP " + response.statusCode() + ": " + response.body());
-        }
-
-        return response.body();
-    }
-
-    private AiGeneratedQuestionResponse parseOpenAiResponse(String rawResponseBody) {
-        try {
-            JsonNode root = objectMapper.readTree(rawResponseBody);
-            JsonNode choices = root.get("choices");
-            if (choices == null || !choices.isArray() || choices.isEmpty()) {
-                throw new AiGenerationException("Không nhận được phản hồi phù hợp từ OpenAI API");
-            }
-
-            JsonNode messageNode = choices.get(0).path("message").path("content");
-            if (messageNode.isMissingNode() || messageNode.asText().isBlank()) {
-                throw new AiGenerationException("Nội dung phản hồi từ OpenAI bị rỗng");
-            }
-
-            String jsonText = messageNode.asText().trim();
-            jsonText = jsonText.replaceAll("(?s)^```[a-z]*\\s*|\\s*```$", "").trim();
-
-            return objectMapper.readValue(jsonText, AiGeneratedQuestionResponse.class);
-        } catch (JsonProcessingException e) {
-            log.error("Không thể parse JSON từ OpenAI: {}", e.getMessage());
-            throw new AiGenerationException("Dữ liệu phản hồi từ AI không đúng định dạng JSON chuẩn", e);
-        } catch (Exception e) {
-            throw new AiGenerationException("Lỗi xử lý kết quả sinh bài toán từ OpenAI API: " + e.getMessage(), e);
-        }
+        return promptRenderService.renderPrompt(renderRequest).getRenderedPrompt();
     }
 
     private boolean hasRequestedExplanation(String prompt) {

@@ -506,23 +506,44 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 """;
 
                 String defaultQuestionGenPrompt = """
-                                Bạn là một chuyên gia biên soạn đề thi và bài tập môn {{subject}} cho học sinh khối lớp {{grade_level}}.
-                                Nhiệm vụ của bạn là sinh ra một bộ câu hỏi bài tập tự luận chuẩn kiến thức, sáng tạo và bám sát chương trình học.
-
-                                [YÊU CẦU KHỞI TẠO ĐỀ BÀI]:
+                                Bạn là một chuyên gia Toán học và biên soạn đề thi xuất sắc.
+                                Nhiệm vụ của bạn là sinh ra một bài toán chuẩn sư phạm theo đúng thông tin dưới đây:
                                 - Khối lớp: {{grade_level}}
-                                - Môn học: {{subject}}
-                                - Chủ đề / Chuyên đề: {{topic}}
-                                - Mức độ khó: {{difficulty}}
-                                - Số lượng câu hỏi: {{question_count}} câu
-                                - Định dạng đầu ra yêu cầu: {{output_format}}
-                                - Chuẩn công thức toán học: {{math_format}}
+                                - Mức độ tư duy: {{difficulty}}
+                                - Chủ đề: {{topic}}
+                                - Dạng bài: {{question_type}}
 
-                                YÊU CẦU BẮT BUỘC:
-                                1. Biên soạn đúng {{question_count}} câu hỏi bài tập theo chủ đề {{topic}} với mức độ khó {{difficulty}} dành cho lớp {{grade_level}}.
-                                2. Mỗi câu hỏi phải rõ ràng, chặt chẽ về mặt nội dung môn {{subject}}, có đầy đủ dữ kiện và kèm theo hướng dẫn giải / đáp án chi tiết.
-                                3. Toàn bộ các công thức toán học phải được trình bày đúng chuẩn {{math_format}} (ví dụ: KaTeX/LaTeX).
-                                4. Định dạng toàn bộ kết quả trả về chính xác theo cấu trúc {{output_format}} để hệ thống dễ dàng phân tích và hiển thị.
+                                Yêu cầu định dạng bắt buộc:
+                                1. Tất cả công thức toán học phải viết dạng KaTeX kẹp giữa dấu $...$ (inline) hoặc $$...$$ (block math). Ví dụ: $x^2 + 2x + 1 = 0$, $\\frac{a}{b}$.
+                                {{canvas_requirement}}
+                                3. Về phần lời giải ('explanation'): CHỈ sinh ra nội dung lời giải chi tiết KHI yêu cầu (prompt) của người dùng có đề nghị/nhắc tới việc cung cấp lời giải (ví dụ: 'kèm lời giải', 'giải chi tiết', 'hướng dẫn giải', 'trình bày giải'). Nếu người dùng KHÔNG yêu cầu lời giải, hãy để trường 'explanation' là chuỗi rỗng "".
+                                4. Trả về ĐÚNG MỘT JSON OBJECT duy nhất, KHÔNG kèm theo văn bản giải thích ngoài JSON, KHÔNG dùng markdown block ```json.
+
+                                JSON Schema quy định:
+                                {
+                                  "title": "Tiêu đề ngắn gọn cho bài toán",
+                                  "content": "Nội dung đề bài chi tiết dạng Markdown + KaTeX",
+                                  "explanation": "Lời giải chi tiết từng bước (nếu người dùng yêu cầu, ngược lại để rỗng \"\")",
+                                  "grade": {{grade_level}},
+                                  "difficulty": "{{difficulty_code}}",
+                                  "topic": "{{topic}}",
+                                  "canvasData": {
+                                    "width": 500,
+                                    "height": 400,
+                                    "elements": [
+                                      { "type": "point", "id": "O", "x": 0.0, "y": 0.0, "label": "O" },
+                                      { "type": "point", "id": "A", "x": 3.0, "y": 0.0, "label": "A" },
+                                      { "type": "point", "id": "B", "x": 1.5, "y": 2.598, "label": "B" },
+                                      { "type": "circle", "id": "c1", "centerId": "O", "radius": 3.0, "pointId": "A" },
+                                      { "type": "segment", "id": "s1", "fromId": "O", "toId": "A" },
+                                      { "type": "segment", "id": "s2", "fromId": "O", "toId": "B" }
+                                    ]
+                                  }
+                                }
+                                Lưu ý quan trọng cho hình vẽ (canvasData):
+                                - Tọa độ (x, y) của tất cả điểm BẮT BUỘC nằm trong hệ tọa độ Đề-các nhỏ chuẩn mực từ -6.0 đến 6.0 (Ví dụ: A(-2, 3), B(3, 3), C(4, -1), D(-1, -1)). TUYỆT ĐỐI KHÔNG dùng tọa độ dạng pixel (như 100..500) hay số quá lớn (> 15).
+                                - Khi đề toán có đồ thị hàm số (parabol, đường thẳng, hàm số...): Tạo element có `type: "functiongraph"`, `id: "fg1"`, và `parsedFunc` là biểu thức hàm số theo biến x (ví dụ: `x**2 - 2*x + 1`, `2*x - 3`, `-x**2 + 4`). Đồng thời có thể tạo thêm các điểm đỉnh Parabol, điểm thuộc đồ thị (dạng "point").
+                                - Khi đề toán có đường tròn, BẮT BUỘC phải tạo điểm tâm (dạng "point"), tạo các điểm trên đường tròn, và thêm phần tử "circle" với "centerId" và "radius" hoặc "pointId".
                                 """;
 
                 SystemPrompt p1 = SystemPrompt.builder()
@@ -590,8 +611,8 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 .defaultContent(defaultQuestionGenPrompt)
                                 .currentContent(defaultQuestionGenPrompt)
                                 .allowedVariables(
-                                                "grade_level,subject,topic,difficulty,question_count,output_format,math_format")
-                                .description("Tự động tạo bài tập tự luận môn {{subject}}.")
+                                                "grade_level,difficulty,difficulty_code,topic,question_type,canvas_requirement")
+                                .description("Tự động tạo bài tập tự luận môn Toán.")
                                 .status(SystemPromptStatus.ACTIVE)
                                 .build();
                 SystemPrompt savedP4 = systemPromptRepository.save(p4);

@@ -5,6 +5,7 @@ import com.codegym.mathclass.aiconfig.entity.ProviderProtocol;
 import com.codegym.mathclass.aiconfig.entity.TaskConfig;
 import com.codegym.mathclass.aiconfig.strategy.AiExecutionResult;
 import com.codegym.mathclass.aiconfig.strategy.AiProviderStrategy;
+import com.codegym.mathclass.assignment.exception.AiGenerationException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +44,8 @@ public class GoogleGeminiProviderStrategy implements AiProviderStrategy {
             baseUrlStr = baseUrlStr + "/v1beta";
         }
 
-        String model = config.getModel() != null ? config.getModel() : "gemini-1.5-flash";
+        String rawModel = config.getModel() != null ? config.getModel() : "gemini-1.5-flash";
+        String model = rawModel.startsWith("models/") ? rawModel.substring(7) : rawModel;
         String targetUrl = baseUrlStr + "/models/" + model + ":generateContent?key=" + apiKey;
 
         Map<String, Object> generationConfig = new java.util.HashMap<>();
@@ -52,6 +54,9 @@ public class GoogleGeminiProviderStrategy implements AiProviderStrategy {
         }
         if (config.getMaxToken() != null) {
             generationConfig.put("maxOutputTokens", config.getMaxToken());
+        }
+        if (prompt != null && (prompt.contains("JSON") || prompt.contains("json"))) {
+            generationConfig.put("responseMimeType", "application/json");
         }
 
         Map<String, Object> geminiPayload = new java.util.HashMap<>();
@@ -63,12 +68,10 @@ public class GoogleGeminiProviderStrategy implements AiProviderStrategy {
 
         String reqBody = objectMapper.writeValueAsString(geminiPayload);
         HttpRequest request = HttpRequest.newBuilder()
-                // Timeout 120s: prompt dài (ví dụ chấm bài tự luận kèm dữ liệu hình vẽ Canvas)
-                // cần thời gian generate lâu hơn nhiều so với 30s mặc định. Áp dụng cho mọi
-                // task AI.
                 .timeout(Duration.ofSeconds(120))
                 .uri(URI.create(targetUrl))
                 .header("Content-Type", "application/json")
+                .header("x-goog-api-key", apiKey)
                 .POST(HttpRequest.BodyPublishers.ofString(reqBody))
                 .build();
 
@@ -88,10 +91,10 @@ public class GoogleGeminiProviderStrategy implements AiProviderStrategy {
             }
             log.error("Google Gemini Provider returned HTTP status {} but invalid payload: {}", status,
                     response.body());
-            throw new RuntimeException("Google Gemini Provider phản hồi không đúng cấu trúc dữ liệu");
+            throw new AiGenerationException(status, "Google Gemini Provider phản hồi không đúng cấu trúc dữ liệu");
         } else {
             log.error("Google Gemini Provider HTTP error status {}: {}", status, response.body());
-            throw new RuntimeException("Google Gemini Provider phản hồi lỗi HTTP " + status);
+            throw new AiGenerationException(status, "Gemini API returned HTTP " + status + ": " + response.body());
         }
     }
 
