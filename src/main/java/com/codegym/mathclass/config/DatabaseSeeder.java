@@ -222,7 +222,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 "STUDENT_HINT", 1,
                                 "CANVAS_LATEX", 2,
                                 "QUESTION_GEN", 3,
-                                "ASSIGNMENT_GRADING", 5);
+                                "SUBMISSION_GRADING", 5);
                 defaults.forEach((task, cost) -> {
                         AiCreditConfig existing = aiCreditConfigRepository.findByTask(task).orElse(null);
                         if (existing == null) {
@@ -485,24 +485,34 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 """;
 
                 String defaultGradingPrompt = """
-                                Bạn là một giáo viên môn {{subject}} lớp {{grade_level}} xuất sắc, công tâm và giàu kinh nghiệm.
-                                Nhiệm vụ của bạn là chấm điểm và đưa ra nhận xét chi tiết bài làm tự luận của học sinh môn {{subject}}.
+                                Bạn là một giáo viên môn {{subject}} xuất sắc, công tâm và giàu kinh nghiệm.
+                                Nhiệm vụ của bạn là chấm điểm sơ bộ bài làm tự luận và đánh giá hình vẽ Canvas (nếu có) của học sinh.
 
-                                [THÔNG TIN ĐỀ BÀI VÀ BÀI LÀM]:
-                                - Khối lớp: {{grade_level}}
-                                - Môn học: {{subject}}
-                                - Câu hỏi / Đề bài: {{question_content}}
-                                - Đáp án / Hướng dẫn chấm chuẩn: {{correct_answer}}
-                                - Bài làm của học sinh: {{student_answer}}
+                                [ĐỀ BÀI TOÁN]:
+                                - Tiêu đề: {{title}}
                                 - Thang điểm tối đa: {{max_score}}
+                                - Nội dung đề (nếu có hình vẽ Canvas mẫu thì nằm trong comment <!-- DRAWINGS_DATA_START -->):
+                                {{problem_content}}
+
+                                [BÀI LÀM CỦA HỌC SINH] (hình vẽ Canvas học sinh vẽ nếu có nằm trong comment <!-- DRAWINGS_DATA_START -->):
+                                {{student_content}}
+
+                                Nhiệm vụ chi tiết:
+                                1. So sánh hình vẽ Canvas của học sinh với hình mẫu trong đề bài (nếu có), liệt kê các lỗi sai cụ thể trong danh sách drawingIssues (ví dụ: vẽ thiếu đường cao, sai góc, sai tiệm cận đồ thị). Nếu bài tập không có hình mẫu hoặc học sinh không vẽ hình thì để drawingIssues = [].
+                                2. Chấm điểm sơ bộ bài tự luận theo thang điểm {{max_score}} và viết DỰ THẢO lời nhận xét chi tiết bằng tiếng Việt, chỉ ra từng lỗi sai cụ thể trong lời giải, hỗ trợ Markdown và LaTeX ($...$).
+
+                                YÊU CẦU ĐỊNH DẠNG BẮT BUỘC:
+                                Phản hồi CHỈ trả về duy nhất một JSON Object hợp lệ, KHÔNG kèm văn bản hay giải thích bên ngoài, KHÔNG kẹp trong markdown fence ```json, đúng schema sau:
+                                {"suggestedScore": 8.5, "draftFeedback": "...", "drawingIssues": [{"issue": "...", "detail": "..."}]}
 
                                 YÊU CẦU BẮT BUỘC:
-                                1. Đọc kỹ đề bài {{question_content}} và so sánh bài làm của học sinh {{student_answer}} với đáp án chuẩn {{correct_answer}}.
+                                1. Đọc kỹ đề bài và so sánh bài làm của học sinh với đáp án chuẩn.
                                 2. Phân tích chi tiết các bước giải:
                                    - Chỉ ra các bước đúng, lập luận logic và công thức chính xác học sinh đã áp dụng.
-                                   - Phát hiện các lỗi sai (nếu có): sai sót số học, thiếu điều kiện xác định, lập luận thiếu căn cứ hoặc trình bày chưa chặt chẽ.
-                                3. Đánh giá và cho điểm chính xác trên thang điểm tối đa {{max_score}}.
+                                   - Phát hiện các lỗi sai (nếu có): sai sót số học/hình học, thiếu điều kiện xác định, lập luận thiếu căn cứ hoặc trình bày chưa chặt chẽ.
+                                3. Đánh giá và cho điểm chính xác trên thang điểm tối đa.
                                 4. Nhận xét mang tính xây dựng, động viên học sinh và hướng dẫn cách khắc phục lỗi sai. Dùng KaTeX cho mọi công thức toán học.
+
                                 """;
 
                 String defaultQuestionGenPrompt = """
@@ -515,7 +525,7 @@ public class DatabaseSeeder implements CommandLineRunner {
 
                                 Yêu cầu định dạng bắt buộc:
                                 1. Tất cả công thức toán học phải viết dạng KaTeX kẹp giữa dấu $...$ (inline) hoặc $$...$$ (block math). Ví dụ: $x^2 + 2x + 1 = 0$, $\\frac{a}{b}$.
-                                {{canvas_requirement}}
+                                2. CHÚ Ý YÊU CẦU vẽ hình/đồ thị: {{canvas_requirement}}
                                 3. Về phần lời giải ('explanation'): CHỈ sinh ra nội dung lời giải chi tiết KHI yêu cầu (prompt) của người dùng có đề nghị/nhắc tới việc cung cấp lời giải (ví dụ: 'kèm lời giải', 'giải chi tiết', 'hướng dẫn giải', 'trình bày giải'). Nếu người dùng KHÔNG yêu cầu lời giải, hãy để trường 'explanation' là chuỗi rỗng "".
                                 4. Trả về ĐÚNG MỘT JSON OBJECT duy nhất, KHÔNG kèm theo văn bản giải thích ngoài JSON, KHÔNG dùng markdown block ```json.
 
@@ -524,9 +534,6 @@ public class DatabaseSeeder implements CommandLineRunner {
                                   "title": "Tiêu đề ngắn gọn cho bài toán",
                                   "content": "Nội dung đề bài chi tiết dạng Markdown + KaTeX",
                                   "explanation": "Lời giải chi tiết từng bước (nếu người dùng yêu cầu, ngược lại để rỗng \"\")",
-                                  "grade": {{grade_level}},
-                                  "difficulty": "{{difficulty_code}}",
-                                  "topic": "{{topic}}",
                                   "canvasData": {
                                     "width": 500,
                                     "height": 400,
@@ -591,7 +598,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 .defaultContent(defaultGradingPrompt)
                                 .currentContent(defaultGradingPrompt)
                                 .allowedVariables(
-                                                "grade_level,subject,question_content,correct_answer,student_answer,max_score")
+                                                "title,problem_content,student_content,max_score,subject")
                                 .description("Chấm điểm và nhận xét chi tiết bài làm tự luận.")
                                 .status(SystemPromptStatus.ACTIVE)
                                 .build();
@@ -611,7 +618,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 .defaultContent(defaultQuestionGenPrompt)
                                 .currentContent(defaultQuestionGenPrompt)
                                 .allowedVariables(
-                                                "grade_level,difficulty,difficulty_code,topic,question_type,canvas_requirement")
+                                                "grade_level,difficulty,topic,question_type,canvas_requirement")
                                 .description("Tự động tạo bài tập tự luận môn Toán.")
                                 .status(SystemPromptStatus.ACTIVE)
                                 .build();

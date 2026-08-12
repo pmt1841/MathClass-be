@@ -42,16 +42,16 @@ class AiQuestionControllerTest {
                 .difficulty("THONG_HIEU")
                 .build();
 
-        when(aiQuestionService.generateQuestion(any())).thenReturn(mockResponse);
+        when(aiQuestionService.generateQuestion(any(), any())).thenReturn(mockResponse);
 
-        var responseEntity = aiQuestionController.generateQuestion(req);
+        var responseEntity = aiQuestionController.generateQuestion(req, null);
 
         assertNotNull(responseEntity);
         assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
         assertNotNull(responseEntity.getBody());
         assertEquals(mockResponse, responseEntity.getBody());
 
-        verify(aiQuestionService).generateQuestion(req);
+        verify(aiQuestionService).generateQuestion(req, null);
     }
 
     @Test
@@ -62,12 +62,12 @@ class AiQuestionControllerTest {
                 .grade(9)
                 .build();
 
-        when(aiQuestionService.generateQuestion(any()))
+        when(aiQuestionService.generateQuestion(any(), any()))
                 .thenThrow(new com.codegym.mathclass.assignment.exception.AiGenerationException(503, "Service unavailable"));
 
         org.junit.jupiter.api.Assertions.assertThrows(
                 com.codegym.mathclass.assignment.exception.AiGenerationException.class,
-                () -> aiQuestionController.generateQuestion(req)
+                () -> aiQuestionController.generateQuestion(req, null)
         );
     }
 }

@@ -43,7 +43,7 @@ import com.codegym.mathclass.aiconfig.service.PromptRenderService;
 import com.codegym.mathclass.aiconfig.dto.response.RenderPromptResponse;
 
 @ExtendWith(MockitoExtension.class)
-class SubmissionHintServiceImplTest {
+class AiHintServiceImplTest {
 
     @Mock
     private SubmissionHintRepository submissionHintRepository;
@@ -64,7 +64,7 @@ class SubmissionHintServiceImplTest {
     private PromptRenderService promptRenderService;
 
     @InjectMocks
-    private SubmissionHintServiceImpl submissionHintService;
+    private AiHintServiceImpl aiHintService;
 
     private Assignment assignment;
     private User student;
@@ -135,7 +135,7 @@ class SubmissionHintServiceImplTest {
                 return sh;
             });
 
-            StudentHintResponse response = submissionHintService.requestHint(assignmentId, request, studentEmail);
+            StudentHintResponse response = aiHintService.requestHint(assignmentId, request, studentEmail);
 
             assertThat(response).isNotNull();
             assertThat(response.getHintNumber()).isEqualTo(1);
@@ -170,7 +170,7 @@ class SubmissionHintServiceImplTest {
                 return sh;
             });
 
-            StudentHintResponse response = submissionHintService.requestHint(assignmentId, request, studentEmail);
+            StudentHintResponse response = aiHintService.requestHint(assignmentId, request, studentEmail);
 
             assertThat(response).isNotNull();
             assertThat(response.getSubmissionId()).isEqualTo(submissionId);
@@ -189,7 +189,7 @@ class SubmissionHintServiceImplTest {
                     .thenReturn(Optional.of(submission));
             when(submissionHintRepository.countBySubmissionId(submissionId)).thenReturn(3);
 
-            assertThatThrownBy(() -> submissionHintService.requestHint(assignmentId, request, studentEmail))
+            assertThatThrownBy(() -> aiHintService.requestHint(assignmentId, request, studentEmail))
                     .isInstanceOf(HintLimitExceededException.class)
                     .hasMessageContaining("Bạn đã sử dụng tối đa 3/3 lượt gợi ý");
 
@@ -209,7 +209,7 @@ class SubmissionHintServiceImplTest {
             when(aiPromptExecutionService.executePrompt(eq("STUDENT_HINT"), anyString(), anyLong()))
                     .thenThrow(new RuntimeException("AI Provider 429 Rate Limit"));
 
-            assertThatThrownBy(() -> submissionHintService.requestHint(assignmentId, request, studentEmail))
+            assertThatThrownBy(() -> aiHintService.requestHint(assignmentId, request, studentEmail))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining("AI Provider 429 Rate Limit");
 
@@ -227,7 +227,7 @@ class SubmissionHintServiceImplTest {
             when(submissionRepository.findFirstByAssignmentIdAndStudentIdWithLock(assignmentId, studentId))
                     .thenReturn(Optional.of(submission));
 
-            assertThatThrownBy(() -> submissionHintService.requestHint(assignmentId, request, studentEmail))
+            assertThatThrownBy(() -> aiHintService.requestHint(assignmentId, request, studentEmail))
                     .isInstanceOf(InvalidSubmissionStateException.class)
                     .hasMessageContaining("Bài nộp đã gửi hoặc đã được chấm điểm");
 
@@ -243,7 +243,7 @@ class SubmissionHintServiceImplTest {
             when(userRepository.findByEmail(studentEmail)).thenReturn(Optional.of(student));
             when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(assignment));
 
-            assertThatThrownBy(() -> submissionHintService.requestHint(assignmentId, request, studentEmail))
+            assertThatThrownBy(() -> aiHintService.requestHint(assignmentId, request, studentEmail))
                     .isInstanceOf(BadRequestException.class)
                     .hasMessageContaining("Đã hết hạn làm bài tập");
 
@@ -269,7 +269,7 @@ class SubmissionHintServiceImplTest {
                 return sh;
             });
 
-            submissionHintService.requestHint(assignmentId, request, studentEmail);
+            aiHintService.requestHint(assignmentId, request, studentEmail);
 
             ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
             verify(aiPromptExecutionService).executePrompt(eq("STUDENT_HINT"), promptCaptor.capture(), anyLong());
@@ -297,7 +297,7 @@ class SubmissionHintServiceImplTest {
                 return sh;
             });
 
-            StudentHintResponse response = submissionHintService.requestHint(assignmentId, request, studentEmail);
+            StudentHintResponse response = aiHintService.requestHint(assignmentId, request, studentEmail);
 
             assertThat(response).isNotNull();
             verify(aiPromptExecutionService).executePrompt(eq("STUDENT_HINT"), contains("[Học sinh chưa bắt đầu làm bài / Bài làm trống]"), anyLong());
@@ -315,7 +315,7 @@ class SubmissionHintServiceImplTest {
 
             doReturn(null).when(promptRenderService).renderPrompt(any());
 
-            assertThatThrownBy(() -> submissionHintService.requestHint(assignmentId, request, studentEmail))
+            assertThatThrownBy(() -> aiHintService.requestHint(assignmentId, request, studentEmail))
                     .isInstanceOf(ResourceNotFoundException.class)
                     .hasMessageContaining("Chưa cấu hình System Prompt 'PROMPT_STUDENT_HINT'");
         }
@@ -343,7 +343,7 @@ class SubmissionHintServiceImplTest {
             when(submissionHintRepository.findBySubmissionIdOrderByHintNumberAsc(submissionId))
                     .thenReturn(Collections.singletonList(hint1));
 
-            HintHistoryResponse history = submissionHintService.getHintHistory(submissionId, studentEmail);
+            HintHistoryResponse history = aiHintService.getHintHistory(submissionId, studentEmail);
 
             assertThat(history).isNotNull();
             assertThat(history.getTotalUsed()).isEqualTo(1);
@@ -362,7 +362,7 @@ class SubmissionHintServiceImplTest {
             when(userRepository.findByEmail("other@other.com")).thenReturn(Optional.of(otherStudent));
             when(submissionRepository.findByIdWithDetails(submissionId)).thenReturn(Optional.of(submission));
 
-            assertThatThrownBy(() -> submissionHintService.getHintHistory(submissionId, "other@other.com"))
+            assertThatThrownBy(() -> aiHintService.getHintHistory(submissionId, "other@other.com"))
                     .isInstanceOf(AccessDeniedException.class)
                     .hasMessageContaining("Bạn không có quyền xem lịch sử gợi ý này");
         }
@@ -387,7 +387,7 @@ class SubmissionHintServiceImplTest {
             when(submissionHintRepository.findBySubmissionIdOrderByHintNumberAsc(largeSubmissionId))
                     .thenReturn(Collections.emptyList());
 
-            HintHistoryResponse history = submissionHintService.getHintHistory(largeSubmissionId, "large@codegym.com");
+            HintHistoryResponse history = aiHintService.getHintHistory(largeSubmissionId, "large@codegym.com");
 
             assertThat(history).isNotNull();
             assertThat(history.getSubmissionId()).isEqualTo(largeSubmissionId);

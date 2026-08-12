@@ -6,7 +6,6 @@ import com.codegym.mathclass.aiconfig.entity.ProviderStatus;
 import com.codegym.mathclass.aiconfig.entity.TaskConfig;
 import com.codegym.mathclass.aiconfig.repository.TaskConfigRepository;
 import com.codegym.mathclass.aiconfig.service.KeySelectionService;
-import com.codegym.mathclass.assignment.dto.AiGeneratedQuestionResponse;
 import com.codegym.mathclass.assignment.dto.GenerateQuestionRequest;
 import com.codegym.mathclass.assignment.exception.AiGenerationException;
 import com.codegym.mathclass.assignment.service.impl.AiQuestionServiceImpl;
@@ -23,100 +22,106 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+
+import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
+import com.codegym.mathclass.user.repository.UserRepository;
 
 @ExtendWith(MockitoExtension.class)
 public class AiQuestionServiceImplTest {
 
-    @Mock
-    private TaskConfigRepository taskConfigRepository;
+        @Mock
+        private TaskConfigRepository taskConfigRepository;
 
-    @Mock
-    private KeySelectionService keySelectionService;
+        @Mock
+        private KeySelectionService keySelectionService;
 
-    @Spy
-    private ObjectMapper objectMapper = new ObjectMapper();
+        @Mock
+        private AiCreditService aiCreditService;
 
-    @InjectMocks
-    private AiQuestionServiceImpl aiQuestionService;
+        @Mock
+        private UserRepository userRepository;
 
-    private GenerateQuestionRequest requestDTO;
-    private Provider provider;
-    private ApiKey apiKey;
+        @Spy
+        private ObjectMapper objectMapper = new ObjectMapper();
 
-    @BeforeEach
-    void setUp() {
-        requestDTO = GenerateQuestionRequest.builder()
-                .prompt("Cho tam giác ABC nhọn nội tiếp đường tròn (O; R)...")
-                .grade(9)
-                .difficulty("THONG_HIEU")
-                .topic("Hình học 9")
-                .includeCanvasDiagram(true)
-                .build();
+        @InjectMocks
+        private AiQuestionServiceImpl aiQuestionService;
 
-        provider = Provider.builder()
-                .code("GEMINI")
-                .name("Google Gemini")
-                .status(ProviderStatus.ACTIVE)
-                .build();
+        private GenerateQuestionRequest requestDTO;
+        private Provider provider;
+        private ApiKey apiKey;
 
-        apiKey = ApiKey.builder()
-                .encryptedKey("test-api-key")
-                .provider(provider)
-                .build();
-        apiKey.setId(1L);
-    }
+        @BeforeEach
+        void setUp() {
+                requestDTO = GenerateQuestionRequest.builder()
+                                .prompt("Cho tam giác ABC nhọn nội tiếp đường tròn (O; R)...")
+                                .grade(9)
+                                .difficulty("THONG_HIEU")
+                                .topic("Hình học 9")
+                                .includeCanvasDiagram(true)
+                                .build();
 
-    @Test
-    @DisplayName("Should throw IllegalArgumentException when prompt is blank")
-    void testGenerateQuestion_BlankPrompt_ThrowsException() {
-        GenerateQuestionRequest invalidReq = GenerateQuestionRequest.builder()
-                .prompt("  ")
-                .build();
+                provider = Provider.builder()
+                                .code("GEMINI")
+                                .name("Google Gemini")
+                                .status(ProviderStatus.ACTIVE)
+                                .build();
 
-        assertThrows(IllegalArgumentException.class, () -> aiQuestionService.generateQuestion(invalidReq));
-    }
+                apiKey = ApiKey.builder()
+                                .encryptedKey("test-api-key")
+                                .provider(provider)
+                                .build();
+                apiKey.setId(1L);
+        }
 
-    @Test
-    @DisplayName("Should throw AiGenerationException (503) when TASK_QUESTION_GEN is disabled")
-    void testGenerateQuestion_DisabledTaskConfig_ThrowsException() {
-        TaskConfig disabledConfig = TaskConfig.builder()
-                .task("QUESTION_GEN")
-                .enabled(false)
-                .build();
+        @Test
+        @DisplayName("Should throw IllegalArgumentException when prompt is blank")
+        void testGenerateQuestion_BlankPrompt_ThrowsException() {
+                GenerateQuestionRequest invalidReq = GenerateQuestionRequest.builder()
+                                .prompt("  ")
+                                .build();
 
-        when(taskConfigRepository.findByTask("QUESTION_GEN")).thenReturn(Optional.of(disabledConfig));
+                assertThrows(IllegalArgumentException.class, () -> aiQuestionService.generateQuestion(invalidReq));
+        }
 
-        AiGenerationException ex = 
-                assertThrows(AiGenerationException.class, 
-                        () -> aiQuestionService.generateQuestion(requestDTO));
+        @Test
+        @DisplayName("Should throw AiGenerationException (503) when TASK_QUESTION_GEN is disabled")
+        void testGenerateQuestion_DisabledTaskConfig_ThrowsException() {
+                TaskConfig disabledConfig = TaskConfig.builder()
+                                .task("QUESTION_GEN")
+                                .enabled(false)
+                                .build();
 
-        assertEquals(503, ex.getStatusCode());
-        assertTrue(ex.getMessage().contains("Tính năng sinh đề chưa được cấu hình hoặc đã bị tắt"));
-    }
+                when(taskConfigRepository.findByTask("QUESTION_GEN")).thenReturn(Optional.of(disabledConfig));
 
-    @Test
-    @DisplayName("Should throw AiGenerationException (503) when Provider is INACTIVE")
-    void testGenerateQuestion_InactiveProvider_ThrowsException() {
-        Provider inactiveProvider = Provider.builder()
-                .code("GEMINI")
-                .status(ProviderStatus.INACTIVE)
-                .build();
+                AiGenerationException ex = assertThrows(AiGenerationException.class,
+                                () -> aiQuestionService.generateQuestion(requestDTO));
 
-        TaskConfig config = TaskConfig.builder()
-                .task("QUESTION_GEN")
-                .enabled(true)
-                .provider(inactiveProvider)
-                .build();
+                assertEquals(503, ex.getStatusCode());
+                assertTrue(ex.getMessage().contains("Tính năng sinh đề chưa được cấu hình hoặc đã bị tắt"));
+        }
 
-        when(taskConfigRepository.findByTask("QUESTION_GEN")).thenReturn(Optional.of(config));
+        @Test
+        @DisplayName("Should throw AiGenerationException (503) when Provider is INACTIVE")
+        void testGenerateQuestion_InactiveProvider_ThrowsException() {
+                Provider inactiveProvider = Provider.builder()
+                                .code("GEMINI")
+                                .status(ProviderStatus.INACTIVE)
+                                .build();
 
-        AiGenerationException ex = 
-                assertThrows(AiGenerationException.class, 
-                        () -> aiQuestionService.generateQuestion(requestDTO));
+                TaskConfig config = TaskConfig.builder()
+                                .task("QUESTION_GEN")
+                                .enabled(true)
+                                .provider(inactiveProvider)
+                                .build();
 
-        assertEquals(503, ex.getStatusCode());
-        assertTrue(ex.getMessage().contains("Provider cấu hình cho việc sinh đề không tồn tại hoặc đã bị tắt"));
-    }
+                when(taskConfigRepository.findByTask("QUESTION_GEN")).thenReturn(Optional.of(config));
+
+                AiGenerationException ex = assertThrows(AiGenerationException.class,
+                                () -> aiQuestionService.generateQuestion(requestDTO));
+
+                assertEquals(503, ex.getStatusCode());
+                assertTrue(ex.getMessage().contains("Provider cấu hình cho việc sinh đề không tồn tại hoặc đã bị tắt"));
+        }
 }

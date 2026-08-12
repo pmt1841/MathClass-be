@@ -1,6 +1,9 @@
 package com.codegym.mathclass.submission.service.impl;
 
+import com.codegym.mathclass.aiconfig.dto.request.RenderPromptRequest;
+import com.codegym.mathclass.aiconfig.dto.response.RenderPromptResponse;
 import com.codegym.mathclass.aiconfig.service.AiPromptExecutionService;
+import com.codegym.mathclass.aiconfig.service.PromptRenderService;
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.exception.AccessDeniedException;
 import com.codegym.mathclass.exception.BadRequestException;
@@ -20,6 +23,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -30,7 +34,7 @@ import java.util.regex.Pattern;
  * Luồng xử lý:
  * 1. Kiểm tra bài nộp tồn tại, giáo viên sở hữu bài tập, học sinh đã NỘP bài (không phải DRAFT).
  * 2. Build prompt gồm đề bài (kèm hình vẽ Canvas mẫu) + bài làm học sinh (kèm hình vẽ học sinh).
- * 3. Gọi AI theo task config {@code ASSIGNMENT_GRADING} (admin cấu hình tại trang AI Config).
+ * 3. Gọi AI theo task config {@code SUBMISSION_GRADING} (admin cấu hình tại trang AI Config).
  * 4. Parse phản hồi JSON, clamp điểm theo maxScore, xác định hasCanvasComparison server-side.
  *
  * Kết quả chỉ là DỰ THẢO — không ghi vào score/teacherFeedback của Submission.
@@ -41,7 +45,7 @@ import java.util.regex.Pattern;
 public class AiGradingServiceImpl implements AiGradingService {
 
     /** Task code tương ứng với "Chấm bài Tự luận AI" trong trang Admin AI Config. */
-    private static final String GRADING_TASK_CODE = "ASSIGNMENT_GRADING";
+    private static final String GRADING_TASK_CODE = "SUBMISSION_GRADING";
 
     /** Giới hạn độ dài văn bản (trừ block hình vẽ) gửi vào prompt để tiết kiệm token. */
     private static final int MAX_TEXT_LENGTH = 4000;
@@ -57,6 +61,7 @@ public class AiGradingServiceImpl implements AiGradingService {
 
     private final SubmissionRepository submissionRepository;
     private final AiPromptExecutionService aiPromptExecutionService;
+    private final PromptRenderService promptRenderService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -113,26 +118,26 @@ public class AiGradingServiceImpl implements AiGradingService {
         String problemContent = buildContentWithDrawings(assignment.getContent());
         String studentContent = buildContentWithDrawings(submission.getContent());
 
-        return String.format("""
-                [ĐỀ BÀI TOÁN]:
-                Tiêu đề: %s
-                Thang điểm tối đa: %s
-                Nội dung đề (nếu có hình vẽ Canvas mẫu thì nằm trong comment <!-- DRAWINGS_DATA_START -->):
-                %s
+        Map<String, Object> variables = Map.of(
+                "title", title,
+                "max_score", maxScore,
+                "problem_content", problemContent,
+                "student_content", studentContent,
+                "subject", "Toán học"
+        );
 
-                [BÀI LÀM CỦA HỌC SINH] (hình vẽ Canvas học sinh vẽ nếu có nằm trong comment <!-- DRAWINGS_DATA_START -->):
-                %s
+        RenderPromptRequest renderRequest = RenderPromptRequest.builder()
+                .promptCode("PROMPT_SUBMISSION_GRADING")
+                .variables(variables)
+                .build();
 
-                Nhiệm vụ:
-                1. So sánh hình vẽ Canvas của học sinh với hình mẫu trong đề bài, liệt kê các lỗi sai cụ thể
-                   (ví dụ: vẽ thiếu đường cao, sai góc, sai tiệm cận đồ thị). Nếu bài tập không có hình mẫu hoặc
-                   học sinh không vẽ hình thì để drawingIssues = [].
-                2. Chấm điểm sơ bộ bài tự luận theo thang %s và viết DỰ THẢO lời nhận xét chi tiết bằng tiếng Việt,
-                   chỉ ra từng lỗi sai cụ thể trong lời giải, hỗ trợ Markdown và LaTeX ($...$).
+        RenderPromptResponse renderResponse = promptRenderService.renderPrompt(renderRequest);
 
-                Phản hồi CHỈ trả về một JSON hợp lệ, KHÔNG kèm văn bản hay giải thích bên ngoài, đúng schema:
-                {"suggestedScore": 8.5, "draftFeedback": "...", "drawingIssues": [{"issue": "...", "detail": "..."}]}
-                """, title, maxScore, problemContent, studentContent, maxScore);
+        if (renderResponse == null || renderResponse.getRenderedPrompt() == null || renderResponse.getRenderedPrompt().isBlank()) {
+            throw new ResourceNotFoundException("Chưa cấu hình System Prompt 'PROMPT_SUBMISSION_GRADING' trong CSDL.");
+        }
+
+        return renderResponse.getRenderedPrompt();
     }
 
     private AiGradingResponse parseAiResponse(String raw, Assignment assignment, Submission submission) {

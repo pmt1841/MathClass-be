@@ -4,12 +4,14 @@ import com.codegym.mathclass.assignment.dto.GenerateQuestionRequest;
 import com.codegym.mathclass.assignment.dto.AiGeneratedQuestionResponse;
 import com.codegym.mathclass.assignment.service.AiQuestionService;
 import com.codegym.mathclass.common.annotation.ApiVersion;
+import com.codegym.mathclass.security.services.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,9 +30,11 @@ public class AiQuestionController {
     @PostMapping("/generate-question")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN') or hasAuthority('assignment:create')")
     public ResponseEntity<AiGeneratedQuestionResponse> generateQuestion(
-            @Valid @RequestBody GenerateQuestionRequest request) {
+            @Valid @RequestBody GenerateQuestionRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        AiGeneratedQuestionResponse result = aiQuestionService.generateQuestion(request);
+        Long userId = userDetails != null ? userDetails.getId() : null;
+        AiGeneratedQuestionResponse result = aiQuestionService.generateQuestion(request, userId);
         return ResponseEntity.ok(result);
     }
 }

@@ -27,7 +27,7 @@ Bảng ánh xạ task → chi phí gợi ý (admin cấu hình):
 | `STUDENT_HINT` | Gợi ý tư duy | 1 | 1000 |
 | `CANVAS_LATEX` | Chuyển ảnh chữ viết tay → LaTeX | 2 | 1000 |
 | `QUESTION_GEN` | Sinh đề | 3 | 1000 |
-| `ASSIGNMENT_GRADING` | Chấm bài tự động | 5 | 1000 |
+| `SUBMISSION_GRADING` | Chấm bài tự động | 5 | 1000 |
 
 ---
 
@@ -131,7 +131,7 @@ CREATE TABLE ai_credit_defaults (
 ```sql
 CREATE TABLE ai_credit_configs (
     id BIGSERIAL PRIMARY KEY,
-    task VARCHAR(50) NOT NULL UNIQUE,        -- STUDENT_HINT | ASSIGNMENT_GRADING | ...
+    task VARCHAR(50) NOT NULL UNIQUE,        -- STUDENT_HINT | SUBMISSION_GRADING | ...
     cost_per_call INT NOT NULL DEFAULT 1 CHECK (cost_per_call >= 0),   -- phí tối thiểu mỗi lượt
     tokens_per_credit INT NULL,              -- số token đầu ra = 1 credit (NULL/0 => dùng cost_per_call)
     enabled BOOLEAN NOT NULL DEFAULT TRUE,
@@ -202,7 +202,7 @@ CREATE INDEX idx_purchase_user ON credit_purchase_orders(user_id, created_at DES
 | Bảng | Seed mặc định |
 | :--- | :--- |
 | `ai_credit_defaults` | STUDENT = 100, TEACHER = 500 |
-| `ai_credit_configs` | STUDENT_HINT = 1, CANVAS_LATEX = 2, QUESTION_GEN = 3, ASSIGNMENT_GRADING = 5 — kèm `tokens_per_credit` = 1000 (mọi task) |
+| `ai_credit_configs` | STUDENT_HINT = 1, CANVAS_LATEX = 2, QUESTION_GEN = 3, SUBMISSION_GRADING = 5 — kèm `tokens_per_credit` = 1000 (mọi task) |
 | `credit_packages` | Gói Cơ bản (100 credit – 20.000đ), Gói Pro (300 credit – 50.000đ), Gói VIP (1.000 credit – 150.000đ) |
 | Backfill | User cũ chưa có `user_ai_accounts` → cấp `default_credits` theo role + ghi `GRANT_DEFAULT` |
 
@@ -226,7 +226,7 @@ CREATE INDEX idx_purchase_user ON credit_purchase_orders(user_id, created_at DES
     "totalSpent": 3,
     "costs": [
       { "task": "STUDENT_HINT", "costPerCall": 1, "tokensPerCredit": 1000 },
-      { "task": "ASSIGNMENT_GRADING", "costPerCall": 5, "tokensPerCredit": 1000 }
+      { "task": "SUBMISSION_GRADING", "costPerCall": 5, "tokensPerCredit": 1000 }
     ]
   }
 }
@@ -307,7 +307,7 @@ Quy trình:
 
 Cập nhật consumer truyền `userId`:
 - `SubmissionHintServiceImpl.requestHint(...)` → `student.getId()` (`STUDENT_HINT`).
-- `AiGradingServiceImpl.requestAiGrading(...)` → `teacherId` (`ASSIGNMENT_GRADING`).
+- `AiGradingServiceImpl.requestAiGrading(...)` → `teacherId` (`SUBMISSION_GRADING`).
 
 ---
 

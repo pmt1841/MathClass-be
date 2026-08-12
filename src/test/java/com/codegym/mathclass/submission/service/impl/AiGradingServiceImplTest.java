@@ -1,6 +1,8 @@
 package com.codegym.mathclass.submission.service.impl;
 
+import com.codegym.mathclass.aiconfig.dto.response.RenderPromptResponse;
 import com.codegym.mathclass.aiconfig.service.AiPromptExecutionService;
+import com.codegym.mathclass.aiconfig.service.PromptRenderService;
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.exception.AccessDeniedException;
 import com.codegym.mathclass.exception.BadRequestException;
@@ -24,9 +26,11 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -34,13 +38,16 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class AiGradingServiceImplTest {
 
-    private static final String GRADING_TASK_CODE = "ASSIGNMENT_GRADING";
+    private static final String GRADING_TASK_CODE = "SUBMISSION_GRADING";
 
     @Mock
     private SubmissionRepository submissionRepository;
 
     @Mock
     private AiPromptExecutionService aiPromptExecutionService;
+
+    @Mock
+    private PromptRenderService promptRenderService;
 
     @InjectMocks
     private AiGradingServiceImpl aiGradingService;
@@ -54,6 +61,9 @@ class AiGradingServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(promptRenderService.renderPrompt(any()))
+                .thenReturn(RenderPromptResponse.builder().renderedPrompt("Rendered grading prompt").build());
+
         teacher = new User();
         teacher.setId(teacherId);
         teacher.setEmail("teacher@codegym.com");

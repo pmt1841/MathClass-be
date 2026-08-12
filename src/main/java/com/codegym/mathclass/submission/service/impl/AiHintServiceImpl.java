@@ -20,7 +20,7 @@ import com.codegym.mathclass.submission.entity.SubmissionHint;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import com.codegym.mathclass.submission.repository.SubmissionHintRepository;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
-import com.codegym.mathclass.submission.service.SubmissionHintService;
+import com.codegym.mathclass.submission.service.AiHintService;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +37,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class SubmissionHintServiceImpl implements SubmissionHintService {
+public class AiHintServiceImpl implements AiHintService {
 
     private final SubmissionHintRepository submissionHintRepository;
     private final SubmissionRepository submissionRepository;
