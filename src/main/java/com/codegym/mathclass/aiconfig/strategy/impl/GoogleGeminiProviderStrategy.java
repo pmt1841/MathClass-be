@@ -139,6 +139,7 @@ public class GoogleGeminiProviderStrategy implements AiProviderStrategy {
                 .timeout(Duration.ofSeconds(120))
                 .uri(URI.create(targetUrl))
                 .header("Content-Type", "application/json")
+                .header("x-goog-api-key", apiKey)
                 .POST(HttpRequest.BodyPublishers.ofString(reqBody))
                 .build();
 
@@ -157,10 +158,10 @@ public class GoogleGeminiProviderStrategy implements AiProviderStrategy {
                 }
             }
             log.error("Google Gemini Provider returned HTTP status {} but invalid payload: {}", status, response.body());
-            throw new RuntimeException("Google Gemini Provider phản hồi không đúng cấu trúc dữ liệu");
+            throw new AiGenerationException(status, "Google Gemini Provider phản hồi không đúng cấu trúc dữ liệu");
         } else {
             log.error("Google Gemini Provider HTTP error status {}: {}", status, response.body());
-            throw new RuntimeException("Google Gemini Provider phản hồi lỗi HTTP " + status);
+            throw new AiGenerationException(status, "Gemini API returned HTTP " + status + ": " + response.body());
         }
     }
 

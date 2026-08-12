@@ -161,10 +161,10 @@ public class OpenAiProviderStrategy implements AiProviderStrategy {
                 }
             }
             log.error("OpenAI Compatible Provider returned HTTP status {} but invalid payload: {}", status, response.body());
-            throw new RuntimeException("AI Provider phản hồi không đúng cấu trúc dữ liệu");
+            throw new AiGenerationException(status, "AI Provider phản hồi không đúng cấu trúc dữ liệu");
         } else {
             log.error("OpenAI Compatible Provider HTTP error status {}: {}", status, response.body());
-            throw new RuntimeException("AI Provider phản hồi lỗi HTTP " + status);
+            throw new AiGenerationException(status, "OpenAI API returned HTTP " + status + ": " + response.body());
         }
     }
 

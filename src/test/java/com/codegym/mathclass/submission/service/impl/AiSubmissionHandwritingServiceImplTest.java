@@ -50,6 +50,29 @@ class AiSubmissionHandwritingServiceImplTest {
     }
 
     @Test
+    @DisplayName("convertHandwritingToLatex: Bóc tách dấu kẹp inline \\( và \\)")
+    void convertHandwritingToLatex_InlineParenthesisDelimiter_StripsDelimiters() {
+        HandwritingLatexRequest request = HandwritingLatexRequest.builder()
+                .imageData("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...")
+                .mimeType("image/png")
+                .build();
+
+        String rawAiOutput = "\\( x^2 + y^2 = 25 \\)";
+        when(aiPromptExecutionService.executePromptWithImage(
+                eq(AiSubmissionHandwritingServiceImpl.HANDWRITING_TASK_CODE),
+                any(String.class),
+                eq("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."),
+                eq("image/png"),
+                eq(1L)
+        )).thenReturn(rawAiOutput);
+
+        HandwritingLatexResponse response = aiSubmissionHandwritingService.convertHandwritingToLatex(request, 1L);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getLatex()).isEqualTo("x^2 + y^2 = 25");
+    }
+
+    @Test
     @DisplayName("normalizeSketchToGeometry: Trả về JSON hình học chuẩn")
     void normalizeSketchToGeometry_ValidRequest_ReturnsGeometryResponse() {
         SketchGeometryRequest request = SketchGeometryRequest.builder()

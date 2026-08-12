@@ -113,6 +113,8 @@ public class AiSubmissionHandwritingServiceImpl implements AiSubmissionHandwriti
             clean = clean.substring(2, clean.length() - 2).trim();
         } else if (clean.startsWith("\\[") && clean.endsWith("\\]") && clean.length() >= 4) {
             clean = clean.substring(2, clean.length() - 2).trim();
+        } else if (clean.startsWith("\\(") && clean.endsWith("\\)") && clean.length() >= 4) {
+            clean = clean.substring(2, clean.length() - 2).trim();
         }
         return clean;
     }
