@@ -444,10 +444,7 @@ public class DatabaseSeeder implements CommandLineRunner {
         }
 
         private void seedSystemPrompts() {
-                if (systemPromptRepository.count() > 0) {
-                        return;
-                }
-                log.info("[DatabaseSeeder] Creating sample system prompts...");
+                log.info("[DatabaseSeeder] Initializing or updating system prompts...");
 
                 String defaultHintPrompt = """
                                 Bạn là một trợ lý giáo viên môn {{subject}} xuất sắc và kiên nhẫn.
@@ -469,9 +466,13 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 4. Văn phong thân thiện, động viên.
 
                                 YÊU CẦU ĐỊNH DẠNG KATEX / CÔNG THỨC TOÁN (RẤT QUAN TRỌNG):
-                                1. TẤT CẢ công thức toán học, đại lượng, biến số (R, S, x, y, \\pi, \\alpha...), số đo và đơn vị (3\\text{ cm}, \\text{cm}^2...) BẮT BUỘC kẹp giữa 2 dấu đô-la $...$ (inline math) hoặc $$...$$ (block math).
-                                   - Ví dụ ĐÚNG: $R = 3\\text{ cm}$, $S = \\pi R^2$, $3,14$, $\\text{cm}^2$, $x$, $y$.
-                                2. TUYỆT ĐỐI KHÔNG sử dụng ngoặc tròn như (R = 3\\text{ cm}), (S = \\pi R^2), (R), (\\pi), \\(...\\) hay ngoặc vuông [...] để bọc công thức toán.
+                                1. TẤT CẢ công thức toán học, đại lượng, biến số (R, S, x, y, \\pi, \\alpha...), số đo và đơn vị (5\\text{ cm}, \\text{cm}^2...) BẮT BUỘC kẹp giữa 2 dấu đô-la $...$ (inline math) hoặc $$...$$ (block math).
+                                   - Ví dụ ĐÚNG: $R = 5\\text{ cm}$, $S = \\pi R^2$, $3,14$, $\\text{cm}^2$, $x$, $y$.
+                                2. QUY TẮC BỌC DẤU ĐÔ-LA $...$ VÀ DÙNG NGOẶC TRÒN:
+                                   - Dấu $ CHỈ bọc TRỰC TIẾP công thức toán, TUYỆT ĐỐI KHÔNG bọc chữ tiếng Việt thông thường (ví dụ SAI CẤM: $lấy$, $với$).
+                                   - TUYỆT ĐỐI KHÔNG lồng các dấu đô-la vào nhau (ví dụ SAI CẤM: $lấy $\\pi \\approx 3.14$$ -> ví dụ ĐÚNG: (lấy $\\pi \\approx 3.14$)).
+                                   - Các dấu ngoặc tròn trong văn bản tiếng Việt dùng để chú thích là HOÀN TOÀN HỢP LỆ (ví dụ ĐÚNG: (lấy $\\pi \\approx 3.14$) hoặc (với $R = 5\\text{ cm}$)).
+                                   - KHÔNG dùng ngoặc tròn hay \\(...\\) hay [...] để THAY THẾ cho dấu đô-la bọc công thức toán (ví dụ SAI: (R = 5\\text{ cm}) hay \\(R = 5\\text{ cm}\\) thay vì $R = 5\\text{ cm}$).
 
                                 YÊU CẦU ĐỊNH DẠNG JSON BẮT BUỘC:
                                 Phản hồi CHỈ trả về duy nhất một JSON Object hợp lệ, KHÔNG kèm văn bản hay giải thích bên ngoài, KHÔNG kẹp trong markdown fence ```json, đúng schema sau:
@@ -514,9 +515,13 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 2. Chấm điểm sơ bộ bài tự luận theo thang điểm {{max_score}} và viết DỰ THẢO lời nhận xét chi tiết bằng tiếng Việt, chỉ ra từng lỗi sai cụ thể trong lời giải.
 
                                 YÊU CẦU ĐỊNH DẠNG KATEX / CÔNG THỨC TOÁN (RẤT QUAN TRỌNG):
-                                1. TẤT CẢ công thức toán học, đại lượng, biến số (R, S, x, y, \\pi, \\alpha...), số đo và đơn vị (3\\text{ cm}, \\text{cm}^2...) trong draftFeedback BẮT BUỘC kẹp giữa 2 dấu đô-la $...$ (inline math) hoặc $$...$$ (block math).
-                                   - Ví dụ ĐÚNG: $R = 3\\text{ cm}$, $S = \\pi R^2$, $3,14$, $\\text{cm}^2$, $x$, $y$.
-                                2. TUYỆT ĐỐI KHÔNG sử dụng ngoặc tròn như (R = 3\\text{ cm}), (S = \\pi R^2), (R), (\\pi), \\(...\\) hay ngoặc vuông [...] để bọc công thức toán.
+                                1. TẤT CẢ công thức toán học, đại lượng, biến số (R, S, x, y, \\pi, \\alpha...), số đo và đơn vị (5\\text{ cm}, \\text{cm}^2...) trong draftFeedback BẮT BUỘC kẹp giữa 2 dấu đô-la $...$ (inline math) hoặc $$...$$ (block math).
+                                   - Ví dụ ĐÚNG: $R = 5\\text{ cm}$, $S = \\pi R^2$, $3,14$, $\\text{cm}^2$, $x$, $y$.
+                                2. QUY TẮC BỌC DẤU ĐÔ-LA $...$ VÀ DÙNG NGOẶC TRÒN:
+                                   - Dấu $ CHỈ bọc TRỰC TIẾP công thức toán, TUYỆT ĐỐI KHÔNG bọc chữ tiếng Việt thông thường (ví dụ SAI CẤM: $lấy$, $với$).
+                                   - TUYỆT ĐỐI KHÔNG lồng các dấu đô-la vào nhau (ví dụ SAI CẤM: $lấy $\\pi \\approx 3.14$$ -> ví dụ ĐÚNG: (lấy $\\pi \\approx 3.14$)).
+                                   - Các dấu ngoặc tròn trong văn bản tiếng Việt dùng để chú thích là HOÀN TOÀN HỢP LỆ (ví dụ ĐÚNG: (lấy $\\pi \\approx 3.14$) hoặc (với $R = 5\\text{ cm}$)).
+                                   - KHÔNG dùng ngoặc tròn hay \\(...\\) hay [...] để THAY THẾ cho dấu đô-la bọc công thức toán (ví dụ SAI: (R = 5\\text{ cm}) hay \\(R = 5\\text{ cm}\\) thay vì $R = 5\\text{ cm}$).
 
                                 YÊU CẦU ĐỊNH DẠNG JSON BẮT BUỘC:
                                 Phản hồi CHỈ trả về duy nhất một JSON Object hợp lệ, KHÔNG kèm văn bản hay giải thích bên ngoài, KHÔNG kẹp trong markdown fence ```json, đúng schema sau:
@@ -538,9 +543,13 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 - Dạng bài: {{question_type}}
 
                                 YÊU CẦU ĐỊNH DẠNG KATEX / CÔNG THỨC TOÁN (RẤT QUAN TRỌNG):
-                                1. TẤT CẢ công thức toán học, đại lượng, biến số (R, S, x, y, \\pi, \\alpha...), số đo và đơn vị (3\\text{ cm}, \\text{cm}^2...) trong 'content' và 'explanation' BẮT BUỘC kẹp giữa 2 dấu đô-la $...$ (inline math) hoặc $$...$$ (block math).
-                                   - Ví dụ ĐÚNG: $x^2 + 2x + 1 = 0$, $\\frac{a}{b}$, $R = 3\\text{ cm}$, $S = \\pi R^2$.
-                                2. TUYỆT ĐỐI KHÔNG sử dụng ngoặc tròn như (R = 3\\text{ cm}), (S = \\pi R^2), (R), (\\pi), \\(...\\) hay ngoặc vuông [...] để bọc công thức toán.
+                                1. TẤT CẢ công thức toán học, đại lượng, biến số (R, S, x, y, \\pi, \\alpha...), số đo và đơn vị (5\\text{ cm}, \\text{cm}^2...) trong 'content' và 'explanation' BẮT BUỘC kẹp giữa 2 dấu đô-la $...$ (inline math) hoặc $$...$$ (block math).
+                                   - Ví dụ ĐÚNG: $x^2 + 2x + 1 = 0$, $\\frac{a}{b}$, $R = 5\\text{ cm}$, $S = \\pi R^2$, $\\pi \\approx 3.14$.
+                                2. QUY TẮC BỌC DẤU ĐÔ-LA $...$ VÀ DÙNG NGOẶC TRÒN:
+                                   - Dấu $ CHỈ bọc TRỰC TIẾP công thức toán, TUYỆT ĐỐI KHÔNG bọc chữ tiếng Việt thông thường (ví dụ SAI CẤM: $lấy$, $với$).
+                                   - TUYỆT ĐỐI KHÔNG lồng các dấu đô-la vào nhau (ví dụ SAI CẤM: $lấy $\\pi \\approx 3.14$$ -> ví dụ ĐÚNG: (lấy $\\pi \\approx 3.14$)).
+                                   - Các dấu ngoặc tròn trong văn bản tiếng Việt dùng để chú thích là HOÀN TOÀN HỢP LỆ (ví dụ ĐÚNG: (lấy $\\pi \\approx 3.14$) hoặc (với $R = 5\\text{ cm}$)).
+                                   - KHÔNG dùng ngoặc tròn hay \\(...\\) hay [...] để THAY THẾ cho dấu đô-la bọc công thức toán (ví dụ SAI: (R = 5\\text{ cm}) hay \\(R = 5\\text{ cm}\\) thay vì $R = 5\\text{ cm}$).
 
                                 Yêu cầu nội dung bổ sung:
                                 1. CHÚ Ý YÊU CẦU vẽ hình/đồ thị: {{canvas_requirement}}
@@ -571,83 +580,48 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 - Khi đề toán có đường tròn, BẮT BUỘC phải tạo điểm tâm (dạng "point"), tạo các điểm trên đường tròn, và thêm phần tử "circle" với "centerId" và "radius" hoặc "pointId".
                                 """;
 
-                SystemPrompt p1 = SystemPrompt.builder()
-                                .code("PROMPT_STUDENT_HINT")
-                                .name("Prompt Gợi ý Tư duy Làm bài")
-                                .taskCode("STUDENT_HINT")
-                                .defaultContent(defaultHintPrompt)
-                                .currentContent(defaultHintPrompt)
-                                .allowedVariables("title,problem_content,student_content,subject")
-                                .description("Đưa ra gợi ý định hướng từng bước theo phương pháp Socratic, tuyệt đối không cho đáp án trực tiếp.")
-                                .status(SystemPromptStatus.ACTIVE)
-                                .build();
-                SystemPrompt savedP1 = systemPromptRepository.save(p1);
-                systemPromptHistoryRepository.save(SystemPromptHistory.builder()
-                                .prompt(savedP1)
-                                .version(1)
-                                .content(savedP1.getDefaultContent())
-                                .changeReason("Khởi tạo System Prompt ban đầu")
-                                .createdBy("SYSTEM")
-                                .build());
+                upsertSystemPrompt("PROMPT_STUDENT_HINT", "Prompt Gợi ý Tư duy Làm bài", "STUDENT_HINT", defaultHintPrompt,
+                                "title,problem_content,student_content,subject",
+                                "Đưa ra gợi ý định hướng từng bước theo phương pháp Socratic, tuyệt đối không cho đáp án trực tiếp.");
+                upsertSystemPrompt("PROMPT_LATEX_CANVAS", "Prompt Ép chuẩn mã LaTeX / Canvas", "LATEX_CANVAS_FORMAT", defaultLatexPrompt,
+                                "math_expression,math_format",
+                                "Đảm bảo AI chỉ trả về mã LaTeX/KaTeX hợp lệ.");
+                upsertSystemPrompt("PROMPT_SUBMISSION_GRADING", "Prompt Chấm bài tự luận tự động", "SUBMISSION_GRADING", defaultGradingPrompt,
+                                "title,problem_content,student_content,max_score,subject",
+                                "Chấm điểm và nhận xét chi tiết bài làm tự luận.");
+                upsertSystemPrompt("PROMPT_QUESTION_GEN", "Prompt Sinh Bài tập Toán", "QUESTION_GEN", defaultQuestionGenPrompt,
+                                "grade_level,difficulty,topic,question_type,canvas_requirement",
+                                "Tự động tạo bài tập tự luận môn Toán.");
+        }
 
-                SystemPrompt p2 = SystemPrompt.builder()
-                                .code("PROMPT_LATEX_CANVAS")
-                                .name("Prompt Ép chuẩn mã LaTeX / Canvas")
-                                .taskCode("LATEX_CANVAS_FORMAT")
-                                .defaultContent(defaultLatexPrompt)
-                                .currentContent(defaultLatexPrompt)
-                                .allowedVariables("math_expression,math_format")
-                                .description("Đảm bảo AI chỉ trả về mã LaTeX/KaTeX hợp lệ.")
-                                .status(SystemPromptStatus.ACTIVE)
-                                .build();
-                SystemPrompt savedP2 = systemPromptRepository.save(p2);
-                systemPromptHistoryRepository.save(SystemPromptHistory.builder()
-                                .prompt(savedP2)
-                                .version(1)
-                                .content(savedP2.getDefaultContent())
-                                .changeReason("Khởi tạo System Prompt ban đầu")
-                                .createdBy("SYSTEM")
-                                .build());
-
-                SystemPrompt p3 = SystemPrompt.builder()
-                                .code("PROMPT_SUBMISSION_GRADING")
-                                .name("Prompt Chấm bài tự luận tự động")
-                                .taskCode("SUBMISSION_GRADING")
-                                .defaultContent(defaultGradingPrompt)
-                                .currentContent(defaultGradingPrompt)
-                                .allowedVariables(
-                                                "title,problem_content,student_content,max_score,subject")
-                                .description("Chấm điểm và nhận xét chi tiết bài làm tự luận.")
-                                .status(SystemPromptStatus.ACTIVE)
-                                .build();
-                SystemPrompt savedP3 = systemPromptRepository.save(p3);
-                systemPromptHistoryRepository.save(SystemPromptHistory.builder()
-                                .prompt(savedP3)
-                                .version(1)
-                                .content(savedP3.getDefaultContent())
-                                .changeReason("Khởi tạo System Prompt ban đầu")
-                                .createdBy("SYSTEM")
-                                .build());
-
-                SystemPrompt p4 = SystemPrompt.builder()
-                                .code("PROMPT_QUESTION_GEN")
-                                .name("Prompt Sinh Bài tập Toán")
-                                .taskCode("QUESTION_GEN")
-                                .defaultContent(defaultQuestionGenPrompt)
-                                .currentContent(defaultQuestionGenPrompt)
-                                .allowedVariables(
-                                                "grade_level,difficulty,topic,question_type,canvas_requirement")
-                                .description("Tự động tạo bài tập tự luận môn Toán.")
-                                .status(SystemPromptStatus.ACTIVE)
-                                .build();
-                SystemPrompt savedP4 = systemPromptRepository.save(p4);
-                systemPromptHistoryRepository.save(SystemPromptHistory.builder()
-                                .prompt(savedP4)
-                                .version(1)
-                                .content(savedP4.getDefaultContent())
-                                .changeReason("Khởi tạo System Prompt ban đầu")
-                                .createdBy("SYSTEM")
-                                .build());
+        private void upsertSystemPrompt(String code, String name, String taskCode, String defaultContent,
+                        String allowedVariables, String description) {
+                Optional<SystemPrompt> existingOpt = systemPromptRepository.findByCode(code);
+                if (existingOpt.isPresent()) {
+                        SystemPrompt existing = existingOpt.get();
+                        existing.setDefaultContent(defaultContent);
+                        existing.setCurrentContent(defaultContent);
+                        systemPromptRepository.save(existing);
+                } else {
+                        SystemPrompt p = SystemPrompt.builder()
+                                        .code(code)
+                                        .name(name)
+                                        .taskCode(taskCode)
+                                        .defaultContent(defaultContent)
+                                        .currentContent(defaultContent)
+                                        .allowedVariables(allowedVariables)
+                                        .description(description)
+                                        .status(SystemPromptStatus.ACTIVE)
+                                        .build();
+                        SystemPrompt savedP = systemPromptRepository.save(p);
+                        systemPromptHistoryRepository.save(SystemPromptHistory.builder()
+                                        .prompt(savedP)
+                                        .version(1)
+                                        .content(savedP.getDefaultContent())
+                                        .changeReason("Khởi tạo System Prompt ban đầu")
+                                        .createdBy("SYSTEM")
+                                        .build());
+                }
         }
 
         private User createUser(String email, String fullName, String password, String phone, Role role, Gender gender,
