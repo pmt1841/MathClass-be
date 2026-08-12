@@ -329,7 +329,6 @@ public class AiCreditServiceImpl implements AiCreditService {
         UserAiAccount account = getOrCreateAccount(userId);
         List<CreditCostItem> costs = aiCreditConfigRepository.findAllByOrderByTaskAsc().stream()
                 .filter(config -> Boolean.TRUE.equals(config.getEnabled()))
-                .filter(config -> !"HANDWRITING_LATEX".equalsIgnoreCase(config.getTask()) && !"SKETCH_GEOMETRY".equalsIgnoreCase(config.getTask()))
                 .map(config -> CreditCostItem.builder()
                         .task(config.getTask())
                         .costPerCall(config.getCostPerCall())

@@ -24,18 +24,22 @@
 
 ## 3. System Tasks & Admin Configuration
 
+Dự án quy về 1 mã Task Code dùng chung duy nhất cho các tính năng trên Canvas / Chữ viết tay:
+
 | Task Code | Feature Description | Default Cost (Credits) | Tokens Per Credit |
 | :--- | :--- | :--- | :--- |
-| `HANDWRITING_LATEX` | Chuyển chữ viết tay/ảnh chụp công thức sang mã LaTeX | 2 credits | 1000 tokens |
-| `SKETCH_GEOMETRY` | Nắn chỉnh nét vẽ phác thảo thành hình vẽ Canvas chuẩn hóa | 2 credits | 1000 tokens |
+| `CANVAS_LATEX` | Trợ lý AI Canvas (Số hóa chữ viết tay sang LaTeX & Nắn chỉnh nét vẽ phác thảo sang Canvas) | 2 credits | 1000 tokens |
 
 ---
 
 ## 4. API Endpoints Specification
 
+Cả 2 REST APIs bên dưới đều sử dụng mã task `CANVAS_LATEX` khi gọi `AiPromptExecutionService` để trừ credit và tính chi phí tập trung:
+
 ### 4.1. Handwriting to LaTeX API
 - **Endpoint:** `POST /api/v1/submissions/ai/handwriting-to-latex`
 - **Security:** `@PreAuthorize("isAuthenticated()")`
+- **Task Code:** `CANVAS_LATEX`
 - **Request Body (`HandwritingLatexRequest`):**
   ```json
   {
@@ -58,6 +62,7 @@
 ### 4.2. Freehand Sketch to Geometry API
 - **Endpoint:** `POST /api/v1/submissions/ai/sketch-to-geometry`
 - **Security:** `@PreAuthorize("isAuthenticated()")`
+- **Task Code:** `CANVAS_LATEX`
 - **Request Body (`SketchGeometryRequest`):**
   ```json
   {
@@ -101,8 +106,7 @@ Implement `executePromptWithImage` in `GoogleGeminiProviderStrategy` and `OpenAi
 ## 6. Frontend Integration (`MathClass-fe`)
 
 1. **Components:**
-   - `<HandwritingLatexModal />`: Canvas drawing pad for handwriting / Image upload file input + KaTeX Preview & insert button.
-   - `<SketchGeometryModal />` or `<SketchPadCanvas />`: Sketch pad for geometry + auto-normalization button -> feeds normalized geometry JSON into `<JsxGraphBoard />`.
+   - `<HandwritingSketchModal />`: Canvas drawing pad cho cả 2 tab (Chữ viết tay ➔ LaTeX và Phác thảo nét ➔ Canvas chuẩn) + Tải ảnh + KaTeX Preview / JSXGraph Live Preview.
 2. **Services & Hooks:**
-   - `submissionAiGradingService.ts` / `submissionHandwritingService.ts`: REST API client calls.
-   - `useAiFeatures.ts`: Feature flags for `HANDWRITING_LATEX` & `SKETCH_GEOMETRY`.
+   - `handwritingService.ts`: REST API client calls (`convertHandwritingToLatex`, `normalizeSketchToGeometry`).
+   - `useAiFeatures.ts`: Feature flag kiểm tra theo mã `CANVAS_LATEX`.
