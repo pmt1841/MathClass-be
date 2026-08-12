@@ -194,13 +194,7 @@ public class AiGradingServiceImpl implements AiGradingService {
     }
 
     private String normalizeKatexDelimiters(String content) {
-        if (content == null || content.isBlank()) {
-            return "";
-        }
-        String result = content.replaceAll("\\\\\\((.*?)\\\\\\)", "\\$$1\\$");
-        result = result.replaceAll("\\\\[(.*?)\\\\]", "\\$\\$$1\\$\\$");
-        result = result.replaceAll("\\(([^\\)]*\\\\(?:text|pi|frac|sqrt|alpha|beta|theta|cm|degree)[^\\)]*)\\)", "\\$$1\\$");
-        return result;
+        return com.codegym.mathclass.utils.LaTeXSanitizer.normalizeKatexDelimiters(content);
     }
 
     /**

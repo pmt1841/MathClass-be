@@ -71,4 +71,35 @@ public class LaTeXSanitizer {
         }
         return null;
     }
+
+    /**
+     * Chuẩn hóa dấu phân cách KaTeX trong văn bản do AI sinh ra.
+     * Chuyển các định dạng LaTeX không chuẩn (\(... \), \[... \], ngoặc tròn thừa) thành $...$ và $$...$$.
+     * Đồng thời xử lý các trường hợp AI lầm tưởng bọc $ vào từ tiếng Việt gây lồng $.
+     *
+     * @param content nội dung văn bản chứa KaTeX
+     * @return nội dung đã được chuẩn hóa dấu phân cách KaTeX
+     */
+    public static String normalizeKatexDelimiters(String content) {
+        if (content == null || content.isBlank()) {
+            return "";
+        }
+        String result = content;
+
+        // 1. Chuyển \( ... \) thành $...$
+        result = java.util.regex.Pattern.compile("\\\\\\((.*?)\\\\\\)", java.util.regex.Pattern.DOTALL).matcher(result).replaceAll("\\$$1\\$");
+
+        // 2. Chuyển \[ ... \] thành $$...$$
+        result = java.util.regex.Pattern.compile("\\\\\\[(.*?)\\\\\\]", java.util.regex.Pattern.DOTALL).matcher(result).replaceAll("\\$\\$$1\\$\\$");
+
+        // 3. Khắc phục lỗi AI lầm tưởng bọc $ vào chữ tiếng Việt và lồng $ như:
+        // $lấy $\pi \approx 3.14$$ -> (lấy $\pi \approx 3.14$)
+        result = result.replaceAll("\\$([a-zA-ZÀ-ỹ\\s]+?)\\s*\\$([^\\$\\n]+?)\\$\\$", "($1 \\$$2\\$)");
+
+        // 4. Chuyển ngoặc tròn chứa lệnh LaTeX (nhưng KHÔNG chứa dấu $) như (R = 5\text{ cm}) thành $R = 5\text{ cm}$
+        // Dùng [^\)\$]* để không can thiệp vào ngoặc tròn đã bọc $ sẵn như (lấy $\pi \approx 3.14$).
+        result = result.replaceAll("\\(([^\\)\\$]*\\\\(?:text|pi|frac|sqrt|alpha|beta|theta|cm|degree)[^\\)\\$]*)\\)", "\\$$1\\$");
+
+        return result;
+    }
 }

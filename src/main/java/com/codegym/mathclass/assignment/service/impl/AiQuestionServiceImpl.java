@@ -21,6 +21,7 @@ import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.codegym.mathclass.utils.LaTeXSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -274,12 +275,6 @@ public class AiQuestionServiceImpl implements AiQuestionService {
     }
 
     private String normalizeKatexDelimiters(String content) {
-        if (content == null || content.isBlank()) {
-            return "";
-        }
-        String result = content.replaceAll("\\\\\\((.*?)\\\\\\)", "\\$$1\\$");
-        result = result.replaceAll("\\\\[(.*?)\\\\]", "\\$\\$$1\\$\\$");
-        result = result.replaceAll("\\(([^\\)]*\\\\(?:text|pi|frac|sqrt|alpha|beta|theta|cm|degree)[^\\)]*)\\)", "\\$$1\\$");
-        return result;
+        return LaTeXSanitizer.normalizeKatexDelimiters(content);
     }
 }
