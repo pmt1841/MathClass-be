@@ -97,6 +97,77 @@ public class OpenAiProviderStrategy implements AiProviderStrategy {
         }
     }
 
+    @Override
+    public AiExecutionResult executePromptWithImage(Provider provider, TaskConfig config, String apiKey,
+                                                    String prompt, String base64Image, String mimeType) throws Exception {
+        if (base64Image == null || base64Image.trim().isEmpty()) {
+            return executePrompt(provider, config, apiKey, prompt);
+        }
+
+        String actualMime = (mimeType != null && !mimeType.trim().isEmpty()) ? mimeType.trim() : "image/png";
+        String imageUrl = base64Image.startsWith("data:")
+                ? base64Image
+                : "data:" + actualMime + ";base64," + base64Image;
+
+        String baseUrlStr = provider.getBaseUrl() != null && !provider.getBaseUrl().trim().isEmpty()
+                ? provider.getBaseUrl().trim().replaceAll("/+$", "")
+                : "https://api.openai.com/v1";
+
+        String model = config.getModel() != null ? config.getModel() : "gpt-4o-mini";
+        String targetUrl = baseUrlStr + "/chat/completions";
+
+        List<Map<String, Object>> userContent = List.of(
+                Map.of("type", "text", "text", prompt),
+                Map.of("type", "image_url", "image_url", Map.of("url", imageUrl))
+        );
+
+        Map<String, Object> openAiPayload = Map.of(
+                "model", model,
+                "messages", List.of(
+                        Map.of("role", "system", "content", "Bạn là trợ lý toán học."),
+                        Map.of("role", "user", "content", userContent)
+                ),
+                "max_tokens", config.getMaxToken() != null ? config.getMaxToken() : 1024,
+                "temperature", config.getTemperature() != null ? config.getTemperature().doubleValue() : 0.4
+        );
+
+        String reqBody = objectMapper.writeValueAsString(openAiPayload);
+
+        HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
+                .timeout(Duration.ofSeconds(120))
+                .uri(URI.create(targetUrl))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(reqBody));
+
+        if (provider.getAuthHeaderName() != null && !provider.getAuthHeaderName().trim().isEmpty()) {
+            String prefix = provider.getAuthHeaderPrefix() != null ? provider.getAuthHeaderPrefix().trim() + " " : "";
+            reqBuilder.header(provider.getAuthHeaderName().trim(), prefix + apiKey);
+        } else {
+            reqBuilder.header("Authorization", "Bearer " + apiKey);
+        }
+
+        HttpResponse<String> response = httpClient.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofString());
+        int status = response.statusCode();
+
+        if (status >= 200 && status < 300) {
+            JsonNode root = objectMapper.readTree(response.body());
+            JsonNode choices = root.path("choices");
+            if (choices.isArray() && !choices.isEmpty()) {
+                JsonNode message = choices.get(0).path("message");
+                if (message.has("content")) {
+                    String content = message.path("content").asText("");
+                    Integer completionTokens = parseCompletionTokens(root);
+                    return new AiExecutionResult(content, completionTokens);
+                }
+            }
+            log.error("OpenAI Compatible Provider returned HTTP status {} but invalid payload: {}", status, response.body());
+            throw new AiGenerationException(status, "AI Provider phản hồi không đúng cấu trúc dữ liệu");
+        } else {
+            log.error("OpenAI Compatible Provider HTTP error status {}: {}", status, response.body());
+            throw new AiGenerationException(status, "OpenAI API returned HTTP " + status + ": " + response.body());
+        }
+    }
+
     /**
      * Đọc số token đầu ra từ response OpenAI-compatible:
      * ưu tiên {@code usage.completion_tokens}, fallback
