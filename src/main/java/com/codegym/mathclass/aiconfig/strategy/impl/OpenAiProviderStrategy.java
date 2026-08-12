@@ -5,6 +5,7 @@ import com.codegym.mathclass.aiconfig.entity.ProviderProtocol;
 import com.codegym.mathclass.aiconfig.entity.TaskConfig;
 import com.codegym.mathclass.aiconfig.strategy.AiExecutionResult;
 import com.codegym.mathclass.aiconfig.strategy.AiProviderStrategy;
+import com.codegym.mathclass.assignment.exception.AiGenerationException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -33,31 +35,35 @@ public class OpenAiProviderStrategy implements AiProviderStrategy {
     }
 
     @Override
-    public AiExecutionResult executePrompt(Provider provider, TaskConfig config, String apiKey, String prompt) throws Exception {
+    public AiExecutionResult executePrompt(Provider provider, TaskConfig config, String apiKey, String prompt)
+            throws Exception {
         String baseUrlStr = provider.getBaseUrl() != null && !provider.getBaseUrl().trim().isEmpty()
                 ? provider.getBaseUrl().trim().replaceAll("/+$", "")
                 : "https://api.openai.com/v1";
 
-        String model = config.getModel() != null ? config.getModel() : "gpt-3.5-turbo";
-        String targetUrl = baseUrlStr + "/chat/completions";
+        if (!baseUrlStr.endsWith("/chat/completions")) {
+            baseUrlStr = baseUrlStr.endsWith("/") ? baseUrlStr + "chat/completions" : baseUrlStr + "/chat/completions";
+        }
 
-        Map<String, Object> openAiPayload = Map.of(
-                "model", model,
-                "messages", List.of(
-                        Map.of("role", "system", "content", "Bạn là trợ lý toán học."),
-                        Map.of("role", "user", "content", prompt)
-                ),
-                "max_tokens", config.getMaxToken() != null ? config.getMaxToken() : 512,
-                "temperature", config.getTemperature() != null ? config.getTemperature().doubleValue() : 0.4
-        );
+        String rawModel = config.getModel() != null ? config.getModel() : "gpt-3.5-turbo";
+        String model = rawModel.startsWith("models/") ? rawModel.substring(7) : rawModel;
+
+        Map<String, Object> openAiPayload = new HashMap<>();
+        openAiPayload.put("model", model);
+        openAiPayload.put("messages", List.of(
+                Map.of("role", "user", "content", prompt)));
+        openAiPayload.put("max_tokens", config.getMaxToken() != null ? config.getMaxToken() : 512);
+        openAiPayload.put("temperature", config.getTemperature() != null ? config.getTemperature().doubleValue() : 0.4);
+
+        if (prompt != null && (prompt.contains("JSON") || prompt.contains("json"))) {
+            openAiPayload.put("response_format", Map.of("type", "json_object"));
+        }
 
         String reqBody = objectMapper.writeValueAsString(openAiPayload);
-        
+
         HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
-                // Timeout 120s: prompt dài (ví dụ chấm bài tự luận MAT-250 kèm dữ liệu hình vẽ Canvas)
-                // cần thời gian generate lâu hơn nhiều so với 30s mặc định. Áp dụng cho mọi task AI.
                 .timeout(Duration.ofSeconds(120))
-                .uri(URI.create(targetUrl))
+                .uri(URI.create(baseUrlStr))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(reqBody));
 
@@ -82,17 +88,19 @@ public class OpenAiProviderStrategy implements AiProviderStrategy {
                     return new AiExecutionResult(content, completionTokens);
                 }
             }
-            log.error("OpenAI Compatible Provider returned HTTP status {} but invalid payload: {}", status, response.body());
-            throw new RuntimeException("AI Provider phản hồi không đúng cấu trúc dữ liệu");
+            log.error("OpenAI Compatible Provider returned HTTP status {} but invalid payload: {}", status,
+                    response.body());
+            throw new AiGenerationException(status, "AI Provider phản hồi không đúng cấu trúc dữ liệu");
         } else {
             log.error("OpenAI Compatible Provider HTTP error status {}: {}", status, response.body());
-            throw new RuntimeException("AI Provider phản hồi lỗi HTTP " + status);
+            throw new AiGenerationException(status, "OpenAI API returned HTTP " + status + ": " + response.body());
         }
     }
 
     /**
      * Đọc số token đầu ra từ response OpenAI-compatible:
-     * ưu tiên {@code usage.completion_tokens}, fallback {@code usage.output_tokens}.
+     * ưu tiên {@code usage.completion_tokens}, fallback
+     * {@code usage.output_tokens}.
      * Trả về {@code null} khi không có thông tin usage.
      */
     static Integer parseCompletionTokens(JsonNode root) {

@@ -74,4 +74,14 @@ public class CreditController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(creditPurchaseService.completePurchase(userDetails.getId(), orderId));
     }
+
+    @Operation(summary = "Hoàn lại credit cho tác vụ AI khi người dùng bấm Hủy tiến trình")
+    @PostMapping("/refund-task")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<java.util.Map<String, String>> refundTask(
+            @org.springframework.web.bind.annotation.RequestParam String task,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        aiCreditService.refundTaskIfReserved(userDetails.getId(), task);
+        return ResponseEntity.ok(java.util.Map.of("message", "Đã hoàn lại credit cho tác vụ " + task));
+    }
 }

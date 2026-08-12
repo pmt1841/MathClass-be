@@ -72,19 +72,24 @@ Sau khi chỉnh sửa code, AI **BẮT BUỘC** phải tự động chạy kiể
 Khi người dùng yêu cầu AI tạo nhánh, tạo commit hoặc push code lên GitHub, AI **BẮT BUỘC** phải tuân thủ các quy tắc sau:
 
 > 💡 **Ghi chú về `<mã-task-jira>`:**
+>
 > - **Tên nhánh:** Ưu tiên sử dụng mã **Main Task / Story / Bug ID** (để quản lý theo tính năng hoặc lỗi tổng thể).
 > - **Commit Message:** Ưu tiên sử dụng mã **Sub-task / Sub-bug ID** (nếu task/bug được chia nhỏ thành Sub-task trên Jira), hoặc mã **Main Task / Bug ID** (nếu làm việc trực tiếp trên Ticket chính).
 
-### 🌿 Quy tắc đặt tên nhánh (Branch Naming):
+### 🌿 Quy tắc đặt tên nhánh (Branch Naming)
+
 Cấu trúc bắt buộc: `<type>/<mã-task-jira>/<tên-tính-năng>` (tên tính năng dùng `kebab-case`).
+
 - `feature/<mã-task-jira>/<tên-tính-năng>` : Phát triển tính năng mới (ví dụ: `feature/MAT-101/user-avatar-upload`)
-- `fix/<mã-task-jira>/<tên-lỗi>` : Sửa lỗi / Bugfix (ví dụ: `fix/MAT-205/jwt-expiration-error`)
+- `bugfix/<mã-task-jira>/<tên-lỗi>` : Sửa lỗi / Bugfix (ví dụ: `fix/MAT-205/jwt-expiration-error`)
 - `refactor/<mã-task-jira>/<tên-mô-tả>` : Tối ưu hóa, cấu trúc lại code (ví dụ: `refactor/MAT-302/submission-service`)
 - `test/<mã-task-jira>/<tên-mô-tả>` : Bổ sung kiểm thử / test suite (ví dụ: `test/MAT-401/classroom-integration`)
 - `chore/<mã-task-jira>/<tên-mô-tả>` : Cấu hình dependencies, Docker, CI/CD (ví dụ: `chore/MAT-500/update-gradle`)
 
-### 💬 Quy tắc Commit Message (Conventional Commits):
+### 💬 Quy tắc Commit Message (Conventional Commits)
+
 Cấu trúc: `<type>(<mã-task-jira>): <nội dung mô tả ngắn gọn>`
+
 - `feat(MAT-101): bổ sung API upload ảnh đại diện cá nhân`
 - `fix(MAT-205): sửa lỗi hết hạn token JWT khi gọi API`
 - `refactor(MAT-302): tối ưu hóa query JPA lấy danh sách học sinh`

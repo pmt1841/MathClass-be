@@ -23,7 +23,7 @@ import java.util.Optional;
  * Trạng thái bật/tắt các tính năng AI cho giao diện người dùng (giáo viên/học sinh).
  *
  * Giúp FE ẩn các nút tính năng AI khi admin CHƯA cấu hình hoặc đã TẮT task tương ứng
- * (ví dụ: nút "AI chấm sơ bộ" chỉ hiển thị khi task ASSIGNMENT_GRADING được bật).
+ * (ví dụ: nút "AI chấm sơ bộ" chỉ hiển thị khi task SUBMISSION_GRADING được bật).
  *
  * Khác với TaskConfigController (admin-only), endpoint này cho phép mọi user đã đăng nhập.
  */
@@ -36,11 +36,10 @@ public class AiFeatureController {
 
     /** Các tính năng AI cần expose cho giao diện người dùng (đồng bộ với SYSTEM_TASKS phía FE). */
     public static final List<String> FEATURE_TASKS = List.of(
-            "ASSIGNMENT_GRADING",
+            "SUBMISSION_GRADING",
             "STUDENT_HINT",
             "QUESTION_GEN",
             "CANVAS_LATEX",
-            "CONTENT_SUMMARIZATION",
             "ERROR_ANALYSIS"
     );
 

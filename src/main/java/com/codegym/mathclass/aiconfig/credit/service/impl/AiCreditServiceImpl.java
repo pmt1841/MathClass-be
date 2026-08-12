@@ -146,8 +146,26 @@ public class AiCreditServiceImpl implements AiCreditService {
             account.setTotalSpent(Math.max(0, account.getTotalSpent() - cost));
             userAiAccountRepository.save(account);
             recordTransaction(userId, cost, CreditTransactionType.REFUND, task, null,
-                    "Hoàn credit do lỗi khi gọi AI tác vụ " + task);
+                    "Hoàn credit do hủy hoặc lỗi khi gọi AI tác vụ " + task);
         });
+    }
+
+    @Override
+    @Transactional
+    public void refundTaskIfReserved(Long userId, String task) {
+        if (userId == null || task == null || task.isBlank()) {
+            return;
+        }
+        Optional<AiCreditConfig> creditCfg = getCreditConfig(task);
+        if (creditCfg.isEmpty() || !Boolean.TRUE.equals(creditCfg.get().getEnabled())) {
+            return;
+        }
+        int costPerCall = creditCfg.get().getCostPerCall() != null ? creditCfg.get().getCostPerCall() : 0;
+        Integer tokensPerCredit = creditCfg.get().getTokensPerCredit();
+        int reserved = AiCreditService.estimateCredits(512, costPerCall, tokensPerCredit);
+        if (reserved > 0) {
+            refund(userId, task, reserved);
+        }
     }
 
     @Override

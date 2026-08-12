@@ -4,7 +4,7 @@ import com.codegym.mathclass.submission.dto.request.StudentHintRequest;
 import com.codegym.mathclass.submission.dto.response.HintHistoryResponse;
 import com.codegym.mathclass.submission.dto.response.StudentHintResponse;
 
-public interface SubmissionHintService {
+public interface AiHintService {
 
     StudentHintResponse requestHint(Long assignmentId, StudentHintRequest request, String studentEmail);
 

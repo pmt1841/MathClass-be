@@ -43,7 +43,7 @@ class AiFeatureControllerTest {
         provider.setId(1L);
         provider.setStatus(providerStatus);
         TaskConfig config = new TaskConfig();
-        config.setTask("ASSIGNMENT_GRADING");
+        config.setTask("SUBMISSION_GRADING");
         config.setEnabled(enabled);
         config.setProvider(provider);
         return config;
@@ -56,60 +56,59 @@ class AiFeatureControllerTest {
         @Test
         @DisplayName("Should return true for configured + enabled task with ACTIVE provider")
         void getFeatures_enabledTask_returnsTrue() throws Exception {
-            when(taskConfigRepository.findByTask("ASSIGNMENT_GRADING"))
+            when(taskConfigRepository.findByTask("SUBMISSION_GRADING"))
                     .thenReturn(Optional.of(taskConfig(true, ProviderStatus.ACTIVE)));
 
             mockMvc.perform(get("/ai/features"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.ASSIGNMENT_GRADING").value(true));
+                    .andExpect(jsonPath("$.SUBMISSION_GRADING").value(true));
         }
 
         @Test
         @DisplayName("Should return false for tasks not configured in database")
         void getFeatures_notConfigured_returnsFalse() throws Exception {
-            when(taskConfigRepository.findByTask("ASSIGNMENT_GRADING")).thenReturn(Optional.empty());
+            when(taskConfigRepository.findByTask("SUBMISSION_GRADING")).thenReturn(Optional.empty());
 
             mockMvc.perform(get("/ai/features"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.ASSIGNMENT_GRADING").value(false))
+                    .andExpect(jsonPath("$.SUBMISSION_GRADING").value(false))
                     .andExpect(jsonPath("$.STUDENT_HINT").value(false));
         }
 
         @Test
         @DisplayName("Should return false when task config is disabled (enabled=false)")
         void getFeatures_taskDisabled_returnsFalse() throws Exception {
-            when(taskConfigRepository.findByTask("ASSIGNMENT_GRADING"))
+            when(taskConfigRepository.findByTask("SUBMISSION_GRADING"))
                     .thenReturn(Optional.of(taskConfig(false, ProviderStatus.ACTIVE)));
 
             mockMvc.perform(get("/ai/features"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.ASSIGNMENT_GRADING").value(false));
+                    .andExpect(jsonPath("$.SUBMISSION_GRADING").value(false));
         }
 
         @Test
         @DisplayName("Should return false when linked provider is INACTIVE")
         void getFeatures_providerInactive_returnsFalse() throws Exception {
-            when(taskConfigRepository.findByTask("ASSIGNMENT_GRADING"))
+            when(taskConfigRepository.findByTask("SUBMISSION_GRADING"))
                     .thenReturn(Optional.of(taskConfig(true, ProviderStatus.INACTIVE)));
 
             mockMvc.perform(get("/ai/features"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.ASSIGNMENT_GRADING").value(false));
+                    .andExpect(jsonPath("$.SUBMISSION_GRADING").value(false));
         }
 
         @Test
         @DisplayName("Should return all known feature task keys")
         void getFeatures_returnsAllKnownTasks() throws Exception {
-            when(taskConfigRepository.findByTask("ASSIGNMENT_GRADING"))
+            when(taskConfigRepository.findByTask("SUBMISSION_GRADING"))
                     .thenReturn(Optional.of(taskConfig(true, ProviderStatus.ACTIVE)));
 
             mockMvc.perform(get("/ai/features"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.ASSIGNMENT_GRADING").value(true))
+                    .andExpect(jsonPath("$.SUBMISSION_GRADING").value(true))
                     .andExpect(jsonPath("$.STUDENT_HINT").value(false))
                     .andExpect(jsonPath("$.QUESTION_GEN").value(false))
                     .andExpect(jsonPath("$.CANVAS_LATEX").value(false))
-                    .andExpect(jsonPath("$.CONTENT_SUMMARIZATION").value(false))
                     .andExpect(jsonPath("$.ERROR_ANALYSIS").value(false));
         }
     }

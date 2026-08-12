@@ -37,14 +37,17 @@ public class TaskConfigServiceImpl implements TaskConfigService {
         Provider provider = providerRepository.findById(request.getProviderId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Provider với ID: " + request.getProviderId()));
 
-        TaskConfig taskConfig = taskConfigRepository.findByTask(task.toUpperCase())
-                .orElse(TaskConfig.builder().task(task.toUpperCase()).build());
+        String normalizedTask = task.toUpperCase();
+        TaskConfig taskConfig = taskConfigRepository.findByTask(normalizedTask)
+                .orElseGet(() -> TaskConfig.builder().task(normalizedTask).build());
 
-        taskConfig.setProvider(provider);
-        taskConfig.setModel(request.getModel());
-        taskConfig.setTemperature(request.getTemperature());
-        taskConfig.setMaxToken(request.getMaxToken());
-        taskConfig.setEnabled(request.getEnabled() != null ? request.getEnabled() : true);
+        taskConfig.updateConfig(
+                provider,
+                request.getModel(),
+                request.getTemperature(),
+                request.getMaxToken(),
+                request.getEnabled()
+        );
 
         TaskConfig saved = taskConfigRepository.save(taskConfig);
         return mapToResponse(saved);

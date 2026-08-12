@@ -34,5 +34,5 @@ public class TaskConfigUpdateRequest {
     private Integer maxToken;
 
     @Builder.Default
-    private Boolean enabled = true;
+    private Boolean enabled = false;
 }

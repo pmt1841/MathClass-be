@@ -22,7 +22,7 @@ Cung cấp cho Quản trị viên công cụ quản lý tập trung các nhà cu
 * **FR-3 (Two-Step Connection Verification):** 
   * *Bước 1 (List Models API):* Kiểm tra tính hợp lệ của API Key (phát hiện lỗi `401 Unauthorized`).
   * *Bước 2 (Lightweight Prompt API):* Gửi prompt 1-token để xác thực Quota/Credits (phát hiện lỗi `429 Too Many Requests`) và quyền truy cập Model (phát hiện lỗi `403/404`). Đo độ trễ phản hồi (ms).
-* **FR-4 (Task Routing Assignment):** Cho phép Admin gán Provider, phiên bản Model (`model_name`), `temperature`, `max_tokens` cho từng loại tác vụ hệ thống (`CANVAS_LATEX`, `ASSIGNMENT_GRADING`, `QUESTION_GEN`, `HINT_RECOMMENDATION`, `ERROR_ANALYSIS`).
+* **FR-4 (Task Routing Assignment):** Cho phép Admin gán Provider, phiên bản Model (`model_name`), `temperature`, `max_tokens` cho từng loại tác vụ hệ thống (`CANVAS_LATEX`, `SUBMISSION_GRADING`, `QUESTION_GEN`, `HINT_RECOMMENDATION`, `ERROR_ANALYSIS`).
 * **FR-5 (Dynamic Key Selection Strategy):**
   * *Priority Failover:* Sử dụng Key có `priority` cao nhất đang `ACTIVE`. Tự động đánh dấu `EXHAUSTED_QUOTA` và chuyển sang Key tiếp theo khi gặp lỗi 429/401.
   * *Round-Robin:* Xoay vòng luân phiên các Active Keys để chia đều lưu lượng requests.
@@ -276,7 +276,7 @@ public class ApiKeyRequestDTO {
 * **Then** Key 1 chuyển sang `EXHAUSTED_QUOTA`, request tự động retry thành công với Key 2 mà người dùng không nhận ra sự cố.
 
 ### Scenario 4: Task Fallback Provider triggers when main Provider is empty
-* **Given** Task `ASSIGNMENT_GRADING` có Provider chính là Gemini (toàn bộ key hết) và Provider dự phòng `fallback_provider_id` là OpenAI.
+* **Given** Task `SUBMISSION_GRADING` có Provider chính là Gemini (toàn bộ key hết) và Provider dự phòng `fallback_provider_id` là OpenAI.
 * **When** Người dùng thực hiện chấm bài.
 * **Then** Hệ thống tự động chuyển sang sử dụng OpenAI để xử lý request chấm bài.
 
