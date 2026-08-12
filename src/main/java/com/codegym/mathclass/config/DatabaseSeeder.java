@@ -460,13 +460,25 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 [TIẾN ĐỘ BÀI LÀM HIỆN TẠI CỦA HỌC SINH]:
                                 {{student_content}}
 
-                                YÊU CẦU BẮT BUỘC:
+                                YÊU CẦU NỘI DUNG BẮT BUỘC:
                                 1. Đọc và phân tích kỹ bài toán cụ thể nêu ở trên.
                                 2. Phân tích tiến độ bài làm của học sinh:
                                    - Nếu bài làm trống: hãy chỉ rõ giả thiết, phương pháp hoặc công thức đầu tiên học sinh cần áp dụng để bắt đầu.
                                    - Nếu học sinh đã viết bài làm: hãy nhận xét ngắn gọn bước làm hiện tại và đưa ra câu hỏi gợi mở hoặc nhắc lại định lý/công thức cho bước kế tiếp.
                                 3. TUYỆT ĐỐI KHÔNG đưa ra lời giải hoàn chỉnh hoặc đáp số số học cuối cùng.
-                                4. Trả lời trực tiếp vào gợi ý bằng tiếng Việt, văn phong thân thiện, động viên. Dùng KaTeX cho công thức toán (ví dụ: $x^2 + 1$).
+                                4. Văn phong thân thiện, động viên.
+
+                                YÊU CẦU ĐỊNH DẠNG KATEX / CÔNG THỨC TOÁN (RẤT QUAN TRỌNG):
+                                1. TẤT CẢ công thức toán học, đại lượng, biến số (R, S, x, y, \\pi, \\alpha...), số đo và đơn vị (3\\text{ cm}, \\text{cm}^2...) BẮT BUỘC kẹp giữa 2 dấu đô-la $...$ (inline math) hoặc $$...$$ (block math).
+                                   - Ví dụ ĐÚNG: $R = 3\\text{ cm}$, $S = \\pi R^2$, $3,14$, $\\text{cm}^2$, $x$, $y$.
+                                2. TUYỆT ĐỐI KHÔNG sử dụng ngoặc tròn như (R = 3\\text{ cm}), (S = \\pi R^2), (R), (\\pi), \\(...\\) hay ngoặc vuông [...] để bọc công thức toán.
+
+                                YÊU CẦU ĐỊNH DẠNG JSON BẮT BUỘC:
+                                Phản hồi CHỈ trả về duy nhất một JSON Object hợp lệ, KHÔNG kèm văn bản hay giải thích bên ngoài, KHÔNG kẹp trong markdown fence ```json, đúng schema sau:
+                                {
+                                  "analysis": "Nhận xét ngắn gọn tiến độ bài làm hiện tại của học sinh",
+                                  "hintContent": "Gợi ý tư duy ngắn (từ 50 đến 120 từ) định hướng bước tiếp theo bằng tiếng Việt, dùng Markdown và KaTeX ($...$)"
+                                }
                                 """;
 
                 String defaultLatexPrompt = """
@@ -499,20 +511,22 @@ public class DatabaseSeeder implements CommandLineRunner {
 
                                 Nhiệm vụ chi tiết:
                                 1. So sánh hình vẽ Canvas của học sinh với hình mẫu trong đề bài (nếu có), liệt kê các lỗi sai cụ thể trong danh sách drawingIssues (ví dụ: vẽ thiếu đường cao, sai góc, sai tiệm cận đồ thị). Nếu bài tập không có hình mẫu hoặc học sinh không vẽ hình thì để drawingIssues = [].
-                                2. Chấm điểm sơ bộ bài tự luận theo thang điểm {{max_score}} và viết DỰ THẢO lời nhận xét chi tiết bằng tiếng Việt, chỉ ra từng lỗi sai cụ thể trong lời giải, hỗ trợ Markdown và LaTeX ($...$).
+                                2. Chấm điểm sơ bộ bài tự luận theo thang điểm {{max_score}} và viết DỰ THẢO lời nhận xét chi tiết bằng tiếng Việt, chỉ ra từng lỗi sai cụ thể trong lời giải.
 
-                                YÊU CẦU ĐỊNH DẠNG BẮT BUỘC:
+                                YÊU CẦU ĐỊNH DẠNG KATEX / CÔNG THỨC TOÁN (RẤT QUAN TRỌNG):
+                                1. TẤT CẢ công thức toán học, đại lượng, biến số (R, S, x, y, \\pi, \\alpha...), số đo và đơn vị (3\\text{ cm}, \\text{cm}^2...) trong draftFeedback BẮT BUỘC kẹp giữa 2 dấu đô-la $...$ (inline math) hoặc $$...$$ (block math).
+                                   - Ví dụ ĐÚNG: $R = 3\\text{ cm}$, $S = \\pi R^2$, $3,14$, $\\text{cm}^2$, $x$, $y$.
+                                2. TUYỆT ĐỐI KHÔNG sử dụng ngoặc tròn như (R = 3\\text{ cm}), (S = \\pi R^2), (R), (\\pi), \\(...\\) hay ngoặc vuông [...] để bọc công thức toán.
+
+                                YÊU CẦU ĐỊNH DẠNG JSON BẮT BUỘC:
                                 Phản hồi CHỈ trả về duy nhất một JSON Object hợp lệ, KHÔNG kèm văn bản hay giải thích bên ngoài, KHÔNG kẹp trong markdown fence ```json, đúng schema sau:
-                                {"suggestedScore": 8.5, "draftFeedback": "...", "drawingIssues": [{"issue": "...", "detail": "..."}]}
-
-                                YÊU CẦU BẮT BUỘC:
-                                1. Đọc kỹ đề bài và so sánh bài làm của học sinh với đáp án chuẩn.
-                                2. Phân tích chi tiết các bước giải:
-                                   - Chỉ ra các bước đúng, lập luận logic và công thức chính xác học sinh đã áp dụng.
-                                   - Phát hiện các lỗi sai (nếu có): sai sót số học/hình học, thiếu điều kiện xác định, lập luận thiếu căn cứ hoặc trình bày chưa chặt chẽ.
-                                3. Đánh giá và cho điểm chính xác trên thang điểm tối đa.
-                                4. Nhận xét mang tính xây dựng, động viên học sinh và hướng dẫn cách khắc phục lỗi sai. Dùng KaTeX cho mọi công thức toán học.
-
+                                {
+                                  "suggestedScore": 8.5,
+                                  "draftFeedback": "Lời nhận xét chi tiết dùng Markdown và KaTeX ($...$)",
+                                  "drawingIssues": [
+                                    { "issue": "Tên lỗi ngắn gọn", "detail": "Mô tả chi tiết lỗi vẽ hình" }
+                                  ]
+                                }
                                 """;
 
                 String defaultQuestionGenPrompt = """
@@ -523,11 +537,15 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 - Chủ đề: {{topic}}
                                 - Dạng bài: {{question_type}}
 
-                                Yêu cầu định dạng bắt buộc:
-                                1. Tất cả công thức toán học phải viết dạng KaTeX kẹp giữa dấu $...$ (inline) hoặc $$...$$ (block math). Ví dụ: $x^2 + 2x + 1 = 0$, $\\frac{a}{b}$.
-                                2. CHÚ Ý YÊU CẦU vẽ hình/đồ thị: {{canvas_requirement}}
-                                3. Về phần lời giải ('explanation'): CHỈ sinh ra nội dung lời giải chi tiết KHI yêu cầu (prompt) của người dùng có đề nghị/nhắc tới việc cung cấp lời giải (ví dụ: 'kèm lời giải', 'giải chi tiết', 'hướng dẫn giải', 'trình bày giải'). Nếu người dùng KHÔNG yêu cầu lời giải, hãy để trường 'explanation' là chuỗi rỗng "".
-                                4. Trả về ĐÚNG MỘT JSON OBJECT duy nhất, KHÔNG kèm theo văn bản giải thích ngoài JSON, KHÔNG dùng markdown block ```json.
+                                YÊU CẦU ĐỊNH DẠNG KATEX / CÔNG THỨC TOÁN (RẤT QUAN TRỌNG):
+                                1. TẤT CẢ công thức toán học, đại lượng, biến số (R, S, x, y, \\pi, \\alpha...), số đo và đơn vị (3\\text{ cm}, \\text{cm}^2...) trong 'content' và 'explanation' BẮT BUỘC kẹp giữa 2 dấu đô-la $...$ (inline math) hoặc $$...$$ (block math).
+                                   - Ví dụ ĐÚNG: $x^2 + 2x + 1 = 0$, $\\frac{a}{b}$, $R = 3\\text{ cm}$, $S = \\pi R^2$.
+                                2. TUYỆT ĐỐI KHÔNG sử dụng ngoặc tròn như (R = 3\\text{ cm}), (S = \\pi R^2), (R), (\\pi), \\(...\\) hay ngoặc vuông [...] để bọc công thức toán.
+
+                                Yêu cầu nội dung bổ sung:
+                                1. CHÚ Ý YÊU CẦU vẽ hình/đồ thị: {{canvas_requirement}}
+                                2. Về phần lời giải ('explanation'): CHỈ sinh ra nội dung lời giải chi tiết KHI yêu cầu (prompt) của người dùng có đề nghị/nhắc tới việc cung cấp lời giải (ví dụ: 'kèm lời giải', 'giải chi tiết', 'hướng dẫn giải', 'trình bày giải'). Nếu người dùng KHÔNG yêu cầu lời giải, hãy để trường 'explanation' là chuỗi rỗng "".
+                                3. Trả về ĐÚNG MỘT JSON OBJECT duy nhất, KHÔNG kèm theo văn bản giải thích ngoài JSON, KHÔNG dùng markdown block ```json.
 
                                 JSON Schema quy định:
                                 {

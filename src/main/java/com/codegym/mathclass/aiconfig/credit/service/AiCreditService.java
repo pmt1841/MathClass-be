@@ -31,6 +31,9 @@ public interface AiCreditService {
 
     void refund(Long userId, String task, int cost);
 
+    /** Hoàn lại credit ước lượng cho tác vụ AI khi người dùng bấm Hủy tiến trình. */
+    void refundTaskIfReserved(Long userId, String task);
+
     /** Sau khi AI trả kết quả: hoàn phần dư (reserved - actual) nếu actual nhỏ hơn reserved. */
     void settle(Long userId, String task, int reserved, int actual);
 

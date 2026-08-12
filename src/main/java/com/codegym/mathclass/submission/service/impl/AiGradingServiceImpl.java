@@ -152,9 +152,12 @@ public class AiGradingServiceImpl implements AiGradingService {
             String json = extractJson(raw);
             JsonNode root = objectMapper.readTree(json);
 
+            String draftFeedback = root.hasNonNull("draftFeedback") ? root.get("draftFeedback").asText() : "";
+            draftFeedback = normalizeKatexDelimiters(draftFeedback);
+
             AiGradingResponse response = AiGradingResponse.builder()
                     .suggestedScore(root.hasNonNull("suggestedScore") ? root.get("suggestedScore").asDouble() : null)
-                    .draftFeedback(root.hasNonNull("draftFeedback") ? root.get("draftFeedback").asText() : "")
+                    .draftFeedback(draftFeedback)
                     .hasCanvasComparison(hasCanvasComparison)
                     .drawingIssues(parseDrawingIssues(root, hasCanvasComparison))
                     .build();
@@ -180,14 +183,24 @@ public class AiGradingServiceImpl implements AiGradingService {
         JsonNode arrayNode = root.path("drawingIssues");
         if (arrayNode.isArray()) {
             for (JsonNode node : arrayNode) {
-                String issue = node.path("issue").asText("");
-                String detail = node.path("detail").asText("");
+                String issue = normalizeKatexDelimiters(node.path("issue").asText(""));
+                String detail = normalizeKatexDelimiters(node.path("detail").asText(""));
                 if (!issue.isBlank()) {
                     issues.add(DrawingIssueItem.builder().issue(issue).detail(detail).build());
                 }
             }
         }
         return issues;
+    }
+
+    private String normalizeKatexDelimiters(String content) {
+        if (content == null || content.isBlank()) {
+            return "";
+        }
+        String result = content.replaceAll("\\\\\\((.*?)\\\\\\)", "\\$$1\\$");
+        result = result.replaceAll("\\\\[(.*?)\\\\]", "\\$\\$$1\\$\\$");
+        result = result.replaceAll("\\(([^\\)]*\\\\(?:text|pi|frac|sqrt|alpha|beta|theta|cm|degree)[^\\)]*)\\)", "\\$$1\\$");
+        return result;
     }
 
     /**

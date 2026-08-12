@@ -131,9 +131,8 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         // 3.1 Validate đầy đủ thông tin trước khi publish
         if (originalAssignment.getTitle() == null || originalAssignment.getTitle().trim().isEmpty() ||
-                originalAssignment.getDescription() == null || originalAssignment.getDescription().trim().isEmpty() ||
                 originalAssignment.getContent() == null || originalAssignment.getContent().trim().isEmpty()) {
-            throw new BadRequestException("Vui lòng điền đầy đủ Tiêu đề, Mô tả và Nội dung trước khi Giao bài");
+            throw new BadRequestException("Vui lòng điền đầy đủ Tiêu đề và Nội dung trước khi Giao bài");
         }
 
         List<Assignment> clones = new ArrayList<>();
@@ -392,10 +391,9 @@ public class AssignmentServiceImpl implements AssignmentService {
         // 4.1 Validate bắt buộc nếu không phải DRAFT
         if (assignment.getStatus() != AssignmentStatus.DRAFT) {
             if (request.getTitle() == null || request.getTitle().trim().isEmpty() ||
-                    request.getDescription() == null || request.getDescription().trim().isEmpty() ||
                     request.getContent() == null || request.getContent().trim().isEmpty()) {
                 throw new BadRequestException(
-                        "Tiêu đề, Mô tả và Nội dung không được để trống khi bài tập đã được Giao");
+                        "Tiêu đề và Nội dung không được để trống khi bài tập đã được Giao");
             }
         }
 

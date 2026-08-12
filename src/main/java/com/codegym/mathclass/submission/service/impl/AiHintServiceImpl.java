@@ -4,6 +4,8 @@ import com.codegym.mathclass.aiconfig.dto.request.RenderPromptRequest;
 import com.codegym.mathclass.aiconfig.dto.response.RenderPromptResponse;
 import com.codegym.mathclass.aiconfig.service.AiPromptExecutionService;
 import com.codegym.mathclass.aiconfig.service.PromptRenderService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.repository.AssignmentRepository;
 import com.codegym.mathclass.exception.AccessDeniedException;
@@ -45,6 +47,7 @@ public class AiHintServiceImpl implements AiHintService {
     private final UserRepository userRepository;
     private final AiPromptExecutionService aiPromptExecutionService;
     private final PromptRenderService promptRenderService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final int MAX_HINTS = 3;
 
@@ -85,6 +88,7 @@ public class AiHintServiceImpl implements AiHintService {
             String prompt = buildSocraticPrompt(assignment, sanitizedContent);
 
             String aiHintContent = aiPromptExecutionService.executePrompt("STUDENT_HINT", prompt, student.getId());
+            aiHintContent = extractHintContent(aiHintContent);
 
             int hintNumber = usedCount + 1;
             SubmissionHint hintRecord = SubmissionHint.builder()
@@ -181,5 +185,45 @@ public class AiHintServiceImpl implements AiHintService {
         }
 
         return renderRes.getRenderedPrompt();
+    }
+
+    private String extractHintContent(String rawContent) {
+        if (rawContent == null || rawContent.isBlank()) {
+            return "";
+        }
+        String extracted = rawContent;
+        try {
+            String cleaned = rawContent.trim();
+            if (cleaned.startsWith("```json")) {
+                cleaned = cleaned.substring(7);
+            } else if (cleaned.startsWith("```")) {
+                cleaned = cleaned.substring(3);
+            }
+            if (cleaned.endsWith("```")) {
+                cleaned = cleaned.substring(0, cleaned.length() - 3);
+            }
+            cleaned = cleaned.trim();
+
+            JsonNode root = objectMapper.readTree(cleaned);
+
+            if (root.has("hintContent") && !root.get("hintContent").isNull()) {
+                extracted = root.get("hintContent").asText();
+            } else if (root.has("hint") && !root.get("hint").isNull()) {
+                extracted = root.get("hint").asText();
+            }
+        } catch (Exception e) {
+            log.warn("Không thể parse JSON phản hồi gợi ý AI, fallback sử dụng raw content: {}", e.getMessage());
+        }
+        return normalizeKatexDelimiters(extracted);
+    }
+
+    private String normalizeKatexDelimiters(String content) {
+        if (content == null || content.isBlank()) {
+            return "";
+        }
+        String result = content.replaceAll("\\\\\\((.*?)\\\\\\)", "\\$$1\\$");
+        result = result.replaceAll("\\\\[(.*?)\\\\]", "\\$\\$$1\\$\\$");
+        result = result.replaceAll("\\(([^\\)]*\\\\(?:text|pi|frac|sqrt|alpha|beta|theta|cm|degree)[^\\)]*)\\)", "\\$$1\\$");
+        return result;
     }
 }

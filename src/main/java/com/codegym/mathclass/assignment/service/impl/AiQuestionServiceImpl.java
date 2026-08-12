@@ -115,6 +115,7 @@ public class AiQuestionServiceImpl implements AiQuestionService {
                     AiExecutionResult result = strategy.executePrompt(provider, taskConfig, apiKeyString, fullPrompt);
 
                     AiGeneratedQuestionResponse dto = parseQuestionResponse(result.content());
+                    dto.setContent(normalizeKatexDelimiters(dto.getContent()));
 
                     if (dto.getGrade() == null)
                         dto.setGrade(request.getGrade());
@@ -126,6 +127,8 @@ public class AiQuestionServiceImpl implements AiQuestionService {
 
                     if (!hasRequestedExplanation(request.getPrompt())) {
                         dto.setExplanation("");
+                    } else {
+                        dto.setExplanation(normalizeKatexDelimiters(dto.getExplanation()));
                     }
 
                     boolean shouldDraw = Boolean.TRUE.equals(request.getIncludeCanvasDiagram())
@@ -268,5 +271,15 @@ public class AiQuestionServiceImpl implements AiQuestionService {
                 "Vận dụng cao (Bài toán nâng cao phân loại học sinh giỏi, tư duy logic phức tạp, kết hợp nhiều chuyên đề hoặc biến đổi khéo léo)";
             default -> difficulty;
         };
+    }
+
+    private String normalizeKatexDelimiters(String content) {
+        if (content == null || content.isBlank()) {
+            return "";
+        }
+        String result = content.replaceAll("\\\\\\((.*?)\\\\\\)", "\\$$1\\$");
+        result = result.replaceAll("\\\\[(.*?)\\\\]", "\\$\\$$1\\$\\$");
+        result = result.replaceAll("\\(([^\\)]*\\\\(?:text|pi|frac|sqrt|alpha|beta|theta|cm|degree)[^\\)]*)\\)", "\\$$1\\$");
+        return result;
     }
 }

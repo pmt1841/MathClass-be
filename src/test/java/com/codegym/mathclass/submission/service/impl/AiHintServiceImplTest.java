@@ -304,6 +304,34 @@ class AiHintServiceImplTest {
         }
 
         @Test
+        @DisplayName("UT-BE-09: Should normalize improper parenthesis KaTeX delimiters like (S = \\pi R^2) to $S = \\pi R^2$")
+        void requestHint_improperKatexDelimiters_normalizesToDollarSigns() {
+            StudentHintRequest request = new StudentHintRequest("Tính diện tích hình tròn");
+            String rawAiResponse = "Hãy nhớ công thức (S = \\pi R^2) với bán kính (R = 3\\text{ cm}) và hằng số (\\pi).";
+
+            when(userRepository.findByEmail(studentEmail)).thenReturn(Optional.of(student));
+            when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(assignment));
+            when(submissionRepository.findFirstByAssignmentIdAndStudentIdWithLock(assignmentId, studentId))
+                    .thenReturn(Optional.of(submission));
+            when(submissionHintRepository.countBySubmissionId(submissionId)).thenReturn(0);
+            when(aiPromptExecutionService.executePrompt(eq("STUDENT_HINT"), anyString(), anyLong()))
+                    .thenReturn(rawAiResponse);
+            when(submissionHintRepository.save(any(SubmissionHint.class))).thenAnswer(i -> {
+                SubmissionHint sh = i.getArgument(0);
+                sh.setId(1L);
+                return sh;
+            });
+
+            StudentHintResponse response = aiHintService.requestHint(assignmentId, request, studentEmail);
+
+            assertThat(response).isNotNull();
+            assertThat(response.getHintContent()).contains("$S = \\pi R^2$");
+            assertThat(response.getHintContent()).contains("$R = 3\\text{ cm}$");
+            assertThat(response.getHintContent()).contains("$\\pi$");
+            assertThat(response.getHintContent()).doesNotContain("(S = \\pi R^2)");
+        }
+
+        @Test
         @DisplayName("Should throw ResourceNotFoundException when System Prompt is not configured in DB")
         void requestHint_promptNotFoundInDb_throwsResourceNotFoundException() {
             StudentHintRequest request = new StudentHintRequest("Phân tích bài toán.");
