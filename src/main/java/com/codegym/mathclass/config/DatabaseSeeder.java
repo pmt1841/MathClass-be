@@ -217,12 +217,14 @@ public class DatabaseSeeder implements CommandLineRunner {
         }
 
         private void seedCreditConfigs() {
+                // Dọn dẹp các task phụ không dùng nữa để bảng giá hiển thị sạch
+                aiCreditConfigRepository.findByTask("HANDWRITING_LATEX").ifPresent(aiCreditConfigRepository::delete);
+                aiCreditConfigRepository.findByTask("SKETCH_GEOMETRY").ifPresent(aiCreditConfigRepository::delete);
+
                 int defaultTokensPerCredit = 1000;
                 Map<String, Integer> defaults = Map.of(
                                 "STUDENT_HINT", 1,
                                 "CANVAS_LATEX", 2,
-                "HANDWRITING_LATEX", 2,
-                "SKETCH_GEOMETRY", 2,
                                 "QUESTION_GEN", 3,
                                 "SUBMISSION_GRADING", 5);
                 defaults.forEach((task, cost) -> {

@@ -17,8 +17,8 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AiSubmissionHandwritingServiceImpl implements AiSubmissionHandwritingService {
 
-    public static final String HANDWRITING_TASK_CODE = "HANDWRITING_LATEX";
-    public static final String SKETCH_TASK_CODE = "SKETCH_GEOMETRY";
+    public static final String HANDWRITING_TASK_CODE = "CANVAS_LATEX";
+    public static final String SKETCH_TASK_CODE = "CANVAS_LATEX";
 
     private final AiPromptExecutionService aiPromptExecutionService;
     private final ObjectMapper objectMapper = new ObjectMapper();

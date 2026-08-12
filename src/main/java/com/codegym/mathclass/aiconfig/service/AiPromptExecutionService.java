@@ -102,9 +102,6 @@ public class AiPromptExecutionService {
 
     public String executePromptWithImage(String taskCode, String prompt, String base64Image, String mimeType, Long userId) {
         Optional<TaskConfig> configOpt = taskConfigRepository.findByTask(taskCode);
-        if (configOpt.isEmpty() && ("HANDWRITING_LATEX".equals(taskCode) || "SKETCH_GEOMETRY".equals(taskCode))) {
-            configOpt = taskConfigRepository.findByTask("CANVAS_LATEX");
-        }
         if (configOpt.isEmpty()) {
             log.warn("TaskConfig '{}' chưa được cấu hình.", taskCode);
             throw new RuntimeException("Tác vụ AI '" + taskCode + "' chưa được hệ thống cấu hình.");
@@ -123,9 +120,6 @@ public class AiPromptExecutionService {
         }
 
         Optional<AiCreditConfig> creditCfg = aiCreditService.getCreditConfig(taskCode);
-        if (creditCfg.isEmpty() && ("HANDWRITING_LATEX".equals(taskCode) || "SKETCH_GEOMETRY".equals(taskCode))) {
-            creditCfg = aiCreditService.getCreditConfig("CANVAS_LATEX");
-        }
         boolean charge = creditCfg.isPresent()
                 && Boolean.TRUE.equals(creditCfg.get().getEnabled())
                 && userId != null
