@@ -221,6 +221,8 @@ public class DatabaseSeeder implements CommandLineRunner {
                 Map<String, Integer> defaults = Map.of(
                                 "STUDENT_HINT", 1,
                                 "CANVAS_LATEX", 2,
+                "HANDWRITING_LATEX", 2,
+                "SKETCH_GEOMETRY", 2,
                                 "QUESTION_GEN", 3,
                                 "SUBMISSION_GRADING", 5);
                 defaults.forEach((task, cost) -> {

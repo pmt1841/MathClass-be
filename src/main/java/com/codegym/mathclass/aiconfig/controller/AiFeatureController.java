@@ -40,6 +40,8 @@ public class AiFeatureController {
             "STUDENT_HINT",
             "QUESTION_GEN",
             "CANVAS_LATEX",
+            "HANDWRITING_LATEX",
+            "SKETCH_GEOMETRY",
             "ERROR_ANALYSIS"
     );
 

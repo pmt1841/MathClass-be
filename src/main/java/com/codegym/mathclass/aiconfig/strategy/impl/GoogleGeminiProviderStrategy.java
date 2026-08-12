@@ -98,6 +98,72 @@ public class GoogleGeminiProviderStrategy implements AiProviderStrategy {
         }
     }
 
+    @Override
+    public AiExecutionResult executePromptWithImage(Provider provider, TaskConfig config, String apiKey,
+                                                    String prompt, String base64Image, String mimeType) throws Exception {
+        if (base64Image == null || base64Image.trim().isEmpty()) {
+            return executePrompt(provider, config, apiKey, prompt);
+        }
+
+        String cleanBase64 = base64Image.contains(",")
+                ? base64Image.substring(base64Image.indexOf(",") + 1)
+                : base64Image;
+
+        String actualMime = (mimeType != null && !mimeType.trim().isEmpty()) ? mimeType.trim() : "image/png";
+
+        String baseUrlStr = provider.getBaseUrl() != null && !provider.getBaseUrl().trim().isEmpty()
+                ? provider.getBaseUrl().trim().replaceAll("/+$", "")
+                : "https://generativelanguage.googleapis.com/v1beta";
+
+        if (!baseUrlStr.contains("/v1beta") && !baseUrlStr.contains("/v1")) {
+            baseUrlStr = baseUrlStr + "/v1beta";
+        }
+
+        String model = config.getModel() != null ? config.getModel() : "gemini-1.5-flash";
+        String targetUrl = baseUrlStr + "/models/" + model + ":generateContent?key=" + apiKey;
+
+        Map<String, Object> textPart = Map.of("text", prompt);
+        Map<String, Object> imagePart = Map.of("inline_data", Map.of(
+                "mime_type", actualMime,
+                "data", cleanBase64
+        ));
+
+        Map<String, Object> geminiPayload = Map.of(
+                "contents", List.of(
+                        Map.of("parts", List.of(textPart, imagePart))
+                )
+        );
+
+        String reqBody = objectMapper.writeValueAsString(geminiPayload);
+        HttpRequest request = HttpRequest.newBuilder()
+                .timeout(Duration.ofSeconds(120))
+                .uri(URI.create(targetUrl))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(reqBody))
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        int status = response.statusCode();
+
+        if (status >= 200 && status < 300) {
+            JsonNode root = objectMapper.readTree(response.body());
+            JsonNode candidates = root.path("candidates");
+            if (candidates.isArray() && !candidates.isEmpty()) {
+                JsonNode parts = candidates.get(0).path("content").path("parts");
+                if (parts.isArray() && !parts.isEmpty()) {
+                    String content = parts.get(0).path("text").asText("");
+                    Integer completionTokens = parseCandidatesTokenCount(root);
+                    return new AiExecutionResult(content, completionTokens);
+                }
+            }
+            log.error("Google Gemini Provider returned HTTP status {} but invalid payload: {}", status, response.body());
+            throw new RuntimeException("Google Gemini Provider phản hồi không đúng cấu trúc dữ liệu");
+        } else {
+            log.error("Google Gemini Provider HTTP error status {}: {}", status, response.body());
+            throw new RuntimeException("Google Gemini Provider phản hồi lỗi HTTP " + status);
+        }
+    }
+
     /**
      * Đọc số token đầu ra từ response Gemini:
      * {@code usageMetadata.candidatesTokenCount}. Trả về {@code null} khi thiếu
