@@ -1,6 +1,7 @@
 package com.codegym.mathclass.assignment.service.impl;
 
 import com.codegym.mathclass.assignment.service.AssignmentService;
+import com.codegym.mathclass.assignment.service.TagService;
 import com.codegym.mathclass.assignment.dto.AssignmentResponse;
 import com.codegym.mathclass.assignment.dto.CreateAssignmentRequest;
 import com.codegym.mathclass.assignment.dto.PublishAssignmentRequest;
@@ -74,6 +75,7 @@ public class AssignmentServiceImpl implements AssignmentService {
     private final AssignmentMapper assignmentMapper;
     private final SupabaseStorageService supabaseStorageService;
     private final EmailService emailService;
+    private final TagService tagService;
 
     @Value("${FRONTEND_URL}")
     private String frontendUrl;
@@ -110,6 +112,10 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         updateDrawings(assignment, request.getDrawings());
         updateImages(assignment, request.getImages());
+        tagService.replaceTags(assignment, request.getTagIds());
+        if (assignment.getVisibility() == AssignmentVisibility.PUBLIC) {
+            tagService.requireCompletePublicTags(assignment);
+        }
 
         Assignment saved = assignmentRepository.save(assignment);
         return assignmentMapper.toAssignmentResponse(saved);
@@ -250,7 +256,7 @@ public class AssignmentServiceImpl implements AssignmentService {
     @Override
     @Transactional(readOnly = true)
     public Page<AssignmentResponse> getAssignmentsForCurrentUser(long userId, String role, String keyword,
-            String classCode, AssignmentStatus status, Pageable pageable) {
+            String classCode, AssignmentStatus status, Long gradeTagId, Long subjectTagId, Long difficultyTagId, Pageable pageable) {
         Specification<Assignment> spec = (root, query, cb) -> cb.conjunction();
         
         // Loại bỏ những bài tập đã nằm trong phiếu bài tập
@@ -289,6 +295,12 @@ public class AssignmentServiceImpl implements AssignmentService {
         if (status != null && Role.TEACHER.name().equals(role)) {
             spec = spec.and(AssignmentSpecification.hasStatus(status));
         }
+
+        tagService.validateTagFilters(gradeTagId, subjectTagId, difficultyTagId);
+
+        if (gradeTagId != null) spec = spec.and(AssignmentSpecification.hasTag(gradeTagId));
+        if (subjectTagId != null) spec = spec.and(AssignmentSpecification.hasTag(subjectTagId));
+        if (difficultyTagId != null) spec = spec.and(AssignmentSpecification.hasTag(difficultyTagId));
 
         Sort sort = pageable.getSort();
         if (sort.isUnsorted()) {
@@ -400,12 +412,18 @@ public class AssignmentServiceImpl implements AssignmentService {
         // 5. Xử lý theo trạng thái
         if (assignment.getStatus() == AssignmentStatus.DRAFT) {
             updateDraftAssignment(assignment, request);
+            tagService.replaceTags(assignment, request.getTagIds());
+            validatePublicTags(assignment);
             assignmentRepository.save(assignment);
         } else if (assignment.getStatus() == AssignmentStatus.ARCHIVED) {
             updateArchivedAssignment(assignment, request);
+            tagService.replaceTags(assignment, request.getTagIds());
+            validatePublicTags(assignment);
             assignmentRepository.save(assignment);
         } else if (assignment.getStatus() == AssignmentStatus.PUBLISHED) {
             updatePublishedAssignment(assignment, request);
+            tagService.replaceTags(assignment, request.getTagIds());
+            validatePublicTags(assignment);
             assignmentRepository.save(assignment);
         }
 
@@ -784,6 +802,7 @@ public class AssignmentServiceImpl implements AssignmentService {
         clone.setClassroom(classroom);
         clone.setDeadline(deadline);
         clone.setStatus(AssignmentStatus.PUBLISHED);
+        tagService.copyTags(original, clone);
 
         if (original.getDrawings() != null) {
             for (AssignmentDrawing originalDrawing : original.getDrawings()) {
@@ -805,6 +824,12 @@ public class AssignmentServiceImpl implements AssignmentService {
             }
         }
         return clone;
+    }
+
+    private void validatePublicTags(Assignment assignment) {
+        if (assignment.getVisibility() == AssignmentVisibility.PUBLIC) {
+            tagService.requireCompletePublicTags(assignment);
+        }
     }
 
     private void sendAssignmentNotificationToClassroom(Assignment clone, Classroom classroom) {
@@ -867,6 +892,7 @@ public class AssignmentServiceImpl implements AssignmentService {
                 .originalAuthor(originalAuthor)
                 .classroom(null)
                 .build();
+        tagService.copyTags(original, clone);
 
         if (original.getDrawings() != null) {
             for (AssignmentDrawing originalDrawing : original.getDrawings()) {
@@ -902,6 +928,9 @@ public class AssignmentServiceImpl implements AssignmentService {
             throw new AccessDeniedException("Bạn không có quyền thay đổi visibility của bài tập này");
         }
 
+        if (request.getVisibility() == AssignmentVisibility.PUBLIC) {
+            tagService.requireCompletePublicTags(assignment);
+        }
         assignment.setVisibility(request.getVisibility());
         Assignment saved = assignmentRepository.save(assignment);
         return assignmentMapper.toAssignmentResponse(saved);

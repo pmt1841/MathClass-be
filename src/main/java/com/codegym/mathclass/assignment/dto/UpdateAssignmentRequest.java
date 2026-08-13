@@ -29,4 +29,5 @@ public class UpdateAssignmentRequest {
 
     private List<AssignmentDrawingRequest> drawings;
     private List<AssignmentImageRequest> images;
+    private List<Long> tagIds;
 }

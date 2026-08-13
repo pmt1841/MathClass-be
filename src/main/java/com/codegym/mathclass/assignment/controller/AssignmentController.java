@@ -88,6 +88,9 @@ public class AssignmentController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String classCode,
             @RequestParam(required = false) AssignmentStatus status,
+            @RequestParam(required = false) Long gradeTagId,
+            @RequestParam(required = false) Long subjectTagId,
+            @RequestParam(required = false) Long difficultyTagId,
             @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
@@ -99,7 +102,7 @@ public class AssignmentController {
                 .orElse("");
 
         Page<AssignmentResponse> assignments = assignmentService.getAssignmentsForCurrentUser(
-                userId, role, keyword, classCode, status, pageable);
+                userId, role, keyword, classCode, status, gradeTagId, subjectTagId, difficultyTagId, pageable);
 
         return ResponseEntity.ok(assignments);
     }
@@ -137,17 +140,13 @@ public class AssignmentController {
     @Operation(summary = "Cập nhật Visibility bài tập", description = "Chuyển trạng thái bài tập giữa PRIVATE và PUBLIC (hiển thị trong Thư viện dùng chung)")
     @PatchMapping("/{id}/visibility")
     @PreAuthorize("hasAuthority('assignment:update')")
-    public ResponseEntity<?> updateAssignmentVisibility(
+    public ResponseEntity<AssignmentResponse> updateAssignmentVisibility(
             @PathVariable long id,
             @Valid @RequestBody UpdateVisibilityRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        try {
-            long teacherId = userDetails.getId();
-            AssignmentResponse response = assignmentService.updateAssignmentVisibility(id, request, teacherId);
-            return ResponseEntity.ok(response);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        long teacherId = userDetails.getId();
+        AssignmentResponse response = assignmentService.updateAssignmentVisibility(id, request, teacherId);
+        return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "Tải lên hình ảnh bài tập", description = "Upload hình ảnh minh họa cho câu hỏi bài tập toán")
