@@ -68,4 +68,30 @@ public class TagServiceImpl implements TagService {
             target.getAssignmentTags().add(AssignmentTag.builder().assignment(target).tag(link.getTag()).build());
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void validateTagFilters(Long gradeTagId, Long subjectTagId, Long difficultyTagId) {
+        if (gradeTagId != null) {
+            Tag tag = tagRepository.findById(gradeTagId)
+                    .orElseThrow(() -> new BadRequestException("Tag khối lớp không tồn tại"));
+            if (!tag.isActive() || tag.getType() != TagType.GRADE) {
+                throw new BadRequestException("Tag khối lớp không hợp lệ hoặc không còn hoạt động");
+            }
+        }
+        if (subjectTagId != null) {
+            Tag tag = tagRepository.findById(subjectTagId)
+                    .orElseThrow(() -> new BadRequestException("Tag phân môn không tồn tại"));
+            if (!tag.isActive() || tag.getType() != TagType.SUBJECT) {
+                throw new BadRequestException("Tag phân môn không hợp lệ hoặc không còn hoạt động");
+            }
+        }
+        if (difficultyTagId != null) {
+            Tag tag = tagRepository.findById(difficultyTagId)
+                    .orElseThrow(() -> new BadRequestException("Tag độ khó không tồn tại"));
+            if (!tag.isActive() || tag.getType() != TagType.DIFFICULTY) {
+                throw new BadRequestException("Tag độ khó không hợp lệ hoặc không còn hoạt động");
+            }
+        }
+    }
 }

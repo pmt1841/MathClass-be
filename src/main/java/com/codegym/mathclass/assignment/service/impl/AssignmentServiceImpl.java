@@ -295,6 +295,9 @@ public class AssignmentServiceImpl implements AssignmentService {
         if (status != null && Role.TEACHER.name().equals(role)) {
             spec = spec.and(AssignmentSpecification.hasStatus(status));
         }
+
+        tagService.validateTagFilters(gradeTagId, subjectTagId, difficultyTagId);
+
         if (gradeTagId != null) spec = spec.and(AssignmentSpecification.hasTag(gradeTagId));
         if (subjectTagId != null) spec = spec.and(AssignmentSpecification.hasTag(subjectTagId));
         if (difficultyTagId != null) spec = spec.and(AssignmentSpecification.hasTag(difficultyTagId));

@@ -85,7 +85,7 @@ class AssignmentControllerTest {
     }
 
     @Nested
-    @DisplayName("POST /api/assignments/create Integration Tests")
+    @DisplayName("POST /assignments Integration Tests")
     class CreateAssignmentEndpointTests {
 
         @Test
@@ -100,7 +100,7 @@ class AssignmentControllerTest {
 
             when(assignmentService.createAssignment(any(CreateAssignmentRequest.class), eq(1L))).thenReturn(response);
 
-            mockMvc.perform(post("/api/assignments/create")
+            mockMvc.perform(post("/assignments")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isCreated())
@@ -112,7 +112,7 @@ class AssignmentControllerTest {
     }
 
     @Nested
-    @DisplayName("PUT /api/assignments/{id}/publish Integration Tests")
+    @DisplayName("PUT /assignments/{id}/publish Integration Tests")
     class PublishAssignmentEndpointTests {
 
         @Test
@@ -126,7 +126,7 @@ class AssignmentControllerTest {
 
             String requestJson = "{\"targets\":[{\"classCode\":\"MATH101\",\"deadline\":\"2099-12-31T23:59:59\"}]}";
 
-            mockMvc.perform(put("/api/assignments/10/publish")
+            mockMvc.perform(put("/assignments/10/publish")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(requestJson))
                     .andExpect(status().isOk());
@@ -136,23 +136,23 @@ class AssignmentControllerTest {
     }
 
     @Nested
-    @DisplayName("DELETE /api/assignments/{id} Integration Tests")
+    @DisplayName("DELETE /assignments/{id} Integration Tests")
     class DeleteAssignmentEndpointTests {
 
         @Test
         @DisplayName("Should delete assignment successfully")
-        void deleteAssignment_ValidId_ReturnsOk() throws Exception {
+        void deleteAssignment_ValidId_ReturnsNoContent() throws Exception {
             doNothing().when(assignmentService).deleteAssignment(eq(10L), eq(1L));
 
-            mockMvc.perform(delete("/api/assignments/10"))
-                    .andExpect(status().isOk());
+            mockMvc.perform(delete("/assignments/10"))
+                    .andExpect(status().isNoContent());
 
             verify(assignmentService, times(1)).deleteAssignment(eq(10L), eq(1L));
         }
     }
 
     @Nested
-    @DisplayName("GET /api/assignments Integration Tests")
+    @DisplayName("GET /assignments Integration Tests")
     class GetAllAssignmentsEndpointTests {
 
         @Test
@@ -164,20 +164,20 @@ class AssignmentControllerTest {
 
             Page<AssignmentResponse> page = new PageImpl<>(Collections.singletonList(response), PageRequest.of(0, 10), 1);
 
-            when(assignmentService.getAssignmentsForCurrentUser(eq(1L), eq("TEACHER"), any(), any(), any(), any(Pageable.class)))
+            when(assignmentService.getAssignmentsForCurrentUser(eq(1L), eq("TEACHER"), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
                     .thenReturn(page);
 
-            mockMvc.perform(get("/api/assignments"))
+            mockMvc.perform(get("/assignments"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.content[0].id").value(10L))
                     .andExpect(jsonPath("$.content[0].title").value("Math Assignment"));
 
-            verify(assignmentService, times(1)).getAssignmentsForCurrentUser(eq(1L), eq("TEACHER"), any(), any(), any(), any(Pageable.class));
+            verify(assignmentService, times(1)).getAssignmentsForCurrentUser(eq(1L), eq("TEACHER"), any(), any(), any(), any(), any(), any(), any(Pageable.class));
         }
     }
 
     @Nested
-    @DisplayName("GET /api/assignments/{id} Integration Tests")
+    @DisplayName("GET /assignments/{id} Integration Tests")
     class GetAssignmentByIdEndpointTests {
 
         @Test
@@ -189,7 +189,7 @@ class AssignmentControllerTest {
 
             when(assignmentService.getAssignmentById(eq(10L), eq(1L), eq("TEACHER"))).thenReturn(response);
 
-            mockMvc.perform(get("/api/assignments/10"))
+            mockMvc.perform(get("/assignments/10"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.id").value(10L))
                     .andExpect(jsonPath("$.title").value("Math Assignment"));
@@ -199,7 +199,7 @@ class AssignmentControllerTest {
     }
 
     @Nested
-    @DisplayName("PUT /api/assignments/{id} Integration Tests")
+    @DisplayName("PUT /assignments/{id} Integration Tests")
     class UpdateAssignmentEndpointTests {
 
         @Test
@@ -214,7 +214,7 @@ class AssignmentControllerTest {
 
             when(assignmentService.updateAssignment(eq(10L), any(UpdateAssignmentRequest.class), eq(1L))).thenReturn(response);
 
-            mockMvc.perform(put("/api/assignments/10")
+            mockMvc.perform(put("/assignments/10")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk())
@@ -226,7 +226,7 @@ class AssignmentControllerTest {
     }
 
     @Nested
-    @DisplayName("POST /api/assignments/images/upload Integration Tests")
+    @DisplayName("POST /assignments/images Integration Tests")
     class UploadImageEndpointTests {
 
         @Test
@@ -237,7 +237,7 @@ class AssignmentControllerTest {
 
             when(assignmentService.uploadImageForAssignment(any(MultipartFile.class))).thenReturn(response);
 
-            mockMvc.perform(multipart("/api/assignments/images/upload")
+            mockMvc.perform(multipart("/assignments/images")
                             .file(file))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.imageCode").value("code123"))

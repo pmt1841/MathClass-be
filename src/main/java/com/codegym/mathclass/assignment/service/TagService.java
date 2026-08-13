@@ -11,4 +11,5 @@ public interface TagService {
     void replaceTags(Assignment assignment, List<Long> tagIds);
     void requireCompletePublicTags(Assignment assignment);
     void copyTags(Assignment source, Assignment target);
+    void validateTagFilters(Long gradeTagId, Long subjectTagId, Long difficultyTagId);
 }

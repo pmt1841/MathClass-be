@@ -43,6 +43,4 @@ out/
 .env
 .antigravity/skill
 
-skills-lock.json 
-
-AGENTS.md
+skills-lock.json
