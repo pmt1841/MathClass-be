@@ -140,6 +140,46 @@ public class EmailService {
             throw new RuntimeException("Email delivery failed: " + e.getMessage(), e);
         }
     }
+
+    @Async
+    public void sendBugReportStatusEmail(String toEmail, String fullName, String errorTypeLabel, String statusTitle, String statusMessage) {
+        try {
+            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
+
+            helper.setFrom(senderEmail);
+            helper.setTo(toEmail);
+            helper.setSubject("[MathClass] Thông báo tiến độ xử lý báo cáo sự cố");
+
+            String displayName = fullName != null && !fullName.trim().isEmpty() ? fullName.trim() : toEmail;
+
+            String htmlContent = """
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <h2 style="color: #2563eb;">Cập nhật tiến độ Báo cáo Sự cố</h2>
+                    <p>Xin chào <strong>%s</strong>,</p>
+                    <p>Hệ thống <strong>MathClass</strong> vừa cập nhật trạng thái cho báo cáo sự cố của bạn (Loại lỗi: <strong>%s</strong>).</p>
+                    <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 12px; margin: 16px 0;">
+                        <p style="margin: 0; font-weight: bold; color: #1d4ed8;">%s</p>
+                        <p style="margin: 4px 0 0 0; color: #1e40af;">%s</p>
+                    </div>
+                    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+                    <p style="font-size: 13px; color: #475569;">Cảm ơn bạn đã đóng góp phản hồi giúp nâng cao chất lượng dịch vụ của MathClass.</p>
+                    <p style="font-size: 12px; color: #94a3b8; margin-top: 20px;">Trân trọng,<br/>Đội ngũ Kỹ thuật & Quản trị MathClass</p>
+                </div>
+                """.formatted(
+                    HtmlUtils.htmlEscape(displayName),
+                    HtmlUtils.htmlEscape(errorTypeLabel),
+                    HtmlUtils.htmlEscape(statusTitle),
+                    HtmlUtils.htmlEscape(statusMessage)
+                );
+
+            helper.setText(htmlContent, true);
+            javaMailSender.send(mimeMessage);
+            log.info("Bug report status email sent successfully to {}", toEmail);
+        } catch (Exception e) {
+            log.error("Failed to send bug report status email to {}", toEmail, e);
+        }
+    }
 }
 
 

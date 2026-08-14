@@ -78,6 +78,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 apiPrefix + "/auth/**",
+                                apiPrefix + "/bug-reports/public/**",
                                 "/error",
                                 "/v3/api-docs",
                                 "/v3/api-docs/**",
