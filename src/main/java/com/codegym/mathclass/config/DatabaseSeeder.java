@@ -547,8 +547,9 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 - Dạng bài: {{question_type}}
 
                                 YÊU CẦU ĐỊNH DẠNG KATEX / CÔNG THỨC TOÁN (RẤT QUAN TRỌNG):
-                                1. TẤT CẢ công thức toán học, đại lượng, biến số (R, S, x, y, \\pi, \\alpha...), số đo và đơn vị (5\\text{ cm}, \\text{cm}^2...) trong 'content' và 'explanation' BẮT BUỘC kẹp giữa 2 dấu đô-la $...$ (inline math) hoặc $$...$$ (block math).
-                                   - Ví dụ ĐÚNG: $x^2 + 2x + 1 = 0$, $\\frac{a}{b}$, $R = 5\\text{ cm}$, $S = \\pi R^2$, $\\pi \\approx 3.14$.
+                                1. TẤT CẢ công thức toán học, đại lượng, biến số (R, S, x, y, \\pi, \\alpha...), số đo và đơn vị (6\\text{ cm}, \\text{cm}^2...) trong 'content' và 'explanation' BẮT BUỘC kẹp giữa 2 dấu đô-la $...$ (inline math) hoặc $$...$$ (block math).
+                                   - Ví dụ ĐÚNG: $x^2 + 2x + 1 = 0$, $\\frac{a}{b}$, $AB = 6\\text{ cm}$, $AC = 8\\text{ cm}$, $S = \\pi R^2$, $\\pi \\approx 3.14$, $S = 24\\text{ cm}^2$.
+                                   - TUYỆT ĐỐI KHÔNG để mất dấu gạch chéo \\ khi viết \\text{ cm} hay \\frac{a}{b}.
                                 2. QUY TẮC BỌC DẤU ĐÔ-LA $...$ VÀ DÙNG NGOẶC TRÒN:
                                    - Dấu $ CHỈ bọc TRỰC TIẾP công thức toán, TUYỆT ĐỐI KHÔNG bọc chữ tiếng Việt thông thường (ví dụ SAI CẤM: $lấy$, $với$).
                                    - TUYỆT ĐỐI KHÔNG lồng các dấu đô-la vào nhau (ví dụ SAI CẤM: $lấy $\\pi \\approx 3.14$$ -> ví dụ ĐÚNG: (lấy $\\pi \\approx 3.14$)).

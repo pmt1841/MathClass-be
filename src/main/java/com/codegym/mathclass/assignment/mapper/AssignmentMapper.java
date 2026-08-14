@@ -30,6 +30,7 @@ public class AssignmentMapper {
         response.setCreatedAt(assignment.getCreatedAt());
         response.setUpdatedAt(assignment.getUpdatedAt());
         response.setVisibility(assignment.getVisibility());
+        response.setAllowResubmit(assignment.isAllowResubmit());
 
         boolean open = assignment.getStatus() == AssignmentStatus.PUBLISHED
                 && assignment.getDeadline() != null

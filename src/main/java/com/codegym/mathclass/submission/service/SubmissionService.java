@@ -1,7 +1,9 @@
 package com.codegym.mathclass.submission.service;
 
+import java.util.List;
 import com.codegym.mathclass.submission.dto.SubmissionRequest;
 import com.codegym.mathclass.submission.dto.SubmissionResponse;
+import com.codegym.mathclass.submission.dto.SubmissionVersionResponse;
 import com.codegym.mathclass.submission.dto.GradeRequest;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import org.springframework.data.domain.Page;
@@ -24,4 +26,8 @@ public interface SubmissionService {
             Pageable pageable);
 
     SubmissionResponse getSubmissionDetail(long submissionId, long teacherId);
+
+    SubmissionResponse resubmitSubmission(long submissionId, long studentId, SubmissionRequest requestDto);
+
+    List<SubmissionVersionResponse> getSubmissionVersions(long submissionId, long userId);
 }

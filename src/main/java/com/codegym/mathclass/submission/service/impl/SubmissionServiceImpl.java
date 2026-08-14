@@ -9,9 +9,12 @@ import com.codegym.mathclass.exception.ResourceNotFoundException;
 import com.codegym.mathclass.submission.dto.GradeRequest;
 import com.codegym.mathclass.submission.dto.SubmissionRequest;
 import com.codegym.mathclass.submission.dto.SubmissionResponse;
+import com.codegym.mathclass.submission.dto.SubmissionVersionResponse;
 import com.codegym.mathclass.submission.entity.Submission;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
+import com.codegym.mathclass.submission.entity.SubmissionVersion;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
+import com.codegym.mathclass.submission.repository.SubmissionVersionRepository;
 import com.codegym.mathclass.submission.service.SubmissionService;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
@@ -36,6 +39,7 @@ import java.util.Objects;
 public class SubmissionServiceImpl implements SubmissionService {
 
     private final SubmissionRepository submissionRepository;
+    private final SubmissionVersionRepository submissionVersionRepository;
     private final AssignmentRepository assignmentRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
@@ -94,7 +98,16 @@ public class SubmissionServiceImpl implements SubmissionService {
         Submission savedSubmission = submissionRepository.save(submission);
 
         if (isNewlySubmitted) {
-            sendSubmissionNotificationToTeacher(savedSubmission, assignment);
+            if (submissionVersionRepository.findMaxVersionNumberBySubmissionId(savedSubmission.getId()) == 0) {
+                SubmissionVersion v1 = SubmissionVersion.builder()
+                        .submission(savedSubmission)
+                        .versionNumber(1)
+                        .content(savedSubmission.getContent())
+                        .submittedAt(savedSubmission.getSubmittedAt())
+                        .build();
+                submissionVersionRepository.save(v1);
+            }
+            sendSubmissionNotificationToTeacher(savedSubmission, assignment, 1);
         }
 
         return mapToDto(savedSubmission);
@@ -148,7 +161,16 @@ public class SubmissionServiceImpl implements SubmissionService {
         Submission savedSubmission = submissionRepository.save(submission);
 
         if (isNewlySubmitted) {
-            sendSubmissionNotificationToTeacher(savedSubmission, assignment);
+            if (submissionVersionRepository.findMaxVersionNumberBySubmissionId(savedSubmission.getId()) == 0) {
+                SubmissionVersion v1 = SubmissionVersion.builder()
+                        .submission(savedSubmission)
+                        .versionNumber(1)
+                        .content(savedSubmission.getContent())
+                        .submittedAt(savedSubmission.getSubmittedAt())
+                        .build();
+                submissionVersionRepository.save(v1);
+            }
+            sendSubmissionNotificationToTeacher(savedSubmission, assignment, 1);
         }
 
         return mapToDto(savedSubmission);
@@ -216,6 +238,13 @@ public class SubmissionServiceImpl implements SubmissionService {
 
         Submission savedSubmission = submissionRepository.save(submission);
 
+        submissionVersionRepository.findFirstBySubmissionIdOrderByVersionNumberDesc(savedSubmission.getId())
+                .ifPresent(v -> {
+                    v.setScore(savedSubmission.getScore());
+                    v.setTeacherFeedback(savedSubmission.getTeacherFeedback());
+                    submissionVersionRepository.save(v);
+                });
+
         if (assignment.getAssignmentSheet() != null) {
             checkAndProcessSheetNotification(assignment, submission, true);
         } else {
@@ -234,6 +263,120 @@ public class SubmissionServiceImpl implements SubmissionService {
         }
 
         return mapToDto(savedSubmission);
+    }
+
+    @Override
+    @Transactional
+    public SubmissionResponse resubmitSubmission(long submissionId, long studentId, SubmissionRequest requestDto) {
+        Submission submission = submissionRepository.findById(submissionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài nộp"));
+
+        if (submission.getStudent().getId() != studentId) {
+            throw new AccessDeniedException("Bạn không có quyền nộp lại bài này");
+        }
+
+        Assignment assignment = submission.getAssignment();
+        if (!assignment.isAllowResubmit()) {
+            throw new BadRequestException("Bài tập này không cho phép nộp lại");
+        }
+
+        if (assignment.getDeadline() != null && LocalDateTime.now().isAfter(assignment.getDeadline())) {
+            throw new BadRequestException("Đã hết hạn nộp bài tập, không thể nộp lại");
+        }
+
+        String content = requestDto.getContent() == null ? "" : requestDto.getContent().trim();
+        if (content.isEmpty()) {
+            throw new BadRequestException("Nội dung bài làm không được để trống khi nộp bài");
+        }
+
+        if (!LaTeXSanitizer.isSafe(content)) {
+            String dangerous = LaTeXSanitizer.findDangerousCommand(content);
+            throw new BadRequestException("Nội dung bài làm chứa lệnh LaTeX không hợp lệ: " + dangerous);
+        }
+
+        int maxVer = submissionVersionRepository.findMaxVersionNumberBySubmissionId(submission.getId());
+        if (maxVer >= 3) {
+            throw new BadRequestException("Bạn đã sử dụng hết 3 lần nộp bài cho bài tập này (tối đa 3 lần nộp)");
+        }
+
+        if (maxVer == 0) {
+            SubmissionVersion v1 = SubmissionVersion.builder()
+                    .submission(submission)
+                    .versionNumber(1)
+                    .content(submission.getContent())
+                    .score(submission.getScore())
+                    .teacherFeedback(submission.getTeacherFeedback())
+                    .submittedAt(submission.getSubmittedAt() != null ? submission.getSubmittedAt() : LocalDateTime.now())
+                    .build();
+            submissionVersionRepository.save(v1);
+            maxVer = 1;
+        } else {
+            submissionVersionRepository.findFirstBySubmissionIdOrderByVersionNumberDesc(submission.getId())
+                    .ifPresent(v -> {
+                        if (submission.getScore() != null) v.setScore(submission.getScore());
+                        if (submission.getTeacherFeedback() != null) v.setTeacherFeedback(submission.getTeacherFeedback());
+                        submissionVersionRepository.save(v);
+                    });
+        }
+
+        int nextVer = maxVer + 1;
+        LocalDateTime now = LocalDateTime.now();
+
+        SubmissionVersion newVersion = SubmissionVersion.builder()
+                .submission(submission)
+                .versionNumber(nextVer)
+                .content(content)
+                .score(null)
+                .teacherFeedback(null)
+                .submittedAt(now)
+                .build();
+        submissionVersionRepository.save(newVersion);
+
+        submission.setContent(content);
+        submission.setStatus(SubmissionStatus.SUBMITTED);
+        submission.setScore(null);
+        submission.setTeacherFeedback(null);
+        submission.setSubmittedAt(now);
+
+        Submission savedSubmission = submissionRepository.save(submission);
+
+        sendSubmissionNotificationToTeacher(savedSubmission, assignment, nextVer);
+
+        return mapToDto(savedSubmission);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SubmissionVersionResponse> getSubmissionVersions(long submissionId, long userId) {
+        Submission submission = submissionRepository.findById(submissionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài nộp"));
+
+        boolean isStudent = submission.getStudent().getId() == userId;
+        boolean isTeacher = submission.getAssignment().getTeacher().getId() == userId;
+
+        if (!isStudent && !isTeacher) {
+            throw new AccessDeniedException("Bạn không có quyền xem lịch sử bài nộp này");
+        }
+
+        List<SubmissionVersion> versions = submissionVersionRepository.findBySubmissionIdOrderByVersionNumberAsc(submissionId);
+        
+        if (versions.isEmpty() && submission.getStatus() != SubmissionStatus.DRAFT) {
+            SubmissionVersionResponse v1 = SubmissionVersionResponse.builder()
+                    .id(0)
+                    .submissionId(submission.getId())
+                    .versionNumber(1)
+                    .content(submission.getContent())
+                    .score(submission.getScore())
+                    .teacherFeedback(submission.getTeacherFeedback())
+                    .submittedAt(submission.getSubmittedAt())
+                    .createdAt(submission.getCreatedAt())
+                    .build();
+            return List.of(v1);
+        }
+
+        return versions.stream()
+                .map(SubmissionVersionResponse::fromEntity)
+                .toList();
     }
 
     @Override
@@ -283,6 +426,11 @@ public class SubmissionServiceImpl implements SubmissionService {
     }
 
     private SubmissionResponse mapToDto(Submission submission) {
+        int totalVersions = submissionVersionRepository.findMaxVersionNumberBySubmissionId(submission.getId());
+        if (totalVersions == 0 && submission.getStatus() != SubmissionStatus.DRAFT) {
+            totalVersions = 1;
+        }
+
         return SubmissionResponse.builder()
                 .id(submission.getId())
                 .assignmentId(submission.getAssignment().getId())
@@ -294,17 +442,22 @@ public class SubmissionServiceImpl implements SubmissionService {
                 .score(submission.getScore())
                 .submittedAt(submission.getSubmittedAt())
                 .updatedAt(submission.getUpdatedAt())
+                .allowResubmit(submission.getAssignment() != null ? submission.getAssignment().isAllowResubmit() : false)
+                .versionNumber(totalVersions > 0 ? totalVersions : 1)
+                .totalVersions(totalVersions)
                 .build();
     }
 
-    private void sendSubmissionNotificationToTeacher(Submission submission, Assignment assignment) {
+    private void sendSubmissionNotificationToTeacher(Submission submission, Assignment assignment, int versionNumber) {
         User teacher = assignment.getTeacher();
         User student = submission.getStudent();
 
         if (assignment.getAssignmentSheet() != null) {
             checkAndProcessSheetNotification(assignment, submission, false);
         } else {
-            String subject = "Học sinh " + student.getFullName() + " đã nộp bài tập: " + assignment.getTitle();
+            String subject = (versionNumber > 1)
+                    ? "Học sinh " + student.getFullName() + " đã làm lại bài tập (Lần " + versionNumber + "): " + assignment.getTitle()
+                    : "Học sinh " + student.getFullName() + " đã nộp bài tập: " + assignment.getTitle();
             String relativeLink = "/assignments/" + assignment.getId() + "/submissions/" + submission.getId();
             
             String link = frontendUrl + relativeLink;
@@ -314,6 +467,7 @@ public class SubmissionServiceImpl implements SubmissionService {
             context.setVariable("studentName", student.getFullName());
             context.setVariable("assignmentName", assignment.getTitle());
             context.setVariable("link", link);
+            context.setVariable("versionNumber", versionNumber);
 
             emailService.sendHtmlMailAsync(teacher.getEmail(), subject, "submission-submitted", context);
             notificationService.saveAndSendNotification(teacher.getId(), subject, relativeLink);

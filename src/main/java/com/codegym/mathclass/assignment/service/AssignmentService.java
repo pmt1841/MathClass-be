@@ -58,6 +58,11 @@ public interface AssignmentService {
      */
     AssignmentResponse getAssignmentById(long assignmentId, long userId, String role);
 
+    /**
+     * Bật/Tắt quyền cho phép nộp lại bài tập
+     */
+    AssignmentResponse toggleAllowResubmit(long assignmentId, boolean allowResubmit, long teacherId);
+
     AssignmentImageDto uploadImageForAssignment(MultipartFile file) throws IOException;
 
     /**

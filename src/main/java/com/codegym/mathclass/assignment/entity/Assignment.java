@@ -95,4 +95,8 @@ public class Assignment extends BaseEntity {
     @Builder.Default
     @Column(name = "is_reminder_sent", nullable = false, columnDefinition = "boolean default false")
     private boolean isReminderSent = false;
+
+    @Builder.Default
+    @Column(name = "allow_resubmit", nullable = false, columnDefinition = "boolean default false")
+    private boolean allowResubmit = false;
 }

@@ -12,6 +12,7 @@ import com.codegym.mathclass.submission.dto.SubmissionResponse;
 import com.codegym.mathclass.submission.entity.Submission;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
+import com.codegym.mathclass.submission.repository.SubmissionVersionRepository;
 import com.codegym.mathclass.submission.service.impl.SubmissionServiceImpl;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
@@ -44,6 +45,9 @@ class SubmissionServiceImplTest {
 
     @Mock
     private SubmissionRepository submissionRepository;
+
+    @Mock
+    private SubmissionVersionRepository submissionVersionRepository;
 
     @Mock
     private AssignmentRepository assignmentRepository;
@@ -529,6 +533,106 @@ class SubmissionServiceImplTest {
             assertThatThrownBy(() -> submissionService.getSubmissionDetail(submissionId, 999L))
                     .isInstanceOf(AccessDeniedException.class)
                     .hasMessage("Bạn không có quyền xem bài nộp này");
+        }
+    }
+
+    @Nested
+    @DisplayName("resubmitSubmission Tests")
+    class ResubmitSubmissionTests {
+
+        @Test
+        @DisplayName("Should resubmit submission successfully when allowResubmit is true")
+        void resubmit_Valid_Success() {
+            assignment.setAllowResubmit(true);
+            submission.setStatus(SubmissionStatus.GRADED);
+            submission.setScore(8.0);
+            submission.setTeacherFeedback("Làm tốt");
+
+            SubmissionRequest request = new SubmissionRequest();
+            request.setContent("Nội dung bài làm sửa lại");
+            request.setStatus(SubmissionStatus.SUBMITTED);
+
+            when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
+            when(submissionVersionRepository.findMaxVersionNumberBySubmissionId(submissionId)).thenReturn(1);
+            when(submissionRepository.save(any(Submission.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            SubmissionResponse response = submissionService.resubmitSubmission(submissionId, studentId, request);
+
+            assertThat(response).isNotNull();
+            assertThat(response.getContent()).isEqualTo("Nội dung bài làm sửa lại");
+            assertThat(response.getStatus()).isEqualTo(SubmissionStatus.SUBMITTED);
+            assertThat(response.getScore()).isNull();
+            assertThat(response.getTeacherFeedback()).isNull();
+            verify(submissionVersionRepository, times(1)).save(any());
+        }
+
+        @Test
+        @DisplayName("Should throw BadRequestException when resubmitting more than 3 versions")
+        void resubmit_ExceedMaxVersions_ThrowsException() {
+            assignment.setAllowResubmit(true);
+            SubmissionRequest request = new SubmissionRequest();
+            request.setContent("Nội dung mới lần 4");
+
+            when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
+            when(submissionVersionRepository.findMaxVersionNumberBySubmissionId(submissionId)).thenReturn(3);
+
+            assertThatThrownBy(() -> submissionService.resubmitSubmission(submissionId, studentId, request))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessage("Bạn đã sử dụng hết 3 lần nộp bài cho bài tập này (tối đa 3 lần nộp)");
+        }
+
+        @Test
+        @DisplayName("Should throw BadRequestException when assignment does not allow resubmit")
+        void resubmit_NotAllowed_ThrowsException() {
+            assignment.setAllowResubmit(false);
+
+            SubmissionRequest request = new SubmissionRequest();
+            request.setContent("Nội dung mới");
+
+            when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
+
+            assertThatThrownBy(() -> submissionService.resubmitSubmission(submissionId, studentId, request))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessage("Bài tập này không cho phép nộp lại");
+        }
+
+        @Test
+        @DisplayName("Should throw AccessDeniedException when student is not owner")
+        void resubmit_NotOwner_ThrowsException() {
+            when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
+
+            SubmissionRequest request = new SubmissionRequest();
+            request.setContent("Nội dung mới");
+
+            assertThatThrownBy(() -> submissionService.resubmitSubmission(submissionId, 999L, request))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessage("Bạn không có quyền nộp lại bài này");
+        }
+    }
+
+    @Nested
+    @DisplayName("getSubmissionVersions Tests")
+    class GetSubmissionVersionsTests {
+
+        @Test
+        @DisplayName("Should return version list for student or teacher")
+        void getSubmissionVersions_ValidUser_ReturnsList() {
+            when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
+            when(submissionVersionRepository.findBySubmissionIdOrderByVersionNumberAsc(submissionId))
+                    .thenReturn(Collections.emptyList());
+
+            var versions = submissionService.getSubmissionVersions(submissionId, studentId);
+            assertThat(versions).isNotNull();
+        }
+
+        @Test
+        @DisplayName("Should throw AccessDeniedException for unauthorized user")
+        void getSubmissionVersions_Unauthorized_ThrowsException() {
+            when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
+
+            assertThatThrownBy(() -> submissionService.getSubmissionVersions(submissionId, 999L))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessage("Bạn không có quyền xem lịch sử bài nộp này");
         }
     }
 }

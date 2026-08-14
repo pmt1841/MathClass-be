@@ -5,6 +5,7 @@ import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.codegym.mathclass.submission.dto.GradeRequest;
 import com.codegym.mathclass.submission.dto.SubmissionRequest;
 import com.codegym.mathclass.submission.dto.SubmissionResponse;
+import com.codegym.mathclass.submission.dto.SubmissionVersionResponse;
 import com.codegym.mathclass.submission.service.SubmissionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -20,6 +21,7 @@ import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
 
 @Tag(name = "Submissions", description = "APIs quản lý bài làm của học sinh (Nộp bài, sửa bài làm, hủy nộp, chấm điểm, truy vấn bài nộp)")
 @RestController
@@ -122,5 +124,31 @@ public class SubmissionController {
         long teacherId = userDetails.getId();
         SubmissionResponse response = submissionService.getSubmissionDetail(submissionId, teacherId);
         return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Nộp lại bài làm", description = "Học sinh nộp lại phiên bản bài làm mới sau khi nhận phản hồi từ giáo viên")
+    @PostMapping("/{submissionId}/resubmit")
+    @PreAuthorize("hasAuthority('submission:submit')")
+    public ResponseEntity<SubmissionResponse> resubmitSubmission(
+            @PathVariable long submissionId,
+            @RequestBody SubmissionRequest requestDto,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        long studentId = userDetails.getId();
+        SubmissionResponse response = submissionService.resubmitSubmission(submissionId, studentId, requestDto);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Lịch sử các phiên bản bài nộp", description = "Lấy danh sách các lần nộp bài (Version History) của một bài nộp")
+    @GetMapping("/{submissionId}/versions")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<SubmissionVersionResponse>> getSubmissionVersions(
+            @PathVariable long submissionId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        long userId = userDetails.getId();
+        List<SubmissionVersionResponse> responses =
+                submissionService.getSubmissionVersions(submissionId, userId);
+        return ResponseEntity.ok(responses);
     }
 }
