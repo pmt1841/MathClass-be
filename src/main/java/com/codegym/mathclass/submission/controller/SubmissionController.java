@@ -36,7 +36,7 @@ public class SubmissionController {
     @PostMapping
     @PreAuthorize("hasAuthority('submission:submit')")
     public ResponseEntity<SubmissionResponse> createSubmission(
-            @RequestBody SubmissionRequest requestDto,
+            @Valid @RequestBody SubmissionRequest requestDto,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         long studentId = userDetails.getId();
@@ -49,7 +49,7 @@ public class SubmissionController {
     @PreAuthorize("hasAuthority('submission:submit')")
     public ResponseEntity<SubmissionResponse> updateSubmission(
             @PathVariable long submissionId,
-            @RequestBody SubmissionRequest requestDto,
+            @Valid @RequestBody SubmissionRequest requestDto,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         long studentId = userDetails.getId();
@@ -131,7 +131,7 @@ public class SubmissionController {
     @PreAuthorize("hasAuthority('submission:submit')")
     public ResponseEntity<SubmissionResponse> resubmitSubmission(
             @PathVariable long submissionId,
-            @RequestBody SubmissionRequest requestDto,
+            @Valid @RequestBody SubmissionRequest requestDto,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         long studentId = userDetails.getId();

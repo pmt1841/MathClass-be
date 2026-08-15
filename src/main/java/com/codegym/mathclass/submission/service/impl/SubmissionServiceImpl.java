@@ -30,13 +30,18 @@ import org.springframework.transaction.annotation.Transactional;
 import org.thymeleaf.context.Context;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class SubmissionServiceImpl implements SubmissionService {
+
+    private static final int MAX_SUBMISSION_VERSIONS = 3;
 
     private final SubmissionRepository submissionRepository;
     private final SubmissionVersionRepository submissionVersionRepository;
@@ -295,8 +300,8 @@ public class SubmissionServiceImpl implements SubmissionService {
         }
 
         int maxVer = submissionVersionRepository.findMaxVersionNumberBySubmissionId(submission.getId());
-        if (maxVer >= 3) {
-            throw new BadRequestException("Bạn đã sử dụng hết 3 lần nộp bài cho bài tập này (tối đa 3 lần nộp)");
+        if (maxVer >= MAX_SUBMISSION_VERSIONS) {
+            throw new BadRequestException("Bạn đã sử dụng hết " + MAX_SUBMISSION_VERSIONS + " lần nộp bài cho bài tập này (tối đa " + MAX_SUBMISSION_VERSIONS + " lần nộp)");
         }
 
         if (maxVer == 0) {
@@ -407,8 +412,16 @@ public class SubmissionServiceImpl implements SubmissionService {
         Page<Submission> submissionPage = submissionRepository
                 .findSubmissionsByAssignment(
                         assignmentId, status, searchKeyword, pageable);
-    
-        return submissionPage.map(this::mapToDto);
+
+        List<Long> submissionIds = submissionPage.getContent().stream().map(Submission::getId).toList();
+        Map<Long, Integer> maxVersionMap = submissionIds.isEmpty() ? Collections.emptyMap() :
+                submissionVersionRepository.findMaxVersionNumbersBySubmissionIds(submissionIds).stream()
+                        .collect(Collectors.toMap(
+                                row -> (Long) row[0],
+                                row -> ((Number) row[1]).intValue()
+                        ));
+
+        return submissionPage.map(sub -> mapToDto(sub, maxVersionMap.getOrDefault(sub.getId(), 0)));
     }
 
     @Override
@@ -427,6 +440,11 @@ public class SubmissionServiceImpl implements SubmissionService {
 
     private SubmissionResponse mapToDto(Submission submission) {
         int totalVersions = submissionVersionRepository.findMaxVersionNumberBySubmissionId(submission.getId());
+        return mapToDto(submission, totalVersions);
+    }
+
+    private SubmissionResponse mapToDto(Submission submission, int maxVer) {
+        int totalVersions = maxVer;
         if (totalVersions == 0 && submission.getStatus() != SubmissionStatus.DRAFT) {
             totalVersions = 1;
         }
