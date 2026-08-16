@@ -24,6 +24,9 @@ public class SubmissionResponse {
     private Double score;
     private LocalDateTime submittedAt;
     private LocalDateTime updatedAt;
+    private Integer versionNumber;
+    private Integer totalVersions;
+    private Boolean allowResubmit;
 
     public static SubmissionResponse fromEntity(Submission submission) {
         if (submission == null) {
@@ -41,6 +44,7 @@ public class SubmissionResponse {
                 .score(submission.getScore())
                 .submittedAt(submission.getSubmittedAt())
                 .updatedAt(submission.getUpdatedAt())
+                .allowResubmit(submission.getAssignment() != null ? submission.getAssignment().isAllowResubmit() : false)
                 .build();
     }
 }

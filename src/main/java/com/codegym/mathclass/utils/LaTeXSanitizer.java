@@ -86,17 +86,22 @@ public class LaTeXSanitizer {
         }
         String result = content;
 
-        // 1. Chuyển \( ... \) thành $...$
+        // 1. Khắc phục lỗi JSON parser biến \text{cm} hoặc \text{ cm} thành \t + ext (Tab + ext) hoặc bị mất backslash thành 6extcm:
+        result = result.replaceAll("[\\t\\u0009]ext\\{?", "\\\\text{");
+        result = result.replaceAll("(?<=\\d)\\s*ext\\s*\\{?([a-zA-Z]+)\\}?", "\\\\text{ $1}");
+        result = result.replaceAll("(?<=\\d)\\s*\\\\?text\\{\\s*([a-zA-Z]+)\\}", "\\\\text{ $1}");
+
+        // 2. Chuyển \( ... \) thành $...$
         result = java.util.regex.Pattern.compile("\\\\\\((.*?)\\\\\\)", java.util.regex.Pattern.DOTALL).matcher(result).replaceAll("\\$$1\\$");
 
-        // 2. Chuyển \[ ... \] thành $$...$$
+        // 3. Chuyển \[ ... \] thành $$...$$
         result = java.util.regex.Pattern.compile("\\\\\\[(.*?)\\\\\\]", java.util.regex.Pattern.DOTALL).matcher(result).replaceAll("\\$\\$$1\\$\\$");
 
-        // 3. Khắc phục lỗi AI lầm tưởng bọc $ vào chữ tiếng Việt và lồng $ như:
+        // 4. Khắc phục lỗi AI lầm tưởng bọc $ vào chữ tiếng Việt và lồng $ như:
         // $lấy $\pi \approx 3.14$$ -> (lấy $\pi \approx 3.14$)
         result = result.replaceAll("\\$([a-zA-ZÀ-ỹ\\s]+?)\\s*\\$([^\\$\\n]+?)\\$\\$", "($1 \\$$2\\$)");
 
-        // 4. Chuyển ngoặc tròn chứa lệnh LaTeX (nhưng KHÔNG chứa dấu $) như (R = 5\text{ cm}) thành $R = 5\text{ cm}$
+        // 5. Chuyển ngoặc tròn chứa lệnh LaTeX (nhưng KHÔNG chứa dấu $) như (R = 5\text{ cm}) thành $R = 5\text{ cm}$
         // Dùng [^\)\$]* để không can thiệp vào ngoặc tròn đã bọc $ sẵn như (lấy $\pi \approx 3.14$).
         result = result.replaceAll("\\(([^\\)\\$]*\\\\(?:text|pi|frac|sqrt|alpha|beta|theta|cm|degree)[^\\)\\$]*)\\)", "\\$$1\\$");
 

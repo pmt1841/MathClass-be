@@ -149,6 +149,18 @@ public class AssignmentController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Bật/Tắt quyền nộp lại bài tập", description = "Giáo viên bật/tắt nhanh cho phép học sinh nộp lại bài tập đã chấm")
+    @PatchMapping("/{id}/allow-resubmit")
+    @PreAuthorize("hasAuthority('assignment:update')")
+    public ResponseEntity<AssignmentResponse> toggleAllowResubmit(
+            @PathVariable long id,
+            @RequestParam boolean allowResubmit,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        long teacherId = userDetails.getId();
+        AssignmentResponse response = assignmentService.toggleAllowResubmit(id, allowResubmit, teacherId);
+        return ResponseEntity.ok(response);
+    }
+
     @Operation(summary = "Tải lên hình ảnh bài tập", description = "Upload hình ảnh minh họa cho câu hỏi bài tập toán")
     @PostMapping("/images")
     @PreAuthorize("hasAuthority('assignment:create')")

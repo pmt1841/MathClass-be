@@ -56,6 +56,7 @@ public class AssignmentResponse {
     private List<TagResponse> tags;
 
     private Double maxScore;
+    private boolean allowResubmit;
 
     private Long sheetId;
     private String sheetTitle;
@@ -74,6 +75,7 @@ public class AssignmentResponse {
         response.setDeadline(assignment.getDeadline());
         response.setStatus(assignment.getStatus());
         response.setVisibility(assignment.getVisibility());
+        response.setAllowResubmit(assignment.isAllowResubmit());
         response.setCreatedAt(assignment.getCreatedAt());
         response.setUpdatedAt(assignment.getUpdatedAt());
 

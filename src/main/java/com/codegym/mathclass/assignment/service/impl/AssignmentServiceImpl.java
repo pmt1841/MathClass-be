@@ -105,6 +105,7 @@ public class AssignmentServiceImpl implements AssignmentService {
                 .content(request.getContent() != null ? request.getContent() : "")
                 .status(AssignmentStatus.DRAFT)
                 .visibility(request.getVisibility() != null ? request.getVisibility() : AssignmentVisibility.PRIVATE)
+                .allowResubmit(request.getAllowResubmit() != null ? request.getAllowResubmit() : false)
                 .teacher(teacher)
                 .classroom(null)
                 .build();
@@ -732,6 +733,9 @@ public class AssignmentServiceImpl implements AssignmentService {
         if (request.getVisibility() != null) {
             assignment.setVisibility(request.getVisibility());
         }
+        if (request.getAllowResubmit() != null) {
+            assignment.setAllowResubmit(request.getAllowResubmit());
+        }
 
         updateDrawings(assignment, request.getDrawings());
         updateImages(assignment, request.getImages());
@@ -743,6 +747,9 @@ public class AssignmentServiceImpl implements AssignmentService {
         assignment.setContent(request.getContent());
         if (request.getVisibility() != null) {
             assignment.setVisibility(request.getVisibility());
+        }
+        if (request.getAllowResubmit() != null) {
+            assignment.setAllowResubmit(request.getAllowResubmit());
         }
 
         updateDrawings(assignment, request.getDrawings());
@@ -756,6 +763,9 @@ public class AssignmentServiceImpl implements AssignmentService {
             clone.setTitle(request.getTitle());
             clone.setDescription(request.getDescription());
             clone.setContent(request.getContent());
+            if (request.getAllowResubmit() != null) {
+                clone.setAllowResubmit(request.getAllowResubmit());
+            }
 
             updateDrawings(clone, request.getDrawings());
             updateImages(clone, request.getImages());
@@ -768,6 +778,9 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         if (request.getVisibility() != null) {
             assignment.setVisibility(request.getVisibility());
+        }
+        if (request.getAllowResubmit() != null) {
+            assignment.setAllowResubmit(request.getAllowResubmit());
         }
 
         if (hasSubmissions) {
@@ -802,6 +815,7 @@ public class AssignmentServiceImpl implements AssignmentService {
         clone.setClassroom(classroom);
         clone.setDeadline(deadline);
         clone.setStatus(AssignmentStatus.PUBLISHED);
+        clone.setAllowResubmit(original.isAllowResubmit());
         tagService.copyTags(original, clone);
 
         if (original.getDrawings() != null) {
@@ -932,6 +946,31 @@ public class AssignmentServiceImpl implements AssignmentService {
             tagService.requireCompletePublicTags(assignment);
         }
         assignment.setVisibility(request.getVisibility());
+        Assignment saved = assignmentRepository.save(assignment);
+        return assignmentMapper.toAssignmentResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public AssignmentResponse toggleAllowResubmit(long assignmentId, boolean allowResubmit, long teacherId) {
+        Assignment assignment = assignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập"));
+
+        if (assignment.getTeacher().getId() != teacherId) {
+            throw new AccessDeniedException("Bạn không có quyền thay đổi thiết lập của bài tập này");
+        }
+
+        assignment.setAllowResubmit(allowResubmit);
+
+        // Nếu là bài ARCHIVED (gốc), đồng bộ sang tất cả các bản PUBLISHED con
+        if (assignment.getStatus() == AssignmentStatus.ARCHIVED) {
+            List<Assignment> clones = assignmentRepository.findByParentId(assignment.getId());
+            for (Assignment clone : clones) {
+                clone.setAllowResubmit(allowResubmit);
+            }
+            assignmentRepository.saveAll(clones);
+        }
+
         Assignment saved = assignmentRepository.save(assignment);
         return assignmentMapper.toAssignmentResponse(saved);
     }
