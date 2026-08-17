@@ -1,13 +1,11 @@
 package com.codegym.mathclass.aiconfig.service.impl;
 
-import com.codegym.mathclass.aiconfig.dto.request.SystemPromptCreateRequest;
 import com.codegym.mathclass.aiconfig.dto.request.SystemPromptResetRequest;
 import com.codegym.mathclass.aiconfig.dto.request.SystemPromptUpdateRequest;
 import com.codegym.mathclass.aiconfig.dto.response.SystemPromptHistoryResponse;
 import com.codegym.mathclass.aiconfig.dto.response.SystemPromptResponse;
 import com.codegym.mathclass.aiconfig.entity.SystemPrompt;
 import com.codegym.mathclass.aiconfig.entity.SystemPromptHistory;
-import com.codegym.mathclass.aiconfig.entity.SystemPromptStatus;
 import com.codegym.mathclass.aiconfig.repository.SystemPromptHistoryRepository;
 import com.codegym.mathclass.aiconfig.repository.SystemPromptRepository;
 import com.codegym.mathclass.aiconfig.service.SystemPromptService;
@@ -16,6 +14,12 @@ import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.PromptNotFoundException;
 import com.codegym.mathclass.exception.ResourceNotFoundException;
 import com.codegym.mathclass.systemlog.service.SystemLogService;
+import com.codegym.mathclass.aiconfig.dto.request.PromptTestExecuteRequest;
+import com.codegym.mathclass.aiconfig.dto.response.PromptTestExecuteResponse;
+import com.codegym.mathclass.aiconfig.entity.TaskConfig;
+import com.codegym.mathclass.aiconfig.repository.TaskConfigRepository;
+import com.codegym.mathclass.aiconfig.service.AiPromptExecutionService;
+import com.codegym.mathclass.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -24,9 +28,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -37,22 +41,20 @@ public class SystemPromptServiceImpl implements SystemPromptService {
     private final SystemPromptHistoryRepository systemPromptHistoryRepository;
     private final SystemPromptValidator systemPromptValidator;
     private final SystemLogService systemLogService;
+    private final AiPromptExecutionService aiPromptExecutionService;
+    private final TaskConfigRepository taskConfigRepository;
+    private final UserRepository userRepository;
+
+    private static final Pattern VARIABLE_PATTERN = Pattern.compile("\\{\\{([a-zA-Z0-9_]+)\\}\\}");
 
     @Override
     @Transactional(readOnly = true)
-    public List<SystemPromptResponse> getAllPrompts(String taskCode, String statusStr, String search) {
+    public List<SystemPromptResponse> getAllPrompts(String taskCode, String search) {
         Specification<SystemPrompt> spec = (root, query, cb) -> {
             List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
 
             if (StringUtils.hasText(taskCode)) {
                 predicates.add(cb.equal(root.get("taskCode"), taskCode));
-            }
-            if (StringUtils.hasText(statusStr)) {
-                try {
-                    SystemPromptStatus statusEnum = SystemPromptStatus.valueOf(statusStr.toUpperCase());
-                    predicates.add(cb.equal(root.get("status"), statusEnum));
-                } catch (IllegalArgumentException ignored) {
-                }
             }
             if (StringUtils.hasText(search)) {
                 String searchLike = "%" + search.toLowerCase() + "%";
@@ -78,42 +80,6 @@ public class SystemPromptServiceImpl implements SystemPromptService {
 
     @Override
     @Transactional
-    public SystemPromptResponse createPrompt(SystemPromptCreateRequest request, String adminEmail, String ipAddress) {
-        if (systemPromptRepository.existsByCode(request.getCode())) {
-            throw new BadRequestException("Mã prompt code '" + request.getCode() + "' đã tồn tại trong hệ thống.");
-        }
-
-        // Validate prompt variables
-        systemPromptValidator.validateVariables(request.getDefaultContent(), request.getAllowedVariables());
-
-        String allowedVarsStr = String.join(",", request.getAllowedVariables());
-
-        SystemPrompt prompt = SystemPrompt.builder()
-                .code(request.getCode().toUpperCase())
-                .name(request.getName())
-                .taskCode(request.getTaskCode())
-                .defaultContent(request.getDefaultContent())
-                .currentContent(request.getDefaultContent())
-                .allowedVariables(allowedVarsStr)
-                .description(request.getDescription())
-                .status(SystemPromptStatus.ACTIVE)
-                .build();
-
-        SystemPrompt savedPrompt = systemPromptRepository.save(prompt);
-
-        // Save initial history version 1
-        saveHistory(savedPrompt, 1, savedPrompt.getDefaultContent(), "Khởi tạo Prompt ban đầu", adminEmail);
-
-        // System Audit Log
-        systemLogService.log(adminEmail, "CREATE_PROMPT",
-                com.codegym.mathclass.systemlog.entity.SystemLogLevel.INFO,
-                "SYSTEM_PROMPT", savedPrompt.getCode(), ipAddress, null, "SUCCESS");
-
-        return mapToResponse(savedPrompt);
-    }
-
-    @Override
-    @Transactional
     @CacheEvict(value = "systemPromptsRender", allEntries = true)
     public SystemPromptResponse updatePrompt(Long id, SystemPromptUpdateRequest request, String adminEmail, String ipAddress) {
         SystemPrompt prompt = findPromptById(id);
@@ -126,7 +92,6 @@ public class SystemPromptServiceImpl implements SystemPromptService {
         prompt.setName(request.getName());
         prompt.setCurrentContent(request.getCurrentContent());
         prompt.setDescription(request.getDescription());
-        prompt.setStatus(request.getStatus());
 
         SystemPrompt updatedPrompt = systemPromptRepository.save(prompt);
 
@@ -204,21 +169,6 @@ public class SystemPromptServiceImpl implements SystemPromptService {
         return mapToResponse(updatedPrompt);
     }
 
-    @Override
-    @Transactional
-    @CacheEvict(value = "systemPromptsRender", allEntries = true)
-    public void deletePrompt(Long id, String adminEmail, String ipAddress) {
-        SystemPrompt prompt = findPromptById(id);
-        String code = prompt.getCode();
-
-        systemPromptRepository.delete(prompt);
-
-        // System Audit Log
-        systemLogService.log(adminEmail, "DELETE_PROMPT",
-                com.codegym.mathclass.systemlog.entity.SystemLogLevel.WARNING,
-                "SYSTEM_PROMPT", code, ipAddress, null, "SUCCESS");
-    }
-
     // Helper methods
     private SystemPrompt findPromptById(Long id) {
         return systemPromptRepository.findById(id)
@@ -269,4 +219,103 @@ public class SystemPromptServiceImpl implements SystemPromptService {
                 .createdAt(history.getCreatedAt())
                 .build();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PromptTestExecuteResponse testExecutePrompt(PromptTestExecuteRequest request, String adminEmail) {
+        String taskCode = request.getTaskCode();
+        String contentTemplate = request.getCustomContent();
+        String promptCode = request.getPromptCode();
+
+        if (!StringUtils.hasText(contentTemplate)) {
+            if (!StringUtils.hasText(promptCode)) {
+                throw new BadRequestException("Cần cung cấp mã promptCode hoặc nội dung customContent để kiểm thử.");
+            }
+            SystemPrompt prompt = systemPromptRepository.findByCode(promptCode)
+                    .orElseThrow(() -> new PromptNotFoundException("Không tìm thấy System Prompt với mã: " + promptCode));
+            contentTemplate = prompt.getCurrentContent();
+            if (!StringUtils.hasText(taskCode)) {
+                taskCode = prompt.getTaskCode();
+            }
+        }
+
+        if (!StringUtils.hasText(taskCode)) {
+            taskCode = "HINT_EXPLANATION";
+        }
+
+        List<String> usedVariables = new ArrayList<>();
+        String renderedPrompt = interpolateVariables(contentTemplate, request.getVariables(), usedVariables);
+
+        Long adminUserId = null;
+        if (StringUtils.hasText(adminEmail)) {
+            adminUserId = userRepository.findByEmail(adminEmail)
+                    .map(com.codegym.mathclass.user.entity.User::getId)
+                    .orElse(null);
+        }
+
+        String providerCode = "N/A";
+        String modelName = "N/A";
+        Optional<TaskConfig> taskConfigOpt = taskConfigRepository.findByTask(taskCode);
+        if (taskConfigOpt.isPresent()) {
+            TaskConfig cfg = taskConfigOpt.get();
+            if (cfg.getProvider() != null) {
+                providerCode = cfg.getProvider().getCode();
+            }
+            modelName = cfg.getModel();
+        }
+
+        long startTime = System.currentTimeMillis();
+        try {
+            String aiResponse = aiPromptExecutionService.executePrompt(taskCode, renderedPrompt, adminUserId);
+            long executionTimeMs = System.currentTimeMillis() - startTime;
+
+            return PromptTestExecuteResponse.builder()
+                    .promptCode(promptCode)
+                    .taskCode(taskCode)
+                    .renderedPrompt(renderedPrompt)
+                    .aiResponse(aiResponse)
+                    .executionTimeMs(executionTimeMs)
+                    .providerCode(providerCode)
+                    .modelName(modelName)
+                    .usedVariables(usedVariables)
+                    .success(true)
+                    .build();
+        } catch (Exception e) {
+            long executionTimeMs = System.currentTimeMillis() - startTime;
+            log.error("[SystemPromptService] Lỗi khi test execute prompt cho task '{}': {}", taskCode, e.getMessage());
+            return PromptTestExecuteResponse.builder()
+                    .promptCode(promptCode)
+                    .taskCode(taskCode)
+                    .renderedPrompt(renderedPrompt)
+                    .aiResponse(null)
+                    .executionTimeMs(executionTimeMs)
+                    .providerCode(providerCode)
+                    .modelName(modelName)
+                    .usedVariables(usedVariables)
+                    .success(false)
+                    .errorMessage(e.getMessage())
+                    .build();
+        }
+    }
+
+    private String interpolateVariables(String template, Map<String, Object> variables, List<String> usedVariables) {
+        if (!StringUtils.hasText(template)) {
+            return "";
+        }
+        Map<String, Object> inputVariables = variables != null ? variables : Collections.emptyMap();
+        Matcher matcher = VARIABLE_PATTERN.matcher(template);
+        StringBuilder sb = new StringBuilder();
+        while (matcher.find()) {
+            String varName = matcher.group(1);
+            if (usedVariables != null) {
+                usedVariables.add(varName);
+            }
+            Object val = inputVariables.get(varName);
+            String replacement = val != null ? Matcher.quoteReplacement(val.toString()) : "";
+            matcher.appendReplacement(sb, replacement);
+        }
+        matcher.appendTail(sb);
+        return sb.toString();
+    }
 }
+

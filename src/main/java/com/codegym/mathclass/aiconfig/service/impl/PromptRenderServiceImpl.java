@@ -3,7 +3,6 @@ package com.codegym.mathclass.aiconfig.service.impl;
 import com.codegym.mathclass.aiconfig.dto.request.RenderPromptRequest;
 import com.codegym.mathclass.aiconfig.dto.response.RenderPromptResponse;
 import com.codegym.mathclass.aiconfig.entity.SystemPrompt;
-import com.codegym.mathclass.aiconfig.entity.SystemPromptStatus;
 import com.codegym.mathclass.aiconfig.repository.SystemPromptRepository;
 import com.codegym.mathclass.aiconfig.service.PromptRenderService;
 import com.codegym.mathclass.exception.BadRequestException;
@@ -33,10 +32,6 @@ public class PromptRenderServiceImpl implements PromptRenderService {
     public RenderPromptResponse renderPrompt(RenderPromptRequest request) {
         SystemPrompt prompt = systemPromptRepository.findByCode(request.getPromptCode())
                 .orElseThrow(() -> new PromptNotFoundException("Không tìm thấy System Prompt với mã code: " + request.getPromptCode()));
-
-        if (prompt.getStatus() != SystemPromptStatus.ACTIVE) {
-            throw new BadRequestException("System Prompt " + request.getPromptCode() + " đang ở trạng thái INACTIVE và không thể sử dụng.");
-        }
 
         Map<String, Object> inputVariables = request.getVariables() != null ? request.getVariables() : Collections.emptyMap();
 
