@@ -1,5 +1,6 @@
 package com.codegym.mathclass.user.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -20,7 +21,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByVerificationCode(String verificationCode);
 
-    java.util.List<User> findByRole(Role role);
+    List<User> findByRole(Role role);
 
 
     @Query("SELECT s FROM Classroom c JOIN c.students s WHERE c.classCode = :classCode")

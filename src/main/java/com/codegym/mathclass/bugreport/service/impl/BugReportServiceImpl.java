@@ -3,11 +3,13 @@ package com.codegym.mathclass.bugreport.service.impl;
 import com.codegym.mathclass.bugreport.dto.CreateBugReportRequest;
 import com.codegym.mathclass.bugreport.dto.BugReportResponse;
 import com.codegym.mathclass.bugreport.dto.UpdateBugReportStatusRequest;
+import com.codegym.mathclass.bugreport.entity.BugErrorType;
 import com.codegym.mathclass.bugreport.entity.BugReport;
 import com.codegym.mathclass.bugreport.entity.BugReportImage;
 import com.codegym.mathclass.bugreport.entity.BugReportStatus;
 import com.codegym.mathclass.bugreport.repository.BugReportRepository;
 import com.codegym.mathclass.bugreport.service.BugReportService;
+import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.ResourceNotFoundException;
 import com.codegym.mathclass.notification.service.NotificationService;
 import com.codegym.mathclass.user.entity.Role;
@@ -20,7 +22,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.util.HtmlUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,11 +41,11 @@ public class BugReportServiceImpl implements BugReportService {
     @Transactional
     public BugReportResponse createPublicReport(CreateBugReportRequest request) {
         if (request.getReporterEmail() == null || request.getReporterEmail().trim().isEmpty()) {
-            throw new IllegalArgumentException("Email không được để trống đối với báo cáo công khai");
+            throw new BadRequestException("Email không được để trống đối với báo cáo công khai");
         }
 
-        String safeName = request.getReporterName() != null ? HtmlUtils.htmlEscape(request.getReporterName().trim()) : null;
-        String safeDescription = request.getDescription() != null ? HtmlUtils.htmlEscape(request.getDescription().trim()) : null;
+        String safeName = request.getReporterName() != null ? request.getReporterName().trim() : null;
+        String safeDescription = request.getDescription() != null ? request.getDescription().trim() : null;
 
         BugReport bugReport = BugReport.builder()
                 .reporterEmail(request.getReporterEmail().trim())
@@ -75,7 +76,7 @@ public class BugReportServiceImpl implements BugReportService {
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thông tin người dùng: " + username));
 
-        String safeDescription = request.getDescription() != null ? HtmlUtils.htmlEscape(request.getDescription().trim()) : null;
+        String safeDescription = request.getDescription() != null ? request.getDescription().trim() : null;
 
         BugReport bugReport = BugReport.builder()
                 .reporterEmail(user.getEmail())
@@ -208,7 +209,7 @@ public class BugReportServiceImpl implements BugReportService {
         }
     }
 
-    private String getErrorTypeLabel(com.codegym.mathclass.bugreport.entity.BugErrorType type) {
+    private String getErrorTypeLabel(BugErrorType type) {
         if (type == null) return "Khác";
         return switch (type) {
             case LOGIN_ACCOUNT -> "Lỗi đăng nhập / tài khoản";
