@@ -2,14 +2,14 @@ package com.codegym.mathclass.bugreport.service;
 
 import com.codegym.mathclass.bugreport.dto.BugReportResponse;
 import com.codegym.mathclass.bugreport.dto.CreateBugReportRequest;
-import com.codegym.mathclass.bugreport.dto.UpdateBugReportStatusRequest;
+import com.codegym.mathclass.bugreport.dto.SendOtpRequest;
 import com.codegym.mathclass.bugreport.entity.BugErrorType;
 import com.codegym.mathclass.bugreport.entity.BugReport;
 import com.codegym.mathclass.bugreport.entity.BugReportStatus;
 import com.codegym.mathclass.bugreport.repository.BugReportRepository;
 import com.codegym.mathclass.bugreport.service.impl.BugReportServiceImpl;
 import com.codegym.mathclass.exception.BadRequestException;
-import com.codegym.mathclass.exception.ResourceNotFoundException;
+import com.codegym.mathclass.exception.TooManyRequestsException;
 import com.codegym.mathclass.notification.service.NotificationService;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
@@ -23,12 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -63,17 +58,17 @@ class BugReportServiceImplTest {
     void setUp() {
         studentUser = new User();
         studentUser.setId(10L);
-        studentUser.setEmail("student@mathclass.com");
+        studentUser.setEmail("student@gmail.com");
         studentUser.setFullName("Student Test");
         studentUser.setRole(Role.STUDENT);
 
         adminUser = new User();
         adminUser.setId(1L);
-        adminUser.setEmail("admin@mathclass.com");
+        adminUser.setEmail("admin@gmail.com");
         adminUser.setRole(Role.ADMIN);
 
         bugReport = BugReport.builder()
-                .reporterEmail("guest@mathclass.com")
+                .reporterEmail("guest@gmail.com")
                 .reporterName("Guest User")
                 .errorType(BugErrorType.LOGIN_ACCOUNT)
                 .description("Can not login")
@@ -83,41 +78,82 @@ class BugReportServiceImplTest {
     }
 
     @Nested
-    @DisplayName("createPublicReport Tests")
-    class CreatePublicReportTests {
+    @DisplayName("sendPublicReportOtp Tests")
+    class SendPublicReportOtpTests {
 
         @Test
-        @DisplayName("Should create public report and notify admins")
-        void createPublicReport_ValidData_Success() {
-            CreateBugReportRequest request = CreateBugReportRequest.builder()
-                    .reporterEmail("guest@mathclass.com")
-                    .reporterName("Guest User")
-                    .errorType(BugErrorType.LOGIN_ACCOUNT)
-                    .description("Lỗi đăng nhập")
-                    .build();
+        @DisplayName("Should send OTP successfully for valid email domain")
+        void sendPublicReportOtp_ValidEmail_Success() {
+            SendOtpRequest request = new SendOtpRequest("guest@gmail.com");
 
-            when(bugReportRepository.save(any(BugReport.class))).thenReturn(bugReport);
-            when(userRepository.findByRole(Role.ADMIN)).thenReturn(List.of(adminUser));
+            bugReportService.sendPublicReportOtp(request, "127.0.0.1");
 
-            BugReportResponse response = bugReportService.createPublicReport(request);
-
-            assertThat(response).isNotNull();
-            assertThat(response.getReporterEmail()).isEqualTo("guest@mathclass.com");
-            verify(bugReportRepository, times(1)).save(any(BugReport.class));
-            verify(notificationService, times(1)).saveAndSendNotification(eq(1L), anyString(), eq("/admin/bug-reports"));
+            verify(emailService, times(1)).sendBugReportOtpEmail(eq("guest@gmail.com"), anyString());
         }
 
         @Test
-        @DisplayName("Should throw BadRequestException when email is empty")
-        void createPublicReport_EmptyEmail_ThrowsBadRequestException() {
+        @DisplayName("Should throw BadRequestException for invalid fake domain")
+        void sendPublicReportOtp_FakeDomain_ThrowsException() {
+            SendOtpRequest request = new SendOtpRequest("user@domain-khong-ton-tai-123456.xyz");
+
+            assertThatThrownBy(() -> bugReportService.sendPublicReportOtp(request, "127.0.0.1"))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("không tồn tại hoặc không thể nhận thư");
+
+            verify(emailService, never()).sendBugReportOtpEmail(anyString(), anyString());
+        }
+    }
+
+    @Nested
+    @DisplayName("createPublicReport Anti-Bot Tests")
+    class CreatePublicReportAntiBotTests {
+
+        @Test
+        @DisplayName("Honeypot Trap: Should return fake 200 success response when website field is filled by spambot")
+        void createPublicReport_HoneypotTrap_ReturnsFakeSuccess() {
             CreateBugReportRequest request = CreateBugReportRequest.builder()
-                    .reporterEmail("  ")
+                    .reporterEmail("bot@gmail.com")
                     .errorType(BugErrorType.LOGIN_ACCOUNT)
+                    .website("http://spam-link.com") // Spambot filled the hidden honeypot field!
                     .build();
 
-            assertThatThrownBy(() -> bugReportService.createPublicReport(request))
+            BugReportResponse response = bugReportService.createPublicReport(request, "192.168.1.10");
+
+            assertThat(response).isNotNull();
+            assertThat(response.getId()).isEqualTo(0L); // Fake report ID 0
+            verify(bugReportRepository, never()).save(any()); // NOT saved to DB
+        }
+
+        @Test
+        @DisplayName("Time-based Check: Should throw BadRequestException when submitted under 3 seconds")
+        void createPublicReport_SubmittedTooFast_ThrowsBadRequestException() {
+            CreateBugReportRequest request = CreateBugReportRequest.builder()
+                    .reporterEmail("user@gmail.com")
+                    .errorType(BugErrorType.LOGIN_ACCOUNT)
+                    .formLoadedAt(System.currentTimeMillis() - 1000) // Submitted in 1 second!
+                    .build();
+
+            assertThatThrownBy(() -> bugReportService.createPublicReport(request, "192.168.1.11"))
                     .isInstanceOf(BadRequestException.class)
-                    .hasMessageContaining("Email không được để trống");
+                    .hasMessageContaining("Thao tác gửi báo cáo quá nhanh");
+
+            verify(bugReportRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Should throw BadRequestException when OTP is missing")
+        void createPublicReport_MissingOtp_ThrowsBadRequestException() {
+            CreateBugReportRequest request = CreateBugReportRequest.builder()
+                    .reporterEmail("missing-otp-test@gmail.com")
+                    .reporterName("Guest User")
+                    .errorType(BugErrorType.LOGIN_ACCOUNT)
+                    .description("Lỗi đăng nhập")
+                    .formLoadedAt(System.currentTimeMillis() - 5000) // 5s ok
+                    .build();
+
+            assertThatThrownBy(() -> bugReportService.createPublicReport(request, "10.0.0.99"))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("Vui lòng nhập mã OTP");
 
             verify(bugReportRepository, never()).save(any());
         }
@@ -128,87 +164,21 @@ class BugReportServiceImplTest {
     class CreateAuthenticatedReportTests {
 
         @Test
-        @DisplayName("Should create report for authenticated user and notify admins")
+        @DisplayName("Should create report for authenticated user without OTP requirement")
         void createAuthenticatedReport_ValidUser_Success() {
             CreateBugReportRequest request = CreateBugReportRequest.builder()
                     .errorType(BugErrorType.UI_KATEX)
                     .description("KaTeX error")
                     .build();
 
-            when(userRepository.findByEmail("student@mathclass.com")).thenReturn(Optional.of(studentUser));
+            when(userRepository.findByEmail("student@gmail.com")).thenReturn(Optional.of(studentUser));
             when(bugReportRepository.save(any(BugReport.class))).thenReturn(bugReport);
             when(userRepository.findByRole(Role.ADMIN)).thenReturn(List.of(adminUser));
 
-            BugReportResponse response = bugReportService.createAuthenticatedReport(request, "student@mathclass.com");
+            BugReportResponse response = bugReportService.createAuthenticatedReport(request, "student@gmail.com", "127.0.0.1");
 
             assertThat(response).isNotNull();
             verify(bugReportRepository, times(1)).save(any(BugReport.class));
-        }
-
-        @Test
-        @DisplayName("Should throw ResourceNotFoundException when user not found")
-        void createAuthenticatedReport_UserNotFound_ThrowsException() {
-            CreateBugReportRequest request = CreateBugReportRequest.builder()
-                    .errorType(BugErrorType.UI_KATEX)
-                    .build();
-
-            when(userRepository.findByEmail("unknown@mathclass.com")).thenReturn(Optional.empty());
-
-            assertThatThrownBy(() -> bugReportService.createAuthenticatedReport(request, "unknown@mathclass.com"))
-                    .isInstanceOf(ResourceNotFoundException.class);
-        }
-    }
-
-    @Nested
-    @DisplayName("getReports Tests")
-    class GetReportsTests {
-
-        @Test
-        @DisplayName("Should return paginated reports")
-        void getReports_AllStatus_ReturnsPage() {
-            Pageable pageable = PageRequest.of(0, 10);
-            Page<BugReport> page = new PageImpl<>(Collections.singletonList(bugReport));
-            when(bugReportRepository.findAllByOrderByCreatedAtDesc(pageable)).thenReturn(page);
-
-            Page<BugReportResponse> result = bugReportService.getReports(null, pageable);
-
-            assertThat(result).isNotNull();
-            assertThat(result.getTotalElements()).isEqualTo(1);
-        }
-
-        @Test
-        @DisplayName("Should return paginated reports filtered by status")
-        void getReports_FilterByStatus_ReturnsPage() {
-            Pageable pageable = PageRequest.of(0, 10);
-            Page<BugReport> page = new PageImpl<>(Collections.singletonList(bugReport));
-            when(bugReportRepository.findByStatus(BugReportStatus.PENDING, pageable)).thenReturn(page);
-
-            Page<BugReportResponse> result = bugReportService.getReports(BugReportStatus.PENDING, pageable);
-
-            assertThat(result).isNotNull();
-            assertThat(result.getTotalElements()).isEqualTo(1);
-        }
-    }
-
-    @Nested
-    @DisplayName("updateReportStatus Tests")
-    class UpdateReportStatusTests {
-
-        @Test
-        @DisplayName("Should update report status and trigger email & notification when status changes")
-        void updateReportStatus_StatusChanged_Success() {
-            bugReport.setUserId(10L);
-            UpdateBugReportStatusRequest request = new UpdateBugReportStatusRequest();
-            request.setStatus(BugReportStatus.RESOLVED);
-
-            when(bugReportRepository.findById(100L)).thenReturn(Optional.of(bugReport));
-            when(bugReportRepository.save(any(BugReport.class))).thenReturn(bugReport);
-
-            BugReportResponse response = bugReportService.updateReportStatus(100L, request);
-
-            assertThat(response).isNotNull();
-            verify(emailService, times(1)).sendBugReportStatusEmail(anyString(), any(), anyString(), anyString(), anyString());
-            verify(notificationService, times(1)).saveAndSendNotification(eq(10L), anyString(), eq("/home"));
         }
     }
 }

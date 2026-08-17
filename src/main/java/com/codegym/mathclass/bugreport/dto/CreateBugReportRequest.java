@@ -26,4 +26,10 @@ public class CreateBugReportRequest {
 
     @Size(max = 3, message = "Chỉ được gửi tối đa 3 ảnh đính kèm")
     private List<String> imageUrls;
+
+    private String otp;
+
+    private String website;
+
+    private Long formLoadedAt;
 }

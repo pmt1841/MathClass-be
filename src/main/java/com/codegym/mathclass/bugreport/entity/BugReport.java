@@ -39,5 +39,6 @@ public class BugReport extends BaseEntity {
 
     @Builder.Default
     @OneToMany(mappedBy = "bugReport", cascade = CascadeType.ALL, orphanRemoval = true)
+    @org.hibernate.annotations.BatchSize(size = 20)
     private List<BugReportImage> images = new ArrayList<>();
 }

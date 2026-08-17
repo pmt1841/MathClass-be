@@ -7,11 +7,15 @@ import com.codegym.mathclass.bugreport.entity.BugReportStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import com.codegym.mathclass.bugreport.dto.SendOtpRequest;
+
 public interface BugReportService {
 
-    BugReportResponse createPublicReport(CreateBugReportRequest request);
+    void sendPublicReportOtp(SendOtpRequest request, String clientIp);
 
-    BugReportResponse createAuthenticatedReport(CreateBugReportRequest request, String username);
+    BugReportResponse createPublicReport(CreateBugReportRequest request, String clientIp);
+
+    BugReportResponse createAuthenticatedReport(CreateBugReportRequest request, String username, String clientIp);
 
     Page<BugReportResponse> getReports(BugReportStatus status, Pageable pageable);
 

@@ -1,7 +1,8 @@
 package com.codegym.mathclass.bugreport.controller;
 
-import com.codegym.mathclass.bugreport.dto.CreateBugReportRequest;
 import com.codegym.mathclass.bugreport.dto.BugReportResponse;
+import com.codegym.mathclass.bugreport.dto.CreateBugReportRequest;
+import com.codegym.mathclass.bugreport.dto.SendOtpRequest;
 import com.codegym.mathclass.bugreport.dto.UpdateBugReportStatusRequest;
 import com.codegym.mathclass.bugreport.entity.BugReportStatus;
 import com.codegym.mathclass.bugreport.service.BugReportService;
@@ -22,6 +23,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 
 @Tag(name = "Bug Report", description = "APIs báo cáo sự cố và quản lý báo cáo lỗi hệ thống")
@@ -34,19 +36,59 @@ public class BugReportController {
     private final BugReportService bugReportService;
     private final SupabaseStorageService supabaseStorageService;
 
+    private String getClientIp(HttpServletRequest httpRequest) {
+        if (httpRequest == null) return "127.0.0.1";
+        String[] headers = {
+            "X-Forwarded-For",
+            "X-Real-IP",
+            "CF-Connecting-IP",
+            "Proxy-Client-IP",
+            "WL-Proxy-Client-IP"
+        };
+        for (String header : headers) {
+            String ip = httpRequest.getHeader(header);
+            if (ip != null && !ip.isBlank() && !"unknown".equalsIgnoreCase(ip)) {
+                return ip.split(",")[0].trim();
+            }
+        }
+        return httpRequest.getRemoteAddr();
+    }
+
     @Operation(summary = "Tải lên ảnh đính kèm báo cáo lỗi (Công khai)", description = "Upload file ảnh đính kèm cho báo cáo sự cố không cần token")
     @PostMapping("/bug-reports/public/upload-image")
     public ResponseEntity<Map<String, String>> uploadPublicBugReportImage(
             @RequestParam("file") MultipartFile file) throws Exception {
+        if (file == null || file.isEmpty()) {
+            throw new com.codegym.mathclass.exception.BadRequestException("Tập tin đính kèm không được để trống");
+        }
+        if (file.getSize() > 5 * 1024 * 1024) {
+            throw new com.codegym.mathclass.exception.BadRequestException("Dung lượng ảnh đính kèm vượt quá 5MB");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new com.codegym.mathclass.exception.BadRequestException("Chỉ chấp nhận tập tin định dạng hình ảnh (PNG, JPG, JPEG, WEBP)");
+        }
         String publicUrl = supabaseStorageService.uploadImage(file, "assignment_image");
         return ResponseEntity.ok(Map.of("imageUrl", publicUrl));
+    }
+
+    @Operation(summary = "Gửi mã OTP xác thực báo cáo lỗi công khai", description = "Gửi mã OTP 6 số về email của người dùng chưa đăng nhập trước khi gửi báo cáo lỗi")
+    @PostMapping("/bug-reports/public/send-otp")
+    public ResponseEntity<Map<String, String>> sendPublicReportOtp(
+            @Valid @RequestBody SendOtpRequest request,
+            HttpServletRequest httpRequest) {
+        String clientIp = getClientIp(httpRequest);
+        bugReportService.sendPublicReportOtp(request, clientIp);
+        return ResponseEntity.ok(Map.of("message", "Mã OTP đã được gửi đến email của bạn. Vui lòng kiểm tra hộp thư (kể cả thư mục Spam)."));
     }
 
     @Operation(summary = "Gửi báo cáo lỗi công khai (Chưa đăng nhập)", description = "Dành cho người dùng tại trang Login gửi phản hồi sự cố mà không cần token")
     @PostMapping("/bug-reports/public")
     public ResponseEntity<BugReportResponse> createPublicReport(
-            @Valid @RequestBody CreateBugReportRequest request) {
-        BugReportResponse response = bugReportService.createPublicReport(request);
+            @Valid @RequestBody CreateBugReportRequest request,
+            HttpServletRequest httpRequest) {
+        String clientIp = getClientIp(httpRequest);
+        BugReportResponse response = bugReportService.createPublicReport(request, clientIp);
         return ResponseEntity.ok(response);
     }
 
@@ -54,8 +96,10 @@ public class BugReportController {
     @PostMapping("/bug-reports")
     public ResponseEntity<BugReportResponse> createAuthenticatedReport(
             @Valid @RequestBody CreateBugReportRequest request,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        BugReportResponse response = bugReportService.createAuthenticatedReport(request, userDetails.getUsername());
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            HttpServletRequest httpRequest) {
+        String clientIp = getClientIp(httpRequest);
+        BugReportResponse response = bugReportService.createAuthenticatedReport(request, userDetails.getUsername(), clientIp);
         return ResponseEntity.ok(response);
     }
 
