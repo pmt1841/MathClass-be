@@ -207,6 +207,10 @@ public class AiQuestionServiceImpl implements AiQuestionService {
             }
             String jsonText = rawResponseBody.trim();
             jsonText = jsonText.replaceAll("(?s)^```[a-z]*\\s*|\\s*```$", "").trim();
+            // Pre-escape các lệnh LaTeX phổ biến để tránh bị JSON parser nuốt dấu \ (ví dụ \t trong \text biến thành ký tự TAB)
+            jsonText = jsonText.replaceAll("(?<!\\\\)\\\\text\\{", "\\\\\\\\text{");
+            jsonText = jsonText.replaceAll("(?<!\\\\)\\\\frac\\{", "\\\\\\\\frac{");
+            jsonText = jsonText.replaceAll("(?<!\\\\)\\\\sqrt\\{", "\\\\\\\\sqrt{");
             return objectMapper.readValue(jsonText, AiGeneratedQuestionResponse.class);
         } catch (JsonProcessingException e) {
             log.error("Không thể parse JSON từ AI response: {}", e.getMessage());

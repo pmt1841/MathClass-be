@@ -1,6 +1,5 @@
 package com.codegym.mathclass.aiconfig.service;
 
-import com.codegym.mathclass.aiconfig.dto.request.SystemPromptCreateRequest;
 import com.codegym.mathclass.aiconfig.dto.request.SystemPromptResetRequest;
 import com.codegym.mathclass.aiconfig.dto.request.SystemPromptUpdateRequest;
 import com.codegym.mathclass.aiconfig.dto.response.SystemPromptResponse;
@@ -14,7 +13,12 @@ import com.codegym.mathclass.aiconfig.validator.SystemPromptValidator;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.InvalidVariableException;
 import com.codegym.mathclass.exception.PromptNotFoundException;
+import com.codegym.mathclass.aiconfig.dto.request.PromptTestExecuteRequest;
+import com.codegym.mathclass.aiconfig.dto.response.PromptTestExecuteResponse;
+import com.codegym.mathclass.aiconfig.repository.TaskConfigRepository;
+import com.codegym.mathclass.aiconfig.service.AiPromptExecutionService;
 import com.codegym.mathclass.systemlog.service.SystemLogService;
+import com.codegym.mathclass.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,6 +29,7 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -45,6 +50,15 @@ class SystemPromptServiceTest {
 
     @Mock
     private SystemLogService systemLogService;
+
+    @Mock
+    private AiPromptExecutionService aiPromptExecutionService;
+
+    @Mock
+    private TaskConfigRepository taskConfigRepository;
+
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private SystemPromptServiceImpl systemPromptService;
@@ -67,54 +81,11 @@ class SystemPromptServiceTest {
     }
 
     @Test
-    @DisplayName("TC-PROMPT-01: Tạo mới System Prompt thành công")
-    void testCreatePrompt_Success() {
-        SystemPromptCreateRequest request = SystemPromptCreateRequest.builder()
-                .code("PROMPT_SOLVE_HINT")
-                .name("Prompt Gợi ý giải toán")
-                .taskCode("HINT_EXPLANATION")
-                .defaultContent("Bạn là trợ lý giảng dạy môn {{subject}} cấp {{grade_level}}.")
-                .allowedVariables(List.of("subject", "grade_level"))
-                .description("Mô tả")
-                .build();
-
-        when(systemPromptRepository.existsByCode("PROMPT_SOLVE_HINT")).thenReturn(false);
-        when(systemPromptRepository.save(any(SystemPrompt.class))).thenReturn(samplePrompt);
-
-        SystemPromptResponse response = systemPromptService.createPrompt(request, "admin@mathclass.edu.vn", "127.0.0.1");
-
-        assertNotNull(response);
-        assertEquals("PROMPT_SOLVE_HINT", response.getCode());
-        verify(systemPromptRepository).save(any(SystemPrompt.class));
-        verify(systemPromptHistoryRepository).save(any(SystemPromptHistory.class));
-        verify(systemLogService).log(eq("admin@mathclass.edu.vn"), eq("CREATE_PROMPT"), any(), any(), eq("PROMPT_SOLVE_HINT"), any(), any(), any());
-    }
-
-    @Test
-    @DisplayName("TC-PROMPT-02: Ném lỗi khi tạo mới Prompt với biến môi trường không hợp lệ")
-    void testCreatePrompt_InvalidVariable_ThrowsException() {
-        SystemPromptCreateRequest request = SystemPromptCreateRequest.builder()
-                .code("PROMPT_SOLVE_HINT")
-                .name("Prompt Gợi ý giải toán")
-                .taskCode("HINT_EXPLANATION")
-                .defaultContent("Nội dung chứa biến sai {{invalid_var}}")
-                .allowedVariables(List.of("subject", "grade_level"))
-                .build();
-
-        when(systemPromptRepository.existsByCode("PROMPT_SOLVE_HINT")).thenReturn(false);
-
-        assertThrows(InvalidVariableException.class, () ->
-                systemPromptService.createPrompt(request, "admin@mathclass.edu.vn", "127.0.0.1")
-        );
-    }
-
-    @Test
-    @DisplayName("TC-PROMPT-03: Cập nhật System Prompt thành công và tăng version history")
+    @DisplayName("TC-PROMPT-01: Cập nhật System Prompt thành công và tăng version history")
     void testUpdatePrompt_Success() {
         SystemPromptUpdateRequest request = SystemPromptUpdateRequest.builder()
                 .name("Prompt Gợi ý giải toán v2")
                 .currentContent("Nội dung mới môn {{subject}} cho {{grade_level}}")
-                .status(SystemPromptStatus.ACTIVE)
                 .changeReason("Tối ưu hóa")
                 .build();
 
@@ -172,4 +143,68 @@ class SystemPromptServiceTest {
 
         assertThrows(PromptNotFoundException.class, () -> systemPromptService.getPromptById(99L));
     }
+
+    @Test
+    @DisplayName("TC-PROMPT-07: Chạy thử nghiệm Prompt thành công với promptCode có sẵn")
+    void testTestExecutePrompt_Success() {
+        when(systemPromptRepository.findByCode("PROMPT_SOLVE_HINT")).thenReturn(Optional.of(samplePrompt));
+        when(aiPromptExecutionService.executePrompt(eq("HINT_EXPLANATION"), anyString(), any()))
+                .thenReturn("Chào em, để giải phương trình x^2 - 4 = 0, em có thể dùng hằng đẳng thức...");
+
+        PromptTestExecuteRequest request = PromptTestExecuteRequest.builder()
+                .promptCode("PROMPT_SOLVE_HINT")
+                .variables(Map.of("subject", "Toán học", "grade_level", "Lớp 10"))
+                .build();
+
+        PromptTestExecuteResponse response = systemPromptService.testExecutePrompt(request, "admin@mathclass.edu.vn");
+
+        assertNotNull(response);
+        assertTrue(response.isSuccess());
+        assertEquals("PROMPT_SOLVE_HINT", response.getPromptCode());
+        assertEquals("HINT_EXPLANATION", response.getTaskCode());
+        assertTrue(response.getRenderedPrompt().contains("Toán học"));
+        assertTrue(response.getRenderedPrompt().contains("Lớp 10"));
+        assertNotNull(response.getAiResponse());
+    }
+
+    @Test
+    @DisplayName("TC-PROMPT-08: Chạy thử nghiệm Prompt với customContent nháp")
+    void testTestExecutePrompt_WithCustomContent() {
+        when(aiPromptExecutionService.executePrompt(eq("SUBMISSION_GRADING"), anyString(), any()))
+                .thenReturn("{\"score\": 9, \"feedback\": \"Tốt\"}");
+
+        PromptTestExecuteRequest request = PromptTestExecuteRequest.builder()
+                .taskCode("SUBMISSION_GRADING")
+                .customContent("Chấm điểm bài làm: {{student_answer}}")
+                .variables(Map.of("student_answer", "x = 2"))
+                .build();
+
+        PromptTestExecuteResponse response = systemPromptService.testExecutePrompt(request, "admin@mathclass.edu.vn");
+
+        assertNotNull(response);
+        assertTrue(response.isSuccess());
+        assertEquals("SUBMISSION_GRADING", response.getTaskCode());
+        assertEquals("Chấm điểm bài làm: x = 2", response.getRenderedPrompt());
+        assertEquals("{\"score\": 9, \"feedback\": \"Tốt\"}", response.getAiResponse());
+    }
+
+    @Test
+    @DisplayName("TC-PROMPT-09: Xử lý lỗi khi AI Provider gặp sự cố kết nối trong testExecutePrompt")
+    void testTestExecutePrompt_AiErrorHandled() {
+        when(systemPromptRepository.findByCode("PROMPT_SOLVE_HINT")).thenReturn(Optional.of(samplePrompt));
+        when(aiPromptExecutionService.executePrompt(anyString(), anyString(), any()))
+                .thenThrow(new RuntimeException("API Key hết quota"));
+
+        PromptTestExecuteRequest request = PromptTestExecuteRequest.builder()
+                .promptCode("PROMPT_SOLVE_HINT")
+                .build();
+
+        PromptTestExecuteResponse response = systemPromptService.testExecutePrompt(request, "admin@mathclass.edu.vn");
+
+        assertNotNull(response);
+        assertFalse(response.isSuccess());
+        assertNull(response.getAiResponse());
+        assertTrue(response.getErrorMessage().contains("API Key hết quota"));
+    }
 }
+

@@ -24,4 +24,5 @@ public class CreateAssignmentRequest {
     private List<AssignmentDrawingRequest> drawings;
     private List<AssignmentImageRequest> images;
     private List<Long> tagIds;
+    private Boolean allowResubmit;
 }

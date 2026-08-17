@@ -17,6 +17,7 @@ import com.codegym.mathclass.submission.repository.SubmissionRepository;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
+import com.codegym.mathclass.utils.EmailService;
 import com.codegym.mathclass.utils.SupabaseStorageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -57,6 +58,12 @@ class AssignmentServiceImplTest {
 
     @Mock
     private SubmissionRepository submissionRepository;
+
+    @Mock
+    private EmailService emailService;
+
+    @Mock
+    private TagService tagService;
 
     @InjectMocks
     private AssignmentServiceImpl assignmentService;
@@ -532,6 +539,38 @@ class AssignmentServiceImplTest {
             assertThatThrownBy(() -> assignmentService.updateAssignment(assignmentId, updateRequest, teacherId))
                     .isInstanceOf(BadRequestException.class)
                     .hasMessageContaining("Không thể sửa bài tập đã bị xóa");
+        }
+    }
+
+    @Nested
+    @DisplayName("toggleAllowResubmit Tests")
+    class ToggleAllowResubmitTests {
+
+        @Test
+        @DisplayName("Should toggle allowResubmit successfully")
+        void toggleAllowResubmit_Success() {
+            when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(draftAssignment));
+            when(assignmentRepository.save(draftAssignment)).thenReturn(draftAssignment);
+            AssignmentResponse mockResponse = new AssignmentResponse();
+            mockResponse.setAllowResubmit(true);
+            when(assignmentMapper.toAssignmentResponse(draftAssignment)).thenReturn(mockResponse);
+
+            AssignmentResponse response = assignmentService.toggleAllowResubmit(assignmentId, true, teacherId);
+
+            assertThat(response).isNotNull();
+            assertThat(response.isAllowResubmit()).isTrue();
+            assertThat(draftAssignment.isAllowResubmit()).isTrue();
+            verify(assignmentRepository, times(1)).save(draftAssignment);
+        }
+
+        @Test
+        @DisplayName("Should throw AccessDeniedException when teacher is not owner")
+        void toggleAllowResubmit_NotOwner_ThrowsException() {
+            when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(draftAssignment));
+
+            assertThatThrownBy(() -> assignmentService.toggleAllowResubmit(assignmentId, true, 999L))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("Bạn không có quyền thay đổi thiết lập của bài tập này");
         }
     }
 }
