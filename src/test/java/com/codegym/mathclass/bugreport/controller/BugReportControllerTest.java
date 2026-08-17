@@ -91,6 +91,18 @@ class BugReportControllerTest {
     }
 
     @Test
+    @DisplayName("Should send public report OTP successfully")
+    void sendPublicReportOtp_Success() throws Exception {
+        com.codegym.mathclass.bugreport.dto.SendOtpRequest request = new com.codegym.mathclass.bugreport.dto.SendOtpRequest("guest@gmail.com");
+
+        mockMvc.perform(post("/bug-reports/public/send-otp")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
     @DisplayName("Should upload public image successfully without ApiResponse wrapping")
     void uploadPublicBugReportImage_Success() throws Exception {
         MockMultipartFile file = new MockMultipartFile("file", "test.jpg", "image/jpeg", "image bytes".getBytes());
@@ -110,7 +122,7 @@ class BugReportControllerTest {
                 .description("Login bug")
                 .build();
 
-        when(bugReportService.createPublicReport(any())).thenReturn(responseDto);
+        when(bugReportService.createPublicReport(any(), any())).thenReturn(responseDto);
 
         mockMvc.perform(post("/bug-reports/public")
                         .contentType(MediaType.APPLICATION_JSON)

@@ -180,6 +180,41 @@ public class EmailService {
             log.error("Failed to send bug report status email to {}", toEmail, e);
         }
     }
+
+    @Async
+    public void sendBugReportOtpEmail(String toEmail, String otpCode) {
+        try {
+            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
+
+            helper.setFrom(senderEmail);
+            helper.setTo(toEmail);
+            helper.setSubject("[MathClass] Mã xác thực OTP gửi báo cáo sự cố");
+
+            String htmlContent = """
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <h2 style="color: #ea580c; margin-top: 0;">Mã OTP Xác thực Báo cáo Sự cố</h2>
+                    <p>Xin chào <strong>%s</strong>,</p>
+                    <p>Bạn (hoặc ai đó) đang yêu cầu gửi Báo cáo sự cố hệ thống tại <strong>MathClass</strong>. Mã OTP xác thực của bạn là:</p>
+                    <div style="background-color: #fff7ed; border: 1px dashed #f97316; text-align: center; padding: 16px; margin: 20px 0; border-radius: 8px;">
+                        <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #c2410c;">%s</span>
+                    </div>
+                    <p style="font-size: 13px; color: #64748b;">⚠️ Mã OTP này có hiệu lực trong <strong>5 phút</strong>. Vui lòng không chia sẻ mã này cho bất kỳ ai.</p>
+                    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+                    <p style="font-size: 12px; color: #94a3b8;">Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này.<br/>Trân trọng,<br/>Đội ngũ Kỹ thuật & Quản trị MathClass</p>
+                </div>
+                """.formatted(
+                    HtmlUtils.htmlEscape(toEmail),
+                    HtmlUtils.htmlEscape(otpCode)
+                );
+
+            helper.setText(htmlContent, true);
+            javaMailSender.send(mimeMessage);
+            log.info("Bug report OTP email sent successfully to {}", toEmail);
+        } catch (Exception e) {
+            log.error("Failed to send bug report OTP email to {}", toEmail, e);
+        }
+    }
 }
 
 
