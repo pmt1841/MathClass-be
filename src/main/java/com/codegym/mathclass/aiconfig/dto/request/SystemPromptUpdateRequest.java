@@ -1,8 +1,6 @@
 package com.codegym.mathclass.aiconfig.dto.request;
 
-import com.codegym.mathclass.aiconfig.entity.SystemPromptStatus;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 @Getter
@@ -19,9 +17,6 @@ public class SystemPromptUpdateRequest {
     private String currentContent;
 
     private String description;
-
-    @NotNull(message = "Trạng thái không được để trống")
-    private SystemPromptStatus status;
 
     private String changeReason;
 }
