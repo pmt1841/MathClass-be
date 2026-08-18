@@ -107,4 +107,33 @@ public class LaTeXSanitizer {
 
         return result;
     }
+
+    /**
+     * Trích xuất và làm sạch mã LaTeX thô từ phản hồi của AI.
+     * Loại bỏ markdown code blocks (ví dụ: ```latex ... ```), khoảng trắng thừa,
+     * và các ký tự bọc công thức ngoài cùng ($$...$$, \[...\], \(...\)).
+     *
+     * @param output chuỗi phản hồi thô từ AI
+     * @return chuỗi LaTeX nguyên bản đã được làm sạch
+     */
+    public static String extractCleanLatex(String output) {
+        if (output == null || output.isBlank()) {
+            return "";
+        }
+        String clean = output.trim();
+        if (clean.contains("```")) {
+            clean = clean.replaceAll("(?s)^.*?```(?:latex)?\\s*", "")
+                         .replaceAll("(?s)\\s*```.*$", "");
+        }
+        clean = clean.trim();
+        if (clean.startsWith("$$") && clean.endsWith("$$") && clean.length() >= 4) {
+            clean = clean.substring(2, clean.length() - 2).trim();
+        } else if (clean.startsWith("\\[") && clean.endsWith("\\]") && clean.length() >= 4) {
+            clean = clean.substring(2, clean.length() - 2).trim();
+        } else if (clean.startsWith("\\(") && clean.endsWith("\\)") && clean.length() >= 4) {
+            clean = clean.substring(2, clean.length() - 2).trim();
+        }
+        return clean;
+    }
 }
+

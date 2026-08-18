@@ -97,6 +97,9 @@ public class DatabaseSeeder implements CommandLineRunner {
 
                 seedAiCreditData();
 
+                // Always ensure system prompts are synchronized and up to date (idempotent)
+                seedSystemPrompts();
+
                 if (userRepository.count() > 0) {
                         log.info("[DatabaseSeeder] Users exist in database. Skipping sample data seeding.");
                         return;
@@ -118,43 +121,33 @@ public class DatabaseSeeder implements CommandLineRunner {
                 log.info("[DatabaseSeeder] Synchronizing permissions and role permissions...");
 
                 List<Permission> requiredPermissions = List.of(
-                                Permission.builder().name("classroom:create").description("Tạo lớp học").build(),
-                                Permission.builder().name("classroom:update").description("Sửa lớp học").build(),
-                                Permission.builder().name("classroom:delete").description("Xóa lớp học").build(),
-                                Permission.builder().name("classroom:manage_requests")
-                                                .description("Quản lý yêu cầu tham gia").build(),
-                                Permission.builder().name("classroom:remove_student").description("Xóa học sinh")
-                                                .build(),
-                                Permission.builder().name("classroom:join").description("Tham gia lớp").build(),
-                                Permission.builder().name("classroom:join_status")
-                                                .description("Xem trạng thái tham gia").build(),
+                                p("classroom:create", "Tạo lớp học"),
+                                p("classroom:update", "Sửa lớp học"),
+                                p("classroom:delete", "Xóa lớp học"),
+                                p("classroom:manage_requests", "Quản lý yêu cầu tham gia"),
+                                p("classroom:remove_student", "Xóa học sinh"),
+                                p("classroom:join", "Tham gia lớp"),
+                                p("classroom:join_status", "Xem trạng thái tham gia"),
 
-                                Permission.builder().name("assignment:create").description("Tạo bài tập").build(),
-                                Permission.builder().name("assignment:update").description("Sửa bài tập").build(),
-                                Permission.builder().name("assignment:delete").description("Xóa bài tập").build(),
-                                Permission.builder().name("assignment:publish").description("Xuất bản bài tập").build(),
-                                Permission.builder().name("assignment:read").description("Xem bài tập").build(),
+                                p("assignment:create", "Tạo bài tập"),
+                                p("assignment:update", "Sửa bài tập"),
+                                p("assignment:delete", "Xóa bài tập"),
+                                p("assignment:publish", "Xuất bản bài tập"),
+                                p("assignment:read", "Xem bài tập"),
 
-                                Permission.builder().name("submission:submit").description("Nộp bài").build(),
-                                Permission.builder().name("submission:read_own").description("Xem bài nộp của mình")
-                                                .build(),
-                                Permission.builder().name("submission:grade").description("Chấm điểm").build(),
-                                Permission.builder().name("submission:read_all").description("Xem tất cả bài nộp")
-                                                .build(),
-                                Permission.builder().name("submission:comment").description("Bình luận bài nộp")
-                                                .build(),
+                                p("submission:submit", "Nộp bài"),
+                                p("submission:read_own", "Xem bài nộp của mình"),
+                                p("submission:grade", "Chấm điểm"),
+                                p("submission:read_all", "Xem tất cả bài nộp"),
+                                p("submission:comment", "Bình luận bài nộp"),
 
-                                Permission.builder().name("dashboard:teacher_view")
-                                                .description("Xem thống kê giáo viên").build(),
-                                Permission.builder().name("dashboard:student_view").description("Xem thống kê học sinh")
-                                                .build(),
+                                p("dashboard:teacher_view", "Xem thống kê giáo viên"),
+                                p("dashboard:student_view", "Xem thống kê học sinh"),
 
-                                Permission.builder().name("library:read").description("Xem thư viện bài tập dùng chung")
-                                                .build(),
-                                Permission.builder().name("library:clone").description("Clone bài tập từ thư viện")
-                                                .build(),
+                                p("library:read", "Xem thư viện bài tập dùng chung"),
+                                p("library:clone", "Clone bài tập từ thư viện"),
 
-                                Permission.builder().name("user:manage").description("Quản lý người dùng").build());
+                                p("user:manage", "Quản lý người dùng"));
 
                 Map<String, Permission> existingPermMap = permissionRepository.findAll().stream()
                                 .collect(Collectors.toMap(Permission::getName, p -> p));
@@ -217,10 +210,6 @@ public class DatabaseSeeder implements CommandLineRunner {
         }
 
         private void seedCreditConfigs() {
-                // Dọn dẹp các task phụ không dùng nữa để bảng giá hiển thị sạch
-                aiCreditConfigRepository.findByTask("HANDWRITING_LATEX").ifPresent(aiCreditConfigRepository::delete);
-                aiCreditConfigRepository.findByTask("SKETCH_GEOMETRY").ifPresent(aiCreditConfigRepository::delete);
-
                 int defaultTokensPerCredit = 1000;
                 Map<String, Integer> defaults = Map.of(
                                 "STUDENT_HINT", 1,
@@ -296,7 +285,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 .teacher(teacher1)
                                 .maxStudents(30)
                                 .description("Lớp toán đại số cơ bản dành cho học sinh lớp 10 năm học 2026-2027.")
-                                .students(new HashSet<>(Arrays.asList(student1, student2, student3)))
+                                .students(new HashSet<>(Set.of(student1, student2, student3)))
                                 .build());
 
                 Classroom class2 = classroomRepository.save(Classroom.builder()
@@ -305,7 +294,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 .teacher(teacher2)
                                 .maxStudents(25)
                                 .description("Lớp học chuyên đề hình học không gian và phương pháp tọa độ lớp 11.")
-                                .students(new HashSet<>(Arrays.asList(student3, student4, student5)))
+                                .students(new HashSet<>(Set.of(student3, student4, student5)))
                                 .build());
 
                 // 3. Create Classroom Join Requests
@@ -335,11 +324,11 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 .build());
 
                 // Add drawing to Assignment 1
-                Map<String, Object> graphData = new HashMap<>();
-                graphData.put("type", "parabola");
-                graphData.put("a", 1.0);
-                graphData.put("b", -4.0);
-                graphData.put("c", 3.0);
+                Map<String, Object> graphData = Map.of(
+                                "type", "parabola",
+                                "a", 1.0,
+                                "b", -4.0,
+                                "c", 3.0);
 
                 assignmentDrawingRepository.save(AssignmentDrawing.builder()
                                 .assignment(assign1)
@@ -390,11 +379,11 @@ public class DatabaseSeeder implements CommandLineRunner {
                 submissionCommentRepository.save(comment1);
 
                 // Add Submission Drawing
-                Map<String, Object> drawingData = new HashMap<>();
-                drawingData.put("points", Arrays.asList(Map.of("name", "I", "x", 2.0, "y", -1.0)));
-                Map<String, Object> drawingMeta = new HashMap<>();
-                drawingMeta.put("tool", "JSXGraph");
-                drawingMeta.put("version", "1.4.2");
+                Map<String, Object> drawingData = Map.of(
+                                "points", List.of(Map.of("name", "I", "x", 2.0, "y", -1.0)));
+                Map<String, Object> drawingMeta = Map.of(
+                                "tool", "JSXGraph",
+                                "version", "1.4.2");
 
                 SubmissionDrawing subDraw1 = SubmissionDrawing.builder()
                                 .submission(sub1)
@@ -442,9 +431,6 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 .isRead(false)
                                 .build();
                 notificationRepository.save(notif2);
-
-                // 7. Create System Prompts
-                seedSystemPrompts();
         }
 
         private void seedSystemPrompts() {
@@ -484,21 +470,6 @@ public class DatabaseSeeder implements CommandLineRunner {
                                   "analysis": "Nhận xét ngắn gọn tiến độ bài làm hiện tại của học sinh",
                                   "hintContent": "Gợi ý tư duy ngắn (từ 50 đến 120 từ) định hướng bước tiếp theo bằng tiếng Việt, dùng Markdown và KaTeX ($...$)"
                                 }
-                                """;
-
-                String defaultLatexPrompt = """
-                                Bạn là một chuyên gia xử lý định dạng công thức toán học và biểu thức đại số.
-                                Nhiệm vụ của bạn là chuyển đổi và chuẩn hóa biểu thức toán học được cung cấp sang định dạng {{math_format}} chính xác.
-
-                                [THÔNG TIN BIỂU THỨC CẦN XỬ LÝ]:
-                                - Biểu thức gốc: {{math_expression}}
-                                - Định dạng mục tiêu: {{math_format}}
-
-                                YÊU CẦU BẮT BUỘC:
-                                1. Đọc và phân tích chính xác các ký hiệu toán học trong biểu thức gốc {{math_expression}}.
-                                2. Chuyển đổi biểu thức sang cú pháp {{math_format}} chuẩn (ví dụ: dùng KaTeX/LaTeX với các dấu $, \\frac{}{}, \\sqrt{}, v.v.).
-                                3. Kiểm tra kỹ tính hợp lệ của cú pháp, đảm bảo các dấu đóng/mở ngoặc và ký hiệu toán học chính xác.
-                                4. Chỉ trả về duy nhất chuỗi biểu thức toán học đã chuyển đổi, tuyệt đối không kèm lời giải thích hay văn bản thừa nào khác.
                                 """;
 
                 String defaultGradingPrompt = """
@@ -585,16 +556,70 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 - Khi đề toán có đường tròn, BẮT BUỘC phải tạo điểm tâm (dạng "point"), tạo các điểm trên đường tròn, và thêm phần tử "circle" với "centerId" và "radius" hoặc "pointId".
                                 """;
 
-                upsertSystemPrompt("PROMPT_STUDENT_HINT", "Prompt Gợi ý Tư duy Làm bài", "STUDENT_HINT", defaultHintPrompt,
+                String defaultHandwritingPrompt = """
+                                Bạn là trợ lý OCR nhận diện chữ viết tay công thức toán học chuyên nghiệp.
+                                Nhiệm vụ: Phân tích hình ảnh chữ viết tay/công thức toán này và chuyển đổi thành mã LaTeX tương ứng.
+                                QUY TẮC BẮT BỘC:
+                                1. Nếu hình ảnh KHÔNG chứa chữ viết tay, công thức toán hoặc không có văn bản nào, BẮT BỘC chỉ trả về duy nhất chuỗi: NO_HANDWRITING_DETECTED
+                                2. Nếu hình ảnh có nhiều dòng chữ hoặc công thức toán, BẮT BỘC bọc toàn bộ các dòng trong môi trường \\begin{aligned} ... \\end{aligned} và dùng \\\\ để xuống dòng.
+                                3. Chỉ trả về chuỗi mã LaTeX nguyên bản (ví dụ: \\begin{aligned} x &= 1 \\\\ y &= 2 \\end{aligned}), KHÔNG kèm theo bất kỳ văn bản giải thích hay Markdown code block (như ```latex) nào khác.
+                                """;
+
+                String defaultSketchPrompt = """
+                                Bạn là chuyên gia AI phân tích nét vẽ phác thảo hình học và đồ thị hàm số, chuyển thành dữ liệu JSXGraph JSON.
+                                QUY TẮC BẮT BỘC:
+                                1. Nếu hình ảnh KHÔNG chứa bất kỳ hình phác thảo hình học hoặc đồ thị hàm số nào (ví dụ: ảnh màu linh tinh, hoặc không có hình vẽ), BẮT BỘC chỉ trả về duy nhất 1 chuỗi JSON: {"error": "NO_GEOMETRY_DETECTED", "shapeType": "NO_GEOMETRY", "elements": []}
+                                2. Nếu tìm thấy nét vẽ phác thảo hình học hoặc đồ thị hàm số, hãy nắn chỉnh thành cấu trúc hình học chuẩn JSXGraph và trả về duy nhất 1 đối tượng JSON nguyên bản (KHÔNG bọc trong markdown codeblock):
+                                - Đối với hình học phẳng (tam giác, tứ giác, hình tròn...):
+                                {
+                                  "shapeType": "TRIANGLE_RIGHT" | "TRIANGLE_EQUAL" | "CIRCLE" | "RECTANGLE" | "POLYGON",
+                                  "boundingbox": [-5, 5, 5, -5],
+                                  "axis": true,
+                                  "grid": true,
+                                  "elements": [
+                                    {"type": "point", "id": "A", "label": "A", "x": 0, "y": 4},
+                                    {"type": "point", "id": "B", "label": "B", "x": 0, "y": 0},
+                                    {"type": "point", "id": "C", "label": "C", "x": 3, "y": 0},
+                                    {"type": "segment", "from": "A", "to": "B"},
+                                    {"type": "segment", "from": "B", "to": "C"},
+                                    {"type": "segment", "from": "C", "to": "A"}
+                                  ]
+                                }
+                                - Đối với đồ thị hàm số (parabol, đường thẳng, hàm số...):
+                                {
+                                  "shapeType": "FUNCTION_GRAPH",
+                                  "boundingbox": [-5, 5, 5, -5],
+                                  "axis": true,
+                                  "grid": true,
+                                  "elements": [
+                                    {"type": "functiongraph", "id": "fg1", "parsedFunc": "-(x-2)**2 + 2"},
+                                    {"type": "point", "id": "I", "label": "I", "x": 2, "y": 2}
+                                  ]
+                                }
+                                3. QUY TẮC NGUYÊN TẮC KHAI BÁO ĐIỂM: Với mọi đối tượng segment, line, circle, polygon, BẮT BỘC mọi điểm (như from, to, center, pointOnCircle, vertices) được tham chiếu PHẢI được định nghĩa trước dưới dạng phần tử `{"type": "point", "id": "...", "label": "...", "x": ..., "y": ...}`. Tuyệt đối không để điểm tham chiếu bị thiếu tọa độ x, y.
+                                4. Tọa độ các điểm và miền vẽ phải nằm trong hệ tọa độ Đề-các chuẩn [-6, 6].
+                                """;
+
+                upsertSystemPrompt("PROMPT_STUDENT_HINT", "Prompt Gợi ý Tư duy Làm bài", "STUDENT_HINT",
+                                defaultHintPrompt,
                                 "title,problem_content,student_content,subject",
                                 "Đưa ra gợi ý định hướng từng bước theo phương pháp Socratic, tuyệt đối không cho đáp án trực tiếp.");
-                upsertSystemPrompt("PROMPT_LATEX_CANVAS", "Prompt Ép chuẩn mã LaTeX / Canvas", "LATEX_CANVAS_FORMAT", defaultLatexPrompt,
-                                "math_expression,math_format",
-                                "Đảm bảo AI chỉ trả về mã LaTeX/KaTeX hợp lệ.");
-                upsertSystemPrompt("PROMPT_SUBMISSION_GRADING", "Prompt Chấm bài tự luận tự động", "SUBMISSION_GRADING", defaultGradingPrompt,
+                upsertSystemPrompt("PROMPT_HANDWRITING_LATEX", "Prompt Nhận diện Chữ viết tay sang LaTeX",
+                                "CANVAS_LATEX",
+                                defaultHandwritingPrompt,
+                                "",
+                                "Phân tích ảnh chữ viết tay/công thức toán và trích xuất mã LaTeX/KaTeX hợp lệ.");
+                upsertSystemPrompt("PROMPT_SKETCH_GEOMETRY", "Prompt Nắn chỉnh Nét vẽ Phác thảo sang JSXGraph Canvas",
+                                "CANVAS_LATEX",
+                                defaultSketchPrompt,
+                                "",
+                                "Phân tích ảnh nét vẽ phác thảo hình học/đồ thị hàm số và chuyển đổi thành cấu trúc JSON JSXGraph chuẩn.");
+                upsertSystemPrompt("PROMPT_SUBMISSION_GRADING", "Prompt Chấm bài tự luận tự động", "SUBMISSION_GRADING",
+                                defaultGradingPrompt,
                                 "title,problem_content,student_content,max_score,subject",
                                 "Chấm điểm và nhận xét chi tiết bài làm tự luận.");
-                upsertSystemPrompt("PROMPT_QUESTION_GEN", "Prompt Sinh Bài tập Toán", "QUESTION_GEN", defaultQuestionGenPrompt,
+                upsertSystemPrompt("PROMPT_QUESTION_GEN", "Prompt Sinh Bài tập Toán", "QUESTION_GEN",
+                                defaultQuestionGenPrompt,
                                 "grade_level,difficulty,topic,question_type,canvas_requirement",
                                 "Tự động tạo bài tập tự luận môn Toán.");
         }
@@ -604,9 +629,9 @@ public class DatabaseSeeder implements CommandLineRunner {
                 Optional<SystemPrompt> existingOpt = systemPromptRepository.findByCode(code);
                 if (existingOpt.isPresent()) {
                         SystemPrompt existing = existingOpt.get();
-                        existing.setDefaultContent(defaultContent);
-                        existing.setCurrentContent(defaultContent);
+                        existing.syncMetadata(name, taskCode, defaultContent, allowedVariables, description);
                         systemPromptRepository.save(existing);
+                        log.info("[DatabaseSeeder] Synchronized system prompt metadata: {} ({})", code, name);
                 } else {
                         SystemPrompt p = SystemPrompt.builder()
                                         .code(code)
@@ -626,7 +651,12 @@ public class DatabaseSeeder implements CommandLineRunner {
                                         .changeReason("Khởi tạo System Prompt ban đầu")
                                         .createdBy("SYSTEM")
                                         .build());
+                        log.info("[DatabaseSeeder] Initialized new system prompt: {} ({})", code, name);
                 }
+        }
+
+        private static Permission p(String name, String description) {
+                return Permission.builder().name(name).description(description).build();
         }
 
         private User createUser(String email, String fullName, String password, String phone, Role role, Gender gender,

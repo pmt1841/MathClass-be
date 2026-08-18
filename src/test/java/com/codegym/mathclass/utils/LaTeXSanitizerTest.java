@@ -71,4 +71,28 @@ class LaTeXSanitizerTest {
         assertThat(LaTeXSanitizer.normalizeKatexDelimiters(null)).isEmpty();
         assertThat(LaTeXSanitizer.normalizeKatexDelimiters("   ")).isEmpty();
     }
+
+    @Test
+    @DisplayName("extractCleanLatex should remove markdown code fences and outer delimiters")
+    void extractCleanLatex_markdownCodeFence_stripsFenceAndDelimiters() {
+        String input1 = "```latex\n\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}\n```";
+        assertThat(LaTeXSanitizer.extractCleanLatex(input1))
+                .isEqualTo("\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}");
+
+        String input2 = "$$\\int_{0}^{1} x^2 dx$$";
+        assertThat(LaTeXSanitizer.extractCleanLatex(input2))
+                .isEqualTo("\\int_{0}^{1} x^2 dx");
+
+        String input3 = "\\[ y = ax + b \\]";
+        assertThat(LaTeXSanitizer.extractCleanLatex(input3))
+                .isEqualTo("y = ax + b");
+
+        String input4 = "\\( x^2 + y^2 = 1 \\)";
+        assertThat(LaTeXSanitizer.extractCleanLatex(input4))
+                .isEqualTo("x^2 + y^2 = 1");
+
+        assertThat(LaTeXSanitizer.extractCleanLatex(null)).isEmpty();
+        assertThat(LaTeXSanitizer.extractCleanLatex("  ")).isEmpty();
+    }
 }
+

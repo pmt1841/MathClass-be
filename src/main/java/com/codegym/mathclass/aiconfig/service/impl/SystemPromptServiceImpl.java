@@ -266,7 +266,13 @@ public class SystemPromptServiceImpl implements SystemPromptService {
 
         long startTime = System.currentTimeMillis();
         try {
-            String aiResponse = aiPromptExecutionService.executePrompt(taskCode, renderedPrompt, adminUserId);
+            String aiResponse;
+            if (StringUtils.hasText(request.getImageData())) {
+                String mimeType = StringUtils.hasText(request.getMimeType()) ? request.getMimeType().trim() : "image/png";
+                aiResponse = aiPromptExecutionService.executePromptWithImage(taskCode, renderedPrompt, request.getImageData(), mimeType, adminUserId);
+            } else {
+                aiResponse = aiPromptExecutionService.executePrompt(taskCode, renderedPrompt, adminUserId);
+            }
             long executionTimeMs = System.currentTimeMillis() - startTime;
 
             return PromptTestExecuteResponse.builder()

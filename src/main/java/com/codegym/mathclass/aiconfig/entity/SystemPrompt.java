@@ -38,4 +38,15 @@ public class SystemPrompt extends BaseEntity {
     @Column(name = "status", nullable = false, length = 20)
     @Builder.Default
     private SystemPromptStatus status = SystemPromptStatus.ACTIVE;
+
+    public void syncMetadata(String name, String taskCode, String defaultContent, String allowedVariables, String description) {
+        this.name = name;
+        this.taskCode = taskCode;
+        this.defaultContent = defaultContent;
+        this.allowedVariables = allowedVariables;
+        this.description = description;
+        if (this.currentContent == null || this.currentContent.isBlank()) {
+            this.currentContent = defaultContent;
+        }
+    }
 }

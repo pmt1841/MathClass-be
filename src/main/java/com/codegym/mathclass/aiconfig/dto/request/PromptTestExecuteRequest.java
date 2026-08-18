@@ -18,4 +18,8 @@ public class PromptTestExecuteRequest {
     private String customContent;
 
     private Map<String, Object> variables;
+
+    private String imageData;
+
+    private String mimeType;
 }
