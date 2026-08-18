@@ -47,6 +47,8 @@ import org.springframework.web.client.*;
 import org.springframework.transaction.annotation.Transactional;
 import com.codegym.mathclass.auth.entity.PasswordResetToken;
 import com.codegym.mathclass.auth.repository.PasswordResetTokenRepository;
+import com.codegym.mathclass.auth.entity.UserTwoFactorAuth;
+import com.codegym.mathclass.auth.repository.UserTwoFactorAuthRepository;
 import com.codegym.mathclass.user.entity.Provider;
 import com.codegym.mathclass.exception.TooManyRequestsException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -67,6 +69,7 @@ public class AuthServiceImpl implements AuthService {
     private final RefreshTokenService refreshTokenService;
     private final UserMapper userMapper;
     private final AiCreditService aiCreditService;
+    private final UserTwoFactorAuthRepository userTwoFactorAuthRepository;
 
     private final ConcurrentHashMap<String, LocalDateTime> forgotPasswordRateLimitMap = new ConcurrentHashMap<>();
 
@@ -116,6 +119,28 @@ public class AuthServiceImpl implements AuthService {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+
+        // Nếu là tài khoản ADMIN -> Bắt buộc xác thực cấp 2 (2FA Google Authenticator)
+        if (user.getRole() == Role.ADMIN) {
+            Optional<UserTwoFactorAuth> auth2faOpt = userTwoFactorAuthRepository.findByUserId(user.getId());
+            boolean is2faEnabled = auth2faOpt.isPresent() && auth2faOpt.get().isEnabled();
+
+            String preAuthToken = jwtUtils.generatePreAuthToken(user.getEmail(), user.getId(), Role.ADMIN.name());
+
+            return UserInfoResponse.builder()
+                    .id(user.getId())
+                    .email(user.getEmail())
+                    .fullName(user.getFullName())
+                    .userRole(Role.ADMIN.name())
+                    .avatarUrl(user.getAvatarUrl())
+                    .is2faRequired(true)
+                    .isSetupRequired(!is2faEnabled)
+                    .preAuthToken(preAuthToken)
+                    .message(is2faEnabled
+                            ? "Vui lòng nhập mã xác thực từ Google Authenticator."
+                            : "Tài khoản Quản trị viên bắt buộc thiết lập xác thực 2 bước.")
+                    .build();
+        }
 
         ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails, loginRequest.isRememberMe());
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(userDetails.getId());

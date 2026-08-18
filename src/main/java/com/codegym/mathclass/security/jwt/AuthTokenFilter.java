@@ -42,6 +42,13 @@ public class AuthTokenFilter extends OncePerRequestFilter {
         try {
             String jwt = parseJwt(request);
             if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
+                String scope = jwtUtils.getScopeFromJwtToken(jwt);
+                if (JwtUtils.PRE_AUTH_SCOPE.equals(scope)) {
+                    // Pre-auth token is only valid for 2FA endpoints and should never authenticate general requests
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
                 String username = jwtUtils.getUserNameFromJwtToken(jwt);
 
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
