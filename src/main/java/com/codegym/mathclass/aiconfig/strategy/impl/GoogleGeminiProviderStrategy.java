@@ -93,8 +93,9 @@ public class GoogleGeminiProviderStrategy implements AiProviderStrategy {
                     response.body());
             throw new AiGenerationException(status, "Google Gemini Provider phản hồi không đúng cấu trúc dữ liệu");
         } else {
+            String errorMessage = extractErrorMessage(response.body(), status);
             log.error("Google Gemini Provider HTTP error status {}: {}", status, response.body());
-            throw new AiGenerationException(status, "Gemini API returned HTTP " + status + ": " + response.body());
+            throw new AiGenerationException(status, errorMessage);
         }
     }
 
@@ -119,20 +120,34 @@ public class GoogleGeminiProviderStrategy implements AiProviderStrategy {
             baseUrlStr = baseUrlStr + "/v1beta";
         }
 
-        String model = config.getModel() != null ? config.getModel() : "gemini-1.5-flash";
+        String rawModel = config.getModel() != null ? config.getModel() : "gemini-1.5-flash";
+        String model = rawModel.startsWith("models/") ? rawModel.substring(7) : rawModel;
         String targetUrl = baseUrlStr + "/models/" + model + ":generateContent?key=" + apiKey;
 
-        Map<String, Object> textPart = Map.of("text", prompt);
-        Map<String, Object> imagePart = Map.of("inline_data", Map.of(
-                "mime_type", actualMime,
+        Map<String, Object> textPart = Map.of("text", prompt != null ? prompt : "");
+        Map<String, Object> imagePart = Map.of("inlineData", Map.of(
+                "mimeType", actualMime,
                 "data", cleanBase64
         ));
 
-        Map<String, Object> geminiPayload = Map.of(
-                "contents", List.of(
-                        Map.of("parts", List.of(textPart, imagePart))
-                )
-        );
+        Map<String, Object> generationConfig = new java.util.HashMap<>();
+        if (config.getTemperature() != null) {
+            generationConfig.put("temperature", config.getTemperature().doubleValue());
+        }
+        if (config.getMaxToken() != null) {
+            generationConfig.put("maxOutputTokens", config.getMaxToken());
+        }
+        if (prompt != null && (prompt.contains("JSON") || prompt.contains("json"))) {
+            generationConfig.put("responseMimeType", "application/json");
+        }
+
+        Map<String, Object> geminiPayload = new java.util.HashMap<>();
+        geminiPayload.put("contents", List.of(
+                Map.of("parts", List.of(textPart, imagePart))
+        ));
+        if (!generationConfig.isEmpty()) {
+            geminiPayload.put("generationConfig", generationConfig);
+        }
 
         String reqBody = objectMapper.writeValueAsString(geminiPayload);
         HttpRequest request = HttpRequest.newBuilder()
@@ -160,9 +175,27 @@ public class GoogleGeminiProviderStrategy implements AiProviderStrategy {
             log.error("Google Gemini Provider returned HTTP status {} but invalid payload: {}", status, response.body());
             throw new AiGenerationException(status, "Google Gemini Provider phản hồi không đúng cấu trúc dữ liệu");
         } else {
+            String errorMessage = extractErrorMessage(response.body(), status);
             log.error("Google Gemini Provider HTTP error status {}: {}", status, response.body());
-            throw new AiGenerationException(status, "Gemini API returned HTTP " + status + ": " + response.body());
+            throw new AiGenerationException(status, errorMessage);
         }
+    }
+
+    /**
+     * Trích xuất thông điệp lỗi ngắn gọn từ JSON phản hồi của Gemini API.
+     */
+    private String extractErrorMessage(String responseBody, int status) {
+        try {
+            JsonNode root = objectMapper.readTree(responseBody);
+            if (root.has("error") && root.path("error").has("message")) {
+                return "Gemini API (" + status + "): " + root.path("error").path("message").asText();
+            }
+        } catch (Exception ignored) {
+        }
+        if (responseBody != null && responseBody.length() > 120) {
+            return "Gemini API (" + status + "): " + responseBody.substring(0, 120) + "...";
+        }
+        return "Gemini API returned HTTP " + status + (responseBody != null && !responseBody.isBlank() ? ": " + responseBody : "");
     }
 
     /**

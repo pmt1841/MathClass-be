@@ -15,6 +15,8 @@ import com.codegym.mathclass.submission.entity.Submission;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
 import com.codegym.mathclass.submission.service.AiGradingService;
+import com.codegym.mathclass.utils.AiResponseUtils;
+import com.codegym.mathclass.utils.LaTeXSanitizer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -149,7 +151,7 @@ public class AiGradingServiceImpl implements AiGradingService {
         boolean hasCanvasComparison = extractDrawingsBlock(assignment.getContent()) != null;
 
         try {
-            String json = extractJson(raw);
+            String json = AiResponseUtils.extractCleanJson(raw);
             JsonNode root = objectMapper.readTree(json);
 
             String draftFeedback = root.hasNonNull("draftFeedback") ? root.get("draftFeedback").asText() : "";
@@ -194,7 +196,7 @@ public class AiGradingServiceImpl implements AiGradingService {
     }
 
     private String normalizeKatexDelimiters(String content) {
-        return com.codegym.mathclass.utils.LaTeXSanitizer.normalizeKatexDelimiters(content);
+        return LaTeXSanitizer.normalizeKatexDelimiters(content);
     }
 
     /**
@@ -234,24 +236,6 @@ public class AiGradingServiceImpl implements AiGradingService {
     private String truncateHead(String value, int maxLength) {
         if (value == null || value.length() <= maxLength) return value;
         return value.substring(0, maxLength) + "\n...[dữ liệu hình vẽ bị cắt do quá dài]...";
-    }
-
-    /**
-     * Trích xuất chuỗi JSON từ phản hồi AI: bỏ code fence ```json ... ``` nếu có,
-     * lấy từ dấu '{' đầu tiên đến dấu '}' cuối cùng.
-     */
-    private String extractJson(String raw) {
-        String trimmed = raw.trim();
-        if (trimmed.startsWith("```")) {
-            trimmed = trimmed.replaceFirst("^```[a-zA-Z]*\\s*", "");
-            trimmed = trimmed.replaceFirst("\\s*```$", "");
-        }
-        int start = trimmed.indexOf('{');
-        int end = trimmed.lastIndexOf('}');
-        if (start >= 0 && end > start) {
-            return trimmed.substring(start, end + 1);
-        }
-        return trimmed;
     }
 }
 

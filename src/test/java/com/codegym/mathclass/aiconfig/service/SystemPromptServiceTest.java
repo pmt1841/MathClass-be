@@ -206,5 +206,26 @@ class SystemPromptServiceTest {
         assertNull(response.getAiResponse());
         assertTrue(response.getErrorMessage().contains("API Key hết quota"));
     }
+
+    @Test
+    @DisplayName("TC-PROMPT-10: Chạy thử nghiệm Prompt Vision với dữ liệu hình ảnh (CANVAS_LATEX)")
+    void testTestExecutePrompt_WithImageData() {
+        when(aiPromptExecutionService.executePromptWithImage(eq("CANVAS_LATEX"), anyString(), eq("data:image/png;base64,..."), eq("image/png"), any()))
+                .thenReturn("\\frac{a}{b} = c");
+
+        PromptTestExecuteRequest request = PromptTestExecuteRequest.builder()
+                .taskCode("CANVAS_LATEX")
+                .customContent("Nhận diện công thức viết tay trong hình ảnh.")
+                .imageData("data:image/png;base64,...")
+                .mimeType("image/png")
+                .build();
+
+        PromptTestExecuteResponse response = systemPromptService.testExecutePrompt(request, "admin@mathclass.edu.vn");
+
+        assertNotNull(response);
+        assertTrue(response.isSuccess());
+        assertEquals("CANVAS_LATEX", response.getTaskCode());
+        assertEquals("\\frac{a}{b} = c", response.getAiResponse());
+    }
 }
 

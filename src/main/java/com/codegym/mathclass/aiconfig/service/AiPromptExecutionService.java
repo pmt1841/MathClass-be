@@ -96,7 +96,7 @@ public class AiPromptExecutionService {
                 aiCreditService.refund(userId, taskCode, reserved);
             }
             log.error("Lỗi khi thực thi prompt AI cho task '{}': {}", taskCode, e.getMessage());
-            throw new RuntimeException("Dịch vụ AI phản hồi lỗi hoặc gặp sự cố kết nối: " + e.getMessage(), e);
+            throw new RuntimeException(e.getMessage() != null ? e.getMessage() : "Dịch vụ AI phản hồi lỗi hoặc gặp sự cố kết nối.", e);
         }
     }
 
@@ -155,7 +155,7 @@ public class AiPromptExecutionService {
                 aiCreditService.refund(userId, taskCode, reserved);
             }
             log.error("Lỗi khi thực thi prompt AI Vision cho task '{}': {}", taskCode, e.getMessage());
-            throw new RuntimeException("Dịch vụ AI phản hồi lỗi hoặc gặp sự cố kết nối: " + e.getMessage(), e);
+            throw new RuntimeException(e.getMessage() != null ? e.getMessage() : "Dịch vụ AI phản hồi lỗi hoặc gặp sự cố kết nối.", e);
         }
     }
 

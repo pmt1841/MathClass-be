@@ -92,8 +92,9 @@ public class OpenAiProviderStrategy implements AiProviderStrategy {
                     response.body());
             throw new AiGenerationException(status, "AI Provider phản hồi không đúng cấu trúc dữ liệu");
         } else {
+            String errorMessage = extractErrorMessage(response.body(), status);
             log.error("OpenAI Compatible Provider HTTP error status {}: {}", status, response.body());
-            throw new AiGenerationException(status, "OpenAI API returned HTTP " + status + ": " + response.body());
+            throw new AiGenerationException(status, errorMessage);
         }
     }
 
@@ -121,15 +122,17 @@ public class OpenAiProviderStrategy implements AiProviderStrategy {
                 Map.of("type", "image_url", "image_url", Map.of("url", imageUrl))
         );
 
-        Map<String, Object> openAiPayload = Map.of(
-                "model", model,
-                "messages", List.of(
-                        Map.of("role", "system", "content", "Bạn là trợ lý toán học."),
-                        Map.of("role", "user", "content", userContent)
-                ),
-                "max_tokens", config.getMaxToken() != null ? config.getMaxToken() : 1024,
-                "temperature", config.getTemperature() != null ? config.getTemperature().doubleValue() : 0.4
-        );
+        Map<String, Object> openAiPayload = new HashMap<>();
+        openAiPayload.put("model", model);
+        openAiPayload.put("messages", List.of(
+                Map.of("role", "system", "content", "Bạn là trợ lý toán học xử lý hình học và công thức."),
+                Map.of("role", "user", "content", userContent)
+        ));
+        openAiPayload.put("max_tokens", config.getMaxToken() != null ? config.getMaxToken() : 1024);
+        openAiPayload.put("temperature", config.getTemperature() != null ? config.getTemperature().doubleValue() : 0.4);
+        if (prompt != null && (prompt.contains("JSON") || prompt.contains("json"))) {
+            openAiPayload.put("response_format", Map.of("type", "json_object"));
+        }
 
         String reqBody = objectMapper.writeValueAsString(openAiPayload);
 
@@ -163,9 +166,27 @@ public class OpenAiProviderStrategy implements AiProviderStrategy {
             log.error("OpenAI Compatible Provider returned HTTP status {} but invalid payload: {}", status, response.body());
             throw new AiGenerationException(status, "AI Provider phản hồi không đúng cấu trúc dữ liệu");
         } else {
+            String errorMessage = extractErrorMessage(response.body(), status);
             log.error("OpenAI Compatible Provider HTTP error status {}: {}", status, response.body());
-            throw new AiGenerationException(status, "OpenAI API returned HTTP " + status + ": " + response.body());
+            throw new AiGenerationException(status, errorMessage);
         }
+    }
+
+    /**
+     * Trích xuất thông điệp lỗi ngắn gọn từ JSON phản hồi của OpenAI API.
+     */
+    private String extractErrorMessage(String responseBody, int status) {
+        try {
+            JsonNode root = objectMapper.readTree(responseBody);
+            if (root.has("error") && root.path("error").has("message")) {
+                return "OpenAI API (" + status + "): " + root.path("error").path("message").asText();
+            }
+        } catch (Exception ignored) {
+        }
+        if (responseBody != null && responseBody.length() > 120) {
+            return "OpenAI API (" + status + "): " + responseBody.substring(0, 120) + "...";
+        }
+        return "OpenAI API returned HTTP " + status + (responseBody != null && !responseBody.isBlank() ? ": " + responseBody : "");
     }
 
     /**
