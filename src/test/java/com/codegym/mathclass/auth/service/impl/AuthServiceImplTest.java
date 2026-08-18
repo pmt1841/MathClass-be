@@ -16,6 +16,8 @@ import com.codegym.mathclass.security.jwt.JwtUtils;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
+import com.codegym.mathclass.auth.entity.UserTwoFactorAuth;
+import com.codegym.mathclass.auth.repository.UserTwoFactorAuthRepository;
 import com.codegym.mathclass.user.mapper.UserMapper;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.user.service.PermissionCacheService;
@@ -89,6 +91,9 @@ class AuthServiceImplTest {
     @Mock
     private AiCreditService aiCreditService;
 
+    @Mock
+    private UserTwoFactorAuthRepository userTwoFactorAuthRepository;
+
     @InjectMocks
     private AuthServiceImpl authService;
 
@@ -161,6 +166,91 @@ class AuthServiceImplTest {
             assertThat(response.getEmail()).isEqualTo("student@test.com");
             assertThat(response.getUserRole()).isEqualTo("STUDENT");
             verify(mockResponse, times(2)).addHeader(eq(HttpHeaders.SET_COOKIE), anyString());
+        }
+
+        @Test
+        @DisplayName("Should return preAuthToken with isSetupRequired=true when ADMIN has not enabled 2FA")
+        void authenticateUser_AdminUser_2faNotEnabled_ReturnsSetupRequired() {
+            User adminUser = User.builder()
+                    .email("admin@test.com")
+                    .fullName("Admin User")
+                    .password("encodedPassword")
+                    .role(Role.ADMIN)
+                    .isActive(true)
+                    .build();
+            adminUser.setId(99L);
+
+            CustomUserDetails adminDetails = new CustomUserDetails(
+                    99L, "Admin User", "admin@test.com", "encodedPassword", true, null,
+                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN"))
+            );
+
+            LoginRequest loginRequest = new LoginRequest();
+            loginRequest.setEmail("admin@test.com");
+            loginRequest.setPassword("password");
+
+            Authentication authentication = mock(Authentication.class);
+
+            when(userRepository.findByEmail("admin@test.com")).thenReturn(Optional.of(adminUser));
+            when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(authentication);
+            when(authentication.getPrincipal()).thenReturn(adminDetails);
+            when(userTwoFactorAuthRepository.findByUserId(99L)).thenReturn(Optional.empty());
+            when(jwtUtils.generatePreAuthToken("admin@test.com", 99L, "ADMIN")).thenReturn("pre-auth-token-123");
+
+            UserInfoResponse response = authService.authenticateUser(loginRequest, mockResponse);
+
+            assertThat(response).isNotNull();
+            assertThat(response.getIs2faRequired()).isTrue();
+            assertThat(response.getIsSetupRequired()).isTrue();
+            assertThat(response.getPreAuthToken()).isEqualTo("pre-auth-token-123");
+            assertThat(response.getMessage()).contains("bắt buộc thiết lập xác thực 2 bước");
+            // Đảm bảo không cấp JWT / Refresh cookie
+            verify(mockResponse, never()).addHeader(eq(HttpHeaders.SET_COOKIE), anyString());
+        }
+
+        @Test
+        @DisplayName("Should return preAuthToken with isSetupRequired=false when ADMIN has enabled 2FA")
+        void authenticateUser_AdminUser_2faEnabled_ReturnsVerifyRequired() {
+            User adminUser = User.builder()
+                    .email("admin@test.com")
+                    .fullName("Admin User")
+                    .password("encodedPassword")
+                    .role(Role.ADMIN)
+                    .isActive(true)
+                    .build();
+            adminUser.setId(99L);
+
+            CustomUserDetails adminDetails = new CustomUserDetails(
+                    99L, "Admin User", "admin@test.com", "encodedPassword", true, null,
+                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN"))
+            );
+
+            UserTwoFactorAuth auth2fa = UserTwoFactorAuth.builder()
+                    .userId(99L)
+                    .isEnabled(true)
+                    .secretKey("JBSWY3DPEHPK3PXP")
+                    .build();
+
+            LoginRequest loginRequest = new LoginRequest();
+            loginRequest.setEmail("admin@test.com");
+            loginRequest.setPassword("password");
+
+            Authentication authentication = mock(Authentication.class);
+
+            when(userRepository.findByEmail("admin@test.com")).thenReturn(Optional.of(adminUser));
+            when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(authentication);
+            when(authentication.getPrincipal()).thenReturn(adminDetails);
+            when(userTwoFactorAuthRepository.findByUserId(99L)).thenReturn(Optional.of(auth2fa));
+            when(jwtUtils.generatePreAuthToken("admin@test.com", 99L, "ADMIN")).thenReturn("pre-auth-token-456");
+
+            UserInfoResponse response = authService.authenticateUser(loginRequest, mockResponse);
+
+            assertThat(response).isNotNull();
+            assertThat(response.getIs2faRequired()).isTrue();
+            assertThat(response.getIsSetupRequired()).isFalse();
+            assertThat(response.getPreAuthToken()).isEqualTo("pre-auth-token-456");
+            assertThat(response.getMessage()).contains("Vui lòng nhập mã xác thực");
+            verify(mockResponse, never()).addHeader(eq(HttpHeaders.SET_COOKIE), anyString());
         }
 
         @Test

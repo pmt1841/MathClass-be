@@ -151,6 +151,61 @@ public class JwtUtils {
                 .getSubject();
     }
 
+    public static final String PRE_AUTH_SCOPE = "PRE_AUTH";
+    private static final long PRE_AUTH_EXPIRATION_MS = 5 * 60 * 1000L; // 5 phút
+
+    public String generatePreAuthToken(String username, Long userId, String role) {
+        return Jwts.builder()
+                .subject(username)
+                .claim("userId", userId)
+                .claim("role", role)
+                .claim("scope", PRE_AUTH_SCOPE)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + PRE_AUTH_EXPIRATION_MS))
+                .signWith(key())
+                .compact();
+    }
+
+    public boolean validatePreAuthToken(String token) {
+        try {
+            var claims = Jwts.parser()
+                    .verifyWith(key())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+            return PRE_AUTH_SCOPE.equals(claims.get("scope", String.class));
+        } catch (Exception e) {
+            log.error("Invalid or expired Pre-Auth token: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    public Long getUserIdFromPreAuthToken(String token) {
+        Object userIdObj = Jwts.parser()
+                .verifyWith(key())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .get("userId");
+        if (userIdObj instanceof Number number) {
+            return number.longValue();
+        }
+        return null;
+    }
+
+    public String getScopeFromJwtToken(String token) {
+        try {
+            return Jwts.parser()
+                    .verifyWith(key())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload()
+                    .get("scope", String.class);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     public boolean validateJwtToken(String authToken) {
         try {
             Jwts.parser()
