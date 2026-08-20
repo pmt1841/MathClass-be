@@ -13,16 +13,22 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+import com.codegym.mathclass.user.repository.PasswordHistoryRepository;
+
 @Component
 @RequiredArgsConstructor
 public class UserMapper {
 
     private final PermissionCacheService permissionCacheService;
+    private final PasswordHistoryRepository passwordHistoryRepository;
 
     public UserResponse toUserResponse(User user) {
         if (user == null) {
             return null;
         }
+
+        boolean hasPassword = user.getProvider() == Provider.LOCAL
+                || passwordHistoryRepository.existsByUserId(user.getId());
 
         return UserResponse.builder()
                 .id(user.getId())
@@ -35,6 +41,7 @@ public class UserMapper {
                 .dateOfBirth(user.getDateOfBirth())
                 .gender(user.getGender())
                 .provider(user.getProvider())
+                .hasPassword(hasPassword)
                 .lockReason(user.getLockReason())
                 .lockedAt(user.getLockedAt())
                 .lockedBy(user.getLockedBy())

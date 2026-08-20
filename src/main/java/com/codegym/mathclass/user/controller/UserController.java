@@ -24,6 +24,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import com.codegym.mathclass.user.dto.request.ChangePasswordRequest;
 import com.codegym.mathclass.common.dto.ApiResponse;
 
+import com.codegym.mathclass.user.dto.request.SetPasswordRequest;
+
 @Tag(name = "User Profile", description = "APIs quản lý thông tin cá nhân và ảnh đại diện của người dùng")
 @RestController
 @ApiVersion(1)
@@ -68,4 +70,24 @@ public class UserController {
                 .build());
     }
 
+    @Operation(summary = "Gửi mã OTP xác thực thiết lập mật khẩu lần đầu", description = "Gửi mã OTP 6 số về email của người dùng đang đăng nhập")
+    @PostMapping("/me/set-password/send-otp")
+    public ResponseEntity<ApiResponse<String>> sendSetPasswordOtp(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        userService.sendSetPasswordOtp(userDetails.getId());
+        return ResponseEntity.ok(ApiResponse.<String>builder()
+                .message("Mã OTP xác thực đã được gửi về email của bạn.")
+                .build());
+    }
+
+    @Operation(summary = "Thiết lập mật khẩu đăng nhập lần đầu", description = "Xác thực OTP và đặt mật khẩu đăng nhập cho người dùng chưa có mật khẩu local")
+    @PutMapping("/me/set-password")
+    public ResponseEntity<ApiResponse<String>> setPassword(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody SetPasswordRequest request) {
+        userService.setPassword(userDetails.getId(), request);
+        return ResponseEntity.ok(ApiResponse.<String>builder()
+                .message("Thiết lập mật khẩu thành công. Vui lòng đăng nhập lại.")
+                .build());
+    }
 }

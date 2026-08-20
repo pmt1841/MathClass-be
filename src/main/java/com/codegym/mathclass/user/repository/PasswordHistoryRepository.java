@@ -10,4 +10,6 @@ import java.util.List;
 public interface PasswordHistoryRepository extends JpaRepository<PasswordHistory, Long> {
 
     List<PasswordHistory> findTop3ByUserIdOrderByCreatedAtDesc(Long userId);
+
+    boolean existsByUserId(Long userId);
 }

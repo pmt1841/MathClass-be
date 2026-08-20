@@ -23,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -35,6 +36,9 @@ import com.codegym.mathclass.user.dto.request.ChangePasswordRequest;
 import com.codegym.mathclass.user.entity.PasswordHistory;
 import com.codegym.mathclass.user.repository.PasswordHistoryRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
+
+import com.codegym.mathclass.user.dto.request.SetPasswordRequest;
+import com.codegym.mathclass.utils.EmailService;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceImplTest {
@@ -56,6 +60,9 @@ class UserServiceImplTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private EmailService emailService;
 
     @InjectMocks
     private UserServiceImpl userService;
@@ -339,10 +346,10 @@ class UserServiceImplTest {
         }
 
         @Test
-        @DisplayName("UT-BE-12: Should throw BadRequestException when user has Google provider")
-        void changePassword_fail_userIsGoogleProvider() {
+        @DisplayName("UT-BE-12: Should throw BadRequestException when user password is null/empty")
+        void changePassword_fail_userHasNoPassword() {
             Long userId = 1L;
-            mockUser.setProvider(Provider.GOOGLE);
+            mockUser.setPassword(null);
             ChangePasswordRequest request = ChangePasswordRequest.builder()
                     .currentPassword("oldPassword123")
                     .newPassword("newSecurePass123")
@@ -353,7 +360,76 @@ class UserServiceImplTest {
 
             assertThatThrownBy(() -> userService.changePassword(userId, request))
                     .isInstanceOf(BadRequestException.class)
-                    .hasMessageContaining("Tài khoản đăng nhập bằng Google không thể sử dụng tính năng đổi mật khẩu trực tiếp");
+                    .hasMessageContaining("Tài khoản chưa có mật khẩu");
+
+            verify(userRepository, never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("sendSetPasswordOtp & setPassword Tests")
+    class SetPasswordOtpTests {
+
+        @Test
+        @DisplayName("UT-BE-02: Should send OTP email successfully when user exists")
+        void sendSetPasswordOtp_success() {
+            Long userId = 1L;
+            when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+
+            userService.sendSetPasswordOtp(userId);
+
+            verify(emailService, times(1)).sendSetPasswordOtpEmail(eq(mockUser.getEmail()), eq(mockUser.getFullName()), anyString());
+        }
+
+        @Test
+        @DisplayName("UT-BE-03: Should set initial password successfully when valid OTP and new password provided")
+        void setPassword_success() {
+            Long userId = 1L;
+            mockUser.setPassword(null);
+            when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+            when(passwordEncoder.encode("newPassword123")).thenReturn("encodedNewPassword");
+
+            // Step 1: Send OTP to populate internal cache
+            userService.sendSetPasswordOtp(userId);
+
+            // Capture OTP sent
+            org.mockito.ArgumentCaptor<String> otpCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+            verify(emailService).sendSetPasswordOtpEmail(eq(mockUser.getEmail()), eq(mockUser.getFullName()), otpCaptor.capture());
+            String capturedOtp = otpCaptor.getValue();
+
+            SetPasswordRequest request = SetPasswordRequest.builder()
+                    .otpCode(capturedOtp)
+                    .newPassword("newPassword123")
+                    .confirmPassword("newPassword123")
+                    .build();
+
+            // Step 2: Set password
+            userService.setPassword(userId, request);
+
+            assertThat(mockUser.getPassword()).isEqualTo("encodedNewPassword");
+            verify(userRepository, times(1)).save(mockUser);
+            verify(emailService, times(1)).sendSecurityAlertEmail(eq(mockUser.getEmail()), eq(mockUser.getFullName()), any(LocalDateTime.class));
+        }
+
+        @Test
+        @DisplayName("UT-BE-04: Should throw BadRequestException when invalid OTP code provided")
+        void setPassword_fail_invalidOtp() {
+            Long userId = 1L;
+            mockUser.setPassword(null);
+            when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+
+            // Send OTP
+            userService.sendSetPasswordOtp(userId);
+
+            SetPasswordRequest request = SetPasswordRequest.builder()
+                    .otpCode("999999") // Invalid OTP
+                    .newPassword("newPassword123")
+                    .confirmPassword("newPassword123")
+                    .build();
+
+            assertThatThrownBy(() -> userService.setPassword(userId, request))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("Mã OTP nhập vào không chính xác");
 
             verify(userRepository, never()).save(any());
         }

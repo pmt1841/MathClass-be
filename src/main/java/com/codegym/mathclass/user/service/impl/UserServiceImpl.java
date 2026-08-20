@@ -19,6 +19,12 @@ import com.codegym.mathclass.user.entity.PasswordHistory;
 import com.codegym.mathclass.user.repository.PasswordHistoryRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import java.util.List;
+import com.codegym.mathclass.user.dto.request.SetPasswordRequest;
+import com.codegym.mathclass.utils.EmailService;
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 import java.io.IOException;
 
 @Service
@@ -31,6 +37,19 @@ public class UserServiceImpl implements UserService {
     private final RolePermissionRepository rolePermissionRepository;
     private final PasswordHistoryRepository passwordHistoryRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
+
+    private static class SetPasswordOtpEntry {
+        final String otpCode;
+        final LocalDateTime expiryTime;
+
+        SetPasswordOtpEntry(String otpCode, LocalDateTime expiryTime) {
+            this.otpCode = otpCode;
+            this.expiryTime = expiryTime;
+        }
+    }
+
+    private final Map<Long, SetPasswordOtpEntry> setPasswordOtpCache = new ConcurrentHashMap<>();
 
     @Override
     public UserResponse getUserProfile(Long id) {
@@ -82,8 +101,8 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy người dùng với ID: " + userId));
 
-        if (user.getProvider() == Provider.GOOGLE) {
-            throw new BadRequestException("Tài khoản đăng nhập bằng Google không thể sử dụng tính năng đổi mật khẩu trực tiếp");
+        if (user.getPassword() == null || user.getPassword().trim().isEmpty()) {
+            throw new BadRequestException("Tài khoản chưa có mật khẩu. Vui lòng sử dụng tính năng 'Thiết lập mật khẩu đăng nhập' qua OTP.");
         }
 
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
@@ -115,5 +134,66 @@ public class UserServiceImpl implements UserService {
         // Update user's password with new encoded password
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
+
+        // Send Security Alert Email
+        emailService.sendSecurityAlertEmail(user.getEmail(), user.getFullName(), LocalDateTime.now());
+    }
+
+    @Override
+    public void sendSetPasswordOtp(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BadRequestException("Không tìm thấy người dùng với ID: " + userId));
+
+        String otpCode = String.format("%06d", new Random().nextInt(1000000));
+        setPasswordOtpCache.put(userId, new SetPasswordOtpEntry(otpCode, LocalDateTime.now().plusMinutes(5)));
+
+        emailService.sendSetPasswordOtpEmail(user.getEmail(), user.getFullName(), otpCode);
+    }
+
+    @Override
+    @Transactional
+    public void setPassword(Long userId, SetPasswordRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BadRequestException("Không tìm thấy người dùng với ID: " + userId));
+
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new BadRequestException("Mật khẩu xác nhận không trùng khớp với mật khẩu mới");
+        }
+
+        SetPasswordOtpEntry otpEntry = setPasswordOtpCache.get(userId);
+        if (otpEntry == null || otpEntry.expiryTime.isBefore(LocalDateTime.now())) {
+            throw new BadRequestException("Mã OTP chưa được gửi hoặc đã hết hạn (hiệu lực 5 phút). Vui lòng bấm 'Gửi mã xác thực' để nhận mã mới.");
+        }
+
+        if (!otpEntry.otpCode.equals(request.getOtpCode().trim())) {
+            throw new BadRequestException("Mã OTP nhập vào không chính xác. Vui lòng kiểm tra lại hòm thư.");
+        }
+
+        if (user.getPassword() != null && !user.getPassword().trim().isEmpty()) {
+            if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+                throw new BadRequestException("Mật khẩu mới không được trùng với mật khẩu hiện tại");
+            }
+        }
+
+        List<PasswordHistory> recentHistories = passwordHistoryRepository.findTop3ByUserIdOrderByCreatedAtDesc(userId);
+        for (PasswordHistory history : recentHistories) {
+            if (passwordEncoder.matches(request.getNewPassword(), history.getHashedPassword())) {
+                throw new BadRequestException("Mật khẩu mới không được trùng với 3 mật khẩu gần nhất");
+            }
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        PasswordHistory passwordHistory = PasswordHistory.builder()
+                .user(user)
+                .hashedPassword(user.getPassword())
+                .build();
+        passwordHistoryRepository.save(passwordHistory);
+
+        setPasswordOtpCache.remove(userId);
+
+        // Send Security Alert Email
+        emailService.sendSecurityAlertEmail(user.getEmail(), user.getFullName(), LocalDateTime.now());
     }
 }
