@@ -21,6 +21,9 @@ import java.util.Map;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+import com.codegym.mathclass.user.dto.request.ChangePasswordRequest;
+import com.codegym.mathclass.common.dto.ApiResponse;
+
 @Tag(name = "User Profile", description = "APIs quản lý thông tin cá nhân và ảnh đại diện của người dùng")
 @RestController
 @ApiVersion(1)
@@ -52,6 +55,17 @@ public class UserController {
             @RequestParam("file") MultipartFile file) {
         String avatarUrl = userService.uploadAvatar(userDetails.getId(), file);
         return ResponseEntity.ok(Map.of("avatarUrl", avatarUrl));
+    }
+
+    @Operation(summary = "Đổi mật khẩu tài khoản cá nhân", description = "Thay đổi mật khẩu đăng nhập của người dùng đang đăng nhập")
+    @PutMapping("/me/password")
+    public ResponseEntity<ApiResponse<String>> changePassword(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        userService.changePassword(userDetails.getId(), request);
+        return ResponseEntity.ok(ApiResponse.<String>builder()
+                .message("Đổi mật khẩu thành công. Vui lòng đăng nhập lại.")
+                .build());
     }
 
 }

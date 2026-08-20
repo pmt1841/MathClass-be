@@ -14,6 +14,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import com.codegym.mathclass.user.entity.Provider;
+import com.codegym.mathclass.user.dto.request.ChangePasswordRequest;
+import com.codegym.mathclass.user.entity.PasswordHistory;
+import com.codegym.mathclass.user.repository.PasswordHistoryRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import java.util.List;
 import java.io.IOException;
 
 @Service
@@ -24,6 +29,8 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final SupabaseStorageService supabaseStorageService;
     private final RolePermissionRepository rolePermissionRepository;
+    private final PasswordHistoryRepository passwordHistoryRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public UserResponse getUserProfile(Long id) {
@@ -67,5 +74,46 @@ public class UserServiceImpl implements UserService {
         } catch (IOException e) {
             throw new RuntimeException("Lỗi khi upload ảnh đại diện: " + e.getMessage());
         }
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(Long userId, ChangePasswordRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BadRequestException("Không tìm thấy người dùng với ID: " + userId));
+
+        if (user.getProvider() == Provider.GOOGLE) {
+            throw new BadRequestException("Tài khoản đăng nhập bằng Google không thể sử dụng tính năng đổi mật khẩu trực tiếp");
+        }
+
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new BadRequestException("Mật khẩu xác nhận không trùng khớp với mật khẩu mới");
+        }
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new BadRequestException("Mật khẩu hiện tại không đúng");
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new BadRequestException("Mật khẩu mới không được trùng với mật khẩu hiện tại");
+        }
+
+        List<PasswordHistory> recentHistories = passwordHistoryRepository.findTop3ByUserIdOrderByCreatedAtDesc(userId);
+        for (PasswordHistory history : recentHistories) {
+            if (passwordEncoder.matches(request.getNewPassword(), history.getHashedPassword())) {
+                throw new BadRequestException("Mật khẩu mới không được trùng với 3 mật khẩu gần nhất");
+            }
+        }
+
+        // Archive current password hash to history
+        PasswordHistory passwordHistory = PasswordHistory.builder()
+                .user(user)
+                .hashedPassword(user.getPassword())
+                .build();
+        passwordHistoryRepository.save(passwordHistory);
+
+        // Update user's password with new encoded password
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
     }
 }

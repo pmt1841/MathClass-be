@@ -31,6 +31,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import com.codegym.mathclass.user.dto.request.ChangePasswordRequest;
+import com.codegym.mathclass.user.entity.PasswordHistory;
+import com.codegym.mathclass.user.repository.PasswordHistoryRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 @ExtendWith(MockitoExtension.class)
 class UserServiceImplTest {
 
@@ -46,6 +51,12 @@ class UserServiceImplTest {
     @Mock
     private RolePermissionRepository rolePermissionRepository;
 
+    @Mock
+    private PasswordHistoryRepository passwordHistoryRepository;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
     @InjectMocks
     private UserServiceImpl userService;
 
@@ -58,6 +69,7 @@ class UserServiceImplTest {
         mockUser = new User();
         mockUser.setId(1L);
         mockUser.setFullName("Old Name");
+        mockUser.setPassword("encodedOldPassword");
         mockUser.setRole(Role.STUDENT);
         mockUser.setProvider(Provider.LOCAL);
 
@@ -210,6 +222,140 @@ class UserServiceImplTest {
 
             verify(userRepository, never()).save(any());
             verifyNoInteractions(supabaseStorageService);
+        }
+    }
+
+    @Nested
+    @DisplayName("changePassword Tests")
+    class ChangePasswordTests {
+
+        @Test
+        @DisplayName("UT-BE-01: Should change password successfully when all criteria are met")
+        void changePassword_success_validCredentials() {
+            Long userId = 1L;
+            ChangePasswordRequest request = ChangePasswordRequest.builder()
+                    .currentPassword("oldPassword123")
+                    .newPassword("newSecurePass123")
+                    .confirmPassword("newSecurePass123")
+                    .build();
+
+            when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+            when(passwordEncoder.matches("oldPassword123", "encodedOldPassword")).thenReturn(true);
+            when(passwordEncoder.matches("newSecurePass123", "encodedOldPassword")).thenReturn(false);
+            when(passwordHistoryRepository.findTop3ByUserIdOrderByCreatedAtDesc(userId)).thenReturn(List.of());
+            when(passwordEncoder.encode("newSecurePass123")).thenReturn("encodedNewPassword");
+
+            userService.changePassword(userId, request);
+
+            assertThat(mockUser.getPassword()).isEqualTo("encodedNewPassword");
+            verify(passwordHistoryRepository, times(1)).save(any(PasswordHistory.class));
+            verify(userRepository, times(1)).save(mockUser);
+        }
+
+        @Test
+        @DisplayName("UT-BE-04: Should throw BadRequestException when current password is wrong")
+        void changePassword_fail_incorrectCurrentPassword() {
+            Long userId = 1L;
+            ChangePasswordRequest request = ChangePasswordRequest.builder()
+                    .currentPassword("wrongCurrentPass")
+                    .newPassword("newSecurePass123")
+                    .confirmPassword("newSecurePass123")
+                    .build();
+
+            when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+            when(passwordEncoder.matches("wrongCurrentPass", "encodedOldPassword")).thenReturn(false);
+
+            assertThatThrownBy(() -> userService.changePassword(userId, request))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("Mật khẩu hiện tại không đúng");
+
+            verify(userRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("UT-BE-05: Should throw BadRequestException when confirm password does not match new password")
+        void changePassword_fail_confirmPasswordMismatch() {
+            Long userId = 1L;
+            ChangePasswordRequest request = ChangePasswordRequest.builder()
+                    .currentPassword("oldPassword123")
+                    .newPassword("newSecurePass123")
+                    .confirmPassword("mismatchedPass123")
+                    .build();
+
+            when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+
+            assertThatThrownBy(() -> userService.changePassword(userId, request))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("Mật khẩu xác nhận không trùng khớp");
+
+            verify(userRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("UT-BE-06: Should throw BadRequestException when new password matches current password")
+        void changePassword_fail_sameAsCurrentPassword() {
+            Long userId = 1L;
+            ChangePasswordRequest request = ChangePasswordRequest.builder()
+                    .currentPassword("oldPassword123")
+                    .newPassword("oldPassword123")
+                    .confirmPassword("oldPassword123")
+                    .build();
+
+            when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+            when(passwordEncoder.matches("oldPassword123", "encodedOldPassword")).thenReturn(true);
+
+            assertThatThrownBy(() -> userService.changePassword(userId, request))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("Mật khẩu mới không được trùng với mật khẩu hiện tại");
+
+            verify(userRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("UT-BE-07/08/09: Should throw BadRequestException when new password matches one of the last 3 passwords")
+        void changePassword_fail_matchesPreviousHistoryPassword() {
+            Long userId = 1L;
+            ChangePasswordRequest request = ChangePasswordRequest.builder()
+                    .currentPassword("oldPassword123")
+                    .newPassword("pastPassword1")
+                    .confirmPassword("pastPassword1")
+                    .build();
+
+            PasswordHistory history1 = PasswordHistory.builder().hashedPassword("encodedPast1").build();
+            PasswordHistory history2 = PasswordHistory.builder().hashedPassword("encodedPast2").build();
+
+            when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+            when(passwordEncoder.matches("oldPassword123", "encodedOldPassword")).thenReturn(true);
+            when(passwordEncoder.matches("pastPassword1", "encodedOldPassword")).thenReturn(false);
+            when(passwordHistoryRepository.findTop3ByUserIdOrderByCreatedAtDesc(userId))
+                    .thenReturn(List.of(history1, history2));
+            when(passwordEncoder.matches("pastPassword1", "encodedPast1")).thenReturn(true);
+
+            assertThatThrownBy(() -> userService.changePassword(userId, request))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("Mật khẩu mới không được trùng với 3 mật khẩu gần nhất");
+
+            verify(userRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("UT-BE-12: Should throw BadRequestException when user has Google provider")
+        void changePassword_fail_userIsGoogleProvider() {
+            Long userId = 1L;
+            mockUser.setProvider(Provider.GOOGLE);
+            ChangePasswordRequest request = ChangePasswordRequest.builder()
+                    .currentPassword("oldPassword123")
+                    .newPassword("newSecurePass123")
+                    .confirmPassword("newSecurePass123")
+                    .build();
+
+            when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+
+            assertThatThrownBy(() -> userService.changePassword(userId, request))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("Tài khoản đăng nhập bằng Google không thể sử dụng tính năng đổi mật khẩu trực tiếp");
+
+            verify(userRepository, never()).save(any());
         }
     }
 }
