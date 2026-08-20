@@ -17,6 +17,7 @@ import com.codegym.mathclass.submission.repository.SubmissionRepository;
 import com.codegym.mathclass.submission.service.AiGradingService;
 import com.codegym.mathclass.utils.AiResponseUtils;
 import com.codegym.mathclass.utils.LaTeXSanitizer;
+import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -64,7 +65,10 @@ public class AiGradingServiceImpl implements AiGradingService {
     private final SubmissionRepository submissionRepository;
     private final AiPromptExecutionService aiPromptExecutionService;
     private final PromptRenderService promptRenderService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .configure(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS.mappedFeature(), true)
+            .configure(JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER.mappedFeature(), true)
+            .configure(JsonReadFeature.ALLOW_TRAILING_COMMA.mappedFeature(), true);
 
     @Override
     public AiGradingResponse requestAiGrading(long submissionId, AiGradingRequest request, long teacherId) {
@@ -172,9 +176,62 @@ public class AiGradingServiceImpl implements AiGradingService {
         } catch (BadRequestException e) {
             throw e;
         } catch (Exception e) {
+            log.warn("Không parse được bằng Jackson, thử parse fallback bằng regex cho submissionId={}: {}", submission.getId(), raw);
+            AiGradingResponse fallback = tryParseFallback(raw, maxScore, hasCanvasComparison);
+            if (fallback != null) {
+                return fallback;
+            }
             log.error("Không parse được phản hồi AI chấm bài (submissionId={}): {}", submission.getId(), raw);
             throw new BadRequestException("AI phản hồi không đúng định dạng. Vui lòng thử lại.");
         }
+    }
+
+    private AiGradingResponse tryParseFallback(String raw, double maxScore, boolean hasCanvasComparison) {
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            Double suggestedScore = null;
+            Matcher scoreMatcher = Pattern.compile("\"suggestedScore\"\\s*:\\s*([0-9]+(?:\\.[0-9]+)?)").matcher(raw);
+            if (scoreMatcher.find()) {
+                suggestedScore = Double.parseDouble(scoreMatcher.group(1));
+                suggestedScore = Math.max(0, Math.min(suggestedScore, maxScore));
+                suggestedScore = Math.round(suggestedScore * 10.0) / 10.0;
+            }
+
+            String draftFeedback = "";
+            Matcher feedbackMatcher = Pattern.compile("\"draftFeedback\"\\s*:\\s*\"([\\s\\S]*?)(?:\"\\s*,|\"\\s*\\}|$)").matcher(raw);
+            if (feedbackMatcher.find()) {
+                draftFeedback = feedbackMatcher.group(1).trim();
+                while (draftFeedback.endsWith("\\")) {
+                    draftFeedback = draftFeedback.substring(0, draftFeedback.length() - 1).trim();
+                }
+            } else if (raw.contains("\"draftFeedback\"")) {
+                int idx = raw.indexOf("\"draftFeedback\"");
+                int colonIdx = raw.indexOf(':', idx);
+                if (colonIdx != -1) {
+                    String sub = raw.substring(colonIdx + 1).trim();
+                    if (sub.startsWith("\"")) {
+                        sub = sub.substring(1);
+                    }
+                    sub = sub.replaceAll("[\"}\\s]+$", "");
+                    while (sub.endsWith("\\")) {
+                        sub = sub.substring(0, sub.length() - 1).trim();
+                    }
+                    draftFeedback = sub;
+                }
+            }
+
+            if (suggestedScore != null || !draftFeedback.isBlank()) {
+                return AiGradingResponse.builder()
+                        .suggestedScore(suggestedScore)
+                        .draftFeedback(normalizeKatexDelimiters(draftFeedback))
+                        .hasCanvasComparison(hasCanvasComparison)
+                        .drawingIssues(new ArrayList<>())
+                        .build();
+            }
+        } catch (Exception ex) {
+            log.warn("Lỗi khi chạy fallback parse AI grading: {}", ex.getMessage());
+        }
+        return null;
     }
 
     private List<DrawingIssueItem> parseDrawingIssues(JsonNode root, boolean hasCanvasComparison) {

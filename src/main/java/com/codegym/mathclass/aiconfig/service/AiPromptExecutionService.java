@@ -71,7 +71,7 @@ public class AiPromptExecutionService {
         if (charge) {
             costPerCall = creditCfg.get().getCostPerCall() != null ? creditCfg.get().getCostPerCall() : 0;
             tokensPerCredit = creditCfg.get().getTokensPerCredit();
-            int maxToken = config.getMaxToken() != null ? config.getMaxToken() : 512;
+            int maxToken = config.getMaxToken() != null ? config.getMaxToken() : 2048;
             // Đặt chỗ ước lượng theo trần maxToken; sau khi AI trả kết quả sẽ settle theo token thực tế.
             reserved = AiCreditService.estimateCredits(maxToken, costPerCall, tokensPerCredit);
             if (reserved > 0) {
@@ -131,7 +131,7 @@ public class AiPromptExecutionService {
         if (charge) {
             costPerCall = creditCfg.get().getCostPerCall() != null ? creditCfg.get().getCostPerCall() : 0;
             tokensPerCredit = creditCfg.get().getTokensPerCredit();
-            int maxToken = config.getMaxToken() != null ? config.getMaxToken() : 512;
+            int maxToken = config.getMaxToken() != null ? config.getMaxToken() : 2048;
             reserved = AiCreditService.estimateCredits(maxToken, costPerCall, tokensPerCredit);
             if (reserved > 0) {
                 aiCreditService.reserve(userId, taskCode, reserved);

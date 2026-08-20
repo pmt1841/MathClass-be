@@ -62,7 +62,7 @@ public class CustomAIProviderStrategy implements AiProviderStrategy {
         payload.put("prompt", prompt != null ? prompt : "");
         payload.put("messages", List.of(
                 Map.of("role", "user", "content", prompt != null ? prompt : "")));
-        payload.put("max_tokens", config.getMaxToken() != null ? config.getMaxToken() : 1024);
+        payload.put("max_tokens", config.getMaxToken() != null ? config.getMaxToken() : 2048);
         if (config.getTemperature() != null) {
             payload.put("temperature", config.getTemperature().doubleValue());
         }
@@ -103,7 +103,7 @@ public class CustomAIProviderStrategy implements AiProviderStrategy {
                         "content", List.of(
                                 Map.of("type", "text", "text", prompt != null ? prompt : ""),
                                 Map.of("type", "image_url", "image_url", Map.of("url", dataUri))))));
-        payload.put("max_tokens", config.getMaxToken() != null ? config.getMaxToken() : 1024);
+        payload.put("max_tokens", config.getMaxToken() != null ? config.getMaxToken() : 2048);
         if (config.getTemperature() != null) {
             payload.put("temperature", config.getTemperature().doubleValue());
         }

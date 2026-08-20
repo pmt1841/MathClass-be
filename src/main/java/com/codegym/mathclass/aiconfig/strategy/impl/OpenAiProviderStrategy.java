@@ -52,7 +52,7 @@ public class OpenAiProviderStrategy implements AiProviderStrategy {
         openAiPayload.put("model", model);
         openAiPayload.put("messages", List.of(
                 Map.of("role", "user", "content", prompt)));
-        openAiPayload.put("max_tokens", config.getMaxToken() != null ? config.getMaxToken() : 512);
+        openAiPayload.put("max_tokens", config.getMaxToken() != null ? config.getMaxToken() : 2048);
         openAiPayload.put("temperature", config.getTemperature() != null ? config.getTemperature().doubleValue() : 0.4);
 
         if (prompt != null && (prompt.contains("JSON") || prompt.contains("json"))) {
@@ -128,7 +128,7 @@ public class OpenAiProviderStrategy implements AiProviderStrategy {
                 Map.of("role", "system", "content", "Bạn là trợ lý toán học xử lý hình học và công thức."),
                 Map.of("role", "user", "content", userContent)
         ));
-        openAiPayload.put("max_tokens", config.getMaxToken() != null ? config.getMaxToken() : 1024);
+        openAiPayload.put("max_tokens", config.getMaxToken() != null ? config.getMaxToken() : 2048);
         openAiPayload.put("temperature", config.getTemperature() != null ? config.getTemperature().doubleValue() : 0.4);
         if (prompt != null && (prompt.contains("JSON") || prompt.contains("json"))) {
             openAiPayload.put("response_format", Map.of("type", "json_object"));
