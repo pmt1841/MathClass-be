@@ -10,6 +10,7 @@ import com.codegym.mathclass.aiconfig.credit.repository.CreditPackageRepository;
 import com.codegym.mathclass.aiconfig.credit.repository.CreditTransactionRepository;
 import com.codegym.mathclass.aiconfig.credit.repository.UserAiAccountRepository;
 import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
+import com.codegym.mathclass.aiconfig.repository.TaskConfigRepository;
 import com.codegym.mathclass.exception.InsufficientCreditException;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
@@ -46,6 +47,9 @@ class AiCreditServiceImplTest {
 
     @Mock
     private AiCreditConfigRepository aiCreditConfigRepository;
+
+    @Mock
+    private TaskConfigRepository taskConfigRepository;
 
     @Mock
     private CreditTransactionRepository creditTransactionRepository;

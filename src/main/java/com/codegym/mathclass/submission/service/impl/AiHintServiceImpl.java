@@ -4,8 +4,6 @@ import com.codegym.mathclass.aiconfig.dto.request.RenderPromptRequest;
 import com.codegym.mathclass.aiconfig.dto.response.RenderPromptResponse;
 import com.codegym.mathclass.aiconfig.service.AiPromptExecutionService;
 import com.codegym.mathclass.aiconfig.service.PromptRenderService;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.repository.AssignmentRepository;
 import com.codegym.mathclass.exception.AccessDeniedException;
@@ -25,6 +23,11 @@ import com.codegym.mathclass.submission.repository.SubmissionRepository;
 import com.codegym.mathclass.submission.service.AiHintService;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
+import com.codegym.mathclass.utils.AiResponseUtils;
+import com.codegym.mathclass.utils.LaTeXSanitizer;
+import com.fasterxml.jackson.core.json.JsonReadFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,6 +37,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -47,7 +52,10 @@ public class AiHintServiceImpl implements AiHintService {
     private final UserRepository userRepository;
     private final AiPromptExecutionService aiPromptExecutionService;
     private final PromptRenderService promptRenderService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .configure(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS.mappedFeature(), true)
+            .configure(JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER.mappedFeature(), true)
+            .configure(JsonReadFeature.ALLOW_TRAILING_COMMA.mappedFeature(), true);
 
     private static final int MAX_HINTS = 3;
 
@@ -193,31 +201,28 @@ public class AiHintServiceImpl implements AiHintService {
         }
         String extracted = rawContent;
         try {
-            String cleaned = rawContent.trim();
-            if (cleaned.startsWith("```json")) {
-                cleaned = cleaned.substring(7);
-            } else if (cleaned.startsWith("```")) {
-                cleaned = cleaned.substring(3);
-            }
-            if (cleaned.endsWith("```")) {
-                cleaned = cleaned.substring(0, cleaned.length() - 3);
-            }
-            cleaned = cleaned.trim();
+            String cleanJson = AiResponseUtils.extractCleanJson(rawContent);
+            JsonNode root = objectMapper.readTree(cleanJson);
 
-            JsonNode root = objectMapper.readTree(cleaned);
-
-            if (root.has("hintContent") && !root.get("hintContent").isNull()) {
+            if (root.hasNonNull("hintContent")) {
                 extracted = root.get("hintContent").asText();
-            } else if (root.has("hint") && !root.get("hint").isNull()) {
+            } else if (root.hasNonNull("hint")) {
                 extracted = root.get("hint").asText();
             }
         } catch (Exception e) {
-            log.warn("Không thể parse JSON phản hồi gợi ý AI, fallback sử dụng raw content: {}", e.getMessage());
+            log.warn("Không thể parse JSON phản hồi gợi ý AI, fallback sử dụng regex: {}", e.getMessage());
+            Matcher matcher = Pattern.compile("\"(?:hintContent|hint)\"\\s*:\\s*\"([\\s\\S]*?)(?:\"\\s*,|\"\\s*\\}|$)").matcher(rawContent);
+            if (matcher.find()) {
+                extracted = matcher.group(1).trim();
+                while (extracted.endsWith("\\")) {
+                    extracted = extracted.substring(0, extracted.length() - 1).trim();
+                }
+            }
         }
         return normalizeKatexDelimiters(extracted);
     }
 
     private String normalizeKatexDelimiters(String content) {
-        return com.codegym.mathclass.utils.LaTeXSanitizer.normalizeKatexDelimiters(content);
+        return LaTeXSanitizer.normalizeKatexDelimiters(content);
     }
 }

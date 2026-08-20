@@ -12,6 +12,7 @@ import com.codegym.mathclass.submission.dto.SketchGeometryResponse;
 import com.codegym.mathclass.submission.service.AiSubmissionHandwritingService;
 import com.codegym.mathclass.utils.AiResponseUtils;
 import com.codegym.mathclass.utils.LaTeXSanitizer;
+import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +32,10 @@ public class AiSubmissionHandwritingServiceImpl implements AiSubmissionHandwriti
 
     private final AiPromptExecutionService aiPromptExecutionService;
     private final PromptRenderService promptRenderService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .configure(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS.mappedFeature(), true)
+            .configure(JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER.mappedFeature(), true)
+            .configure(JsonReadFeature.ALLOW_TRAILING_COMMA.mappedFeature(), true);
 
     @Override
     public HandwritingLatexResponse convertHandwritingToLatex(HandwritingLatexRequest request, Long userId) {
