@@ -453,11 +453,6 @@ public class AuthServiceImpl implements AuthService {
                         }
                     }
 
-                    SecureRandom random = new SecureRandom();
-                    byte[] bytes = new byte[24];
-                    random.nextBytes(bytes);
-                    String randomPassword = java.util.Base64.getEncoder().encodeToString(bytes);
-
                     user = User.builder()
                             .email(email)
                             .fullName(name)
@@ -465,7 +460,7 @@ public class AuthServiceImpl implements AuthService {
                             .isActive(true)
                             .role(role)
                             .provider(Provider.GOOGLE)
-                            .password(encoder.encode(randomPassword))
+                            .password(null)
                             .phoneNumber("")
                             .build();
 

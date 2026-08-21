@@ -215,6 +215,81 @@ public class EmailService {
             log.error("Failed to send bug report OTP email to {}", toEmail, e);
         }
     }
+
+    @Async
+    public void sendSecurityAlertEmail(String toEmail, String fullName, LocalDateTime changeTime) {
+        try {
+            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
+
+            helper.setFrom(senderEmail);
+            helper.setTo(toEmail);
+            helper.setSubject("[MathClass] Cảnh báo bảo mật: Mật khẩu đã được thay đổi");
+
+            String formattedTime = changeTime != null ? changeTime.format(DateTimeFormatter.ofPattern("HH:mm 'ngày' dd/MM/yyyy")) : "";
+            String displayName = fullName != null && !fullName.isBlank() ? fullName.trim() : toEmail;
+
+            String htmlContent = """
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <h2 style="color: #4f46e5; margin-top: 0;">Thông báo thay đổi mật khẩu</h2>
+                    <p>Xin chào <strong>%s</strong>,</p>
+                    <p>Mật khẩu tài khoản của bạn tại <strong>MathClass</strong> vừa được thay đổi thành công vào lúc <strong>%s</strong>.</p>
+                    <div style="background-color: #f0fdf4; border-left: 4px solid #16a34a; padding: 12px; margin: 16px 0;">
+                        <p style="margin: 0; color: #15803d; font-size: 14px;">Trạng thái: <strong>Thay đổi mật khẩu thành công</strong></p>
+                    </div>
+                    <p style="font-size: 13px; color: #dc2626;">⚠️ Nếu bạn KHÔNG thực hiện thao tác này, tài khoản của bạn có thể đang gặp nguy hiểm. Vui lòng liên hệ ngay với Quản trị viên qua email support@mathclass.edu.vn.</p>
+                    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+                    <p style="font-size: 12px; color: #94a3b8;">Trân trọng,<br/>Đội ngũ Bảo mật MathClass</p>
+                </div>
+                """.formatted(
+                    HtmlUtils.htmlEscape(displayName),
+                    HtmlUtils.htmlEscape(formattedTime)
+                );
+
+            helper.setText(htmlContent, true);
+            javaMailSender.send(mimeMessage);
+            log.info("Security alert email sent successfully to {}", toEmail);
+        } catch (Exception e) {
+            log.error("Failed to send security alert email to {}", toEmail, e);
+        }
+    }
+
+    @Async
+    public void sendSetPasswordOtpEmail(String toEmail, String fullName, String otpCode) {
+        try {
+            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
+
+            helper.setFrom(senderEmail);
+            helper.setTo(toEmail);
+            helper.setSubject("[MathClass] Mã OTP xác thực thiết lập mật khẩu lần đầu");
+
+            String displayName = fullName != null && !fullName.isBlank() ? fullName.trim() : toEmail;
+
+            String htmlContent = """
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <h2 style="color: #4f46e5; margin-top: 0;">Mã OTP Thiết Lập Mật Khẩu</h2>
+                    <p>Xin chào <strong>%s</strong>,</p>
+                    <p>Bạn đang thực hiện yêu cầu thiết lập mật khẩu đăng nhập tại <strong>MathClass</strong>. Mã OTP xác thực của bạn là:</p>
+                    <div style="background-color: #eef2ff; border: 1px dashed #6366f1; text-align: center; padding: 16px; margin: 20px 0; border-radius: 8px;">
+                        <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #4338ca;">%s</span>
+                    </div>
+                    <p style="font-size: 13px; color: #64748b;">⚠️ Mã OTP này có hiệu lực trong <strong>5 phút</strong>. Vui lòng không chia sẻ mã này với bất kỳ ai.</p>
+                    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+                    <p style="font-size: 12px; color: #94a3b8;">Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email.<br/>Trân trọng,<br/>Đội ngũ Bảo mật MathClass</p>
+                </div>
+                """.formatted(
+                    HtmlUtils.htmlEscape(displayName),
+                    HtmlUtils.htmlEscape(otpCode)
+                );
+
+            helper.setText(htmlContent, true);
+            javaMailSender.send(mimeMessage);
+            log.info("Set password OTP email sent successfully to {}", toEmail);
+        } catch (Exception e) {
+            log.error("Failed to send set password OTP email to {}", toEmail, e);
+        }
+    }
 }
 
 

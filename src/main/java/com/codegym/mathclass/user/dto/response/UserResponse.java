@@ -29,6 +29,7 @@ public class UserResponse {
     private Gender gender;
     private List<String> permissions;
     private Provider provider;
+    private boolean hasPassword;
     private String lockReason;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime lockedAt;

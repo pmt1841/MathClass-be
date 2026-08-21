@@ -24,6 +24,8 @@ public class UserMapper {
             return null;
         }
 
+        boolean hasPassword = user.getPassword() != null && !user.getPassword().trim().isEmpty();
+
         return UserResponse.builder()
                 .id(user.getId())
                 .fullName(user.getFullName())
@@ -35,6 +37,7 @@ public class UserMapper {
                 .dateOfBirth(user.getDateOfBirth())
                 .gender(user.getGender())
                 .provider(user.getProvider())
+                .hasPassword(hasPassword)
                 .lockReason(user.getLockReason())
                 .lockedAt(user.getLockedAt())
                 .lockedBy(user.getLockedBy())
