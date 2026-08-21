@@ -26,7 +26,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.io.IOException;
-
+import java.time.LocalDateTime;
 import com.codegym.mathclass.auth.service.RefreshTokenService;
 import com.codegym.mathclass.exception.TooManyRequestsException;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -67,6 +67,14 @@ public class UserServiceImpl implements UserService {
     public void cleanupExpiredSetPasswordOtps() {
         LocalDateTime now = LocalDateTime.now();
         setPasswordOtpCache.entrySet().removeIf(entry -> entry.getValue().expiryTime.isBefore(now));
+    }
+
+    private final ConcurrentHashMap<Long, LocalDateTime> userLastActiveCache = new ConcurrentHashMap<>();
+
+    @Scheduled(fixedRate = 600000)
+    public void cleanUserLastActiveCache() {
+        LocalDateTime threshold = LocalDateTime.now().minusMinutes(10);
+        userLastActiveCache.entrySet().removeIf(e -> e.getValue().isBefore(threshold));
     }
 
     @Override
@@ -110,6 +118,20 @@ public class UserServiceImpl implements UserService {
             return avatarUrl;
         } catch (IOException e) {
             throw new RuntimeException("Lỗi khi upload ảnh đại diện: " + e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional
+    public void updateLastActiveAt(Long userId) {
+        if (userId == null) return;
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime lastUpdated = userLastActiveCache.get(userId);
+
+        // Throttle DB updates: Only write to PostgreSQL if updated > 1 minute ago
+        if (lastUpdated == null || lastUpdated.isBefore(now.minusMinutes(1))) {
+            userLastActiveCache.put(userId, now);
+            userRepository.updateLastActiveAt(userId, now);
         }
     }
 

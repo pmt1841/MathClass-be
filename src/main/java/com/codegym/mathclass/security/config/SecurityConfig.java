@@ -29,6 +29,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 
+import com.codegym.mathclass.user.repository.UserRepository;
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity

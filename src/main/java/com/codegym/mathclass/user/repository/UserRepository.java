@@ -14,6 +14,10 @@ import org.springframework.data.repository.query.Param;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
 
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDateTime;
+
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
 
@@ -25,10 +29,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findByRole(Role role);
 
+    @Modifying
+    @Query("UPDATE User u SET u.lastActiveAt = :now WHERE u.id = :id")
+    void updateLastActiveAt(@Param("id") Long id, @Param("now") LocalDateTime now);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT u FROM User u WHERE u.id = :id")
     Optional<User> findByIdWithLock(@Param("id") Long id);
-
 
     @Query("SELECT s FROM Classroom c JOIN c.students s WHERE c.classCode = :classCode")
     Page<User> findStudentsByClassCode(@Param("classCode") String classCode, Pageable pageable);

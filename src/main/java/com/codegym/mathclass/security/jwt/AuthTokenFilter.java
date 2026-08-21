@@ -23,15 +23,35 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 
+import com.codegym.mathclass.user.service.UserService;
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.context.support.WebApplicationContextUtils;
+import java.time.LocalDateTime;
+
 @Slf4j
 public class AuthTokenFilter extends OncePerRequestFilter {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final JwtUtils jwtUtils;
     private final CustomUserDetailsService userDetailsService;
+    private volatile UserService userService;
 
     public AuthTokenFilter(JwtUtils jwtUtils, CustomUserDetailsService userDetailsService) {
         this.jwtUtils = jwtUtils;
         this.userDetailsService = userDetailsService;
+    }
+
+    private UserService getUserService(HttpServletRequest request) {
+        if (userService == null) {
+            synchronized (this) {
+                if (userService == null) {
+                    WebApplicationContext wac = WebApplicationContextUtils.getWebApplicationContext(request.getServletContext());
+                    if (wac != null) {
+                        userService = wac.getBean(UserService.class);
+                    }
+                }
+            }
+        }
+        return userService;
     }
 
     @Override
@@ -97,6 +117,17 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+
+                if (userDetails instanceof CustomUserDetails customUser) {
+                    try {
+                        UserService us = getUserService(request);
+                        if (us != null) {
+                            us.updateLastActiveAt(customUser.getId());
+                        }
+                    } catch (Exception ex) {
+                        log.error("Failed to update lastActiveAt for user {}: {}", customUser.getId(), ex.getMessage());
+                    }
+                }
             }
         } catch (Exception e) {
             log.error("Cannot set user authentication: {}", e.getMessage());

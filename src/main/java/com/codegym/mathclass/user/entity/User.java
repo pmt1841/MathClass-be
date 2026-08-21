@@ -70,5 +70,8 @@ public class User extends BaseEntity {
 
     @Column(name = "locked_by")
     private String lockedBy;
+
+    @Column(name = "last_active_at")
+    private LocalDateTime lastActiveAt;
 }
 
