@@ -29,8 +29,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Modifying
     @Transactional
-    @Query("UPDATE User u SET u.lastActiveAt = :now WHERE u.id = :id AND (u.lastActiveAt IS NULL OR u.lastActiveAt < :threshold)")
-    void updateLastActiveAtIfOlderThan(@Param("id") Long id, @Param("threshold") LocalDateTime threshold, @Param("now") LocalDateTime now);
+    @Query("UPDATE User u SET u.lastActiveAt = :now WHERE u.id = :id")
+    void updateLastActiveAt(@Param("id") Long id, @Param("now") LocalDateTime now);
 
     @Query("SELECT s FROM Classroom c JOIN c.students s WHERE c.classCode = :classCode ORDER BY CASE WHEN s.lastActiveAt IS NULL THEN 1 ELSE 0 END, s.lastActiveAt DESC, s.fullName ASC")
     Page<User> findStudentsByClassCode(@Param("classCode") String classCode, Pageable pageable);

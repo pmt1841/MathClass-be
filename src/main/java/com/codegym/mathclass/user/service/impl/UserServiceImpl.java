@@ -16,6 +16,9 @@ import org.springframework.web.multipart.MultipartFile;
 import com.codegym.mathclass.user.entity.Provider;
 import java.io.IOException;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
@@ -24,6 +27,8 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final SupabaseStorageService supabaseStorageService;
     private final RolePermissionRepository rolePermissionRepository;
+
+    private final ConcurrentHashMap<Long, LocalDateTime> userLastActiveCache = new ConcurrentHashMap<>();
 
     @Override
     public UserResponse getUserProfile(Long id) {
@@ -73,10 +78,13 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void updateLastActiveAt(Long userId) {
         if (userId == null) return;
-        userRepository.updateLastActiveAtIfOlderThan(
-                userId,
-                java.time.LocalDateTime.now().minusMinutes(1),
-                java.time.LocalDateTime.now()
-        );
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime lastUpdated = userLastActiveCache.get(userId);
+
+        // Throttle DB updates: Only write to PostgreSQL if updated > 1 minute ago
+        if (lastUpdated == null || lastUpdated.isBefore(now.minusMinutes(1))) {
+            userLastActiveCache.put(userId, now);
+            userRepository.updateLastActiveAt(userId, now);
+        }
     }
 }

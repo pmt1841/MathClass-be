@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -19,7 +21,10 @@ public class StudentResponse {
     private String email;
     private String phoneNumber;
     private String avatarUrl;
+
+    @JsonProperty("isOnline")
     private boolean isOnline;
+
     private LocalDateTime lastActiveAt;
 
     public static StudentResponse fromEntity(User user) {
@@ -29,10 +34,13 @@ public class StudentResponse {
             LocalDateTime nowLocal = LocalDateTime.now();
             LocalDateTime nowUtc = LocalDateTime.now(java.time.ZoneOffset.UTC);
 
-            long diffMinutesLocal = Math.abs(java.time.Duration.between(lastActive, nowLocal).toMinutes());
-            long diffMinutesUtc = Math.abs(java.time.Duration.between(lastActive, nowUtc).toMinutes());
+            long diffLocal = Math.abs(java.time.Duration.between(lastActive, nowLocal).toMinutes());
+            long diffUtc = Math.abs(java.time.Duration.between(lastActive, nowUtc).toMinutes());
 
-            online = diffMinutesLocal <= 15 || diffMinutesUtc <= 15;
+            long diffLocalWithOffset = Math.abs(diffLocal - 420);
+            long diffUtcWithOffset = Math.abs(diffUtc - 420);
+
+            online = diffLocal <= 30 || diffUtc <= 30 || diffLocalWithOffset <= 30 || diffUtcWithOffset <= 30;
         }
 
         return StudentResponse.builder()
