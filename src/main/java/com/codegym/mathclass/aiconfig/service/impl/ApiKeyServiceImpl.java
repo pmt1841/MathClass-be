@@ -25,6 +25,7 @@ public class ApiKeyServiceImpl implements ApiKeyService {
 
     private final ApiKeyRepository apiKeyRepository;
     private final ProviderRepository providerRepository;
+    private final com.codegym.mathclass.aiconfig.service.KeySelectionService keySelectionService;
 
     @Override
     @Transactional(readOnly = true)
@@ -82,8 +83,38 @@ public class ApiKeyServiceImpl implements ApiKeyService {
         return mapToResponse(updated);
     }
 
+    @Override
+    @Transactional
+    @CacheEvict(value = "ai_providers_cache", allEntries = true)
+    public ApiKeyResponse updateKey(Long keyId, com.codegym.mathclass.aiconfig.dto.request.ApiKeyUpdateRequest request) {
+        ApiKey apiKey = apiKeyRepository.findById(keyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy API Key với ID: " + keyId));
+
+        if (request.getName() != null) {
+            apiKey.setName(request.getName().trim());
+        }
+        if (request.getPriority() != null) {
+            apiKey.setPriority(request.getPriority());
+        }
+        if (request.getStatus() != null) {
+            apiKey.setStatus(request.getStatus());
+        }
+        if (request.getApiKey() != null && !request.getApiKey().isBlank()) {
+            apiKey.setEncryptedKey(request.getApiKey().trim());
+        }
+
+        ApiKey updated = apiKeyRepository.save(apiKey);
+        log.info("[AI_AUDIT] Cập nhật thông tin API Key ID={}: name='{}', priority={}, status={}",
+                keyId, updated.getName(), updated.getPriority(), updated.getStatus());
+        return mapToResponse(updated);
+    }
+
     private ApiKeyResponse mapToResponse(ApiKey apiKey) {
         String plainKey = apiKey.getEncryptedKey();
+        Long keyId = apiKey.getId();
+        Long remainingSeconds = keySelectionService.getCooldownRemainingSeconds(keyId);
+        java.time.Instant expiresAt = keySelectionService.getCooldownExpiresAt(keyId);
+
         return ApiKeyResponse.builder()
                 .id(apiKey.getId())
                 .name(apiKey.getName())
@@ -91,6 +122,8 @@ public class ApiKeyServiceImpl implements ApiKeyService {
                 .priority(apiKey.getPriority())
                 .status(apiKey.getStatus())
                 .lastUsed(apiKey.getLastUsed())
+                .cooldownRemainingSeconds(remainingSeconds)
+                .cooldownExpiresAt(expiresAt)
                 .createdAt(apiKey.getCreatedAt())
                 .updatedAt(apiKey.getUpdatedAt())
                 .build();

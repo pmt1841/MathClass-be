@@ -89,7 +89,23 @@ public class AiQuestionServiceImpl implements AiQuestionService {
         String modelToUse = rawModel != null && rawModel.startsWith("models/") ? rawModel.substring(7) : rawModel;
 
         String systemPrompt = buildSystemPrompt(request);
-        String fullPrompt = systemPrompt + "\n\nYêu cầu từ người dùng:\n" + request.getPrompt();
+
+        StringBuilder userPromptBuilder = new StringBuilder();
+        userPromptBuilder.append(request.getPrompt().trim());
+
+        if (Boolean.TRUE.equals(request.getIncludeExplanation())) {
+            userPromptBuilder.append("\n\n[CHỈ THỊ BẮT BUỘC TỪ HỆ THỐNG]: Người dùng ĐÃ BẬT tùy chọn KÈM LỜI GIẢI CHI TIẾT. Bạn BẮT BUỘC phải giải chi tiết từng bước cho bài toán và đưa toàn bộ nội dung lời giải vào trường 'explanation' (định dạng Markdown + KaTeX).");
+        } else {
+            userPromptBuilder.append("\n\n[CHỈ THỊ BẮT BUỘC TỪ HỆ THỐNG]: Người dùng KHÔNG chọn kèm lời giải. TUYỆT ĐỐI để trường 'explanation' là chuỗi rỗng \"\".");
+        }
+
+        if (Boolean.TRUE.equals(request.getIncludeCanvasDiagram())) {
+            userPromptBuilder.append("\n[CHỈ THỊ BẮT BUỘC TỪ HỆ THỐNG]: Người dùng ĐÃ BẬT tùy chọn KÈM HÌNH VẼ MINH HỌA. Bạn BẮT BUỘC phải tạo cấu trúc hình vẽ đầy đủ trong object 'canvasData'.");
+        } else {
+            userPromptBuilder.append("\n[CHỈ THỊ BẮT BUỘC TỪ HỆ THỐNG]: Người dùng KHÔNG chọn hình vẽ minh họa. Hãy để trường 'canvasData' là null.");
+        }
+
+        String fullPrompt = systemPrompt + "\n\nYêu cầu từ người dùng:\n" + userPromptBuilder;
 
         Exception lastException = null;
         int maxKeyAttempts = 5;
@@ -131,14 +147,14 @@ public class AiQuestionServiceImpl implements AiQuestionService {
                         dto.setTopic(request.getTopic());
                     dto.setModel(modelToUse);
 
-                    if (!hasRequestedExplanation(request.getPrompt())) {
+                    boolean shouldIncludeExplanation = Boolean.TRUE.equals(request.getIncludeExplanation());
+                    if (!shouldIncludeExplanation) {
                         dto.setExplanation("");
                     } else {
                         dto.setExplanation(normalizeKatexDelimiters(dto.getExplanation()));
                     }
 
-                    boolean shouldDraw = Boolean.TRUE.equals(request.getIncludeCanvasDiagram())
-                            && hasRequestedDrawing(request.getPrompt());
+                    boolean shouldDraw = Boolean.TRUE.equals(request.getIncludeCanvasDiagram());
                     if (!shouldDraw) {
                         dto.setCanvasData(null);
                     }
@@ -225,11 +241,15 @@ public class AiQuestionServiceImpl implements AiQuestionService {
     }
 
     private String buildSystemPrompt(GenerateQuestionRequest request) {
-        boolean isDrawingRequested = Boolean.TRUE.equals(request.getIncludeCanvasDiagram())
-                && hasRequestedDrawing(request.getPrompt());
+        boolean isDrawingRequested = Boolean.TRUE.equals(request.getIncludeCanvasDiagram());
         String canvasRequirement = isDrawingRequested
-                ? "Người dùng CÓ YÊU CẦU vẽ hình/đồ thị, bạn hãy sinh ra object 'canvasData' (chứa điểm, đoạn thẳng, đường tròn, đồ thị hàm số) theo chuẩn JSON."
-                : "Bài toán này KHÔNG yêu cầu vẽ hình hay đồ thị, TUYỆT ĐỐI KHÔNG sinh ra object 'canvasData' (bỏ qua trường 'canvasData').";
+                ? "YÊU CẦU QUAN TRỌNG: Người dùng ĐÃ BẬT tùy chọn kèm hình vẽ minh họa. Bạn BẮT BUỘC phải sinh ra object 'canvasData' (chứa đầy đủ các elements: point, segment, line, circle, hoặc functiongraph) minh họa trực quan đầy đủ cho bài toán theo chuẩn JSON."
+                : "Người dùng KHÔNG yêu cầu kèm hình vẽ minh họa hay đồ thị. TUYỆT ĐỐI KHÔNG sinh ra object 'canvasData' (đặt trường 'canvasData' là null hoặc bỏ qua trường 'canvasData').";
+
+        boolean isExplanationRequested = Boolean.TRUE.equals(request.getIncludeExplanation());
+        String explanationRequirement = isExplanationRequested
+                ? "YÊU CẦU QUAN TRỌNG: Người dùng ĐÃ BẬT tùy chọn kèm lời giải chi tiết. Bạn BẮT BUỘC phải sinh ra trường 'explanation' chứa các bước giải chi tiết, rõ ràng, chuẩn sư phạm theo định dạng Markdown + KaTeX."
+                : "Người dùng KHÔNG yêu cầu lời giải. TUYỆT ĐỐI để trường 'explanation' là chuỗi rỗng \"\" (bỏ qua lời giải).";
 
         Map<String, Object> variables = new HashMap<>();
         variables.put("grade_level", request.getGrade() != null ? request.getGrade() : 9);
@@ -237,6 +257,7 @@ public class AiQuestionServiceImpl implements AiQuestionService {
         variables.put("topic", request.getTopic() != null ? request.getTopic() : "Toán học");
         variables.put("question_type", request.getQuestionType() != null ? request.getQuestionType() : "Tự luận");
         variables.put("canvas_requirement", canvasRequirement);
+        variables.put("explanation_requirement", explanationRequirement);
 
         RenderPromptRequest renderRequest = RenderPromptRequest.builder()
                 .promptCode("PROMPT_QUESTION_GEN")
@@ -246,24 +267,6 @@ public class AiQuestionServiceImpl implements AiQuestionService {
         return promptRenderService.renderPrompt(renderRequest).getRenderedPrompt();
     }
 
-    private boolean hasRequestedExplanation(String prompt) {
-        if (prompt == null || prompt.isBlank())
-            return false;
-        String lower = prompt.toLowerCase();
-        return lower.contains("lời giải") || lower.contains("giải chi tiết") || lower.contains("hướng dẫn giải")
-                || lower.contains("trình bày") || lower.contains("đáp án") || lower.contains("kèm lời giải")
-                || lower.contains("có lời giải") || lower.contains("bài giải") || lower.contains("hướng dẫn");
-    }
-
-    private boolean hasRequestedDrawing(String prompt) {
-        if (prompt == null || prompt.isBlank())
-            return false;
-        String lower = prompt.toLowerCase();
-        return lower.contains("vẽ") || lower.contains("đồ thị")
-                || lower.contains("minh họa") || lower.contains("sơ đồ") || lower.contains("parabol")
-                || lower.contains("vẽ hình") || lower.contains("vẽ đồ thị") || lower.contains("kèm hình")
-                || lower.contains("có hình");
-    }
 
     private String formatDifficultyDescription(String difficulty) {
         if (difficulty == null || difficulty.isBlank()) {

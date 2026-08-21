@@ -32,6 +32,7 @@ public class ConnectionTestService {
 
     private final ApiKeyRepository apiKeyRepository;
     private final ProviderRepository providerRepository;
+    private final KeySelectionService keySelectionService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -142,7 +143,9 @@ public class ConnectionTestService {
         TestConnectionResponse response = testConnection(testReq);
 
         boolean isFailed = !Boolean.TRUE.equals(response.getSuccess()) || !Boolean.TRUE.equals(response.getValid());
-        if (isFailed && apiKey.getStatus() != ApiKeyStatus.INACTIVE) {
+        if (!isFailed) {
+            keySelectionService.clearCooldown(keyId);
+        } else if (apiKey.getStatus() != ApiKeyStatus.INACTIVE) {
             apiKey.setStatus(ApiKeyStatus.INACTIVE);
             apiKeyRepository.save(apiKey);
             log.info("API Key ID {} bị lỗi kết nối ({}), đã tự động chuyển trạng thái sang INACTIVE", keyId, response.getMessage());

@@ -30,5 +30,8 @@ public class GenerateQuestionRequest {
     private String questionType; // ESSAY, MULTIPLE_CHOICE
 
     @Builder.Default
-    private Boolean includeCanvasDiagram = true;
+    private Boolean includeCanvasDiagram = false;
+
+    @Builder.Default
+    private Boolean includeExplanation = false;
 }

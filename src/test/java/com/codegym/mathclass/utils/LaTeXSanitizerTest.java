@@ -66,6 +66,24 @@ class LaTeXSanitizerTest {
     }
 
     @Test
+    @DisplayName("normalizeKatexDelimiters should convert literal \\n and \\r\\n to markdown paragraphs")
+    void normalizeKatexDelimiters_literalNewlinesFromAi_convertsToRealNewlines() {
+        String input = "Vì tam giác $ABC$ đều.\\nGọi $M$ là trung điểm của $BC$.\\nTa có $AO = 6\\text{ cm}$.\\n$S = 27\\sqrt{3}\\text{ cm}^2$.\\nVậy diện tích là...";
+        String expected = "Vì tam giác $ABC$ đều.\n\nGọi $M$ là trung điểm của $BC$.\n\nTa có $AO = 6\\text{ cm}$.\n\n$S = 27\\sqrt{3}\\text{ cm}^2$.\n\nVậy diện tích là...";
+
+        assertThat(LaTeXSanitizer.normalizeKatexDelimiters(input)).isEqualTo(expected);
+    }
+
+    @Test
+    @DisplayName("normalizeKatexDelimiters should preserve LaTeX commands starting with \\n like \\neq, \\notin, \\nabla, \\nu")
+    void normalizeKatexDelimiters_katexCommandsStartingWithN_preserved() {
+        String input = "Ta có $x \\neq 0$ và $x \\notin S$\\nGọi $\\nabla f(x)$ và $\\nu = 1$";
+        String expected = "Ta có $x \\neq 0$ và $x \\notin S$\n\nGọi $\\nabla f(x)$ và $\\nu = 1$";
+
+        assertThat(LaTeXSanitizer.normalizeKatexDelimiters(input)).isEqualTo(expected);
+    }
+
+    @Test
     @DisplayName("normalizeKatexDelimiters should handle null or blank input gracefully")
     void normalizeKatexDelimiters_nullOrBlank_returnsEmptyString() {
         assertThat(LaTeXSanitizer.normalizeKatexDelimiters(null)).isEmpty();
