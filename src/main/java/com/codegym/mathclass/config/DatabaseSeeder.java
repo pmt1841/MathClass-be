@@ -529,8 +529,11 @@ public class DatabaseSeeder implements CommandLineRunner {
 
                                 Yêu cầu nội dung bổ sung:
                                 1. CHÚ Ý YÊU CẦU vẽ hình/đồ thị: {{canvas_requirement}}
-                                2. Về phần lời giải ('explanation'): CHỈ sinh ra nội dung lời giải chi tiết KHI yêu cầu (prompt) của người dùng có đề nghị/nhắc tới việc cung cấp lời giải (ví dụ: 'kèm lời giải', 'giải chi tiết', 'hướng dẫn giải', 'trình bày giải'). Nếu người dùng KHÔNG yêu cầu lời giải, hãy để trường 'explanation' là chuỗi rỗng "".
-                                3. Trả về ĐÚNG MỘT JSON OBJECT duy nhất, KHÔNG kèm theo văn bản giải thích ngoài JSON, KHÔNG dùng markdown block ```json.
+                                2. CHÚ Ý YÊU CẦU lời giải chi tiết: {{explanation_requirement}}
+                                3. Về định dạng văn bản và xuống dòng:
+                                   - Trình bày các bước giải trong 'explanation' và các ý trong 'content' rõ ràng, tách thành từng đoạn văn xuống dòng mạch lạc.
+                                   - Sử dụng dấu ngắt dòng tiêu chuẩn của Markdown/JSON, tuyệt đối không để sót các chuỗi ký tự thô "\\n" hay "/n" dính liền vào văn bản.
+                                4. Trả về ĐÚNG MỘT JSON OBJECT duy nhất, KHÔNG kèm theo văn bản giải thích ngoài JSON, KHÔNG dùng markdown block ```json.
 
                                 JSON Schema quy định:
                                 {
@@ -620,7 +623,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 "Chấm điểm và nhận xét chi tiết bài làm tự luận.");
                 upsertSystemPrompt("PROMPT_QUESTION_GEN", "Prompt Sinh Bài tập Toán", "QUESTION_GEN",
                                 defaultQuestionGenPrompt,
-                                "grade_level,difficulty,topic,question_type,canvas_requirement",
+                                "grade_level,difficulty,topic,question_type,canvas_requirement,explanation_requirement",
                                 "Tự động tạo bài tập tự luận môn Toán.");
         }
 
@@ -630,6 +633,11 @@ public class DatabaseSeeder implements CommandLineRunner {
                 if (existingOpt.isPresent()) {
                         SystemPrompt existing = existingOpt.get();
                         existing.syncMetadata(name, taskCode, defaultContent, allowedVariables, description);
+                        if (existing.getCurrentContent() == null || existing.getCurrentContent().isBlank()
+                                || !existing.getCurrentContent().contains("{{explanation_requirement}}")
+                                || existing.getCurrentContent().contains("CHỈ sinh ra nội dung lời giải chi tiết KHI yêu cầu (prompt)")) {
+                                existing.setCurrentContent(defaultContent);
+                        }
                         systemPromptRepository.save(existing);
                         log.info("[DatabaseSeeder] Synchronized system prompt metadata: {} ({})", code, name);
                 } else {

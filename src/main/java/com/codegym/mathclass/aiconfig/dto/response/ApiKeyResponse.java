@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Data
@@ -19,6 +20,8 @@ public class ApiKeyResponse {
     private Integer priority;
     private ApiKeyStatus status;
     private LocalDateTime lastUsed;
+    private Long cooldownRemainingSeconds;
+    private Instant cooldownExpiresAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

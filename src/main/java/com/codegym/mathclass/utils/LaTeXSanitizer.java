@@ -31,6 +31,10 @@ public class LaTeXSanitizer {
             Pattern.compile("\\\\lstinputlisting(?![a-zA-Z])")
     );
 
+    private static final Pattern LITERAL_NEWLINE_PATTERN = Pattern.compile(
+            "\\\\r\\\\n|\\\\n(?!(?:eq|e|abla|atural|approx|earrow|eg|equiv|exists|geq|geqq|geqslant|gtr|i|Leftarrow|LeftrightArrow|Leftrightarrow|leftrightarrow|leftarrow|leq|leqq|leqslant|less|mid|models|odepart|olimits|ormalsize|ormalcolor|ormalfont|ot|otin|otni|parallel|prec|preceq|Rightarrow|rightarrow|shortmid|shortparallel|sim|simeq|subset|subseteq|succ|succeq|supset|supseteq|triangleleft|trianglelefteq|triangleright|trianglerighteq|u|vDash|vdash|VDash|Vdash|warrow|ewline|onumber|otag|oindent)\\b)"
+    );
+
     private LaTeXSanitizer() {
         // Utility class, không khởi tạo
     }
@@ -75,7 +79,8 @@ public class LaTeXSanitizer {
     /**
      * Chuẩn hóa dấu phân cách KaTeX trong văn bản do AI sinh ra.
      * Chuyển các định dạng LaTeX không chuẩn (\(... \), \[... \], ngoặc tròn thừa) thành $...$ và $$...$$.
-     * Đồng thời xử lý các trường hợp AI lầm tưởng bọc $ vào từ tiếng Việt gây lồng $.
+     * Đồng thời xử lý các trường hợp AI lầm tưởng bọc $ vào từ tiếng Việt gây lồng $,
+     * và chuyển đổi chuỗi ký tự xuống dòng thô "\\n", "\\r\\n" thành dấu ngắt dòng thực tế trong Markdown.
      *
      * @param content nội dung văn bản chứa KaTeX
      * @return nội dung đã được chuẩn hóa dấu phân cách KaTeX
@@ -85,6 +90,10 @@ public class LaTeXSanitizer {
             return "";
         }
         String result = content;
+
+        // 0. Thay thế literal \n, \r\n do AI sinh ra thành ngắt dòng thực tế trong Markdown (ngoại trừ các lệnh LaTeX bắt đầu bằng \n như \neq, \notin, \nabla...)
+        result = LITERAL_NEWLINE_PATTERN.matcher(result).replaceAll("\n\n");
+        result = result.replaceAll("\\n{3,}", "\n\n");
 
         // 1. Khắc phục lỗi JSON parser biến \text{cm} hoặc \text{ cm} thành \t + ext (Tab + ext) hoặc bị mất backslash thành 6extcm:
         result = result.replaceAll("[\\t\\u0009]ext\\{?", "\\\\text{");

@@ -91,4 +91,25 @@ class KeySelectionServiceTest {
 
         assertThrows(IllegalStateException.class, () -> keySelectionService.selectKeyForProvider(priorityProvider));
     }
+
+    @Test
+    @DisplayName("TC-KEY-05: Cooldown key và kiểm tra thời gian còn lại")
+    void testCooldownKey_TracksRemainingSecondsAndExpiresAt() {
+        keySelectionService.cooldownKey(101L, 300);
+
+        Long remaining = keySelectionService.getCooldownRemainingSeconds(101L);
+        assertNotNull(remaining);
+        assertTrue(remaining > 280 && remaining <= 300);
+
+        assertNotNull(keySelectionService.getCooldownExpiresAt(101L));
+
+        // Key 102 không có cooldown
+        assertNull(keySelectionService.getCooldownRemainingSeconds(102L));
+        assertNull(keySelectionService.getCooldownExpiresAt(102L));
+
+        // Xóa cooldown
+        keySelectionService.clearCooldown(101L);
+        assertNull(keySelectionService.getCooldownRemainingSeconds(101L));
+        assertNull(keySelectionService.getCooldownExpiresAt(101L));
+    }
 }

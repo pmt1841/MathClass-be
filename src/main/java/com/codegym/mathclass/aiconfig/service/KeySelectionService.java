@@ -97,4 +97,44 @@ public class KeySelectionService {
         keyCooldowns.put(keyId, Instant.now().plusSeconds(durationSeconds));
         log.warn("API Key ID {} dính lỗi 429 Quota Exceeded, đưa vào danh sách Cooldown {} giây", keyId, durationSeconds);
     }
+
+    public void clearCooldown(Long keyId) {
+        if (keyId != null) {
+            keyCooldowns.remove(keyId);
+            log.info("Đã xóa thời gian Cooldown cho API Key ID {}", keyId);
+        }
+    }
+
+    public Long getCooldownRemainingSeconds(Long keyId) {
+        if (keyId == null) {
+            return null;
+        }
+        Instant cooldownEnd = keyCooldowns.get(keyId);
+        if (cooldownEnd == null) {
+            return null;
+        }
+        Instant now = Instant.now();
+        if (now.isBefore(cooldownEnd)) {
+            return java.time.Duration.between(now, cooldownEnd).getSeconds();
+        } else {
+            keyCooldowns.remove(keyId);
+            return null;
+        }
+    }
+
+    public Instant getCooldownExpiresAt(Long keyId) {
+        if (keyId == null) {
+            return null;
+        }
+        Instant cooldownEnd = keyCooldowns.get(keyId);
+        if (cooldownEnd == null) {
+            return null;
+        }
+        if (Instant.now().isBefore(cooldownEnd)) {
+            return cooldownEnd;
+        } else {
+            keyCooldowns.remove(keyId);
+            return null;
+        }
+    }
 }

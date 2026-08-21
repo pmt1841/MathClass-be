@@ -59,6 +59,13 @@ public class ApiKeyController {
         return ResponseEntity.ok(apiKeyService.updateKeyStatus(keyId, request));
     }
 
+    @Operation(summary = "Cập nhật thông tin API Key", description = "Cập nhật tên, độ ưu tiên, trạng thái hoặc chuỗi key mới")
+    @PutMapping("/keys/{keyId}")
+    @AuditLog(action = "UPDATE_AI_API_KEY", resourceType = "AI_CONFIG")
+    public ResponseEntity<ApiKeyResponse> updateKey(@PathVariable Long keyId, @Valid @RequestBody com.codegym.mathclass.aiconfig.dto.request.ApiKeyUpdateRequest request) {
+        return ResponseEntity.ok(apiKeyService.updateKey(keyId, request));
+    }
+
     @Operation(summary = "Kiểm tra trạng thái Key (/verify)", description = "Giải mã Key trong CSDL và gửi request thử nghiệm tới Provider để xác thực còn hiệu lực và quota")
     @PostMapping("/keys/{keyId}/verify")
     @AuditLog(action = "VERIFY_AI_API_KEY", resourceType = "AI_CONFIG")
