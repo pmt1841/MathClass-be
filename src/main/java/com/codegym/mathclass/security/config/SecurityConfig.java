@@ -29,7 +29,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 
-import com.codegym.mathclass.user.service.UserService;
+import com.codegym.mathclass.user.repository.UserRepository;
 
 @Configuration
 @EnableWebSecurity
@@ -40,7 +40,7 @@ public class SecurityConfig {
     private final CustomUserDetailsService userDetailsService;
     private final AuthEntryPointJwt unauthorizedHandler;
     private final JwtUtils jwtUtils;
-    private final UserService userService;
+    private final UserRepository userRepository;
 
     @Value("${mathclass.app.cors.allowedOrigins:http://localhost:3000,http://localhost:5173}")
     private String[] allowedOrigins;
@@ -50,7 +50,7 @@ public class SecurityConfig {
 
     @Bean
     public AuthTokenFilter authenticationJwtTokenFilter() {
-        return new AuthTokenFilter(jwtUtils, userDetailsService, userService);
+        return new AuthTokenFilter(jwtUtils, userDetailsService, userRepository);
     }
 
     @Bean

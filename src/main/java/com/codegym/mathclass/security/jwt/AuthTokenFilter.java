@@ -23,19 +23,20 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 
-import com.codegym.mathclass.user.service.UserService;
+import com.codegym.mathclass.user.repository.UserRepository;
+import java.time.LocalDateTime;
 
 @Slf4j
 public class AuthTokenFilter extends OncePerRequestFilter {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final JwtUtils jwtUtils;
     private final CustomUserDetailsService userDetailsService;
-    private final UserService userService;
+    private final UserRepository userRepository;
 
-    public AuthTokenFilter(JwtUtils jwtUtils, CustomUserDetailsService userDetailsService, UserService userService) {
+    public AuthTokenFilter(JwtUtils jwtUtils, CustomUserDetailsService userDetailsService, UserRepository userRepository) {
         this.jwtUtils = jwtUtils;
         this.userDetailsService = userDetailsService;
-        this.userService = userService;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -104,7 +105,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
 
                 if (userDetails instanceof CustomUserDetails customUser) {
                     try {
-                        userService.updateLastActiveAt(customUser.getId());
+                        userRepository.updateLastActiveAt(customUser.getId(), LocalDateTime.now());
                     } catch (Exception ex) {
                         log.debug("Failed to update lastActiveAt for user {}: {}", customUser.getId(), ex.getMessage());
                     }
