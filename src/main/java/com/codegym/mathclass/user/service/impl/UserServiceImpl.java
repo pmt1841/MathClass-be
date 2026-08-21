@@ -27,6 +27,11 @@ import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.io.IOException;
 
+import com.codegym.mathclass.auth.service.RefreshTokenService;
+import com.codegym.mathclass.exception.TooManyRequestsException;
+import org.springframework.scheduling.annotation.Scheduled;
+import java.security.SecureRandom;
+
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
@@ -38,18 +43,31 @@ public class UserServiceImpl implements UserService {
     private final PasswordHistoryRepository passwordHistoryRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final RefreshTokenService refreshTokenService;
+
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private static class SetPasswordOtpEntry {
         final String otpCode;
         final LocalDateTime expiryTime;
+        final LocalDateTime createdAt;
+        int failedAttempts;
 
         SetPasswordOtpEntry(String otpCode, LocalDateTime expiryTime) {
             this.otpCode = otpCode;
             this.expiryTime = expiryTime;
+            this.createdAt = LocalDateTime.now();
+            this.failedAttempts = 0;
         }
     }
 
     private final Map<Long, SetPasswordOtpEntry> setPasswordOtpCache = new ConcurrentHashMap<>();
+
+    @Scheduled(fixedRate = 600000)
+    public void cleanupExpiredSetPasswordOtps() {
+        LocalDateTime now = LocalDateTime.now();
+        setPasswordOtpCache.entrySet().removeIf(entry -> entry.getValue().expiryTime.isBefore(now));
+    }
 
     @Override
     public UserResponse getUserProfile(Long id) {
@@ -135,6 +153,9 @@ public class UserServiceImpl implements UserService {
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
 
+        // Revoke all existing refresh tokens across devices
+        refreshTokenService.deleteByUserId(userId);
+
         // Send Security Alert Email
         emailService.sendSecurityAlertEmail(user.getEmail(), user.getFullName(), LocalDateTime.now());
     }
@@ -144,7 +165,12 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy người dùng với ID: " + userId));
 
-        String otpCode = String.format("%06d", new Random().nextInt(1000000));
+        SetPasswordOtpEntry existingEntry = setPasswordOtpCache.get(userId);
+        if (existingEntry != null && existingEntry.createdAt.plusSeconds(60).isAfter(LocalDateTime.now())) {
+            throw new TooManyRequestsException("Bạn đã gửi yêu cầu quá nhanh. Vui lòng thử lại sau 60 giây.");
+        }
+
+        String otpCode = String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
         setPasswordOtpCache.put(userId, new SetPasswordOtpEntry(otpCode, LocalDateTime.now().plusMinutes(5)));
 
         emailService.sendSetPasswordOtpEmail(user.getEmail(), user.getFullName(), otpCode);
@@ -165,8 +191,19 @@ public class UserServiceImpl implements UserService {
             throw new BadRequestException("Mã OTP chưa được gửi hoặc đã hết hạn (hiệu lực 5 phút). Vui lòng bấm 'Gửi mã xác thực' để nhận mã mới.");
         }
 
+        if (otpEntry.failedAttempts >= 5) {
+            setPasswordOtpCache.remove(userId);
+            throw new BadRequestException("Bạn đã nhập sai mã OTP quá 5 lần. Mã OTP đã bị hủy, vui lòng yêu cầu mã mới.");
+        }
+
         if (!otpEntry.otpCode.equals(request.getOtpCode().trim())) {
-            throw new BadRequestException("Mã OTP nhập vào không chính xác. Vui lòng kiểm tra lại hòm thư.");
+            otpEntry.failedAttempts++;
+            if (otpEntry.failedAttempts >= 5) {
+                setPasswordOtpCache.remove(userId);
+                throw new BadRequestException("Bạn đã nhập sai mã OTP quá 5 lần. Mã OTP đã bị hủy, vui lòng yêu cầu mã mới.");
+            }
+            int remaining = 5 - otpEntry.failedAttempts;
+            throw new BadRequestException("Mã OTP nhập vào không chính xác (Còn lại " + remaining + " lần thử). Vui lòng kiểm tra lại hòm thư.");
         }
 
         if (user.getPassword() != null && !user.getPassword().trim().isEmpty()) {
@@ -192,6 +229,9 @@ public class UserServiceImpl implements UserService {
         passwordHistoryRepository.save(passwordHistory);
 
         setPasswordOtpCache.remove(userId);
+
+        // Revoke all existing refresh tokens across devices
+        refreshTokenService.deleteByUserId(userId);
 
         // Send Security Alert Email
         emailService.sendSecurityAlertEmail(user.getEmail(), user.getFullName(), LocalDateTime.now());

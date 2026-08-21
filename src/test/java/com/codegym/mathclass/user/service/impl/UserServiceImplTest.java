@@ -37,6 +37,7 @@ import com.codegym.mathclass.user.entity.PasswordHistory;
 import com.codegym.mathclass.user.repository.PasswordHistoryRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import com.codegym.mathclass.auth.service.RefreshTokenService;
 import com.codegym.mathclass.user.dto.request.SetPasswordRequest;
 import com.codegym.mathclass.utils.EmailService;
 
@@ -63,6 +64,9 @@ class UserServiceImplTest {
 
     @Mock
     private EmailService emailService;
+
+    @Mock
+    private RefreshTokenService refreshTokenService;
 
     @InjectMocks
     private UserServiceImpl userService;
