@@ -68,4 +68,15 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("Lỗi khi upload ảnh đại diện: " + e.getMessage());
         }
     }
+
+    @Override
+    @Transactional
+    public void updateLastActiveAt(Long userId) {
+        if (userId == null) return;
+        userRepository.updateLastActiveAtIfOlderThan(
+                userId,
+                java.time.LocalDateTime.now().minusMinutes(1),
+                java.time.LocalDateTime.now()
+        );
+    }
 }

@@ -23,15 +23,19 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 
+import com.codegym.mathclass.user.service.UserService;
+
 @Slf4j
 public class AuthTokenFilter extends OncePerRequestFilter {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final JwtUtils jwtUtils;
     private final CustomUserDetailsService userDetailsService;
+    private final UserService userService;
 
-    public AuthTokenFilter(JwtUtils jwtUtils, CustomUserDetailsService userDetailsService) {
+    public AuthTokenFilter(JwtUtils jwtUtils, CustomUserDetailsService userDetailsService, UserService userService) {
         this.jwtUtils = jwtUtils;
         this.userDetailsService = userDetailsService;
+        this.userService = userService;
     }
 
     @Override
@@ -97,6 +101,14 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+
+                if (userDetails instanceof CustomUserDetails customUser) {
+                    try {
+                        userService.updateLastActiveAt(customUser.getId());
+                    } catch (Exception ex) {
+                        log.debug("Failed to update lastActiveAt for user {}: {}", customUser.getId(), ex.getMessage());
+                    }
+                }
             }
         } catch (Exception e) {
             log.error("Cannot set user authentication: {}", e.getMessage());

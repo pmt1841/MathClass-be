@@ -142,6 +142,9 @@ public class AuthServiceImpl implements AuthService {
                     .build();
         }
 
+        user.setLastActiveAt(LocalDateTime.now());
+        userRepository.save(user);
+
         ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails, loginRequest.isRememberMe());
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(userDetails.getId());
         ResponseCookie jwtRefreshCookie = jwtUtils.generateRefreshJwtCookie(refreshToken.getToken(),

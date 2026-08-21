@@ -59,6 +59,9 @@ public class ClassroomMemberController {
 
         String[] sortParams = sort.split(",");
         String sortBy = sortParams[0];
+        if (!sortBy.startsWith("s.") && !sortBy.contains(".")) {
+            sortBy = "s." + sortBy;
+        }
         Sort.Direction direction = sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc") ? Sort.Direction.DESC
                 : Sort.Direction.ASC;
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));

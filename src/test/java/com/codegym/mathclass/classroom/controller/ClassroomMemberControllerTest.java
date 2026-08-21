@@ -86,7 +86,7 @@ class ClassroomMemberControllerTest {
 
             doNothing().when(classroomService).addStudentToClass(eq("MATH101"), eq("student@gmail.com"), eq(1L));
 
-            mockMvc.perform(post("/api/classrooms/MATH101/students/add")
+            mockMvc.perform(post("/classrooms/MATH101/students")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk());
@@ -100,7 +100,7 @@ class ClassroomMemberControllerTest {
             AddStudentRequest request = new AddStudentRequest();
             request.setStudentEmail("");
 
-            mockMvc.perform(post("/api/classrooms/MATH101/students/add")
+            mockMvc.perform(post("/classrooms/MATH101/students")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest());
@@ -114,7 +114,7 @@ class ClassroomMemberControllerTest {
             AddStudentRequest request = new AddStudentRequest();
             request.setStudentEmail("not-an-email");
 
-            mockMvc.perform(post("/api/classrooms/MATH101/students/add")
+            mockMvc.perform(post("/classrooms/MATH101/students")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest());
@@ -140,7 +140,7 @@ class ClassroomMemberControllerTest {
             when(classroomService.getStudentsByClassCode(eq("MATH101"), eq(1L), any(Pageable.class)))
                     .thenReturn(page);
 
-            mockMvc.perform(get("/api/classrooms/MATH101/students")
+            mockMvc.perform(get("/classrooms/MATH101/students")
                             .param("page", "0")
                             .param("size", "10")
                             .param("sort", "s.fullName,asc"))
@@ -161,7 +161,7 @@ class ClassroomMemberControllerTest {
         void removeStudentFromClass_ValidRequest_ReturnsOk() throws Exception {
             doNothing().when(classroomService).removeStudentFromClass(eq("MATH101"), eq(2L), eq(1L));
 
-            mockMvc.perform(delete("/api/classrooms/MATH101/students/2"))
+            mockMvc.perform(delete("/classrooms/MATH101/students/2"))
                     .andExpect(status().isOk());
 
             verify(classroomService, times(1)).removeStudentFromClass(eq("MATH101"), eq(2L), eq(1L));

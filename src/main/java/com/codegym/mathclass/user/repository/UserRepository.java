@@ -12,6 +12,10 @@ import org.springframework.data.repository.query.Param;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
 
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDateTime;
+
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
 
@@ -23,8 +27,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findByRole(Role role);
 
+    @Modifying
+    @Transactional
+    @Query("UPDATE User u SET u.lastActiveAt = :now WHERE u.id = :id AND (u.lastActiveAt IS NULL OR u.lastActiveAt < :threshold)")
+    void updateLastActiveAtIfOlderThan(@Param("id") Long id, @Param("threshold") LocalDateTime threshold, @Param("now") LocalDateTime now);
 
-    @Query("SELECT s FROM Classroom c JOIN c.students s WHERE c.classCode = :classCode")
+    @Query("SELECT s FROM Classroom c JOIN c.students s WHERE c.classCode = :classCode ORDER BY CASE WHEN s.lastActiveAt IS NULL THEN 1 ELSE 0 END, s.lastActiveAt DESC, s.fullName ASC")
     Page<User> findStudentsByClassCode(@Param("classCode") String classCode, Pageable pageable);
 
     @Query("SELECT u FROM User u WHERE " +

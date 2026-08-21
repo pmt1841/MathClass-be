@@ -9,4 +9,5 @@ public interface UserService {
     UserResponse getUserProfile(Long id);
     UserResponse updateProfile(Long id, UpdateProfileRequest request);
     String uploadAvatar(Long id, MultipartFile file);
+    void updateLastActiveAt(Long userId);
 }
