@@ -118,7 +118,7 @@ class TwoFactorAuthServiceImplTest {
         void initiateSetup_ValidPreAuthToken_Success() {
             when(jwtUtils.validatePreAuthToken("valid-pre-auth-token")).thenReturn(true);
             when(jwtUtils.getUserIdFromPreAuthToken("valid-pre-auth-token")).thenReturn(10L);
-            when(userRepository.findById(10L)).thenReturn(Optional.of(adminUser));
+            when(userRepository.findByIdWithLock(10L)).thenReturn(Optional.of(adminUser));
             when(userTwoFactorAuthRepository.findByUserId(10L)).thenReturn(Optional.empty());
             when(totpService.generateSecretKey()).thenReturn("JBSWY3DPEHPK3PXP");
             when(totpService.generateQrCodeDataUrl("admin@test.com", "JBSWY3DPEHPK3PXP"))

@@ -48,7 +48,7 @@ public class AnthropicProviderStrategy implements AiProviderStrategy {
         payload.put("model", model);
         payload.put("messages", List.of(
                 Map.of("role", "user", "content", prompt != null ? prompt : "")));
-        payload.put("max_tokens", config.getMaxToken() != null ? config.getMaxToken() : 1024);
+        payload.put("max_tokens", config.getMaxToken() != null ? config.getMaxToken() : 2048);
         if (config.getTemperature() != null) {
             payload.put("temperature", config.getTemperature().doubleValue());
         }
@@ -96,7 +96,7 @@ public class AnthropicProviderStrategy implements AiProviderStrategy {
         payload.put("model", model);
         payload.put("messages", List.of(
                 Map.of("role", "user", "content", contentBlocks)));
-        payload.put("max_tokens", config.getMaxToken() != null ? config.getMaxToken() : 1024);
+        payload.put("max_tokens", config.getMaxToken() != null ? config.getMaxToken() : 2048);
         if (config.getTemperature() != null) {
             payload.put("temperature", config.getTemperature().doubleValue());
         }

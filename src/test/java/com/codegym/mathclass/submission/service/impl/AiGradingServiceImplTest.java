@@ -244,6 +244,25 @@ class AiGradingServiceImplTest {
 
             verify(aiPromptExecutionService, times(2)).executePrompt(eq(GRADING_TASK_CODE), anyString(), anyLong());
         }
+
+        @Test
+        @DisplayName("Should successfully parse and recover when AI response is truncated or has LaTeX unescaped characters")
+        void requestAiGrading_truncatedAiResponseWithLatex_recoversSuccessfully() {
+            String truncatedAiOutput = "{\n"
+                    + "  \"suggestedScore\": 1.0,\n"
+                    + "  \"draftFeedback\": \"Bài làm của em chưa hoàn thành. Em mới chỉ viết công thức $S = \\\\pi R^2$. Các bước sau:\\";
+
+            when(submissionRepository.findByIdWithDetails(submissionId)).thenReturn(Optional.of(submission));
+            when(aiPromptExecutionService.executePrompt(eq(GRADING_TASK_CODE), anyString(), anyLong()))
+                    .thenReturn(truncatedAiOutput);
+
+            AiGradingResponse response = aiGradingService.requestAiGrading(submissionId, new AiGradingRequest(), teacherId);
+
+            assertThat(response).isNotNull();
+            assertThat(response.getSuggestedScore()).isEqualTo(1.0);
+            assertThat(response.getDraftFeedback()).contains("Bài làm của em chưa hoàn thành");
+            assertThat(response.getDraftFeedback()).contains("$S = \\pi R^2$");
+        }
     }
 }
 
