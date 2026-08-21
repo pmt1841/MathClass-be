@@ -44,7 +44,69 @@ public class AiResponseUtils {
             return clean.substring(firstBrace, lastBrace + 1).trim();
         }
 
-        return clean.trim();
+        // Trường hợp JSON Object hoặc Array bị cắt cụt (truncated) do token limit
+        if (firstBrace != -1 && (lastBrace == -1 || lastBrace <= firstBrace)) {
+            return repairTruncatedJson(clean.substring(firstBrace).trim());
+        }
+        if (firstBracket != -1 && (lastBracket == -1 || lastBracket <= firstBracket)) {
+            return repairTruncatedJson(clean.substring(firstBracket).trim());
+        }
+
+        return repairTruncatedJson(clean.trim());
+    }
+
+    /**
+     * Tự động sửa chữa và đóng các chuỗi JSON bị cắt cụt do chạm giới hạn token của LLM.
+     */
+    public static String repairTruncatedJson(String json) {
+        if (json == null || json.isBlank()) return "{}";
+        String trimmed = json.trim();
+        if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+            return trimmed;
+        }
+
+        // 1. Xóa bỏ dấu gạch chéo ngược lẻ ở cuối chuỗi nếu có
+        while (trimmed.endsWith("\\")) {
+            trimmed = trimmed.substring(0, trimmed.length() - 1).trim();
+        }
+
+        // 2. Đếm số ngoặc kép chưa escape để xác định chuỗi string có đang mở hay không
+        int quoteCount = 0;
+        for (int i = 0; i < trimmed.length(); i++) {
+            if (trimmed.charAt(i) == '"' && (i == 0 || trimmed.charAt(i - 1) != '\\')) {
+                quoteCount++;
+            }
+        }
+        if (quoteCount % 2 != 0) {
+            trimmed = trimmed + "\"";
+        }
+
+        // 3. Đếm số ngoặc nhọn / ngoặc vuông mở để tự động đóng
+        int openBraces = 0;
+        int openBrackets = 0;
+        boolean insideString = false;
+        for (int i = 0; i < trimmed.length(); i++) {
+            char c = trimmed.charAt(i);
+            if (c == '"' && (i == 0 || trimmed.charAt(i - 1) != '\\')) {
+                insideString = !insideString;
+            } else if (!insideString) {
+                if (c == '{') openBraces++;
+                else if (c == '}') openBraces--;
+                else if (c == '[') openBrackets++;
+                else if (c == ']') openBrackets--;
+            }
+        }
+
+        StringBuilder sb = new StringBuilder(trimmed);
+        while (openBrackets > 0) {
+            sb.append("]");
+            openBrackets--;
+        }
+        while (openBraces > 0) {
+            sb.append("}");
+            openBraces--;
+        }
+        return sb.toString();
     }
 
     /**

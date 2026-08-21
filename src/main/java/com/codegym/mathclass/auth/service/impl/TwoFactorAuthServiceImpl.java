@@ -62,7 +62,7 @@ public class TwoFactorAuthServiceImpl implements TwoFactorAuthService {
         validatePreAuthToken(preAuthToken);
 
         Long userId = jwtUtils.getUserIdFromPreAuthToken(preAuthToken);
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdWithLock(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thông tin người dùng."));
 
         UserTwoFactorAuth auth2fa = userTwoFactorAuthRepository.findByUserId(userId)

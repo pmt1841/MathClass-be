@@ -19,9 +19,11 @@ import com.codegym.mathclass.aiconfig.strategy.AiProviderStrategy;
 import com.codegym.mathclass.aiconfig.strategy.AiProviderStrategyFactory;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.repository.UserRepository;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.codegym.mathclass.utils.AiResponseUtils;
 import com.codegym.mathclass.utils.LaTeXSanitizer;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.json.JsonReadFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -43,7 +45,10 @@ public class AiQuestionServiceImpl implements AiQuestionService {
     private final PromptRenderService promptRenderService;
     private final AiCreditService aiCreditService;
     private final UserRepository userRepository;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .configure(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS.mappedFeature(), true)
+            .configure(JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER.mappedFeature(), true)
+            .configure(JsonReadFeature.ALLOW_TRAILING_COMMA.mappedFeature(), true);
 
     @Override
     public AiGeneratedQuestionResponse generateQuestion(GenerateQuestionRequest request, Long userId) {
@@ -205,8 +210,7 @@ public class AiQuestionServiceImpl implements AiQuestionService {
             if (rawResponseBody == null || rawResponseBody.isBlank()) {
                 throw new AiGenerationException("Phản hồi từ AI bị rỗng.");
             }
-            String jsonText = rawResponseBody.trim();
-            jsonText = jsonText.replaceAll("(?s)^```[a-z]*\\s*|\\s*```$", "").trim();
+            String jsonText = AiResponseUtils.extractCleanJson(rawResponseBody);
             // Pre-escape các lệnh LaTeX phổ biến để tránh bị JSON parser nuốt dấu \ (ví dụ \t trong \text biến thành ký tự TAB)
             jsonText = jsonText.replaceAll("(?<!\\\\)\\\\text\\{", "\\\\\\\\text{");
             jsonText = jsonText.replaceAll("(?<!\\\\)\\\\frac\\{", "\\\\\\\\frac{");

@@ -20,6 +20,7 @@ import com.codegym.mathclass.aiconfig.credit.repository.CreditPackageRepository;
 import com.codegym.mathclass.aiconfig.credit.repository.CreditTransactionRepository;
 import com.codegym.mathclass.aiconfig.credit.repository.UserAiAccountRepository;
 import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
+import com.codegym.mathclass.aiconfig.repository.TaskConfigRepository;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.InsufficientCreditException;
 import com.codegym.mathclass.exception.ResourceNotFoundException;
@@ -50,6 +51,7 @@ public class AiCreditServiceImpl implements AiCreditService {
     private final UserAiAccountRepository userAiAccountRepository;
     private final AiCreditDefaultRepository aiCreditDefaultRepository;
     private final AiCreditConfigRepository aiCreditConfigRepository;
+    private final TaskConfigRepository taskConfigRepository;
     private final CreditTransactionRepository creditTransactionRepository;
     private final CreditPackageRepository creditPackageRepository;
     private final UserRepository userRepository;
@@ -162,7 +164,12 @@ public class AiCreditServiceImpl implements AiCreditService {
         }
         int costPerCall = creditCfg.get().getCostPerCall() != null ? creditCfg.get().getCostPerCall() : 0;
         Integer tokensPerCredit = creditCfg.get().getTokensPerCredit();
-        int reserved = AiCreditService.estimateCredits(512, costPerCall, tokensPerCredit);
+        int maxToken = taskConfigRepository != null
+                ? taskConfigRepository.findByTask(task)
+                        .map(cfg -> cfg.getMaxToken() != null ? cfg.getMaxToken() : 2048)
+                        .orElse(2048)
+                : 2048;
+        int reserved = AiCreditService.estimateCredits(maxToken, costPerCall, tokensPerCredit);
         if (reserved > 0) {
             refund(userId, task, reserved);
         }

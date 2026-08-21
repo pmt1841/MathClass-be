@@ -48,4 +48,15 @@ class AiResponseUtilsTest {
         assertThat(AiResponseUtils.stripMarkdownFences(null)).isEmpty();
         assertThat(AiResponseUtils.stripMarkdownFences("  ")).isEmpty();
     }
+
+    @Test
+    @DisplayName("extractCleanJson: tự động sửa chữa JSON bị cắt cụt do giới hạn token")
+    void extractCleanJson_truncatedJson_repairsAndCloses() {
+        String truncated = "{\n  \"suggestedScore\": 1.0,\n  \"draftFeedback\": \"Bài làm của em chưa hoàn thành. Các bước sau:\\";
+        String clean = AiResponseUtils.extractCleanJson(truncated);
+        assertThat(clean).startsWith("{").endsWith("}");
+        assertThat(clean).contains("\"suggestedScore\": 1.0");
+        assertThat(clean).contains("\"draftFeedback\"");
+    }
 }
+
