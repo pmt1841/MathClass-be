@@ -26,8 +26,6 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.io.IOException;
-
-import java.util.concurrent.ConcurrentHashMap;
 import java.time.LocalDateTime;
 import com.codegym.mathclass.auth.service.RefreshTokenService;
 import com.codegym.mathclass.exception.TooManyRequestsException;
@@ -72,6 +70,12 @@ public class UserServiceImpl implements UserService {
     }
 
     private final ConcurrentHashMap<Long, LocalDateTime> userLastActiveCache = new ConcurrentHashMap<>();
+
+    @Scheduled(fixedRate = 600000)
+    public void cleanUserLastActiveCache() {
+        LocalDateTime threshold = LocalDateTime.now().minusMinutes(10);
+        userLastActiveCache.entrySet().removeIf(e -> e.getValue().isBefore(threshold));
+    }
 
     @Override
     public UserResponse getUserProfile(Long id) {

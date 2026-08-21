@@ -30,7 +30,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByRole(Role role);
 
     @Modifying
-    @Transactional
     @Query("UPDATE User u SET u.lastActiveAt = :now WHERE u.id = :id")
     void updateLastActiveAt(@Param("id") Long id, @Param("now") LocalDateTime now);
 
@@ -38,7 +37,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u FROM User u WHERE u.id = :id")
     Optional<User> findByIdWithLock(@Param("id") Long id);
 
-    @Query("SELECT s FROM Classroom c JOIN c.students s WHERE c.classCode = :classCode ORDER BY CASE WHEN s.lastActiveAt IS NULL THEN 1 ELSE 0 END, s.lastActiveAt DESC, s.fullName ASC")
+    @Query("SELECT s FROM Classroom c JOIN c.students s WHERE c.classCode = :classCode")
     Page<User> findStudentsByClassCode(@Param("classCode") String classCode, Pageable pageable);
 
     @Query("SELECT u FROM User u WHERE " +

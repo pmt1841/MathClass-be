@@ -28,20 +28,8 @@ public class StudentResponse {
     private LocalDateTime lastActiveAt;
 
     public static StudentResponse fromEntity(User user) {
-        boolean online = false;
-        if (user.getLastActiveAt() != null) {
-            LocalDateTime lastActive = user.getLastActiveAt();
-            LocalDateTime nowLocal = LocalDateTime.now();
-            LocalDateTime nowUtc = LocalDateTime.now(java.time.ZoneOffset.UTC);
-
-            long diffLocal = Math.abs(java.time.Duration.between(lastActive, nowLocal).toMinutes());
-            long diffUtc = Math.abs(java.time.Duration.between(lastActive, nowUtc).toMinutes());
-
-            long diffLocalWithOffset = Math.abs(diffLocal - 420);
-            long diffUtcWithOffset = Math.abs(diffUtc - 420);
-
-            online = diffLocal <= 30 || diffUtc <= 30 || diffLocalWithOffset <= 30 || diffUtcWithOffset <= 30;
-        }
+        boolean online = user.getLastActiveAt() != null 
+                && user.getLastActiveAt().isAfter(LocalDateTime.now().minusMinutes(5));
 
         return StudentResponse.builder()
                 .id(user.getId())
