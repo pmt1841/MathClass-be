@@ -12,6 +12,9 @@ import com.codegym.mathclass.aiconfig.credit.entity.CreditTransactionType;
 import com.codegym.mathclass.aiconfig.credit.entity.UserAiAccount;
 import com.codegym.mathclass.user.entity.Role;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -68,6 +71,8 @@ public interface AiCreditService {
     CreditBalanceResponse getMyCreditInfo(Long userId);
 
     List<CreditTransactionResponse> getTransactions(Long userId, CreditTransactionType type);
+
+    Page<CreditTransactionResponse> getTransactions(Long userId, CreditTransactionType type, Pageable pageable);
 
     void recordTransaction(Long userId, int amount, CreditTransactionType type, String task,
                            Long referenceId, String description);
