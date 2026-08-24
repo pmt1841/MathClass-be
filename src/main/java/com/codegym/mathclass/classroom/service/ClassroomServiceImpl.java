@@ -119,13 +119,17 @@ public class ClassroomServiceImpl implements ClassroomService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<StudentResponse> getStudentsByClassCode(String classCode, long currentUserId, Pageable pageable) {
+    public Page<StudentResponse> getStudentsByClassCode(String classCode, long currentUserId, String keyword, Pageable pageable) {
         Classroom classroom = classroomRepository.findByClassCode(classCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lớp học"));
 
         validateTeacherOrStudentPrivilege(classroom, currentUserId);
 
-        Page<User> studentPage = userRepository.findStudentsByClassCode(classCode, pageable);
+        String searchPattern = (keyword != null && !keyword.trim().isEmpty())
+                ? "%" + keyword.trim().toLowerCase().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+                : null;
+
+        Page<User> studentPage = userRepository.findStudentsByClassCode(classCode, searchPattern, pageable);
         return studentPage.map(StudentResponse::fromEntity);
     }
 

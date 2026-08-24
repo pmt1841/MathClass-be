@@ -137,7 +137,7 @@ class ClassroomMemberControllerTest {
 
             Page<StudentResponse> page = new PageImpl<>(Collections.singletonList(studentResponse), org.springframework.data.domain.PageRequest.of(0, 10), 1);
 
-            when(classroomService.getStudentsByClassCode(eq("MATH101"), eq(1L), any(Pageable.class)))
+            when(classroomService.getStudentsByClassCode(eq("MATH101"), eq(1L), any(), any(Pageable.class)))
                     .thenReturn(page);
 
             mockMvc.perform(get("/classrooms/MATH101/students")
@@ -148,7 +148,7 @@ class ClassroomMemberControllerTest {
                     .andExpect(jsonPath("$.content[0].id").value(2L))
                     .andExpect(jsonPath("$.content[0].fullName").value("Student One"));
 
-            verify(classroomService, times(1)).getStudentsByClassCode(eq("MATH101"), eq(1L), any(Pageable.class));
+            verify(classroomService, times(1)).getStudentsByClassCode(eq("MATH101"), eq(1L), any(), any(Pageable.class));
         }
     }
 

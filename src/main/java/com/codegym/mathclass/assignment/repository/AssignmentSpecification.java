@@ -12,6 +12,11 @@ import jakarta.persistence.criteria.Subquery;
 
 import org.springframework.data.jpa.domain.Specification;
 
+import com.codegym.mathclass.submission.entity.Submission;
+import com.codegym.mathclass.submission.entity.SubmissionStatus;
+import jakarta.persistence.criteria.Predicate;
+import java.time.LocalDateTime;
+
 public class AssignmentSpecification {
 
     public static Specification<Assignment> hasTitleContaining(String keyword) {
@@ -72,6 +77,69 @@ public class AssignmentSpecification {
             query.distinct(true);
             Join<Assignment, AssignmentTag> tags = root.join("assignmentTags", JoinType.INNER);
             return cb.equal(tags.get("tag").get("id"), tagId);
+        };
+    }
+
+    public static Specification<Assignment> hasStudentStatus(long studentId, String studentStatus) {
+        return (root, query, cb) -> {
+            if (studentStatus == null || studentStatus.isBlank() || "ALL".equalsIgnoreCase(studentStatus)) {
+                return null;
+            }
+            LocalDateTime now = LocalDateTime.now();
+
+            if ("SUBMITTED".equalsIgnoreCase(studentStatus)) {
+                Subquery<Long> subquery = query.subquery(Long.class);
+                Root<Submission> subRoot = subquery.from(Submission.class);
+                subquery.select(subRoot.get("id"))
+                        .where(
+                                cb.equal(subRoot.get("assignment"), root),
+                                cb.equal(subRoot.get("student").get("id"), studentId),
+                                cb.equal(subRoot.get("status"), SubmissionStatus.SUBMITTED)
+                        );
+                return cb.exists(subquery);
+            }
+
+            if ("GRADED".equalsIgnoreCase(studentStatus)) {
+                Subquery<Long> subquery = query.subquery(Long.class);
+                Root<Submission> subRoot = subquery.from(Submission.class);
+                subquery.select(subRoot.get("id"))
+                        .where(
+                                cb.equal(subRoot.get("assignment"), root),
+                                cb.equal(subRoot.get("student").get("id"), studentId),
+                                cb.equal(subRoot.get("status"), SubmissionStatus.GRADED)
+                        );
+                return cb.exists(subquery);
+            }
+
+            if ("PENDING".equalsIgnoreCase(studentStatus)) {
+                Subquery<Long> submittedOrGradedSubquery = query.subquery(Long.class);
+                Root<Submission> subRoot = submittedOrGradedSubquery.from(Submission.class);
+                submittedOrGradedSubquery.select(subRoot.get("id"))
+                        .where(
+                                cb.equal(subRoot.get("assignment"), root),
+                                cb.equal(subRoot.get("student").get("id"), studentId),
+                                subRoot.get("status").in(SubmissionStatus.SUBMITTED, SubmissionStatus.GRADED)
+                        );
+                Predicate notSubmittedOrGraded = cb.not(cb.exists(submittedOrGradedSubquery));
+                Predicate notOverdue = cb.or(cb.isNull(root.get("deadline")), cb.greaterThanOrEqualTo(root.get("deadline"), now));
+                return cb.and(notSubmittedOrGraded, notOverdue);
+            }
+
+            if ("OVERDUE".equalsIgnoreCase(studentStatus)) {
+                Subquery<Long> submittedOrGradedSubquery = query.subquery(Long.class);
+                Root<Submission> subRoot = submittedOrGradedSubquery.from(Submission.class);
+                submittedOrGradedSubquery.select(subRoot.get("id"))
+                        .where(
+                                cb.equal(subRoot.get("assignment"), root),
+                                cb.equal(subRoot.get("student").get("id"), studentId),
+                                subRoot.get("status").in(SubmissionStatus.SUBMITTED, SubmissionStatus.GRADED)
+                        );
+                Predicate notSubmittedOrGraded = cb.not(cb.exists(submittedOrGradedSubquery));
+                Predicate isOverdue = cb.and(cb.isNotNull(root.get("deadline")), cb.lessThan(root.get("deadline"), now));
+                return cb.and(notSubmittedOrGraded, isOverdue);
+            }
+
+            return null;
         };
     }
 }

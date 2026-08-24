@@ -37,12 +37,13 @@ public class ClassroomAssignmentController {
             @PathVariable String classCode,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) AssignmentStatus status,
+            @RequestParam(required = false) String studentStatus,
             Pageable pageable,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         long userId = userDetails.getId();
         Page<AssignmentResponse> responses = assignmentService.getAssignmentsByClassCode(classCode, userId, keyword,
-                status, pageable);
+                status, studentStatus, pageable);
         return ResponseEntity.ok(responses);
     }
 

@@ -164,7 +164,7 @@ class AssignmentControllerTest {
 
             Page<AssignmentResponse> page = new PageImpl<>(Collections.singletonList(response), PageRequest.of(0, 10), 1);
 
-            when(assignmentService.getAssignmentsForCurrentUser(eq(1L), eq("TEACHER"), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+            when(assignmentService.getAssignmentsForCurrentUser(eq(1L), eq("TEACHER"), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
                     .thenReturn(page);
 
             mockMvc.perform(get("/assignments"))
@@ -172,7 +172,7 @@ class AssignmentControllerTest {
                     .andExpect(jsonPath("$.content[0].id").value(10L))
                     .andExpect(jsonPath("$.content[0].title").value("Math Assignment"));
 
-            verify(assignmentService, times(1)).getAssignmentsForCurrentUser(eq(1L), eq("TEACHER"), any(), any(), any(), any(), any(), any(), any(Pageable.class));
+            verify(assignmentService, times(1)).getAssignmentsForCurrentUser(eq(1L), eq("TEACHER"), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class));
         }
     }
 

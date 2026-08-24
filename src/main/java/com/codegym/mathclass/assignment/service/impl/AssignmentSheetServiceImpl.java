@@ -454,11 +454,15 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
     @Override
     @Transactional(readOnly = true)
     public Page<AssignmentSheetResponse> getAssignmentSheetsForCurrentUser(
-            long userId, String role, String keyword, String classCode, Pageable pageable) {
+            long userId, String role, String keyword, String classCode, String studentStatus, Pageable pageable) {
 
         Specification<AssignmentSheet> spec = AssignmentSheetSpecification.buildSpecForRole(userId, role, classCode)
                 .and(AssignmentSheetSpecification.buildKeywordSpec(keyword))
                 .and(AssignmentSheetSpecification.buildClassCodeSpec(classCode));
+
+        if (Role.STUDENT.name().equals(role) && studentStatus != null && !studentStatus.isBlank()) {
+            spec = spec.and(AssignmentSheetSpecification.hasStudentStatus(userId, studentStatus));
+        }
 
         Page<AssignmentSheet> sheetPage = assignmentSheetRepository.findAll(spec, pageable);
         Page<AssignmentSheetResponse> responsePage = sheetPage.map(AssignmentSheetResponse::fromEntity);

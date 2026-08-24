@@ -81,29 +81,29 @@ class AssignmentSheetControllerTest {
     }
 
     @Nested
-    @DisplayName("POST /api/assignment-sheets/publish Integration Tests")
+    @DisplayName("POST /assignment-sheets Integration Tests")
     class PublishAssignmentSheetEndpointTests {
 
         @Test
         @DisplayName("Should publish assignment sheet successfully")
-        void publishAssignmentSheet_ValidRequest_ReturnsOk() throws Exception {
+        void publishAssignmentSheet_ValidRequest_ReturnsCreated() throws Exception {
             PublishAssignmentSheetRequest request = new PublishAssignmentSheetRequest();
             request.setTitle("Đề thi toán");
             request.setAssignmentIds(List.of(10L, 20L));
 
             doNothing().when(assignmentSheetService).publishAssignmentSheet(any(PublishAssignmentSheetRequest.class), eq(1L));
 
-            mockMvc.perform(post("/api/assignment-sheets/publish")
+            mockMvc.perform(post("/assignment-sheets")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isOk());
+                    .andExpect(status().isCreated());
 
             verify(assignmentSheetService, times(1)).publishAssignmentSheet(any(PublishAssignmentSheetRequest.class), eq(1L));
         }
     }
 
     @Nested
-    @DisplayName("PUT /api/assignment-sheets/{id} Integration Tests")
+    @DisplayName("PUT /assignment-sheets/{id} Integration Tests")
     class UpdateAssignmentSheetEndpointTests {
 
         @Test
@@ -120,7 +120,7 @@ class AssignmentSheetControllerTest {
             when(assignmentSheetService.updateAssignmentSheet(eq(5L), any(UpdateAssignmentSheetRequest.class), eq(1L)))
                     .thenReturn(response);
 
-            mockMvc.perform(put("/api/assignment-sheets/5")
+            mockMvc.perform(put("/assignment-sheets/5")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk())
@@ -132,7 +132,7 @@ class AssignmentSheetControllerTest {
     }
 
     @Nested
-    @DisplayName("GET /api/assignment-sheets Integration Tests")
+    @DisplayName("GET /assignment-sheets Integration Tests")
     class GetAssignmentSheetsEndpointTests {
 
         @Test
@@ -144,20 +144,20 @@ class AssignmentSheetControllerTest {
 
             Page<AssignmentSheetResponse> page = new PageImpl<>(List.of(response), PageRequest.of(0, 10), 1);
 
-            when(assignmentSheetService.getAssignmentSheetsForCurrentUser(eq(1L), eq("TEACHER"), any(), any(), any(Pageable.class)))
+            when(assignmentSheetService.getAssignmentSheetsForCurrentUser(eq(1L), eq("TEACHER"), any(), any(), any(), any(Pageable.class)))
                     .thenReturn(page);
 
-            mockMvc.perform(get("/api/assignment-sheets"))
+            mockMvc.perform(get("/assignment-sheets"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.content[0].id").value(5L))
                     .andExpect(jsonPath("$.content[0].title").value("Đề thi giữa kỳ"));
 
-            verify(assignmentSheetService, times(1)).getAssignmentSheetsForCurrentUser(eq(1L), eq("TEACHER"), any(), any(), any(Pageable.class));
+            verify(assignmentSheetService, times(1)).getAssignmentSheetsForCurrentUser(eq(1L), eq("TEACHER"), any(), any(), any(), any(Pageable.class));
         }
     }
 
     @Nested
-    @DisplayName("DELETE /api/assignment-sheets/{id} Integration Tests")
+    @DisplayName("DELETE /assignment-sheets/{id} Integration Tests")
     class DeleteAssignmentSheetEndpointTests {
 
         @Test
@@ -165,7 +165,7 @@ class AssignmentSheetControllerTest {
         void deleteAssignmentSheet_ValidId_ReturnsNoContent() throws Exception {
             doNothing().when(assignmentSheetService).deleteAssignmentSheet(eq(5L), eq(1L));
 
-            mockMvc.perform(delete("/api/assignment-sheets/5"))
+            mockMvc.perform(delete("/assignment-sheets/5"))
                     .andExpect(status().isNoContent());
 
             verify(assignmentSheetService, times(1)).deleteAssignmentSheet(eq(5L), eq(1L));

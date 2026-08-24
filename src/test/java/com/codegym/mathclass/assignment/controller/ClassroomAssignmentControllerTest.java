@@ -89,20 +89,20 @@ class ClassroomAssignmentControllerTest {
 
             Page<AssignmentResponse> page = new PageImpl<>(Collections.singletonList(response), PageRequest.of(0, 10), 1);
 
-            when(assignmentService.getAssignmentsByClassCode(eq("MATH101"), eq(2L), any(), any(), any(Pageable.class)))
+            when(assignmentService.getAssignmentsByClassCode(eq("MATH101"), eq(2L), any(), any(), any(), any(Pageable.class)))
                     .thenReturn(page);
 
-            mockMvc.perform(get("/api/classrooms/MATH101/assignments"))
+            mockMvc.perform(get("/classrooms/MATH101/assignments"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.content[0].id").value(10L))
                     .andExpect(jsonPath("$.content[0].title").value("Math Assignment"));
 
-            verify(assignmentService, times(1)).getAssignmentsByClassCode(eq("MATH101"), eq(2L), any(), any(), any(Pageable.class));
+            verify(assignmentService, times(1)).getAssignmentsByClassCode(eq("MATH101"), eq(2L), any(), any(), any(), any(Pageable.class));
         }
     }
 
     @Nested
-    @DisplayName("GET /api/classrooms/{classCode}/assignments/{id}/detail Integration Tests")
+    @DisplayName("GET /classrooms/{classCode}/assignments/{id} Integration Tests")
     class GetAssignmentDetailEndpointTests {
 
         @Test
@@ -115,7 +115,7 @@ class ClassroomAssignmentControllerTest {
 
             when(assignmentService.getAssignmentById(eq(10L), eq(2L), eq("STUDENT"))).thenReturn(response);
 
-            mockMvc.perform(get("/api/classrooms/MATH101/assignments/10/detail"))
+            mockMvc.perform(get("/classrooms/MATH101/assignments/10"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.id").value(10L))
                     .andExpect(jsonPath("$.title").value("Math Assignment"));

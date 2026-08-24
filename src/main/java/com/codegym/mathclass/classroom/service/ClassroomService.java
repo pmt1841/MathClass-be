@@ -16,7 +16,7 @@ public interface ClassroomService {
 
     void addStudentToClass(String classCode, String studentEmail, long teacherId);
 
-    Page<StudentResponse> getStudentsByClassCode(String classCode, long currentUserId, Pageable pageable);
+    Page<StudentResponse> getStudentsByClassCode(String classCode, long currentUserId, String keyword, Pageable pageable);
 
     ClassroomResponse getClassroomByClassCode(String classCode, long currentUserId);
 
