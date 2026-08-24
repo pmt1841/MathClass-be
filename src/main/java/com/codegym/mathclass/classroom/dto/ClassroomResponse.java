@@ -18,6 +18,8 @@ public class ClassroomResponse {
     private String teacherName;
     private String teacherEmail;
     private String teacherPhone;
+    private String teacherAvatarUrl;
+    private String teacherAvatar;
     private int studentCount;
     private Integer maxStudents;
     private String description;
@@ -36,6 +38,11 @@ public class ClassroomResponse {
         response.setTeacherName(classroom.getTeacher() != null ? classroom.getTeacher().getFullName() : null);
         response.setTeacherEmail(classroom.getTeacher() != null ? classroom.getTeacher().getEmail() : null);
         response.setTeacherPhone(classroom.getTeacher() != null ? classroom.getTeacher().getPhoneNumber() : null);
+        
+        String avatar = classroom.getTeacher() != null ? classroom.getTeacher().getAvatarUrl() : null;
+        response.setTeacherAvatarUrl(avatar);
+        response.setTeacherAvatar(avatar);
+
         response.setStudentCount(classroom.getStudents() != null ? classroom.getStudents().size() : 0);
         response.setMaxStudents(classroom.getMaxStudents());
         response.setDescription(classroom.getDescription());

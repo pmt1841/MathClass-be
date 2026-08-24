@@ -14,6 +14,7 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final WebSocketSecurityInterceptor webSocketSecurityInterceptor;
+    private final WebSocketHandshakeInterceptor webSocketHandshakeInterceptor;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
@@ -27,10 +28,12 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws-chat")
                 .setAllowedOriginPatterns("*")
+                .addInterceptors(webSocketHandshakeInterceptor)
                 .withSockJS();
-        
+
         registry.addEndpoint("/ws-chat")
-                .setAllowedOriginPatterns("*");
+                .setAllowedOriginPatterns("*")
+                .addInterceptors(webSocketHandshakeInterceptor);
     }
 
     @Override

@@ -58,9 +58,10 @@ public class ChatController {
 
     @GetMapping("/online-users")
     public ResponseEntity<ApiResponse<Set<Long>>> getOnlineUsers(
-            @PathVariable String classCode
+            @PathVariable String classCode,
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        Set<Long> onlineUserIds = chatService.getOnlineUsers(classCode);
+        Set<Long> onlineUserIds = chatService.getOnlineUsers(classCode, userDetails.getId());
         return ResponseEntity.ok(ApiResponse.<Set<Long>>builder()
                 .message("Lấy danh sách người dùng online thành công")
                 .result(onlineUserIds)

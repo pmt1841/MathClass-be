@@ -8,6 +8,7 @@ import com.codegym.mathclass.chat.service.ChatService;
 import com.codegym.mathclass.chat.service.UserPresenceRegistry;
 import com.codegym.mathclass.classroom.entity.Classroom;
 import com.codegym.mathclass.classroom.repository.ClassroomRepository;
+import com.codegym.mathclass.exception.AccessDeniedException;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.notification.service.NotificationService;
 import com.codegym.mathclass.user.entity.User;
@@ -53,7 +54,7 @@ public class ChatServiceImpl implements ChatService {
         }
 
         if (!isTeacher && !isTargetStudent) {
-            throw new BadRequestException("Bạn không có quyền gửi tin nhắn trong cuộc trò chuyện này");
+            throw new AccessDeniedException("Bạn không có quyền gửi tin nhắn trong cuộc trò chuyện này");
         }
 
         ChatMessage chatMessage = ChatMessage.builder()
@@ -112,13 +113,20 @@ public class ChatServiceImpl implements ChatService {
         Classroom classroom = classroomRepository.findByClassCode(classCode)
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy lớp học với mã: " + classCode));
 
+        validateClassMember(classroom, currentUserId);
+
         Long targetStudentId = studentId;
         boolean isTeacher = classroom.getTeacher().getId() == currentUserId;
 
         if (!isTeacher) {
             targetStudentId = currentUserId;
-        } else if (targetStudentId == null) {
-            throw new BadRequestException("Giảng viên cần cung cấp ID học sinh để xem tin nhắn riêng");
+        } else {
+            if (targetStudentId == null) {
+                throw new BadRequestException("Giảng viên cần cung cấp ID học sinh để xem tin nhắn riêng");
+            }
+            if (!classroomRepository.existsByIdAndStudentsId(classroom.getId(), targetStudentId)) {
+                throw new BadRequestException("Học sinh không thuộc lớp học này");
+            }
         }
 
         return chatMessageRepository.findHistoryByClassIdAndStudentId(classroom.getId(), targetStudentId, pageable);
@@ -129,6 +137,8 @@ public class ChatServiceImpl implements ChatService {
     public void markAsRead(String classCode, Long studentId, Long currentUserId) {
         Classroom classroom = classroomRepository.findByClassCode(classCode)
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy lớp học với mã: " + classCode));
+
+        validateClassMember(classroom, currentUserId);
 
         Long targetStudentId = studentId;
         boolean isTeacher = classroom.getTeacher().getId() == currentUserId;
@@ -144,9 +154,11 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional(readOnly = true)
-    public Set<Long> getOnlineUsers(String classCode) {
+    public Set<Long> getOnlineUsers(String classCode, Long currentUserId) {
         Classroom classroom = classroomRepository.findByClassCode(classCode)
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy lớp học với mã: " + classCode));
+
+        validateClassMember(classroom, currentUserId);
 
         Set<Long> allOnlineUserIds = userPresenceRegistry.getOnlineUserIds();
         if (allOnlineUserIds.isEmpty()) {
@@ -173,6 +185,19 @@ public class ChatServiceImpl implements ChatService {
         Classroom classroom = classroomRepository.findByClassCode(classCode)
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy lớp học với mã: " + classCode));
 
+        if (classroom.getTeacher().getId() != currentUserId) {
+            throw new AccessDeniedException("Chỉ giảng viên phụ trách lớp học mới được lấy danh sách tin nhắn chưa đọc");
+        }
+
         return chatMessageRepository.findUnreadStudentIds(classroom.getId(), currentUserId);
+    }
+
+    private void validateClassMember(Classroom classroom, Long currentUserId) {
+        boolean isTeacher = classroom.getTeacher().getId() == currentUserId;
+        boolean isStudent = classroomRepository.existsByIdAndStudentsId(classroom.getId(), currentUserId);
+
+        if (!isTeacher && !isStudent) {
+            throw new AccessDeniedException("Bạn không phải là thành viên của lớp học này");
+        }
     }
 }

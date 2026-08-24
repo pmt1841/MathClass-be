@@ -12,6 +12,6 @@ public interface ChatService {
     ChatMessageResponse sendMessage(ChatMessageRequest request, Long currentUserId);
     Page<ChatMessageResponse> getChatHistory(String classCode, Long studentId, Long currentUserId, Pageable pageable);
     void markAsRead(String classCode, Long studentId, Long currentUserId);
-    Set<Long> getOnlineUsers(String classCode);
+    Set<Long> getOnlineUsers(String classCode, Long currentUserId);
     List<Long> getUnreadStudentIds(String classCode, Long currentUserId);
 }
