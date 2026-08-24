@@ -31,12 +31,20 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -120,6 +128,18 @@ public class AiCreditServiceImpl implements AiCreditService {
 
     // ---------- Reserve / Refund / Adjust ----------
 
+    private String getTaskDisplayName(String task) {
+        if (task == null || task.isBlank()) return "";
+        return switch (task) {
+            case "STUDENT_HINT" -> "Gợi ý tư duy làm bài";
+            case "CANVAS_LATEX" -> "Trợ lý AI Canvas";
+            case "QUESTION_GEN" -> "Sinh đề";
+            case "SUBMISSION_GRADING" -> "Chấm bài tự động";
+            case "ERROR_ANALYSIS" -> "Phân tích lỗi sai";
+            default -> task;
+        };
+    }
+
     @Override
     @Transactional
     public void reserve(Long userId, String task, int cost) {
@@ -134,7 +154,7 @@ public class AiCreditServiceImpl implements AiCreditService {
         account.setTotalSpent(account.getTotalSpent() + cost);
         userAiAccountRepository.save(account);
         recordTransaction(userId, -cost, CreditTransactionType.CONSUME, task, null,
-                "Tiêu thụ AI cho tác vụ " + task);
+                "Tiêu thụ AI cho tác vụ " + getTaskDisplayName(task));
     }
 
     @Override
@@ -148,7 +168,7 @@ public class AiCreditServiceImpl implements AiCreditService {
             account.setTotalSpent(Math.max(0, account.getTotalSpent() - cost));
             userAiAccountRepository.save(account);
             recordTransaction(userId, cost, CreditTransactionType.REFUND, task, null,
-                    "Hoàn credit do hủy hoặc lỗi khi gọi AI tác vụ " + task);
+                    "Hoàn credit do hủy hoặc lỗi khi gọi AI tác vụ " + getTaskDisplayName(task));
         });
     }
 
@@ -190,7 +210,7 @@ public class AiCreditServiceImpl implements AiCreditService {
             account.setTotalSpent(Math.max(0, account.getTotalSpent() - excess));
             userAiAccountRepository.save(account);
             recordTransaction(userId, excess, CreditTransactionType.REFUND, task, null,
-                    "Hoàn phần dư credit theo token đầu ra cho tác vụ " + task);
+                    "Hoàn phần dư credit theo token đầu ra cho tác vụ " + getTaskDisplayName(task));
         });
     }
 
@@ -364,9 +384,65 @@ public class AiCreditServiceImpl implements AiCreditService {
         } else {
             transactions = creditTransactionRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
         }
+
+        Set<Long> userIds = transactions.stream()
+                .map(CreditTransaction::getUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Map<Long, User> userMap = userIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.findAllById(userIds).stream()
+                        .collect(Collectors.toMap(User::getId, Function.identity(), (u1, u2) -> u1));
+
         return transactions.stream()
-                .map(CreditTransactionResponse::from)
+                .map(txn -> {
+                    CreditTransactionResponse res = CreditTransactionResponse.from(txn);
+                    User user = userMap.get(txn.getUserId());
+                    if (user != null) {
+                        res.setUserEmail(user.getEmail());
+                        res.setUserRole(user.getRole() != null ? user.getRole().name() : null);
+                    }
+                    return res;
+                })
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<CreditTransactionResponse> getTransactions(Long userId, CreditTransactionType type, Pageable pageable) {
+        Page<CreditTransaction> pageResult;
+        if (userId != null && type != null) {
+            pageResult = creditTransactionRepository.findByUserIdAndType(userId, type, pageable);
+        } else if (userId != null) {
+            pageResult = creditTransactionRepository.findByUserId(userId, pageable);
+        } else if (type != null) {
+            pageResult = creditTransactionRepository.findByType(type, pageable);
+        } else {
+            pageResult = creditTransactionRepository.findAll(pageable);
+        }
+
+        Set<Long> userIds = pageResult.getContent().stream()
+                .map(CreditTransaction::getUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Map<Long, User> userMap = userIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.findAllById(userIds).stream()
+                        .collect(Collectors.toMap(User::getId, Function.identity(), (u1, u2) -> u1));
+
+        List<CreditTransactionResponse> responses = pageResult.getContent().stream()
+                .map(txn -> {
+                    CreditTransactionResponse res = CreditTransactionResponse.from(txn);
+                    User user = userMap.get(txn.getUserId());
+                    if (user != null) {
+                        res.setUserEmail(user.getEmail());
+                        res.setUserRole(user.getRole() != null ? user.getRole().name() : null);
+                    }
+                    return res;
+                })
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(responses, pageable, pageResult.getTotalElements());
     }
 
     @Override

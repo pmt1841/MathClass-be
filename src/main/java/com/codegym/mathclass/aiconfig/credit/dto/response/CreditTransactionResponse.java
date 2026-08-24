@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 public class CreditTransactionResponse {
     private Long id;
     private Long userId;
+    private String userEmail;
+    private String userRole;
     private Integer amount;
     private String type;
     private String task;
