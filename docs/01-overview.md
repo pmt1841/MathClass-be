@@ -7,12 +7,13 @@ Tài liệu này đóng vai trò hướng dẫn tổng quan cho các thành viê
 
 Backend chịu trách nhiệm cung cấp toàn bộ RESTful API, xử lý logic nghiệp vụ, bảo mật và lưu trữ dữ liệu cho hệ thống MathClass:
 
-- **Xác thực & Phân quyền (Auth & Security):** Đăng nhập/Đăng ký tài khoản, JWT (dựa trên Cookie HTTP-Only & Header Authorization), Google OAuth2, xác thực Email OTP, Quên/Đặt lại mật khẩu.
+- **Xác thực & Phân quyền (Auth & Security):** Đăng nhập/Đăng ký tài khoản, JWT (dựa trên Cookie HTTP-Only & Header Authorization), Google OAuth2, xác thực Email OTP, Quên/Đặt lại mật khẩu, **Xác thực 2 bước (2FA Google Authenticator TOTP & Backup Codes)** bắt buộc cho Quản trị viên.
 - **Quản lý Người dùng & Phân quyền (User & Admin Permission):** Quản lý thông tin cá nhân, avatar, quản lý tài khoản người dùng, phân quyền linh hoạt theo Role (`ADMIN`, `TEACHER`, `STUDENT`) & Fine-grained Permissions.
 - **Quản lý Lớp học (Classroom):** Tạo lớp, tìm kiếm, duyệt sinh viên tham gia lớp (Join Requests), quản lý danh sách thành viên trong lớp.
 - **Quản lý Bài tập (Assignment):** Tạo bài tập (tự luận & trắc nghiệm, hỗ trợ LaTeX), đính kèm hình vẽ JSXGraph/Canvas, bóc tách đề bài từ file DOCX/PDF, giao bài tập theo lớp và quản lý lịch xuất bản.
 - **Nộp bài & Chấm điểm (Submission & Drawing):** Học sinh nộp bài tập (văn bản LaTeX & hình vẽ Canvas tương tác), chấm điểm tự luận/trắc nghiệm, nhận xét câu hỏi, lịch sử nộp và chức năng hủy nộp (Unsubmit).
 - **Thống kê & Phân tích (Dashboard):** Tổng quan tình hình giảng dạy của giáo viên, danh sách bài tập chờ chấm, cảnh báo học sinh có nguy cơ học kém (At-risk students), thống kê kết quả học tập của từng học sinh.
+- **Hệ Thống Trợ Lý AI & Quản Trị Hạn Ngạch (AI Subsystem & Credit Quota):** Multi-Provider AI Gateway (OpenAI, Gemini, Claude, DeepSeek, Groq), Task Routing, quản lý Prompt templates có Versioning & Preview, ví Credit cá nhân hóa với cơ chế tính phí token Reserve-then-Refund, và 4 công cụ AI Toán học (Sinh đề bài, Gợi ý tư duy, OCR chữ viết tay, Chấm điểm tự động).
 - **Thông báo Realtime (Notification & Settings):** Nhận thông báo thời gian thực qua Server-Sent Events (SSE), quản lý cấu hình thông báo (Email, Hệ thống).
 - **Nhật ký Hệ thống (System Logs):** Lưu vết audit log các thao tác quan trọng dành cho Quản trị viên.
 
@@ -23,12 +24,12 @@ Dự án được xây dựng theo kiến trúc phân tầng (Layered Architectu
 - **Core Framework:** Java 21, Spring Boot 4.1.0.
 - **Cơ sở dữ liệu:** PostgreSQL 16 (Dữ liệu quan hệ & kiểu `jsonb` cho tọa độ vẽ hình Canvas / JSXGraph).
 - **ORM & Data Access:** Spring Data JPA / Hibernate.
-- **Bảo mật:** Spring Security & JJWT (Json Web Token).
+- **Bảo mật:** Spring Security & JJWT (Json Web Token), Google Authenticator TOTP (RFC 6238), Mã hóa AES-256-GCM cho AI API Keys.
 - **Real-time Engine:** Spring SSE (Server-Sent Events).
 - **Document Parsing:** Apache POI (DOCX) & Apache PDFBox (PDF).
 - **File Storage:** Supabase Cloud Storage API.
 - **Email Service:** Spring Mail (SMTP Gmail) kết hợp Thymeleaf HTML templates.
-- **Caching:** Spring Cache & Caffeine Cache.
+- **Caching:** Spring Cache & Caffeine Cache (in-memory cache cho Task Routing & Prompts).
 
 ## 3. Các Tài Liệu Chi Tiết
 
@@ -38,5 +39,9 @@ Hãy đọc các tài liệu hướng dẫn tiếp theo để bắt tay vào ph�
 2. [Quy chuẩn và Hướng dẫn Code (Backend Guide)](03-backend-guide.md)
 3. [Tài liệu API Chi tiết (API Reference)](04-api-reference.md)
 4. [Hướng dẫn Sử dụng Docker (Docker Guide)](05-docker-guide.md)
+5. [Hướng dẫn Xác thực Hai Yếu Tố 2FA (Two-Factor Authentication Guide)](06-two-factor-authentication.md)
+6. [Hướng dẫn Kiến trúc Hệ thống AI & Credit Quota (AI Subsystem Guide)](07-ai-subsystem.md)
+
+
 
 
