@@ -178,7 +178,7 @@ public class AssignmentServiceImpl implements AssignmentService {
     @Override
     @Transactional(readOnly = true)
     public Page<AssignmentResponse> getAssignmentsByClassCode(String classCode, long userId, String keyword,
-            AssignmentStatus status, Pageable pageable) {
+            AssignmentStatus status, String studentStatus, Pageable pageable) {
         // 1. Tìm lớp học
         Classroom classroom = classroomRepository.findByClassCode(classCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lớp học với mã: " + classCode));
@@ -228,6 +228,10 @@ public class AssignmentServiceImpl implements AssignmentService {
             }
         }
 
+        if (isStudent && studentStatus != null && !studentStatus.isBlank()) {
+            spec = spec.and(AssignmentSpecification.hasStudentStatus(userId, studentStatus));
+        }
+
         Sort sort = pageable.getSort();
         if (sort.isUnsorted()) {
             sort = Sort.by(
@@ -257,7 +261,7 @@ public class AssignmentServiceImpl implements AssignmentService {
     @Override
     @Transactional(readOnly = true)
     public Page<AssignmentResponse> getAssignmentsForCurrentUser(long userId, String role, String keyword,
-            String classCode, AssignmentStatus status, Long gradeTagId, Long subjectTagId, Long difficultyTagId, Pageable pageable) {
+            String classCode, AssignmentStatus status, Long gradeTagId, Long subjectTagId, Long difficultyTagId, String studentStatus, Pageable pageable) {
         Specification<Assignment> spec = (root, query, cb) -> cb.conjunction();
         
         // Loại bỏ những bài tập đã nằm trong phiếu bài tập
@@ -274,6 +278,9 @@ public class AssignmentServiceImpl implements AssignmentService {
             }
             spec = spec.and(AssignmentSpecification.isStudent(userId))
                     .and(AssignmentSpecification.hasStatus(AssignmentStatus.PUBLISHED));
+            if (studentStatus != null && !studentStatus.isBlank()) {
+                spec = spec.and(AssignmentSpecification.hasStudentStatus(userId, studentStatus));
+            }
         } else {
             throw new AccessDeniedException("Role không hợp lệ");
         }

@@ -48,10 +48,11 @@ public class ClassroomMemberController {
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
-    @Operation(summary = "Danh sách học sinh trong lớp", description = "Lấy danh sách học sinh tham gia lớp học có phân trang và sắp xếp")
+    @Operation(summary = "Danh sách học sinh trong lớp", description = "Lấy danh sách học sinh tham gia lớp học có phân trang, tìm kiếm và sắp xếp")
     @GetMapping("/students")
     public ResponseEntity<Page<StudentResponse>> getStudentsByClassCode(
             @PathVariable String classCode,
+            @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "s.fullName,asc") String sort,
@@ -67,7 +68,7 @@ public class ClassroomMemberController {
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
 
         Page<StudentResponse> students = classroomService.getStudentsByClassCode(classCode, customUserDetails.getId(),
-                pageable);
+                keyword, pageable);
         return new ResponseEntity<>(students, HttpStatus.OK);
     }
 

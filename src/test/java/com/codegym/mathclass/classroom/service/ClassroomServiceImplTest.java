@@ -390,16 +390,16 @@ class ClassroomServiceImplTest {
             Page<User> studentPage = new PageImpl<>(Collections.singletonList(student));
 
             when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
-            when(userRepository.findStudentsByClassCode("ABC12345", pageable)).thenReturn(studentPage);
+            when(userRepository.findStudentsByClassCode("ABC12345", null, pageable)).thenReturn(studentPage);
 
-            Page<StudentResponse> result = classroomService.getStudentsByClassCode("ABC12345", currentUserId, pageable);
+            Page<StudentResponse> result = classroomService.getStudentsByClassCode("ABC12345", currentUserId, null, pageable);
 
             assertThat(result).isNotNull();
             assertThat(result.getTotalElements()).isEqualTo(1);
             assertThat(result.getContent().get(0).getId()).isEqualTo(student.getId());
 
             verify(classroomRepository, times(1)).findByClassCode("ABC12345");
-            verify(userRepository, times(1)).findStudentsByClassCode("ABC12345", pageable);
+            verify(userRepository, times(1)).findStudentsByClassCode("ABC12345", null, pageable);
         }
 
         @Test
@@ -410,14 +410,14 @@ class ClassroomServiceImplTest {
             Page<User> studentPage = new PageImpl<>(Collections.singletonList(student));
 
             when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
-            when(userRepository.findStudentsByClassCode("ABC12345", pageable)).thenReturn(studentPage);
+            when(userRepository.findStudentsByClassCode("ABC12345", null, pageable)).thenReturn(studentPage);
 
-            Page<StudentResponse> result = classroomService.getStudentsByClassCode("ABC12345", student.getId(), pageable);
+            Page<StudentResponse> result = classroomService.getStudentsByClassCode("ABC12345", student.getId(), null, pageable);
 
             assertThat(result).isNotNull();
             assertThat(result.getTotalElements()).isEqualTo(1);
 
-            verify(userRepository, times(1)).findStudentsByClassCode("ABC12345", pageable);
+            verify(userRepository, times(1)).findStudentsByClassCode("ABC12345", null, pageable);
         }
 
         @Test
@@ -426,11 +426,11 @@ class ClassroomServiceImplTest {
             Pageable pageable = PageRequest.of(0, 10);
             when(classroomRepository.findByClassCode("NOTEXIST")).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> classroomService.getStudentsByClassCode("NOTEXIST", currentUserId, pageable))
+            assertThatThrownBy(() -> classroomService.getStudentsByClassCode("NOTEXIST", currentUserId, null, pageable))
                     .isInstanceOf(ResourceNotFoundException.class)
                     .hasMessage("Không tìm thấy lớp học");
 
-            verify(userRepository, never()).findStudentsByClassCode(anyString(), any(Pageable.class));
+            verify(userRepository, never()).findStudentsByClassCode(anyString(), any(), any(Pageable.class));
         }
 
         @Test
@@ -439,11 +439,11 @@ class ClassroomServiceImplTest {
             Pageable pageable = PageRequest.of(0, 10);
             when(classroomRepository.findByClassCode("ABC12345")).thenReturn(Optional.of(classroom));
 
-            assertThatThrownBy(() -> classroomService.getStudentsByClassCode("ABC12345", 999L, pageable))
+            assertThatThrownBy(() -> classroomService.getStudentsByClassCode("ABC12345", 999L, null, pageable))
                     .isInstanceOf(AccessDeniedException.class)
                     .hasMessage("Bạn không có quyền xem thông tin lớp học này");
 
-            verify(userRepository, never()).findStudentsByClassCode(anyString(), any(Pageable.class));
+            verify(userRepository, never()).findStudentsByClassCode(anyString(), any(), any(Pageable.class));
         }
     }
 

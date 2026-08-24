@@ -35,14 +35,14 @@ public interface AssignmentService {
      * Lấy danh sách bài tập của một lớp (hỗ trợ lọc theo từ khóa và trạng thái).
      */
     Page<AssignmentResponse> getAssignmentsByClassCode(String classCode, long userId, String keyword,
-            AssignmentStatus status, Pageable pageable);
+            AssignmentStatus status, String studentStatus, Pageable pageable);
 
     /**
      * Lấy danh sách bài tập theo người dùng hiện tại (Giáo viên/Học sinh) kèm bộ
      * lọc
      */
     Page<AssignmentResponse> getAssignmentsForCurrentUser(long userId, String role, String keyword, String classCode,
-            AssignmentStatus status, Long gradeTagId, Long subjectTagId, Long difficultyTagId, Pageable pageable);
+            AssignmentStatus status, Long gradeTagId, Long subjectTagId, Long difficultyTagId, String studentStatus, Pageable pageable);
 
     /**
      * Giáo viên sửa bài tập nếu chưa có học sinh nộp bài.

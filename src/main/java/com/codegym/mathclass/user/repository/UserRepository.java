@@ -37,8 +37,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u FROM User u WHERE u.id = :id")
     Optional<User> findByIdWithLock(@Param("id") Long id);
 
-    @Query("SELECT s FROM Classroom c JOIN c.students s WHERE c.classCode = :classCode")
-    Page<User> findStudentsByClassCode(@Param("classCode") String classCode, Pageable pageable);
+    @Query("SELECT s FROM Classroom c JOIN c.students s WHERE c.classCode = :classCode AND " +
+           "(:keyword IS NULL OR LOWER(s.fullName) LIKE :keyword ESCAPE '\\' OR LOWER(s.email) LIKE :keyword ESCAPE '\\')")
+    Page<User> findStudentsByClassCode(@Param("classCode") String classCode, @Param("keyword") String keyword, Pageable pageable);
 
     @Query("SELECT u FROM User u WHERE " +
         "(:role IS NULL OR u.role = :role) AND " +

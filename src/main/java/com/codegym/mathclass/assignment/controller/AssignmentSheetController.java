@@ -66,11 +66,12 @@ public class AssignmentSheetController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Danh sách phiếu bài tập của tôi", description = "Lấy danh sách phiếu bài tập của người dùng có hỗ trợ lọc từ khóa, mã lớp và phân trang")
+    @Operation(summary = "Danh sách phiếu bài tập của tôi", description = "Lấy danh sách phiếu bài tập của người dùng có hỗ trợ lọc từ khóa, mã lớp, trạng thái nộp bài và phân trang")
     @GetMapping
     public ResponseEntity<Page<AssignmentSheetResponse>> getAssignmentSheetsForCurrentUser(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String classCode,
+            @RequestParam(required = false) String studentStatus,
             @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
@@ -82,7 +83,7 @@ public class AssignmentSheetController {
                 .orElse("");
 
         Page<AssignmentSheetResponse> sheets = assignmentSheetService.getAssignmentSheetsForCurrentUser(
-                userId, role, keyword, classCode, pageable);
+                userId, role, keyword, classCode, studentStatus, pageable);
 
         return ResponseEntity.ok(sheets);
     }

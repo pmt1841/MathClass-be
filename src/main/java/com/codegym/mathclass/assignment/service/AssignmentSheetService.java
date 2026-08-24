@@ -11,7 +11,7 @@ import com.codegym.mathclass.assignment.dto.UpdateAssignmentSheetRequest;
 
 public interface AssignmentSheetService {
     void publishAssignmentSheet(PublishAssignmentSheetRequest request, long teacherId);
-    Page<AssignmentSheetResponse> getAssignmentSheetsForCurrentUser(long userId, String role, String keyword, String classCode, Pageable pageable);
+    Page<AssignmentSheetResponse> getAssignmentSheetsForCurrentUser(long userId, String role, String keyword, String classCode, String studentStatus, Pageable pageable);
     void deleteAssignmentSheet(long sheetId, long teacherId);
     AssignmentSheetResponse updateAssignmentSheet(long sheetId, UpdateAssignmentSheetRequest request, long teacherId);
     Page<AssignmentSheetResponse> getPublicAssignmentSheets(String keyword, Pageable pageable);
