@@ -28,8 +28,12 @@ public class StudentResponse {
     private LocalDateTime lastActiveAt;
 
     public static StudentResponse fromEntity(User user) {
-        boolean online = user.getLastActiveAt() != null 
-                && user.getLastActiveAt().isAfter(LocalDateTime.now().minusMinutes(5));
+        return fromEntity(user, false);
+    }
+
+    public static StudentResponse fromEntity(User user, boolean isSocketOnline) {
+        boolean online = isSocketOnline || (user.getLastActiveAt() != null 
+                && user.getLastActiveAt().isAfter(LocalDateTime.now().minusMinutes(5)));
 
         return StudentResponse.builder()
                 .id(user.getId())
