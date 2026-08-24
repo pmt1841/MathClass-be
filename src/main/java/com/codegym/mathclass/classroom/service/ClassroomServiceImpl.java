@@ -34,6 +34,7 @@ public class ClassroomServiceImpl implements ClassroomService {
     private final UserRepository userRepository;
     private final EmailService emailService;
     private final NotificationService notificationService;
+    private final com.codegym.mathclass.chat.service.UserPresenceRegistry userPresenceRegistry;
 
     @Value("${FRONTEND_URL}")
     private String frontendUrl;
@@ -119,7 +120,8 @@ public class ClassroomServiceImpl implements ClassroomService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<StudentResponse> getStudentsByClassCode(String classCode, long currentUserId, String keyword, Pageable pageable) {
+    public Page<StudentResponse> getStudentsByClassCode(String classCode, long currentUserId, String keyword,
+            Pageable pageable) {
         Classroom classroom = classroomRepository.findByClassCode(classCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lớp học"));
 
@@ -130,7 +132,7 @@ public class ClassroomServiceImpl implements ClassroomService {
                 : null;
 
         Page<User> studentPage = userRepository.findStudentsByClassCode(classCode, searchPattern, pageable);
-        return studentPage.map(StudentResponse::fromEntity);
+        return studentPage.map(u -> StudentResponse.fromEntity(u, userPresenceRegistry.isUserOnline(u.getId())));
     }
 
     @Override

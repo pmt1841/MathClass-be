@@ -7,20 +7,23 @@ Tính năng này cung cấp kênh trao đổi riêng thời gian thực (1-1 Pri
 ### Các mục tiêu chính:
 1. **Chat riêng 1-1 trong Lớp học:** Mỗi lớp học sinh chỉ nhắn tin 1-1 với duy nhất Giảng viên phụ trách lớp học đó. Giảng viên có thể chọn từng học sinh trong danh sách của lớp để xem và phản hồi tin nhắn.
 2. **Thời gian thực (Real-time):** Sử dụng WebSocket STOMP Broker (Spring Boot WebSocket) để nhận/gửi tin tức thì với độ trễ <50ms.
-3. **Hiển thị Công thức Toán học (KaTeX):** Nội dung tin nhắn hỗ trợ định dạng văn bản + công thức LaTeX.
-4. **Hiệu năng & Chống lỗi N+1 Query:** Đảm bảo sử dụng JPQL DTO Constructor Projection (`SELECT new ChatMessageResponse(...)`) để truy vấn phân trang lịch sử tin nhắn chỉ trong **1 câu SQL duy nhất**, tuyệt đối không bị lỗi Lazy Loading N+1. Index Scan trong PostgreSQL.
+3. **Thông báo Đẩy SSE Header:** Tự động gọi `notificationService.saveAndSendNotification(...)` khi gửi tin mới, lưu CSDL và phát thông báo SSE tới thanh Header trên cùng kèm đường dẫn chuyển tới khung chat.
+4. **Trạng thái Trực tuyến (Online Presence):** Tích hợp `UserPresenceRegistry` theo dõi kết nối WebSocket, phản ánh chính xác học sinh/giảng viên đang Online trên danh sách thành viên và khung chat.
+5. **Hiển thị Công thức Toán học (KaTeX):** Nội dung tin nhắn hỗ trợ định dạng văn bản + công thức LaTeX.
+6. **Hiệu năng & Chống lỗi N+1 Query:** Đảm bảo sử dụng JPQL DTO Constructor Projection (`SELECT new ChatMessageResponse(...)`) để truy vấn phân trang lịch sử tin nhắn chỉ trong **1 câu SQL duy nhất**, tuyệt đối không bị lỗi Lazy Loading N+1. Index Scan trong PostgreSQL.
 
 ---
 
 ## 2. Acceptance Criteria Checklist (AC)
 
-- [ ] **AC-BE-01:** Bảng `chat_messages` được tạo đúng cấu trúc kèm Composite Index `(class_id, student_id, created_at DESC)`.
-- [ ] **AC-BE-02:** Cấu hình WebSocket STOMP Endpoint `/ws-chat` và kênh Broadcast `/topic/classroom/{classId}/student/{studentId}`.
-- [ ] **AC-BE-03:** `WebSocketSecurityInterceptor` trích xuất và xác thực JWT Token từ khung STOMP `CONNECT`.
-- [ ] **AC-BE-04:** API `GET /api/v1/classes/{classCode}/chat/messages` lấy lịch sử tin nhắn phân trang (trả về DTO duy nhất 1 SQL query).
-- [ ] **AC-BE-05:** API `PUT /api/v1/classes/{classCode}/chat/messages/read` đánh dấu tất cả tin nhắn trong room là đã đọc (`is_read = true`).
-- [ ] **AC-BE-06:** STOMP Controller `@MessageMapping("/chat.send")` xử lý nhận tin nhắn, lưu vào DB và phát sóng tới subscriber thời gian thực.
-- [ ] **AC-BE-07:** Phân quyền chặt chẽ: Chỉ Học sinh trong lớp hoặc Giảng viên dạy lớp đó mới có quyền truy cập hoặc nhận/gửi tin nhắn trong room chat tương ứng.
+- [x] **AC-BE-01:** Bảng `chat_messages` được tạo đúng cấu trúc kèm Composite Index `(class_id, student_id, created_at DESC)`.
+- [x] **AC-BE-02:** Cấu hình WebSocket STOMP Endpoint `/ws-chat` và kênh Broadcast `/topic/classroom/{classId}/student/{studentId}`.
+- [x] **AC-BE-03:** `WebSocketSecurityInterceptor` trích xuất và xác thực JWT Token từ khung STOMP `CONNECT`.
+- [x] **AC-BE-04:** API `GET /api/v1/classes/{classCode}/chat/messages` lấy lịch sử tin nhắn phân trang (trả về DTO duy nhất 1 SQL query).
+- [x] **AC-BE-05:** API `PUT /api/v1/classes/{classCode}/chat/messages/read` đánh dấu tất cả tin nhắn trong room là đã đọc (`is_read = true`).
+- [x] **AC-BE-06:** STOMP Controller `@MessageMapping("/chat.send")` xử lý nhận tin nhắn, lưu vào DB và phát sóng tới subscriber thời gian thực.
+- [x] **AC-BE-07:** Tích hợp `NotificationService`: Tự động đẩy thông báo SSE và nhảy số biểu tượng chiếc chuông trên Header cho người nhận khi có tin nhắn mới.
+- [x] **AC-BE-08:** Phân quyền chặt chẽ: Chỉ Học sinh trong lớp hoặc Giảng viên dạy lớp đó mới có quyền truy cập hoặc nhận/gửi tin nhắn trong room chat tương ứng.
 
 ---
 
@@ -75,19 +78,19 @@ public record ChatMessageRequest(
 ```java
 package com.codegym.mathclass.chat.dto;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 
-public record ChatMessageResponse(
-    Long id,
-    Long classId,
-    Long studentId,
-    Long senderId,
-    String senderName,
-    String senderAvatar,
-    String content,
-    Boolean isRead,
-    Instant createdAt
-) {}
+public class ChatMessageResponse {
+    private Long id;
+    private Long classId;
+    private Long studentId;
+    private Long senderId;
+    private String senderName;
+    private String senderAvatar;
+    private String content;
+    private Boolean isRead;
+    private LocalDateTime createdAt;
+}
 ```
 
 ---
@@ -98,7 +101,7 @@ public record ChatMessageResponse(
 package com.codegym.mathclass.chat.repository;
 
 import com.codegym.mathclass.chat.dto.ChatMessageResponse;
-import com.codegym.mathclass.chat.model.ChatMessage;
+import com.codegym.mathclass.chat.entity.ChatMessage;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -106,6 +109,8 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
 
 @Repository
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
@@ -147,6 +152,18 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
         @Param("studentId") Long studentId, 
         @Param("currentUserId") Long currentUserId
     );
+
+    @Query("""
+        SELECT DISTINCT m.studentId 
+        FROM ChatMessage m 
+        WHERE m.classId = :classId 
+          AND m.sender.id != :currentUserId 
+          AND m.isRead = false
+        """)
+    List<Long> findUnreadStudentIds(
+        @Param("classId") Long classId, 
+        @Param("currentUserId") Long currentUserId
+    );
 }
 ```
 
@@ -161,17 +178,22 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
 * `PUT /api/v1/classes/{classCode}/chat/messages/read`
   * Params: `studentId` (Long)
   * Returns: `ApiResponse<Void>`
+* `GET /api/v1/classes/{classCode}/chat/online-users`
+  * Returns: `ApiResponse<Set<Long>>` (Danh sách ID người dùng đang online trong lớp)
+* `GET /api/v1/classes/{classCode}/chat/unread-students`
+  * Returns: `ApiResponse<List<Long>>` (Danh sách ID học sinh có tin nhắn chưa đọc)
 
 ### 6.2. WebSocket / STOMP (`ChatStompController.java`)
 * Endpoint: `/ws-chat`
 * Outbound Destination: `/app/chat.send`
 * Inbound Broadcast Channel: `/topic/classroom/{classId}/student/{studentId}`
+* Teacher Broadcast Channel: `/topic/classroom/{classId}/teacher`
 
 ---
 
 ## 7. Unit Test Cases Checklist
 
-- [ ] **UT-BE-01:** `findHistory_success` - Lấy đúng lịch sử tin nhắn phân trang, thực thi duy nhất 1 câu SQL lệnh (0 lỗi N+1).
-- [ ] **UT-BE-02:** `sendMessage_success` - Gửi tin nhắn hợp lệ, lưu vào DB và phát tin thành công qua `SimpMessagingTemplate`.
-- [ ] **UT-BE-03:** `sendMessage_fail_unauthorized` - Người dùng không thuộc lớp học bị từ chối gửi tin nhắn.
-- [ ] **UT-BE-04:** `markAsRead_success` - Đánh dấu các tin nhắn chưa đọc của đối phương thành `is_read = true`.
+- [x] **UT-BE-01:** `findHistory_success` - Lấy đúng lịch sử tin nhắn phân trang, thực thi duy nhất 1 câu SQL lệnh (0 lỗi N+1).
+- [x] **UT-BE-02:** `sendMessage_success` - Gửi tin nhắn hợp lệ, lưu vào DB, kích hoạt thông báo SSE và phát tin thành công qua `SimpMessagingTemplate`.
+- [x] **UT-BE-03:** `sendMessage_fail_unauthorized` - Người dùng không thuộc lớp học bị từ chối gửi tin nhắn.
+- [x] **UT-BE-04:** `markAsRead_success` - Đánh dấu các tin nhắn chưa đọc của đối phương thành `is_read = true`.

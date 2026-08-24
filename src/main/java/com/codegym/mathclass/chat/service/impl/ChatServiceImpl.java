@@ -9,6 +9,7 @@ import com.codegym.mathclass.chat.service.UserPresenceRegistry;
 import com.codegym.mathclass.classroom.entity.Classroom;
 import com.codegym.mathclass.classroom.repository.ClassroomRepository;
 import com.codegym.mathclass.exception.BadRequestException;
+import com.codegym.mathclass.notification.service.NotificationService;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class ChatServiceImpl implements ChatService {
     private final ClassroomRepository classroomRepository;
     private final UserRepository userRepository;
     private final UserPresenceRegistry userPresenceRegistry;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -64,6 +66,33 @@ public class ChatServiceImpl implements ChatService {
 
         ChatMessage savedMessage = chatMessageRepository.save(chatMessage);
 
+        // Bổ sung thông báo đẩy SSE + Lưu DB cho người nhận
+        Long notificationTargetUserId;
+        String notificationMessage;
+        String notificationLink;
+
+        if (isTeacher) {
+            // Giảng viên gửi tin nhắn tới Học sinh
+            notificationTargetUserId = request.getStudentId();
+            notificationMessage = "Giảng viên " + sender.getFullName() + " đã gửi cho bạn một tin nhắn mới trong lớp " + classroom.getClassName();
+            notificationLink = "/classes/" + classroom.getClassCode() + "/student?chat=open";
+        } else {
+            // Học sinh gửi tin nhắn tới Giảng viên
+            notificationTargetUserId = classroom.getTeacher().getId();
+            notificationMessage = "Học sinh " + sender.getFullName() + " đã gửi cho bạn một tin nhắn mới trong lớp " + classroom.getClassName();
+            notificationLink = "/classes/" + classroom.getClassCode() + "?tab=chat&studentId=" + sender.getId();
+        }
+
+        try {
+            notificationService.saveAndSendNotification(notificationTargetUserId, notificationMessage, notificationLink);
+        } catch (Exception e) {
+            log.error("Lỗi khi gửi thông báo tin nhắn mới:", e);
+        }
+
+        java.time.LocalDateTime msgCreatedAt = savedMessage.getCreatedAt() != null 
+                ? savedMessage.getCreatedAt() 
+                : java.time.LocalDateTime.now(java.time.ZoneOffset.UTC);
+
         return ChatMessageResponse.builder()
                 .id(savedMessage.getId())
                 .classId(savedMessage.getClassId())
@@ -73,7 +102,7 @@ public class ChatServiceImpl implements ChatService {
                 .senderAvatar(sender.getAvatarUrl())
                 .content(savedMessage.getContent())
                 .isRead(savedMessage.getIsRead())
-                .createdAt(savedMessage.getCreatedAt())
+                .createdAt(msgCreatedAt)
                 .build();
     }
 
