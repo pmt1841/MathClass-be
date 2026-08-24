@@ -35,10 +35,14 @@ public class ChatStompController {
 
         ChatMessageResponse response = chatService.sendMessage(request, senderId);
 
-        // Destination topic broadcast: /topic/classroom/{classId}/student/{studentId}
-        String destination = String.format("/topic/classroom/%d/student/%d", request.getClassId(), request.getStudentId());
+        // Destination topic 1: /topic/classroom/{classId}/student/{studentId} (Học sinh & Giảng viên trong room)
+        String studentTopic = String.format("/topic/classroom/%d/student/%d", request.getClassId(), request.getStudentId());
+        messagingTemplate.convertAndSend(studentTopic, response);
 
-        messagingTemplate.convertAndSend(destination, response);
-        log.info("Broadcasted chat message to destination {}: senderId={}", destination, senderId);
+        // Destination topic 2: /topic/classroom/{classId}/teacher (Thông báo chung cho Giảng viên nhận tin nhắn tức thì từ mọi học sinh)
+        String teacherTopic = String.format("/topic/classroom/%d/teacher", request.getClassId());
+        messagingTemplate.convertAndSend(teacherTopic, response);
+
+        log.info("Broadcasted chat message to {} and {}: senderId={}", studentTopic, teacherTopic, senderId);
     }
 }

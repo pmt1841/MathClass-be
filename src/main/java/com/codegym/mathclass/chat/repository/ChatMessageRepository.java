@@ -64,4 +64,16 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
         @Param("studentId") Long studentId,
         @Param("currentUserId") Long currentUserId
     );
+
+    @Query("""
+        SELECT DISTINCT m.studentId
+        FROM ChatMessage m
+        WHERE m.classId = :classId
+          AND m.sender.id != :currentUserId
+          AND m.isRead = false
+        """)
+    java.util.List<Long> findUnreadStudentIds(
+        @Param("classId") Long classId,
+        @Param("currentUserId") Long currentUserId
+    );
 }

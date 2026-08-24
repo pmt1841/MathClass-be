@@ -18,8 +18,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+import java.util.Set;
+
 @RestController
-@RequestMapping("${mathclass.app.apiPrefix:/api/v1}/classes/{classCode}/chat")
+@RequestMapping("/classrooms/{classCode}/chat")
 @RequiredArgsConstructor
 public class ChatController {
 
@@ -50,6 +53,29 @@ public class ChatController {
         chatService.markAsRead(classCode, studentId, userDetails.getId());
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .message("Đã đánh dấu các tin nhắn là đã đọc")
+                .build());
+    }
+
+    @GetMapping("/online-users")
+    public ResponseEntity<ApiResponse<Set<Long>>> getOnlineUsers(
+            @PathVariable String classCode
+    ) {
+        Set<Long> onlineUserIds = chatService.getOnlineUsers(classCode);
+        return ResponseEntity.ok(ApiResponse.<Set<Long>>builder()
+                .message("Lấy danh sách người dùng online thành công")
+                .result(onlineUserIds)
+                .build());
+    }
+
+    @GetMapping("/unread-students")
+    public ResponseEntity<ApiResponse<List<Long>>> getUnreadStudentIds(
+            @PathVariable String classCode,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        List<Long> unreadStudentIds = chatService.getUnreadStudentIds(classCode, userDetails.getId());
+        return ResponseEntity.ok(ApiResponse.<List<Long>>builder()
+                .message("Lấy danh sách học sinh có tin nhắn chưa đọc thành công")
+                .result(unreadStudentIds)
                 .build());
     }
 }
