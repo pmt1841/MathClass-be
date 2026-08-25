@@ -13,9 +13,8 @@ class ApiKeyCryptoConverterTest {
 
     @BeforeEach
     void setUp() {
-        encryptionService = new EncryptionService("TestMasterSecretKey32BytesLength!");
-        converter = new ApiKeyCryptoConverter();
-        converter.setEncryptionService(encryptionService);
+        encryptionService = new EncryptionService(new EnvVarMasterKeyProvider("TestMasterSecretKey32BytesLength!"));
+        converter = new ApiKeyCryptoConverter(encryptionService);
     }
 
     @Test

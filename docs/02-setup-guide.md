@@ -13,8 +13,16 @@
 Tạo file `.env` tại thư mục gốc của dự án (`MathClass-service/.env`):
 
 ```properties
-# Cơ sở dữ liệu PostgreSQL
-DB_URL=jdbc:postgresql://localhost:5433/mathclass_db
+# ==========================================
+# Cấu hình Cơ sở dữ liệu PostgreSQL
+# ==========================================
+# [Cách 1] Dùng khi chạy toàn bộ qua Docker Compose (docker-compose up):
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_secure_password
+POSTGRES_DB=math_class_db
+
+# [Cách 2] Dùng khi chạy Spring Boot trực tiếp trên máy host (./gradlew bootRun / IntelliJ):
+DB_URL=jdbc:postgresql://localhost:5433/math_class_db
 DB_USERNAME=postgres
 DB_PASSWORD=your_secure_password
 
@@ -33,7 +41,21 @@ GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
 # Linux / macOS / Git Bash: openssl rand -base64 64
 # Windows PowerShell: [Convert]::ToBase64String((1..64 | ForEach-Object { Get-Random -Maximum 256 }))
 JWT_SECRET=your_jwt_secret_key_base64_min_512_bits_here
+
+# Cấu hình Infisical Secret Management (Tùy chọn, mặc định false để chạy local)
+INFISICAL_ENABLED=false
+INFISICAL_HOST=https://app.infisical.com
+INFISICAL_CLIENT_ID=your_machine_identity_client_id
+INFISICAL_CLIENT_SECRET=your_machine_identity_client_secret
+INFISICAL_PROJECT_ID=your_infisical_project_id
+INFISICAL_ENV=dev
+INFISICAL_SECRET_PATH=/
+INFISICAL_SECRET_NAME=AI_ENCRYPTION_MASTER_KEY
+AI_ENCRYPTION_MASTER_KEY=MathClassSecretKeyForAiEncryption32B!
 ```
+
+> 🔐 **Ghi chú về Secret Management:** Chi tiết hướng dẫn thiết lập Machine Identity và lấy secret key từ Infisical xem tại [Hướng dẫn Sử dụng Infisical Secret Management (08-infisical-secrets-guide.md)](08-infisical-secrets-guide.md).
+
 
 ## 3. Dữ liệu Khởi tạo (Database Seeding)
 

@@ -2,19 +2,15 @@ package com.codegym.mathclass.aiconfig.security;
 
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Converter
 @Component
+@RequiredArgsConstructor
 public class ApiKeyCryptoConverter implements AttributeConverter<String, String> {
 
-    private static EncryptionService encryptionService;
-
-    @Autowired
-    public void setEncryptionService(EncryptionService service) {
-        ApiKeyCryptoConverter.encryptionService = service;
-    }
+    private final EncryptionService encryptionService;
 
     @Override
     public String convertToDatabaseColumn(String attribute) {

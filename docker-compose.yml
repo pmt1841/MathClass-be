@@ -4,6 +4,9 @@ services:
       context: .
       target: builder
     container_name: math-class-backend
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     ports:
       - "8080:8080"
     volumes:
@@ -16,7 +19,7 @@ services:
     command: ./gradlew bootRun --continuous
     environment:
       # 1. Đổi url kết nối sang jdbc:postgresql, dùng cổng 5432 và đúng tên DB biến môi trường
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}?useUnicode=true&characterEncoding=utf-8
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
     depends_on:

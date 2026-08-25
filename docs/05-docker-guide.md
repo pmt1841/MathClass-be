@@ -102,13 +102,17 @@ command: ./gradlew bootRun --continuous
 
 ### ⚠️ Khi nào CẦN hành động?
 
-1. **Cần Rebuild (`docker compose up -d --build`):**
-   - Khi thêm/sửa/xóa thư viện (dependencies) trong file `build.gradle`.
-   - Khi chỉnh sửa nội dung file [Dockerfile](../Dockerfile).
-
-2. **Cần Restart (`docker compose restart backend`):**
+1. **Cần Restart Container (`docker compose restart backend` - chỉ mất 2-3s):**
+   - Khi thêm/sửa thư viện mới trong file `build.gradle` (để Gradle nạp lại classpath).
    - Khi thay đổi các biến môi trường trong file `.env`.
    - Khi tiến trình Gradle bên trong container bị treo do lỗi biên dịch nặng.
+
+2. **Chỉ Cần Rebuild Image (`docker compose up -d --build`):**
+   - Khi chỉnh sửa trực tiếp nội dung file [Dockerfile](../Dockerfile) (ví dụ: đổi phiên bản JDK, cài thêm package hệ điều hành).
+
+> 💡 **Lưu ý về Secret Management (Infisical):**
+> - Container backend mặc định có kết nối internet nên gọi trực tiếp tới **Infisical Cloud** (`https://app.infisical.com`) bình thường.
+> - Nếu chạy máy chủ **Infisical Self-hosted** trực tiếp trên máy host ngoài Docker, hãy đặt `INFISICAL_HOST=http://host.docker.internal:<port>` trong file `.env`.
 
 ---
 

@@ -61,9 +61,9 @@ graph TD
     end
 ```
 
-### 2.1. Mã hóa AES-256-GCM & 12-Factor App
-- Mọi API Key khi được Admin nhập vào hệ thống đều phải đi qua `AesGcmEncryptionService` để mã hóa bằng thuật toán **AES-256-GCM** trước khi lưu vào cột `encrypted_api_key` trong bảng `ai_api_keys`.
-- Khóa bí mật gốc (Master Key) được nạp thông qua biến môi trường `${AI_ENCRYPTION_MASTER_KEY}` theo chuẩn 12-Factor App, tuyệt đối không hardcode trong mã nguồn.
+### 2.1. Mã hóa AES-256-GCM & Quản lý Khóa Bí Mật (Infisical Secret Management)
+- Mọi API Key khi được Admin nhập vào hệ thống đều phải đi qua `AesGcmEncryptionService` (hoặc `EncryptionService`) để mã hóa bằng thuật toán **AES-256-GCM** trước khi lưu vào cột `encrypted_api_key` trong bảng `ai_api_keys`.
+- **Lưu trữ Khóa Chủ (Master Key) qua Infisical:** Khóa bí mật gốc 256-bit được quản lý tập trung và nạp an toàn từ nền tảng **Infisical Secret Management** qua cơ chế Universal Auth khi khởi động ứng dụng (với `EnvVarMasterKeyProvider` làm fallback cho môi trường local offline). Chi tiết xem tại [Hướng dẫn Sử dụng Infisical (08-infisical-secrets-guide.md)](08-infisical-secrets-guide.md).
 - Khi trả dữ liệu ra Frontend qua REST API, toàn bộ Key được che mờ (chỉ hiển thị 8 ký tự đầu + `***` + 4 ký tự cuối, ví dụ: `AIzaSyD8***x9K4`).
 
 ### 2.2. Kiểm tra Kết Nối 2 Bước (Two-Step Verification)
