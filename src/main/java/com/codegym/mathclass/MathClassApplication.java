@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import com.codegym.mathclass.config.DotenvInitializer;
+import com.codegym.mathclass.config.InfisicalEnvironmentInitializer;
 
 import jakarta.annotation.PostConstruct;
 import java.util.TimeZone;
@@ -26,6 +27,7 @@ public class MathClassApplication {
         SpringApplication application = new SpringApplication(MathClassApplication.class);
 
         application.addInitializers(new DotenvInitializer());
+        application.addInitializers(new InfisicalEnvironmentInitializer());
 
         application.run(args);
     }

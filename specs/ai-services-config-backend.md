@@ -34,7 +34,7 @@ Cung cấp cho Quản trị viên công cụ quản lý tập trung các nhà cu
 
 ## 4. Business Rules
 
-* **BR-1 (Encryption Standard):** API Key bắt buộc phải mã hóa/giải mã thông qua `AesGcmEncryptionService` bằng thuật toán AES-256-GCM. Khóa gốc (Secret Master Key) nạp qua biến môi trường `${AI_ENCRYPTION_MASTER_KEY}` theo chuẩn 12-Factor App.
+* **BR-1 (Encryption Standard & Secret Management):** API Key bắt buộc phải mã hóa/giải mã thông qua `AesGcmEncryptionService` (hoặc `EncryptionService`) bằng thuật toán AES-256-GCM. Khóa gốc (Secret Master Key) được quản lý tập trung và nạp qua **Infisical Secret Management** (hoặc nạp qua biến môi trường `${AI_ENCRYPTION_MASTER_KEY}` khi chạy local offline) theo chuẩn 12-Factor App.
 * **BR-2 (Zero Key Exposure):** API Key dạng Plaintext tuyệt đối không được ghi ra file Log, System Console, hoặc trả nguyên bản về REST API Response.
 * **BR-3 (Auto Quota Transition):** Khi gọi AI trả về HTTP `429 Too Many Requests`, hệ thống phải cập nhật trạng thái Key thành `EXHAUSTED_QUOTA`.
 * **BR-4 (Auto Invalid Transition):** Khi gọi AI trả về HTTP `401 Unauthorized`, hệ thống phải cập nhật trạng thái Key thành `INVALID`.

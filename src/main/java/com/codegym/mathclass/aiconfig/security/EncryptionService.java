@@ -1,6 +1,6 @@
 package com.codegym.mathclass.aiconfig.security;
 
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.Cipher;
@@ -13,21 +13,26 @@ import java.security.SecureRandom;
 import java.util.Base64;
 
 @Service
+@RequiredArgsConstructor
 public class EncryptionService {
 
     private static final String ALGORITHM = "AES/GCM/NoPadding";
     private static final int TAG_LENGTH_BIT = 128;
     private static final int IV_LENGTH_BYTE = 12;
 
-    private final SecretKey secretKey;
+    private final MasterKeyProvider masterKeyProvider;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public EncryptionService(@Value("${app.security.ai-encryption-key:MathClassSecretKeyForAiEncryption32B!}") String secretKeyString) {
-        // Ensure 256-bit (32 bytes) key length by padding or trimming if needed
+    private SecretKey getSecretKey() {
+        String key = (masterKeyProvider != null) ? masterKeyProvider.getMasterKey() : null;
+        if (key == null || key.isBlank()) {
+            key = "MathClassSecretKeyForAiEncryption32B!";
+        }
+        // Đảm bảo độ dài 256-bit (32 bytes) bằng cách cắt hoặc chuẩn hóa UTF-8 bytes
         byte[] keyBytes = new byte[32];
-        byte[] rawBytes = secretKeyString.getBytes(StandardCharsets.UTF_8);
+        byte[] rawBytes = key.getBytes(StandardCharsets.UTF_8);
         System.arraycopy(rawBytes, 0, keyBytes, 0, Math.min(rawBytes.length, 32));
-        this.secretKey = new SecretKeySpec(keyBytes, "AES");
+        return new SecretKeySpec(keyBytes, "AES");
     }
 
     public String encrypt(String plaintext) {
@@ -40,7 +45,7 @@ public class EncryptionService {
 
             Cipher cipher = Cipher.getInstance(ALGORITHM);
             GCMParameterSpec parameterSpec = new GCMParameterSpec(TAG_LENGTH_BIT, iv);
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey, parameterSpec);
+            cipher.init(Cipher.ENCRYPT_MODE, getSecretKey(), parameterSpec);
 
             byte[] cipherText = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
 
@@ -73,7 +78,7 @@ public class EncryptionService {
 
             Cipher cipher = Cipher.getInstance(ALGORITHM);
             GCMParameterSpec parameterSpec = new GCMParameterSpec(TAG_LENGTH_BIT, iv);
-            cipher.init(Cipher.DECRYPT_MODE, secretKey, parameterSpec);
+            cipher.init(Cipher.DECRYPT_MODE, getSecretKey(), parameterSpec);
 
             byte[] plainText = cipher.doFinal(cipherText);
             return new String(plainText, StandardCharsets.UTF_8);
