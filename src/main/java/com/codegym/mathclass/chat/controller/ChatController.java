@@ -79,4 +79,47 @@ public class ChatController {
                 .result(unreadStudentIds)
                 .build());
     }
+
+    @GetMapping("/group/messages")
+    public ResponseEntity<ApiResponse<Page<ChatMessageResponse>>> getGroupChatHistory(
+            @PathVariable String classCode,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<ChatMessageResponse> history = chatService.getGroupChatHistory(classCode, userDetails.getId(), pageable);
+        return ResponseEntity.ok(ApiResponse.<Page<ChatMessageResponse>>builder()
+                .message("Lấy lịch sử chat nhóm thành công")
+                .result(history)
+                .build());
+    }
+
+    @GetMapping("/direct/{otherUserId}/messages")
+    public ResponseEntity<ApiResponse<Page<ChatMessageResponse>>> getDirectChatHistory(
+            @PathVariable String classCode,
+            @PathVariable Long otherUserId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<ChatMessageResponse> history = chatService.getDirectChatHistory(classCode, otherUserId, userDetails.getId(), pageable);
+        return ResponseEntity.ok(ApiResponse.<Page<ChatMessageResponse>>builder()
+                .message("Lấy lịch sử chat riêng 1-1 thành công")
+                .result(history)
+                .build());
+    }
+
+    @PutMapping("/direct/{otherUserId}/read")
+    public ResponseEntity<ApiResponse<Void>> markDirectAsRead(
+            @PathVariable String classCode,
+            @PathVariable Long otherUserId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        chatService.markDirectAsRead(classCode, otherUserId, userDetails.getId());
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .message("Đã đánh dấu các tin nhắn riêng là đã đọc")
+                .build());
+    }
 }

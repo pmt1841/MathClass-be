@@ -15,11 +15,16 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+
 @Entity
 @Table(
     name = "chat_messages",
     indexes = {
-        @Index(name = "idx_chat_messages_class_student_created", columnList = "class_id, student_id, created_at DESC")
+        @Index(name = "idx_chat_messages_class_student_created", columnList = "class_id, student_id, created_at DESC"),
+        @Index(name = "idx_chat_messages_group", columnList = "class_id, chat_type, created_at DESC"),
+        @Index(name = "idx_chat_messages_direct", columnList = "class_id, sender_id, recipient_id, created_at DESC")
     }
 )
 @Data
@@ -32,8 +37,16 @@ public class ChatMessage extends BaseEntity {
     @Column(name = "class_id", nullable = false)
     private Long classId;
 
-    @Column(name = "student_id", nullable = false)
+    @Column(name = "student_id", nullable = true)
     private Long studentId;
+
+    @Column(name = "recipient_id", nullable = true)
+    private Long recipientId;
+
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    @Column(name = "chat_type", nullable = false)
+    private ChatType chatType = ChatType.DIRECT_TEACHER;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sender_id", nullable = false)
