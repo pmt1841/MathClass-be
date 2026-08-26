@@ -1,6 +1,7 @@
 package com.codegym.mathclass.chat.controller;
 
 import com.codegym.mathclass.chat.dto.ChatMessageResponse;
+import com.codegym.mathclass.chat.dto.ClassroomChatUnreadSummaryResponse;
 import com.codegym.mathclass.chat.service.ChatService;
 import com.codegym.mathclass.common.dto.ApiResponse;
 import com.codegym.mathclass.security.services.CustomUserDetails;
@@ -80,6 +81,18 @@ public class ChatController {
                 .build());
     }
 
+    @GetMapping("/unread-summary")
+    public ResponseEntity<ApiResponse<ClassroomChatUnreadSummaryResponse>> getUnreadSummary(
+            @PathVariable String classCode,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        ClassroomChatUnreadSummaryResponse summary = chatService.getUnreadSummary(classCode, userDetails.getId());
+        return ResponseEntity.ok(ApiResponse.<ClassroomChatUnreadSummaryResponse>builder()
+                .message("Lấy tóm tắt tin nhắn chưa đọc của lớp học thành công")
+                .result(summary)
+                .build());
+    }
+
     @GetMapping("/group/messages")
     public ResponseEntity<ApiResponse<Page<ChatMessageResponse>>> getGroupChatHistory(
             @PathVariable String classCode,
@@ -92,6 +105,17 @@ public class ChatController {
         return ResponseEntity.ok(ApiResponse.<Page<ChatMessageResponse>>builder()
                 .message("Lấy lịch sử chat nhóm thành công")
                 .result(history)
+                .build());
+    }
+
+    @PutMapping("/group/read")
+    public ResponseEntity<ApiResponse<Void>> markGroupAsRead(
+            @PathVariable String classCode,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        chatService.markGroupAsRead(classCode, userDetails.getId());
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .message("Đã đánh dấu các tin nhắn nhóm là đã đọc")
                 .build());
     }
 

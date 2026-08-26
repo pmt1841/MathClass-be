@@ -11,6 +11,9 @@ import com.codegym.mathclass.classroom.repository.ClassroomRepository;
 import com.codegym.mathclass.exception.AccessDeniedException;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.notification.service.NotificationService;
+import com.codegym.mathclass.chat.dto.ClassroomChatUnreadSummaryResponse;
+import com.codegym.mathclass.chat.entity.GroupChatReadState;
+import com.codegym.mathclass.chat.repository.GroupChatReadStateRepository;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,9 +23,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -35,6 +41,7 @@ public class ChatServiceImpl implements ChatService {
     private final UserRepository userRepository;
     private final UserPresenceRegistry userPresenceRegistry;
     private final NotificationService notificationService;
+    private final GroupChatReadStateRepository groupChatReadStateRepository;
 
     @Override
     @Transactional
@@ -66,29 +73,6 @@ public class ChatServiceImpl implements ChatService {
                 .build();
 
         ChatMessage savedMessage = chatMessageRepository.save(chatMessage);
-
-        // Bổ sung thông báo đẩy SSE + Lưu DB cho người nhận
-        Long notificationTargetUserId;
-        String notificationMessage;
-        String notificationLink;
-
-        if (isTeacher) {
-            // Giảng viên gửi tin nhắn tới Học sinh
-            notificationTargetUserId = request.getStudentId();
-            notificationMessage = "Giảng viên " + sender.getFullName() + " đã gửi cho bạn một tin nhắn mới trong lớp " + classroom.getClassName();
-            notificationLink = "/classes/" + classroom.getClassCode() + "/student?chat=open";
-        } else {
-            // Học sinh gửi tin nhắn tới Giảng viên
-            notificationTargetUserId = classroom.getTeacher().getId();
-            notificationMessage = "Học sinh " + sender.getFullName() + " đã gửi cho bạn một tin nhắn mới trong lớp " + classroom.getClassName();
-            notificationLink = "/classes/" + classroom.getClassCode() + "?tab=chat&studentId=" + sender.getId();
-        }
-
-        try {
-            notificationService.saveAndSendNotification(notificationTargetUserId, notificationMessage, notificationLink);
-        } catch (Exception e) {
-            log.error("Lỗi khi gửi thông báo tin nhắn mới:", e);
-        }
 
         java.time.LocalDateTime msgCreatedAt = savedMessage.getCreatedAt() != null 
                 ? savedMessage.getCreatedAt() 
@@ -272,15 +256,6 @@ public class ChatServiceImpl implements ChatService {
 
         ChatMessage savedMessage = chatMessageRepository.save(chatMessage);
 
-        // Đẩy thông báo cho người nhận tin nhắn 1-1
-        try {
-            String notificationMessage = sender.getFullName() + " đã gửi cho bạn một tin nhắn mới trong lớp " + classroom.getClassName();
-            String notificationLink = "/classes/" + classroom.getClassCode();
-            notificationService.saveAndSendNotification(request.getRecipientId(), notificationMessage, notificationLink);
-        } catch (Exception e) {
-            log.error("Lỗi khi gửi thông báo tin nhắn 1-1:", e);
-        }
-
         java.time.LocalDateTime msgCreatedAt = savedMessage.getCreatedAt() != null
                 ? savedMessage.getCreatedAt()
                 : java.time.LocalDateTime.now(java.time.ZoneOffset.UTC);
@@ -361,4 +336,86 @@ public class ChatServiceImpl implements ChatService {
 
         chatMessageRepository.markDirectMessagesAsRead(classroom.getId(), otherUserId, currentUserId);
     }
+
+    private java.time.LocalDateTime getGroupLastReadAt(Long classId, Long userId) {
+        return groupChatReadStateRepository.findByClassIdAndUserId(classId, userId)
+                .map(GroupChatReadState::getLastReadAt)
+                .orElse(java.time.LocalDateTime.of(1970, 1, 1, 0, 0));
+    }
+
+    @Override
+    @Transactional
+    public void markGroupAsRead(String classCode, Long currentUserId) {
+        Classroom classroom = classroomRepository.findByClassCode(classCode)
+                .orElseThrow(() -> new BadRequestException("Không tìm thấy lớp học với mã: " + classCode));
+
+        validateClassMember(classroom, currentUserId);
+
+        Long classId = classroom.getId();
+        java.time.LocalDateTime now = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC);
+
+        GroupChatReadState readState = groupChatReadStateRepository.findByClassIdAndUserId(classId, currentUserId)
+                .orElse(GroupChatReadState.builder()
+                        .classId(classId)
+                        .userId(currentUserId)
+                        .lastReadAt(now)
+                        .build());
+
+        readState.setLastReadAt(now);
+        groupChatReadStateRepository.save(readState);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Long> getUnreadClassIds(Long currentUserId) {
+        List<Long> directUnreadClassIds = chatMessageRepository.findUnreadDirectClassIdsForUser(currentUserId);
+        Set<Long> resultSet = new HashSet<>(directUnreadClassIds);
+
+        List<Classroom> classrooms = classroomRepository.findAll();
+        for (Classroom c : classrooms) {
+            boolean isTeacher = c.getTeacher().getId() == currentUserId;
+            boolean isStudent = classroomRepository.existsByIdAndStudentsId(c.getId(), currentUserId);
+            if (isTeacher || isStudent) {
+                java.time.LocalDateTime lastReadAt = getGroupLastReadAt(c.getId(), currentUserId);
+                if (chatMessageRepository.hasUnreadGroupMessage(c.getId(), currentUserId, lastReadAt)) {
+                    resultSet.add(c.getId());
+                }
+            }
+        }
+
+        return new ArrayList<>(resultSet);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ClassroomChatUnreadSummaryResponse getUnreadSummary(String classCode, Long currentUserId) {
+        Classroom classroom = classroomRepository.findByClassCode(classCode)
+                .orElseThrow(() -> new BadRequestException("Không tìm thấy lớp học với mã: " + classCode));
+
+        validateClassMember(classroom, currentUserId);
+
+        Long classId = classroom.getId();
+        java.time.LocalDateTime lastReadAt = getGroupLastReadAt(classId, currentUserId);
+        boolean hasGroupUnread = chatMessageRepository.hasUnreadGroupMessage(classId, currentUserId, lastReadAt);
+
+        List<Object[]> rawCounts = chatMessageRepository.findUnreadStudentCountsRaw(classId, currentUserId);
+        Map<Long, Long> studentUnreadCounts = new HashMap<>();
+        List<Long> unreadStudentIds = new ArrayList<>();
+
+        for (Object[] row : rawCounts) {
+            if (row != null && row.length >= 2 && row[0] != null && row[1] != null) {
+                Long studentId = (Long) row[0];
+                Long count = (Long) row[1];
+                studentUnreadCounts.put(studentId, count);
+                unreadStudentIds.add(studentId);
+            }
+        }
+
+        return ClassroomChatUnreadSummaryResponse.builder()
+                .hasGroupUnread(hasGroupUnread)
+                .unreadStudentIds(unreadStudentIds)
+                .studentUnreadCounts(studentUnreadCounts)
+                .build();
+    }
 }
+

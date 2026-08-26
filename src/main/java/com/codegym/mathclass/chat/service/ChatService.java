@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.Set;
 
+import com.codegym.mathclass.chat.dto.ClassroomChatUnreadSummaryResponse;
 import com.codegym.mathclass.chat.dto.DirectChatMessageRequest;
 import com.codegym.mathclass.chat.dto.GroupChatMessageRequest;
 
@@ -24,4 +25,9 @@ public interface ChatService {
     Page<ChatMessageResponse> getGroupChatHistory(String classCode, Long currentUserId, Pageable pageable);
     Page<ChatMessageResponse> getDirectChatHistory(String classCode, Long otherUserId, Long currentUserId, Pageable pageable);
     void markDirectAsRead(String classCode, Long otherUserId, Long currentUserId);
+    void markGroupAsRead(String classCode, Long currentUserId);
+    List<Long> getUnreadClassIds(Long currentUserId);
+    ClassroomChatUnreadSummaryResponse getUnreadSummary(String classCode, Long currentUserId);
 }
+
+

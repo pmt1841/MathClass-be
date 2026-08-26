@@ -41,8 +41,13 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
         UPDATE ChatMessage m 
         SET m.isRead = true 
         WHERE m.classId = :classId 
-          AND m.sender.id = :targetStudentId 
+          AND m.chatType != com.codegym.mathclass.chat.entity.ChatType.CLASS_GROUP
           AND m.isRead = false
+          AND (
+            (m.studentId = :targetStudentId)
+            OR (m.sender.id = :targetStudentId)
+            OR (m.recipientId = :targetStudentId)
+          )
         """)
     int markMessagesAsRead(
         @Param("classId") Long classId, 
@@ -64,11 +69,17 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     );
 
     @Query("""
-        SELECT DISTINCT (CASE WHEN m.studentId IS NOT NULL THEN m.studentId ELSE m.sender.id END)
+        SELECT DISTINCT m.sender.id
         FROM ChatMessage m
         WHERE m.classId = :classId
+          AND m.chatType != com.codegym.mathclass.chat.entity.ChatType.CLASS_GROUP
           AND m.sender.id != :currentUserId
           AND m.isRead = false
+          AND (
+            m.recipientId = :currentUserId
+            OR (m.studentId = :currentUserId AND m.sender.id = (SELECT c.teacher.id FROM Classroom c WHERE c.id = :classId))
+            OR (m.recipientId IS NULL AND (SELECT c.teacher.id FROM Classroom c WHERE c.id = :classId) = :currentUserId)
+          )
         """)
     java.util.List<Long> findUnreadStudentIds(
         @Param("classId") Long classId,
@@ -110,9 +121,12 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
         UPDATE ChatMessage m 
         SET m.isRead = true 
         WHERE m.classId = :classId 
-          AND m.chatType = com.codegym.mathclass.chat.entity.ChatType.DIRECT_STUDENT
           AND m.sender.id = :otherUserId 
-          AND m.recipientId = :currentUserId
+          AND (
+            m.recipientId = :currentUserId 
+            OR m.studentId = :currentUserId
+            OR (m.recipientId IS NULL AND (SELECT c.teacher.id FROM Classroom c WHERE c.id = :classId) = :currentUserId)
+          )
           AND m.isRead = false
         """)
     int markDirectMessagesAsRead(
@@ -120,4 +134,53 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
         @Param("otherUserId") Long otherUserId, 
         @Param("currentUserId") Long currentUserId
     );
+
+    @Query("""
+        SELECT DISTINCT m.classId
+        FROM ChatMessage m
+        WHERE m.chatType != com.codegym.mathclass.chat.entity.ChatType.CLASS_GROUP
+          AND m.isRead = false
+          AND m.sender.id != :currentUserId
+          AND (
+            m.recipientId = :currentUserId
+            OR (m.studentId = :currentUserId AND m.sender.id = (SELECT c.teacher.id FROM Classroom c WHERE c.id = m.classId))
+            OR (m.recipientId IS NULL AND m.classId IN (SELECT c.id FROM Classroom c WHERE c.teacher.id = :currentUserId))
+          )
+        """)
+    java.util.List<Long> findUnreadDirectClassIdsForUser(@Param("currentUserId") Long currentUserId);
+
+    @Query("""
+        SELECT COUNT(m) > 0
+        FROM ChatMessage m
+        WHERE m.classId = :classId
+          AND m.chatType = com.codegym.mathclass.chat.entity.ChatType.CLASS_GROUP
+          AND m.sender.id != :currentUserId
+          AND m.createdAt > :lastReadAt
+        """)
+    boolean hasUnreadGroupMessage(
+        @Param("classId") Long classId,
+        @Param("currentUserId") Long currentUserId,
+        @Param("lastReadAt") java.time.LocalDateTime lastReadAt
+    );
+
+    @Query("""
+        SELECT m.sender.id, COUNT(m)
+        FROM ChatMessage m
+        WHERE m.classId = :classId
+          AND m.chatType != com.codegym.mathclass.chat.entity.ChatType.CLASS_GROUP
+          AND m.sender.id != :currentUserId
+          AND m.isRead = false
+          AND (
+            m.recipientId = :currentUserId
+            OR (m.studentId = :currentUserId AND m.sender.id = (SELECT c.teacher.id FROM Classroom c WHERE c.id = :classId))
+            OR (m.recipientId IS NULL AND (SELECT c.teacher.id FROM Classroom c WHERE c.id = :classId) = :currentUserId)
+          )
+        GROUP BY m.sender.id
+        """)
+    java.util.List<Object[]> findUnreadStudentCountsRaw(
+        @Param("classId") Long classId,
+        @Param("currentUserId") Long currentUserId
+    );
 }
+
+
