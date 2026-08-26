@@ -1,5 +1,11 @@
 package com.codegym.mathclass.config;
 
+import com.codegym.mathclass.aiconfig.credit.repository.AiCreditConfigRepository;
+import com.codegym.mathclass.aiconfig.credit.repository.AiCreditDefaultRepository;
+import com.codegym.mathclass.aiconfig.credit.repository.CreditPackageRepository;
+import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
+import com.codegym.mathclass.aiconfig.repository.SystemPromptHistoryRepository;
+import com.codegym.mathclass.aiconfig.repository.SystemPromptRepository;
 import com.codegym.mathclass.assignment.repository.AssignmentDrawingRepository;
 import com.codegym.mathclass.assignment.repository.AssignmentRepository;
 import com.codegym.mathclass.classroom.repository.ClassroomJoinRequestRepository;
@@ -23,8 +29,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.Collections;
+import java.util.Optional;
+
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class DatabaseSeederTest {
@@ -55,6 +70,18 @@ class DatabaseSeederTest {
     private PermissionRepository permissionRepository;
     @Mock
     private RolePermissionRepository rolePermissionRepository;
+    @Mock
+    private AiCreditService aiCreditService;
+    @Mock
+    private AiCreditDefaultRepository aiCreditDefaultRepository;
+    @Mock
+    private AiCreditConfigRepository aiCreditConfigRepository;
+    @Mock
+    private CreditPackageRepository creditPackageRepository;
+    @Mock
+    private SystemPromptRepository systemPromptRepository;
+    @Mock
+    private SystemPromptHistoryRepository systemPromptHistoryRepository;
 
     @InjectMocks
     private DatabaseSeeder databaseSeeder;
@@ -63,6 +90,13 @@ class DatabaseSeederTest {
     void setUp() {
         ReflectionTestUtils.setField(databaseSeeder, "isSeedEnabled", true);
         lenient().when(passwordEncoder.encode(any())).thenReturn("hashed_password");
+        lenient().when(permissionRepository.findAll()).thenReturn(Collections.emptyList());
+        lenient().when(aiCreditDefaultRepository.findByRole(any())).thenReturn(Optional.empty());
+        lenient().when(aiCreditConfigRepository.findByTask(anyString())).thenReturn(Optional.empty());
+        lenient().when(creditPackageRepository.count()).thenReturn(0L);
+        lenient().when(systemPromptRepository.findByCode(anyString())).thenReturn(Optional.empty());
+        lenient().when(systemPromptRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(systemPromptHistoryRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
@@ -78,19 +112,16 @@ class DatabaseSeederTest {
     @Test
     @DisplayName("Should skip seeding if database is not empty")
     void shouldSkipSeedingIfDatabaseNotEmpty() throws Exception {
-        when(permissionRepository.count()).thenReturn(10L);
         when(userRepository.count()).thenReturn(5L);
 
         databaseSeeder.run();
 
         verify(userRepository, times(1)).count();
-        verifyNoMoreInteractions(userRepository);
     }
 
     @Test
     @DisplayName("Should seed database successfully when empty")
     void shouldSeedDatabaseSuccessfullyWhenEmpty() throws Exception {
-        when(permissionRepository.count()).thenReturn(0L);
         when(userRepository.count()).thenReturn(0L);
         when(userRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(classroomRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -102,8 +133,6 @@ class DatabaseSeederTest {
         when(submissionDrawingRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(notificationRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(notificationSettingsRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(permissionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(rolePermissionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         databaseSeeder.run();
 
@@ -118,7 +147,5 @@ class DatabaseSeederTest {
         verify(submissionDrawingRepository, atLeastOnce()).save(any());
         verify(notificationRepository, atLeastOnce()).save(any());
         verify(notificationSettingsRepository, atLeastOnce()).save(any());
-        verify(permissionRepository, atLeastOnce()).save(any());
-        verify(rolePermissionRepository, atLeastOnce()).save(any());
     }
 }

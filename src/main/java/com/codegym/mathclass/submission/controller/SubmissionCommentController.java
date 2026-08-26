@@ -26,14 +26,16 @@ public class SubmissionCommentController {
 
     private final SubmissionCommentService submissionCommentService;
 
-    @Operation(summary = "Danh sách bình luận của bài nộp", description = "Lấy danh sách các nhận xét/bình luận của bài nộp")
+    @Operation(summary = "Danh sách bình luận của bài nộp", description = "Lấy danh sách các nhận xét/bình luận của bài nộp (có thể lọc theo phiên bản versionNumber)")
     @GetMapping
     @PreAuthorize("hasAuthority('submission:comment')")
     public ResponseEntity<List<SubmissionCommentResponse>> getCommentsBySubmissionId(
             @PathVariable Long submissionId,
+            @RequestParam(required = false) Integer versionNumber,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         
-        List<SubmissionCommentResponse> responses = submissionCommentService.getCommentsBySubmissionId(submissionId, userDetails.getUsername());
+        List<SubmissionCommentResponse> responses = submissionCommentService.getCommentsBySubmissionId(
+                submissionId, versionNumber, userDetails.getUsername());
         return ResponseEntity.ok(responses);
     }
 

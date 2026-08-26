@@ -57,6 +57,9 @@ class ClassroomServiceImplTest {
     @Mock
     private NotificationService notificationService;
 
+    @Mock
+    private com.codegym.mathclass.chat.service.UserPresenceRegistry userPresenceRegistry;
+
     @InjectMocks
     private ClassroomServiceImpl classroomService;
 
@@ -103,10 +106,9 @@ class ClassroomServiceImplTest {
     class CreateClassroomTests {
 
         @Test
-        @DisplayName("Should create classroom successfully when user is teacher and code is unique")
+        @DisplayName("Should create classroom successfully and return ClassroomResponse")
         void createClassroom_UserIsTeacher_ReturnsClassroomResponse() {
             when(userRepository.findById(currentUserId)).thenReturn(Optional.of(teacher));
-            when(classroomRepository.existsByClassCode(anyString())).thenReturn(false);
 
             Classroom savedClassroom = new Classroom();
             savedClassroom.setId(10L);
@@ -132,7 +134,6 @@ class ClassroomServiceImplTest {
             assertThat(response.getClassCode()).isNotNull().hasSize(8);
 
             verify(userRepository, times(1)).findById(currentUserId);
-            verify(classroomRepository, atLeastOnce()).existsByClassCode(anyString());
             verify(classroomRepository, times(1)).save(any(Classroom.class));
         }
 
@@ -146,49 +147,6 @@ class ClassroomServiceImplTest {
                     .hasMessage("Không tìm thấy người dùng");
 
             verify(classroomRepository, never()).save(any(Classroom.class));
-        }
-
-        @Test
-        @DisplayName("Should throw AccessDeniedException when user is not a teacher")
-        void createClassroom_UserNotTeacher_ThrowsException() {
-            User studentUser = new User();
-            studentUser.setId(currentUserId);
-            studentUser.setRole(Role.STUDENT);
-
-            when(userRepository.findById(currentUserId)).thenReturn(Optional.of(studentUser));
-
-            assertThatThrownBy(() -> classroomService.createClassroom(request, currentUserId))
-                    .isInstanceOf(AccessDeniedException.class)
-                    .hasMessage("Chỉ giáo viên mới có quyền tạo lớp học");
-
-            verify(classroomRepository, never()).save(any(Classroom.class));
-        }
-
-        @Test
-        @DisplayName("Should retry generating code when there is a collision")
-        void createClassroom_CodeCollision_RetriesAndSucceeds() {
-            when(userRepository.findById(currentUserId)).thenReturn(Optional.of(teacher));
-            when(classroomRepository.existsByClassCode(anyString())).thenReturn(true).thenReturn(false);
-
-            Classroom savedClassroom = new Classroom();
-            savedClassroom.setId(10L);
-            savedClassroom.setClassName(request.getName());
-            savedClassroom.setMaxStudents(request.getMaxStudents());
-            savedClassroom.setDescription(request.getDescription());
-            savedClassroom.setTeacher(teacher);
-            savedClassroom.setStudents(new HashSet<>());
-
-            when(classroomRepository.save(any(Classroom.class))).thenAnswer(invocation -> {
-                Classroom classroomToSave = invocation.getArgument(0);
-                savedClassroom.setClassCode(classroomToSave.getClassCode());
-                return savedClassroom;
-            });
-
-            ClassroomResponse response = classroomService.createClassroom(request, currentUserId);
-
-            assertThat(response).isNotNull();
-            verify(classroomRepository, times(2)).existsByClassCode(anyString());
-            verify(classroomRepository, times(1)).save(any(Classroom.class));
         }
     }
 

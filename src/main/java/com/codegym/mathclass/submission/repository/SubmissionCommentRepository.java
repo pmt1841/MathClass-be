@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface SubmissionCommentRepository extends JpaRepository<SubmissionComment, Long> {
     List<SubmissionComment> findBySubmissionIdOrderByCreatedAtAsc(Long submissionId);
+    
+    List<SubmissionComment> findBySubmissionIdAndVersionNumberOrderByCreatedAtAsc(Long submissionId, Integer versionNumber);
 }

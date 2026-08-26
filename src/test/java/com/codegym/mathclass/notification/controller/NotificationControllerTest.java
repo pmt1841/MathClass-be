@@ -29,9 +29,12 @@ import java.util.Collections;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -72,7 +75,7 @@ class NotificationControllerTest {
     }
 
     @Nested
-    @DisplayName("GET /api/notifications/stream Integration Tests")
+    @DisplayName("GET /notifications/stream Integration Tests")
     class StreamEndpointTests {
 
         @Test
@@ -81,7 +84,7 @@ class NotificationControllerTest {
             SseEmitter emitter = new SseEmitter();
             when(notificationService.createEmitter(1L)).thenReturn(emitter);
 
-            mockMvc.perform(get("/api/notifications/stream"))
+            mockMvc.perform(get("/notifications/stream"))
                     .andExpect(status().isOk());
 
             verify(notificationService, times(1)).createEmitter(1L);
@@ -89,7 +92,7 @@ class NotificationControllerTest {
     }
 
     @Nested
-    @DisplayName("GET /api/notifications Integration Tests")
+    @DisplayName("GET /notifications Integration Tests")
     class GetNotificationsEndpointTests {
 
         @Test
@@ -106,7 +109,7 @@ class NotificationControllerTest {
 
             when(notificationService.getNotifications(eq(1L), any(PageRequest.class))).thenReturn(page);
 
-            mockMvc.perform(get("/api/notifications")
+            mockMvc.perform(get("/notifications")
                             .param("page", "0")
                             .param("size", "10"))
                     .andExpect(status().isOk())
@@ -118,7 +121,7 @@ class NotificationControllerTest {
     }
 
     @Nested
-    @DisplayName("GET /api/notifications/unread-count Integration Tests")
+    @DisplayName("GET /notifications/unread-count Integration Tests")
     class GetUnreadCountEndpointTests {
 
         @Test
@@ -126,7 +129,7 @@ class NotificationControllerTest {
         void getUnreadCount_ValidUser_ReturnsCount() throws Exception {
             when(notificationService.getUnreadCount(1L)).thenReturn(5L);
 
-            mockMvc.perform(get("/api/notifications/unread-count"))
+            mockMvc.perform(get("/notifications/unread-count"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.count").value(5));
 
@@ -135,7 +138,7 @@ class NotificationControllerTest {
     }
 
     @Nested
-    @DisplayName("PUT /api/notifications/read-all Integration Tests")
+    @DisplayName("PATCH /notifications/read-all Integration Tests")
     class MarkAllAsReadEndpointTests {
 
         @Test
@@ -143,7 +146,7 @@ class NotificationControllerTest {
         void markAllAsRead_ValidUser_ReturnsOk() throws Exception {
             doNothing().when(notificationService).markAllAsRead(1L);
 
-            mockMvc.perform(put("/api/notifications/read-all"))
+            mockMvc.perform(patch("/notifications/read-all"))
                     .andExpect(status().isOk());
 
             verify(notificationService, times(1)).markAllAsRead(1L);
@@ -151,7 +154,7 @@ class NotificationControllerTest {
     }
 
     @Nested
-    @DisplayName("PUT /api/notifications/{id}/read Integration Tests")
+    @DisplayName("PATCH /notifications/{id}/read Integration Tests")
     class MarkAsReadEndpointTests {
 
         @Test
@@ -159,7 +162,7 @@ class NotificationControllerTest {
         void markAsRead_ValidId_ReturnsOk() throws Exception {
             doNothing().when(notificationService).markAsRead(10L, 1L);
 
-            mockMvc.perform(put("/api/notifications/10/read"))
+            mockMvc.perform(patch("/notifications/10/read"))
                     .andExpect(status().isOk());
 
             verify(notificationService, times(1)).markAsRead(10L, 1L);

@@ -29,9 +29,17 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -86,7 +94,7 @@ class AdminPermissionControllerTest {
     }
 
     @Nested
-    @DisplayName("GET /api/admin/roles/permissions Integration Tests")
+    @DisplayName("GET /admin/roles/permissions Integration Tests")
     class GetAllPermissionsEndpointTests {
 
         @Test
@@ -94,7 +102,7 @@ class AdminPermissionControllerTest {
         void getAllPermissions_ReturnsOk() throws Exception {
             when(rolePermissionService.getAllPermissions()).thenReturn(List.of(mockPermissionDto));
 
-            mockMvc.perform(get("/api/admin/roles/permissions"))
+            mockMvc.perform(get("/admin/roles/permissions"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$[0].id").value(1))
                     .andExpect(jsonPath("$[0].name").value("user:read"));
@@ -104,7 +112,7 @@ class AdminPermissionControllerTest {
     }
 
     @Nested
-    @DisplayName("GET /api/admin/roles/{roleName}/permissions Integration Tests")
+    @DisplayName("GET /admin/roles/{roleName}/permissions Integration Tests")
     class GetPermissionsByRoleEndpointTests {
 
         @Test
@@ -112,7 +120,7 @@ class AdminPermissionControllerTest {
         void getPermissionsByRole_ValidRole_ReturnsOk() throws Exception {
             when(rolePermissionService.getPermissionsByRole(Role.TEACHER)).thenReturn(List.of(mockPermissionDto));
 
-            mockMvc.perform(get("/api/admin/roles/teacher/permissions"))
+            mockMvc.perform(get("/admin/roles/teacher/permissions"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$[0].id").value(1))
                     .andExpect(jsonPath("$[0].name").value("user:read"));
@@ -123,7 +131,7 @@ class AdminPermissionControllerTest {
         @Test
         @DisplayName("Should return 400 Bad Request when roleName is invalid")
         void getPermissionsByRole_InvalidRole_Returns400BadRequest() throws Exception {
-            mockMvc.perform(get("/api/admin/roles/invalid_role/permissions"))
+            mockMvc.perform(get("/admin/roles/invalid_role/permissions"))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.error").value("Role không hợp lệ: invalid_role"));
 
@@ -132,7 +140,7 @@ class AdminPermissionControllerTest {
     }
 
     @Nested
-    @DisplayName("PUT /api/admin/roles/{roleName}/permissions Integration Tests")
+    @DisplayName("PUT /admin/roles/{roleName}/permissions Integration Tests")
     class UpdateRolePermissionsEndpointTests {
 
         @Test
@@ -143,7 +151,7 @@ class AdminPermissionControllerTest {
 
             doNothing().when(rolePermissionService).updateRolePermissions(eq(Role.TEACHER), eq(List.of(1L, 2L)));
 
-            mockMvc.perform(put("/api/admin/roles/teacher/permissions")
+            mockMvc.perform(put("/admin/roles/teacher/permissions")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk())
@@ -159,7 +167,7 @@ class AdminPermissionControllerTest {
             UpdateRolePermissionsRequest request = new UpdateRolePermissionsRequest();
             request.setPermissionIds(List.of(1L, 2L));
 
-            mockMvc.perform(put("/api/admin/roles/invalid_role/permissions")
+            mockMvc.perform(put("/admin/roles/invalid_role/permissions")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest())
@@ -170,7 +178,7 @@ class AdminPermissionControllerTest {
     }
 
     @Nested
-    @DisplayName("POST /api/admin/roles/{roleName}/reset-permissions Integration Tests")
+    @DisplayName("POST /admin/roles/{roleName}/reset-permissions Integration Tests")
     class ResetRolePermissionsEndpointTests {
 
         @Test
@@ -178,7 +186,7 @@ class AdminPermissionControllerTest {
         void resetRolePermissions_ValidRole_ReturnsOk() throws Exception {
             doNothing().when(rolePermissionService).resetRolePermissionsToDefault(Role.TEACHER);
 
-            mockMvc.perform(post("/api/admin/roles/teacher/reset-permissions"))
+            mockMvc.perform(post("/admin/roles/teacher/reset-permissions"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.message").value("Khôi phục phân quyền mặc định thành công."));
 
@@ -189,7 +197,7 @@ class AdminPermissionControllerTest {
         @Test
         @DisplayName("Should return 400 Bad Request when roleName is invalid")
         void resetRolePermissions_InvalidRole_Returns400BadRequest() throws Exception {
-            mockMvc.perform(post("/api/admin/roles/invalid_role/reset-permissions"))
+            mockMvc.perform(post("/admin/roles/invalid_role/reset-permissions"))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.error").value("Role không hợp lệ: invalid_role"));
 

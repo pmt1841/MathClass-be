@@ -10,6 +10,7 @@ import com.codegym.mathclass.submission.entity.Submission;
 import com.codegym.mathclass.submission.entity.SubmissionComment;
 import com.codegym.mathclass.submission.repository.SubmissionCommentRepository;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
+import com.codegym.mathclass.submission.repository.SubmissionVersionRepository;
 import com.codegym.mathclass.submission.service.impl.SubmissionCommentServiceImpl;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
@@ -38,6 +39,9 @@ class SubmissionCommentServiceImplTest {
 
     @Mock
     private SubmissionRepository submissionRepository;
+
+    @Mock
+    private SubmissionVersionRepository submissionVersionRepository;
 
     @Mock
     private UserRepository userRepository;
@@ -80,6 +84,7 @@ class SubmissionCommentServiceImplTest {
         comment = SubmissionComment.builder()
                 .submission(submission)
                 .teacher(teacher)
+                .versionNumber(1)
                 .content("Good work")
                 .quoteText("Quote text")
                 .build();
@@ -91,16 +96,30 @@ class SubmissionCommentServiceImplTest {
     class GetCommentsBySubmissionIdTests {
 
         @Test
-        @DisplayName("Should return comments list for student owner")
+        @DisplayName("Should return comments list for student owner when versionNumber is null")
         void getCommentsBySubmissionId_StudentOwner_ReturnsList() {
             when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
             when(submissionCommentRepository.findBySubmissionIdOrderByCreatedAtAsc(submissionId))
                     .thenReturn(List.of(comment));
 
-            List<SubmissionCommentResponse> responses = commentService.getCommentsBySubmissionId(submissionId, "student@codegym.com");
+            List<SubmissionCommentResponse> responses = commentService.getCommentsBySubmissionId(submissionId, null, "student@codegym.com");
 
             assertThat(responses).isNotNull().hasSize(1);
             assertThat(responses.get(0).getContent()).isEqualTo("Good work");
+            assertThat(responses.get(0).getVersionNumber()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("Should return comments list filtered by versionNumber")
+        void getCommentsBySubmissionId_FilteredByVersion_ReturnsList() {
+            when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
+            when(submissionCommentRepository.findBySubmissionIdAndVersionNumberOrderByCreatedAtAsc(submissionId, 2))
+                    .thenReturn(List.of(comment));
+
+            List<SubmissionCommentResponse> responses = commentService.getCommentsBySubmissionId(submissionId, 2, "teacher@codegym.com");
+
+            assertThat(responses).isNotNull().hasSize(1);
+            verify(submissionCommentRepository, times(1)).findBySubmissionIdAndVersionNumberOrderByCreatedAtAsc(submissionId, 2);
         }
 
         @Test
@@ -110,7 +129,7 @@ class SubmissionCommentServiceImplTest {
             when(submissionCommentRepository.findBySubmissionIdOrderByCreatedAtAsc(submissionId))
                     .thenReturn(List.of(comment));
 
-            List<SubmissionCommentResponse> responses = commentService.getCommentsBySubmissionId(submissionId, "teacher@codegym.com");
+            List<SubmissionCommentResponse> responses = commentService.getCommentsBySubmissionId(submissionId, null, "teacher@codegym.com");
 
             assertThat(responses).isNotNull().hasSize(1);
         }
@@ -120,7 +139,7 @@ class SubmissionCommentServiceImplTest {
         void getCommentsBySubmissionId_SubmissionNotFound_ThrowsException() {
             when(submissionRepository.findById(999L)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> commentService.getCommentsBySubmissionId(999L, "student@codegym.com"))
+            assertThatThrownBy(() -> commentService.getCommentsBySubmissionId(999L, null, "student@codegym.com"))
                     .isInstanceOf(ResourceNotFoundException.class)
                     .hasMessageContaining("Không tìm thấy bài nộp với ID");
         }
@@ -130,7 +149,7 @@ class SubmissionCommentServiceImplTest {
         void getCommentsBySubmissionId_Unauthorized_ThrowsException() {
             when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
 
-            assertThatThrownBy(() -> commentService.getCommentsBySubmissionId(submissionId, "other@codegym.com"))
+            assertThatThrownBy(() -> commentService.getCommentsBySubmissionId(submissionId, null, "other@codegym.com"))
                     .isInstanceOf(AccessDeniedException.class)
                     .hasMessage("Bạn không có quyền truy cập nhận xét của bài nộp này");
         }
@@ -141,10 +160,11 @@ class SubmissionCommentServiceImplTest {
     class AddCommentTests {
 
         @Test
-        @DisplayName("Should add comment successfully when requested by teacher")
-        void addComment_ValidRequest_Success() {
+        @DisplayName("Should add comment successfully when requested by teacher with explicit versionNumber")
+        void addComment_ValidRequestWithVersion_Success() {
             SubmissionCommentRequest request = new SubmissionCommentRequest();
             request.setContent("Great solution!");
+            request.setVersionNumber(2);
 
             when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
             when(userRepository.findById(teacherId)).thenReturn(Optional.of(teacher));
@@ -159,6 +179,29 @@ class SubmissionCommentServiceImplTest {
             assertThat(response).isNotNull();
             assertThat(response.getId()).isEqualTo(commentId);
             assertThat(response.getContent()).isEqualTo("Great solution!");
+            assertThat(response.getVersionNumber()).isEqualTo(2);
+            verify(submissionCommentRepository, times(1)).save(any(SubmissionComment.class));
+        }
+
+        @Test
+        @DisplayName("Should add comment with fallback max version when versionNumber is omitted")
+        void addComment_ValidRequestWithoutVersion_UsesMaxVersion() {
+            SubmissionCommentRequest request = new SubmissionCommentRequest();
+            request.setContent("Great solution!");
+
+            when(submissionRepository.findById(submissionId)).thenReturn(Optional.of(submission));
+            when(userRepository.findById(teacherId)).thenReturn(Optional.of(teacher));
+            when(submissionVersionRepository.findMaxVersionNumberBySubmissionId(submissionId)).thenReturn(3);
+            when(submissionCommentRepository.save(any(SubmissionComment.class))).thenAnswer(i -> {
+                SubmissionComment c = i.getArgument(0);
+                c.setId(commentId);
+                return c;
+            });
+
+            SubmissionCommentResponse response = commentService.addComment(submissionId, teacherId, request);
+
+            assertThat(response).isNotNull();
+            assertThat(response.getVersionNumber()).isEqualTo(3);
             verify(submissionCommentRepository, times(1)).save(any(SubmissionComment.class));
         }
 

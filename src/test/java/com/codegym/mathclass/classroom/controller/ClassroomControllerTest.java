@@ -27,9 +27,18 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 import java.util.Collections;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -73,7 +82,7 @@ class ClassroomControllerTest {
     }
 
     @Nested
-    @DisplayName("POST /api/classrooms/create Integration Tests")
+    @DisplayName("POST /classrooms Integration Tests")
     class CreateClassroomEndpointTests {
 
         @Test
@@ -90,7 +99,7 @@ class ClassroomControllerTest {
 
             when(classroomService.createClassroom(any(CreateClassroomRequest.class), eq(1L))).thenReturn(response);
 
-            mockMvc.perform(post("/api/classrooms/create")
+            mockMvc.perform(post("/classrooms")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isCreated())
@@ -108,7 +117,7 @@ class ClassroomControllerTest {
             request.setName("");
             request.setMaxStudents(30);
 
-            mockMvc.perform(post("/api/classrooms/create")
+            mockMvc.perform(post("/classrooms")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest());
@@ -118,7 +127,7 @@ class ClassroomControllerTest {
     }
 
     @Nested
-    @DisplayName("GET /api/classrooms/my-classroom Integration Tests")
+    @DisplayName("GET /classrooms Integration Tests")
     class GetClassroomsListEndpointTests {
 
         @Test
@@ -130,7 +139,7 @@ class ClassroomControllerTest {
 
             when(classroomService.getClassroomsListById(1L)).thenReturn(Collections.singletonList(response));
 
-            mockMvc.perform(get("/api/classrooms/my-classroom"))
+            mockMvc.perform(get("/classrooms"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$[0].id").value(100L))
                     .andExpect(jsonPath("$[0].classCode").value("MATH101"));
@@ -140,7 +149,7 @@ class ClassroomControllerTest {
     }
 
     @Nested
-    @DisplayName("GET /api/classrooms/{classCode} Integration Tests")
+    @DisplayName("GET /classrooms/{classCode} Integration Tests")
     class GetClassroomByClassCodeEndpointTests {
 
         @Test
@@ -152,7 +161,7 @@ class ClassroomControllerTest {
 
             when(classroomService.getClassroomByClassCode("MATH101", 1L)).thenReturn(response);
 
-            mockMvc.perform(get("/api/classrooms/MATH101"))
+            mockMvc.perform(get("/classrooms/MATH101"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.id").value(100L))
                     .andExpect(jsonPath("$.classCode").value("MATH101"));
@@ -162,7 +171,7 @@ class ClassroomControllerTest {
     }
 
     @Nested
-    @DisplayName("PUT /api/classrooms/{classCode} Integration Tests")
+    @DisplayName("PUT /classrooms/{classCode} Integration Tests")
     class UpdateClassroomEndpointTests {
 
         @Test
@@ -180,7 +189,7 @@ class ClassroomControllerTest {
             when(classroomService.updateClassroom(eq("MATH101"), any(UpdateClassroomRequest.class), eq(1L)))
                     .thenReturn(response);
 
-            mockMvc.perform(put("/api/classrooms/MATH101")
+            mockMvc.perform(put("/classrooms/MATH101")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk())
@@ -196,7 +205,7 @@ class ClassroomControllerTest {
             request.setClassName("");
             request.setMaxStudents(30);
 
-            mockMvc.perform(put("/api/classrooms/MATH101")
+            mockMvc.perform(put("/classrooms/MATH101")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest());
@@ -206,7 +215,7 @@ class ClassroomControllerTest {
     }
 
     @Nested
-    @DisplayName("DELETE /api/classrooms/{classCode} Integration Tests")
+    @DisplayName("DELETE /classrooms/{classCode} Integration Tests")
     class DeleteClassroomEndpointTests {
 
         @Test
@@ -214,7 +223,7 @@ class ClassroomControllerTest {
         void deleteClassroom_ValidClassCode_ReturnsNoContent() throws Exception {
             doNothing().when(classroomService).deleteClassroom("MATH101", 1L);
 
-            mockMvc.perform(delete("/api/classrooms/MATH101"))
+            mockMvc.perform(delete("/classrooms/MATH101"))
                     .andExpect(status().isNoContent());
 
             verify(classroomService, times(1)).deleteClassroom("MATH101", 1L);

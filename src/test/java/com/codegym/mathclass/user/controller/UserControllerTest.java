@@ -28,10 +28,17 @@ import java.time.LocalDate;
 import java.util.Collections;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
 class UserControllerTest {
@@ -80,7 +87,7 @@ class UserControllerTest {
     }
 
     @Nested
-    @DisplayName("GET /api/users/profile Integration Tests")
+    @DisplayName("GET /users/me Integration Tests")
     class GetCurrentUserProfileEndpointTests {
 
         @Test
@@ -88,7 +95,7 @@ class UserControllerTest {
         void getCurrentUserProfile_ValidUserDetails_ReturnsOk() throws Exception {
             when(userService.getUserProfile(1L)).thenReturn(mockUserResponse);
 
-            mockMvc.perform(get("/api/users/profile"))
+            mockMvc.perform(get("/users/me"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.id").value(1))
                     .andExpect(jsonPath("$.fullName").value("Test User"))
@@ -99,7 +106,7 @@ class UserControllerTest {
     }
 
     @Nested
-    @DisplayName("PUT /api/users/profile Integration Tests")
+    @DisplayName("PUT /users/me Integration Tests")
     class UpdateProfileEndpointTests {
 
         @Test
@@ -114,7 +121,7 @@ class UserControllerTest {
                     "\"dateOfBirth\":\"01-01-2000\"" +
                     "}";
 
-            mockMvc.perform(put("/api/users/profile")
+            mockMvc.perform(put("/users/me")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(requestJson))
                     .andExpect(status().isOk())
@@ -132,7 +139,7 @@ class UserControllerTest {
                     "\"phoneNumber\":\"0123456789\"" +
                     "}";
 
-            mockMvc.perform(put("/api/users/profile")
+            mockMvc.perform(put("/users/me")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(requestJson))
                     .andExpect(status().isBadRequest());
@@ -142,7 +149,7 @@ class UserControllerTest {
     }
 
     @Nested
-    @DisplayName("POST /api/users/avatar Integration Tests")
+    @DisplayName("POST /users/me/avatar Integration Tests")
     class UploadAvatarEndpointTests {
 
         @Test
@@ -153,7 +160,7 @@ class UserControllerTest {
 
             when(userService.uploadAvatar(eq(1L), any())).thenReturn(expectedUrl);
 
-            mockMvc.perform(multipart("/api/users/avatar").file(file))
+            mockMvc.perform(multipart("/users/me/avatar").file(file))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.avatarUrl").value(expectedUrl));
 

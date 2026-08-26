@@ -1,6 +1,11 @@
 package com.codegym.mathclass.dashboard.controller;
 
-import com.codegym.mathclass.dashboard.dto.*;
+import com.codegym.mathclass.dashboard.dto.AtRiskStudentDto;
+import com.codegym.mathclass.dashboard.dto.PendingSubmissionDto;
+import com.codegym.mathclass.dashboard.dto.StudentDashboardStatsDto;
+import com.codegym.mathclass.dashboard.dto.StudentGradedTaskDto;
+import com.codegym.mathclass.dashboard.dto.StudentPendingTaskDto;
+import com.codegym.mathclass.dashboard.dto.TeacherDashboardStatsDto;
 import com.codegym.mathclass.dashboard.service.DashboardService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,7 +26,9 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 
 import java.util.Collections;
 
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -75,7 +82,7 @@ class DashboardControllerTest {
         when(dashboardService.getTeacherDashboardStats(1L)).thenReturn(stats);
 
         // When & Then
-        mockMvc.perform(get("/api/dashboard/teacher-stats"))
+        mockMvc.perform(get("/dashboard/teacher-stats"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.teachingClasses").value(5))
                 .andExpect(jsonPath("$.managedStudents").value(100))
@@ -96,7 +103,7 @@ class DashboardControllerTest {
         when(dashboardService.getPendingSubmissions(1L, 10)).thenReturn(Collections.singletonList(dto));
 
         // When & Then
-        mockMvc.perform(get("/api/dashboard/pending-submissions").param("limit", "10"))
+        mockMvc.perform(get("/dashboard/pending-submissions").param("limit", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(100L))
                 .andExpect(jsonPath("$[0].studentName").value("John Doe"));
@@ -115,7 +122,7 @@ class DashboardControllerTest {
         when(dashboardService.getAtRiskStudents(1L)).thenReturn(Collections.singletonList(dto));
 
         // When & Then
-        mockMvc.perform(get("/api/dashboard/at-risk-students"))
+        mockMvc.perform(get("/dashboard/at-risk-students"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(2L))
                 .andExpect(jsonPath("$[0].name").value("Jane Doe"));
@@ -135,7 +142,7 @@ class DashboardControllerTest {
         when(dashboardService.getStudentDashboardStats(1L)).thenReturn(stats);
 
         // When & Then
-        mockMvc.perform(get("/api/dashboard/student-stats"))
+        mockMvc.perform(get("/dashboard/student-stats"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.joinedClasses").value(3))
                 .andExpect(jsonPath("$.pendingTasks").value(5))
@@ -155,7 +162,7 @@ class DashboardControllerTest {
         when(dashboardService.getStudentPendingTasks(1L, 10)).thenReturn(Collections.singletonList(dto));
 
         // When & Then
-        mockMvc.perform(get("/api/dashboard/student-pending-tasks").param("limit", "10"))
+        mockMvc.perform(get("/dashboard/student-pending-tasks").param("limit", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(10L))
                 .andExpect(jsonPath("$[0].title").value("Math Homework"));
@@ -174,7 +181,7 @@ class DashboardControllerTest {
         when(dashboardService.getStudentGradedTasks(1L, 10)).thenReturn(Collections.singletonList(dto));
 
         // When & Then
-        mockMvc.perform(get("/api/dashboard/student-graded-tasks").param("limit", "10"))
+        mockMvc.perform(get("/dashboard/student-graded-tasks").param("limit", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(100L))
                 .andExpect(jsonPath("$[0].score").value(9.5));

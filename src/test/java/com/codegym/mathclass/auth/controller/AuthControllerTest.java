@@ -1,6 +1,10 @@
 package com.codegym.mathclass.auth.controller;
 
-import com.codegym.mathclass.auth.dto.request.*;
+import com.codegym.mathclass.auth.dto.request.ForgotPasswordRequest;
+import com.codegym.mathclass.auth.dto.request.GoogleAuthRequest;
+import com.codegym.mathclass.auth.dto.request.LoginRequest;
+import com.codegym.mathclass.auth.dto.request.ResetPasswordRequest;
+import com.codegym.mathclass.auth.dto.request.SignupRequest;
 import com.codegym.mathclass.auth.dto.response.MessageResponse;
 import com.codegym.mathclass.auth.dto.response.UserInfoResponse;
 import com.codegym.mathclass.auth.service.AuthService;
@@ -21,8 +25,10 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -50,7 +56,7 @@ class AuthControllerTest {
     }
 
     @Nested
-    @DisplayName("POST /api/auth/login Integration Tests")
+    @DisplayName("POST /auth/login Integration Tests")
     class LoginEndpointTests {
 
         @Test
@@ -67,7 +73,7 @@ class AuthControllerTest {
 
             when(authService.authenticateUser(any(LoginRequest.class), any())).thenReturn(mockUserInfoResponse);
 
-            mockMvc.perform(post("/api/auth/login")
+            mockMvc.perform(post("/auth/login")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(loginRequest)))
                     .andExpect(status().isOk())
@@ -85,7 +91,7 @@ class AuthControllerTest {
             loginRequest.setEmail("");
             loginRequest.setPassword("password123");
 
-            mockMvc.perform(post("/api/auth/login")
+            mockMvc.perform(post("/auth/login")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(loginRequest)))
                     .andExpect(status().isBadRequest());
@@ -100,7 +106,7 @@ class AuthControllerTest {
             loginRequest.setEmail("invalid-email-format");
             loginRequest.setPassword("password123");
 
-            mockMvc.perform(post("/api/auth/login")
+            mockMvc.perform(post("/auth/login")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(loginRequest)))
                     .andExpect(status().isBadRequest());
@@ -115,7 +121,7 @@ class AuthControllerTest {
             loginRequest.setEmail("test@test.com");
             loginRequest.setPassword("123"); // < 6 chars
 
-            mockMvc.perform(post("/api/auth/login")
+            mockMvc.perform(post("/auth/login")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(loginRequest)))
                     .andExpect(status().isBadRequest());
@@ -125,7 +131,7 @@ class AuthControllerTest {
     }
 
     @Nested
-    @DisplayName("POST /api/auth/google Integration Tests")
+    @DisplayName("POST /auth/google Integration Tests")
     class GoogleAuthEndpointTests {
 
         @Test
@@ -141,7 +147,7 @@ class AuthControllerTest {
 
             when(authService.authenticateWithGoogle(any(GoogleAuthRequest.class), any())).thenReturn(mockUserInfoResponse);
 
-            mockMvc.perform(post("/api/auth/google")
+            mockMvc.perform(post("/auth/google")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(googleRequest)))
                     .andExpect(status().isOk())
@@ -156,7 +162,7 @@ class AuthControllerTest {
             GoogleAuthRequest googleRequest = new GoogleAuthRequest();
             googleRequest.setCredential("");
 
-            mockMvc.perform(post("/api/auth/google")
+            mockMvc.perform(post("/auth/google")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(googleRequest)))
                     .andExpect(status().isBadRequest());
@@ -166,7 +172,7 @@ class AuthControllerTest {
     }
 
     @Nested
-    @DisplayName("POST /api/auth/register Integration Tests")
+    @DisplayName("POST /auth/register Integration Tests")
     class RegisterEndpointTests {
 
         @Test
@@ -182,7 +188,7 @@ class AuthControllerTest {
             MessageResponse mockMessageResponse = new MessageResponse("Đăng ký tài khoản thành công!");
             when(authService.registerUser(any(SignupRequest.class))).thenReturn(mockMessageResponse);
 
-            mockMvc.perform(post("/api/auth/register")
+            mockMvc.perform(post("/auth/register")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(signupRequest)))
                     .andExpect(status().isOk())
@@ -201,7 +207,7 @@ class AuthControllerTest {
             signupRequest.setPhoneNumber("0987654321");
             signupRequest.setRole(Role.STUDENT);
 
-            mockMvc.perform(post("/api/auth/register")
+            mockMvc.perform(post("/auth/register")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(signupRequest)))
                     .andExpect(status().isBadRequest());
@@ -219,7 +225,7 @@ class AuthControllerTest {
             signupRequest.setPhoneNumber("0987654321");
             signupRequest.setRole(null); // Null role
 
-            mockMvc.perform(post("/api/auth/register")
+            mockMvc.perform(post("/auth/register")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(signupRequest)))
                     .andExpect(status().isBadRequest());
@@ -229,16 +235,16 @@ class AuthControllerTest {
     }
 
     @Nested
-    @DisplayName("POST /api/auth/logout & /refreshtoken Integration Tests")
+    @DisplayName("POST /auth/logout & /refreshtoken Integration Tests")
     class SessionEndpointTests {
 
         @Test
-        @DisplayName("POST /api/auth/logout should return 200 OK")
+        @DisplayName("POST /auth/logout should return 200 OK")
         void logout_Returns200AndMessage() throws Exception {
             MessageResponse mockMessageResponse = new MessageResponse("Đăng xuất thành công!");
             when(authService.logoutUser(any(), any())).thenReturn(mockMessageResponse);
 
-            mockMvc.perform(post("/api/auth/logout"))
+            mockMvc.perform(post("/auth/logout"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.message").value("Đăng xuất thành công!"));
 
@@ -246,12 +252,12 @@ class AuthControllerTest {
         }
 
         @Test
-        @DisplayName("POST /api/auth/refreshtoken should return 200 OK")
+        @DisplayName("POST /auth/refresh-token should return 200 OK")
         void refreshtoken_Returns200AndMessage() throws Exception {
             MessageResponse mockMessageResponse = new MessageResponse("Token is refreshed successfully!");
             when(authService.refreshToken(any(), any())).thenReturn(mockMessageResponse);
 
-            mockMvc.perform(post("/api/auth/refreshtoken"))
+            mockMvc.perform(post("/auth/refresh-token"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.message").value("Token is refreshed successfully!"));
 
@@ -260,7 +266,7 @@ class AuthControllerTest {
     }
 
     @Nested
-    @DisplayName("GET /api/auth/verify Integration Tests")
+    @DisplayName("GET /auth/verify Integration Tests")
     class VerifyEndpointTests {
 
         @Test
@@ -270,7 +276,7 @@ class AuthControllerTest {
             MessageResponse mockMessageResponse = new MessageResponse("Tài khoản đã được kích hoạt thành công!");
             when(authService.verifyUser(token)).thenReturn(mockMessageResponse);
 
-            mockMvc.perform(get("/api/auth/verify")
+            mockMvc.perform(get("/auth/verify")
                     .param("token", token))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.message").value("Tài khoản đã được kích hoạt thành công!"));
@@ -281,7 +287,7 @@ class AuthControllerTest {
         @Test
         @DisplayName("Should return 400 Bad Request when token query param is missing")
         void verifyUser_MissingTokenParam_Returns400BadRequest() throws Exception {
-            mockMvc.perform(get("/api/auth/verify"))
+            mockMvc.perform(get("/auth/verify"))
                     .andExpect(status().isBadRequest());
 
             verify(authService, never()).verifyUser(any());
@@ -289,7 +295,7 @@ class AuthControllerTest {
     }
 
     @Nested
-    @DisplayName("POST /api/auth/forgot-password Integration Tests")
+    @DisplayName("POST /auth/forgot-password Integration Tests")
     class ForgotPasswordEndpointTests {
 
         @Test
@@ -302,7 +308,7 @@ class AuthControllerTest {
                     "Nếu email của bạn hợp lệ, một liên kết đặt lại mật khẩu đã được gửi đến hộp thư.");
             when(authService.forgotPassword(any(ForgotPasswordRequest.class))).thenReturn(mockResponse);
 
-            mockMvc.perform(post("/api/auth/forgot-password")
+            mockMvc.perform(post("/auth/forgot-password")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk())
@@ -317,7 +323,7 @@ class AuthControllerTest {
             ForgotPasswordRequest request = new ForgotPasswordRequest();
             request.setEmail("not-an-email");
 
-            mockMvc.perform(post("/api/auth/forgot-password")
+            mockMvc.perform(post("/auth/forgot-password")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest());
@@ -327,7 +333,7 @@ class AuthControllerTest {
     }
 
     @Nested
-    @DisplayName("POST /api/auth/reset-password Integration Tests")
+    @DisplayName("POST /auth/reset-password Integration Tests")
     class ResetPasswordEndpointTests {
 
         @Test
@@ -341,7 +347,7 @@ class AuthControllerTest {
                     "Mật khẩu của bạn đã được cập nhật thành công. Vui lòng đăng nhập bằng mật khẩu mới.");
             when(authService.resetPassword(any(ResetPasswordRequest.class))).thenReturn(mockResponse);
 
-            mockMvc.perform(post("/api/auth/reset-password")
+            mockMvc.perform(post("/auth/reset-password")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk())
@@ -357,7 +363,7 @@ class AuthControllerTest {
             request.setToken("valid-token-hash");
             request.setNewPassword("123456"); // Weak password
 
-            mockMvc.perform(post("/api/auth/reset-password")
+            mockMvc.perform(post("/auth/reset-password")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest());
@@ -372,7 +378,7 @@ class AuthControllerTest {
             request.setToken(""); // Blank token
             request.setNewPassword("StrongPass123!");
 
-            mockMvc.perform(post("/api/auth/reset-password")
+            mockMvc.perform(post("/auth/reset-password")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest());

@@ -16,6 +16,7 @@ public class SubmissionCommentResponse {
 
     private Long id;
     private Long submissionId;
+    private Integer versionNumber;
     private Long teacherId;
     private String teacherName;
     private String quoteText;
@@ -33,6 +34,7 @@ public class SubmissionCommentResponse {
         return SubmissionCommentResponse.builder()
                 .id(comment.getId())
                 .submissionId(comment.getSubmission().getId())
+                .versionNumber(comment.getVersionNumber() != null ? comment.getVersionNumber() : 1)
                 .teacherId(comment.getTeacher().getId())
                 .teacherName(comment.getTeacher().getFullName())
                 .quoteText(comment.getQuoteText())

@@ -29,9 +29,15 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -75,7 +81,7 @@ class ClassroomJoinRequestControllerTest {
     }
 
     @Nested
-    @DisplayName("POST /api/classrooms/join Integration Tests")
+    @DisplayName("POST /classrooms/join-requests Integration Tests")
     class RequestToJoinEndpointTests {
 
         @Test
@@ -92,7 +98,7 @@ class ClassroomJoinRequestControllerTest {
 
             when(joinRequestService.createJoinRequest(any(JoinRequestRequest.class), eq(2L))).thenReturn(response);
 
-            mockMvc.perform(post("/api/classrooms/join")
+            mockMvc.perform(post("/classrooms/join-requests")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isCreated())
@@ -109,7 +115,7 @@ class ClassroomJoinRequestControllerTest {
             JoinRequestRequest request = new JoinRequestRequest();
             request.setClassCode("");
 
-            mockMvc.perform(post("/api/classrooms/join")
+            mockMvc.perform(post("/classrooms/join-requests")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest());
@@ -119,7 +125,7 @@ class ClassroomJoinRequestControllerTest {
     }
 
     @Nested
-    @DisplayName("GET /api/classrooms/my-join-requests Integration Tests")
+    @DisplayName("GET /classrooms/join-requests/me Integration Tests")
     class GetMyJoinRequestsEndpointTests {
 
         @Test
@@ -132,7 +138,7 @@ class ClassroomJoinRequestControllerTest {
 
             when(joinRequestService.getMyJoinRequests(2L)).thenReturn(List.of(response));
 
-            mockMvc.perform(get("/api/classrooms/my-join-requests"))
+            mockMvc.perform(get("/classrooms/join-requests/me"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$[0].id").value(100L))
                     .andExpect(jsonPath("$[0].status").value("PENDING"));
@@ -142,7 +148,7 @@ class ClassroomJoinRequestControllerTest {
     }
 
     @Nested
-    @DisplayName("GET /api/classrooms/{classCode}/join-requests Integration Tests")
+    @DisplayName("GET /classrooms/{classCode}/join-requests Integration Tests")
     class GetPendingRequestsEndpointTests {
 
         @Test
@@ -155,7 +161,7 @@ class ClassroomJoinRequestControllerTest {
 
             when(joinRequestService.getPendingJoinRequests("ABC12345", 2L)).thenReturn(List.of(response));
 
-            mockMvc.perform(get("/api/classrooms/ABC12345/join-requests"))
+            mockMvc.perform(get("/classrooms/ABC12345/join-requests"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$[0].id").value(100L))
                     .andExpect(jsonPath("$[0].status").value("PENDING"));
@@ -165,7 +171,7 @@ class ClassroomJoinRequestControllerTest {
     }
 
     @Nested
-    @DisplayName("PUT /api/classrooms/join-requests/{requestId} Integration Tests")
+    @DisplayName("PUT /classrooms/join-requests/{requestId} Integration Tests")
     class ProcessRequestEndpointTests {
 
         @Test
@@ -182,7 +188,7 @@ class ClassroomJoinRequestControllerTest {
             when(joinRequestService.processJoinRequest(eq(100L), any(ProcessJoinRequestDto.class), eq(2L)))
                     .thenReturn(response);
 
-            mockMvc.perform(put("/api/classrooms/join-requests/100")
+            mockMvc.perform(put("/classrooms/join-requests/100")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(requestDto)))
                     .andExpect(status().isOk())
@@ -198,7 +204,7 @@ class ClassroomJoinRequestControllerTest {
             ProcessJoinRequestDto requestDto = new ProcessJoinRequestDto();
             requestDto.setStatus(null);
 
-            mockMvc.perform(put("/api/classrooms/join-requests/100")
+            mockMvc.perform(put("/classrooms/join-requests/100")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(requestDto)))
                     .andExpect(status().isBadRequest());
