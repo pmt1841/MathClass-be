@@ -3,11 +3,17 @@ package com.codegym.mathclass.dashboard.service;
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.entity.AssignmentStatus;
 import com.codegym.mathclass.assignment.repository.AssignmentRepository;
+import com.codegym.mathclass.assignment.repository.AssignmentSheetRepository;
 import com.codegym.mathclass.classroom.entity.Classroom;
 import com.codegym.mathclass.classroom.entity.JoinRequestStatus;
 import com.codegym.mathclass.classroom.repository.ClassroomJoinRequestRepository;
 import com.codegym.mathclass.classroom.repository.ClassroomRepository;
-import com.codegym.mathclass.dashboard.dto.*;
+import com.codegym.mathclass.dashboard.dto.AtRiskStudentDto;
+import com.codegym.mathclass.dashboard.dto.PendingSubmissionDto;
+import com.codegym.mathclass.dashboard.dto.StudentDashboardStatsDto;
+import com.codegym.mathclass.dashboard.dto.StudentGradedTaskDto;
+import com.codegym.mathclass.dashboard.dto.StudentPendingTaskDto;
+import com.codegym.mathclass.dashboard.dto.TeacherDashboardStatsDto;
 import com.codegym.mathclass.submission.entity.Submission;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
@@ -30,8 +36,11 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class DashboardServiceImplTest {
@@ -47,6 +56,9 @@ class DashboardServiceImplTest {
 
     @Mock
     private AssignmentRepository assignmentRepository;
+
+    @Mock
+    private AssignmentSheetRepository assignmentSheetRepository;
 
     @InjectMocks
     private DashboardServiceImpl dashboardService;
@@ -98,7 +110,8 @@ class DashboardServiceImplTest {
             when(classroomRepository.countDistinctStudentsByTeacherId(1L)).thenReturn(100);
             when(submissionRepository.countByTeacherAndStatus(1L, SubmissionStatus.SUBMITTED)).thenReturn(10);
             when(joinRequestRepository.countByClassroomTeacherIdAndStatus(1L, JoinRequestStatus.PENDING)).thenReturn(2);
-            when(assignmentRepository.countByTeacherIdAndStatus(1L, AssignmentStatus.PUBLISHED)).thenReturn(3);
+            when(assignmentRepository.countByTeacherIdAndStatus(1L, AssignmentStatus.ARCHIVED)).thenReturn(3);
+            when(assignmentSheetRepository.countByTeacherIdAndClassroomIsNull(1L)).thenReturn(4);
 
             TeacherDashboardStatsDto stats = dashboardService.getTeacherDashboardStats(1L);
 
@@ -108,6 +121,7 @@ class DashboardServiceImplTest {
             assertThat(stats.getAssignmentsToGrade()).isEqualTo(10);
             assertThat(stats.getPendingJoinRequests()).isEqualTo(2);
             assertThat(stats.getOpenAssignments()).isEqualTo(3);
+            assertThat(stats.getOriginalAssignmentSheets()).isEqualTo(4);
         }
 
         @Test
@@ -117,7 +131,8 @@ class DashboardServiceImplTest {
             when(classroomRepository.countDistinctStudentsByTeacherId(1L)).thenReturn(0);
             when(submissionRepository.countByTeacherAndStatus(1L, SubmissionStatus.SUBMITTED)).thenReturn(0);
             when(joinRequestRepository.countByClassroomTeacherIdAndStatus(1L, JoinRequestStatus.PENDING)).thenReturn(0);
-            when(assignmentRepository.countByTeacherIdAndStatus(1L, AssignmentStatus.PUBLISHED)).thenReturn(0);
+            when(assignmentRepository.countByTeacherIdAndStatus(1L, AssignmentStatus.ARCHIVED)).thenReturn(0);
+            when(assignmentSheetRepository.countByTeacherIdAndClassroomIsNull(1L)).thenReturn(0);
 
             TeacherDashboardStatsDto stats = dashboardService.getTeacherDashboardStats(1L);
 
@@ -127,6 +142,7 @@ class DashboardServiceImplTest {
             assertThat(stats.getAssignmentsToGrade()).isZero();
             assertThat(stats.getPendingJoinRequests()).isZero();
             assertThat(stats.getOpenAssignments()).isZero();
+            assertThat(stats.getOriginalAssignmentSheets()).isZero();
         }
     }
 

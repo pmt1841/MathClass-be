@@ -16,6 +16,8 @@ public class SubmissionCommentRequest {
 
     private Integer occurrenceIndex;
 
+    private Integer versionNumber;
+
     private String imageCode;
 
     @NotBlank(message = "Nội dung nhận xét không được để trống")

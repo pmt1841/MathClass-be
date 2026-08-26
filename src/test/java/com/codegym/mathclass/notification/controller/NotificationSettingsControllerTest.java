@@ -26,7 +26,9 @@ import java.util.Collections;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -72,7 +74,7 @@ class NotificationSettingsControllerTest {
     }
 
     @Nested
-    @DisplayName("GET /api/settings/notifications Integration Tests")
+    @DisplayName("GET /settings/notifications Integration Tests")
     class GetNotificationSettingsEndpointTests {
 
         @Test
@@ -83,7 +85,7 @@ class NotificationSettingsControllerTest {
 
             when(notificationSettingsService.getNotificationSettings(1L)).thenReturn(dto);
 
-            mockMvc.perform(get("/api/settings/notifications"))
+            mockMvc.perform(get("/settings/notifications"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.masterEmail").value(true));
 
@@ -92,7 +94,7 @@ class NotificationSettingsControllerTest {
     }
 
     @Nested
-    @DisplayName("PUT /api/settings/notifications Integration Tests")
+    @DisplayName("PUT /settings/notifications Integration Tests")
     class UpdateNotificationSettingsEndpointTests {
 
         @Test
@@ -107,7 +109,7 @@ class NotificationSettingsControllerTest {
             when(notificationSettingsService.updateNotificationSettings(eq(1L), any(NotificationSettingsDto.class)))
                     .thenReturn(response);
 
-            mockMvc.perform(put("/api/settings/notifications")
+            mockMvc.perform(put("/settings/notifications")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk())

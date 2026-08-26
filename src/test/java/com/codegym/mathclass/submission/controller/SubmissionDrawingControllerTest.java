@@ -91,14 +91,12 @@ class SubmissionDrawingControllerTest {
             when(submissionDrawingService.saveOrUpdateDrawing(eq(100L), any(SubmissionDrawingRequest.class), eq("student@gmail.com")))
                     .thenReturn(response);
 
-            mockMvc.perform(put("/api/submissions/100/drawings")
+            mockMvc.perform(put("/submissions/100/drawings")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.success").value(true))
-                    .andExpect(jsonPath("$.message").value("Drawing saved successfully"))
-                    .andExpect(jsonPath("$.data.id").value(10L))
-                    .andExpect(jsonPath("$.data.shapeCode").value("TRIANGLE"));
+                    .andExpect(jsonPath("$.id").value(10L))
+                    .andExpect(jsonPath("$.shapeCode").value("TRIANGLE"));
 
             verify(submissionDrawingService, times(1)).saveOrUpdateDrawing(eq(100L), any(SubmissionDrawingRequest.class), eq("student@gmail.com"));
         }
@@ -110,7 +108,7 @@ class SubmissionDrawingControllerTest {
             request.setShapeCode("");
             request.setJsxGraphData(Map.of("key", "val"));
 
-            mockMvc.perform(put("/api/submissions/100/drawings")
+            mockMvc.perform(put("/submissions/100/drawings")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest());
@@ -125,7 +123,7 @@ class SubmissionDrawingControllerTest {
             request.setShapeCode("TRIANGLE");
             request.setJsxGraphData(null);
 
-            mockMvc.perform(put("/api/submissions/100/drawings")
+            mockMvc.perform(put("/submissions/100/drawings")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest());
@@ -135,7 +133,7 @@ class SubmissionDrawingControllerTest {
     }
 
     @Nested
-    @DisplayName("GET /api/submissions/{submissionId}/drawings Integration Tests")
+    @DisplayName("GET /submissions/{submissionId}/drawings Integration Tests")
     class GetDrawingEndpointTests {
 
         @Test
@@ -147,11 +145,10 @@ class SubmissionDrawingControllerTest {
 
             when(submissionDrawingService.getDrawingBySubmissionId(100L, "student@gmail.com")).thenReturn(response);
 
-            mockMvc.perform(get("/api/submissions/100/drawings"))
+            mockMvc.perform(get("/submissions/100/drawings"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.success").value(true))
-                    .andExpect(jsonPath("$.data.id").value(10L))
-                    .andExpect(jsonPath("$.data.shapeCode").value("TRIANGLE"));
+                    .andExpect(jsonPath("$.id").value(10L))
+                    .andExpect(jsonPath("$.shapeCode").value("TRIANGLE"));
 
             verify(submissionDrawingService, times(1)).getDrawingBySubmissionId(100L, "student@gmail.com");
         }

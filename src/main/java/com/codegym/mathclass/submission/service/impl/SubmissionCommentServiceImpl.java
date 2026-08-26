@@ -3,16 +3,17 @@ package com.codegym.mathclass.submission.service.impl;
 import com.codegym.mathclass.exception.AccessDeniedException;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.ResourceNotFoundException;
-import com.codegym.mathclass.utils.LaTeXSanitizer;
 import com.codegym.mathclass.submission.dto.SubmissionCommentRequest;
 import com.codegym.mathclass.submission.dto.SubmissionCommentResponse;
 import com.codegym.mathclass.submission.entity.Submission;
 import com.codegym.mathclass.submission.entity.SubmissionComment;
 import com.codegym.mathclass.submission.repository.SubmissionCommentRepository;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
+import com.codegym.mathclass.submission.repository.SubmissionVersionRepository;
 import com.codegym.mathclass.submission.service.SubmissionCommentService;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
+import com.codegym.mathclass.utils.LaTeXSanitizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,11 +27,12 @@ public class SubmissionCommentServiceImpl implements SubmissionCommentService {
 
     private final SubmissionCommentRepository submissionCommentRepository;
     private final SubmissionRepository submissionRepository;
+    private final SubmissionVersionRepository submissionVersionRepository;
     private final UserRepository userRepository;
 
     @Override
     @Transactional(readOnly = true)
-    public List<SubmissionCommentResponse> getCommentsBySubmissionId(Long submissionId, String currentUserEmail) {
+    public List<SubmissionCommentResponse> getCommentsBySubmissionId(Long submissionId, Integer versionNumber, String currentUserEmail) {
         Submission submission = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài nộp với ID: " + submissionId));
 
@@ -41,7 +43,10 @@ public class SubmissionCommentServiceImpl implements SubmissionCommentService {
             throw new AccessDeniedException("Bạn không có quyền truy cập nhận xét của bài nộp này");
         }
 
-        List<SubmissionComment> comments = submissionCommentRepository.findBySubmissionIdOrderByCreatedAtAsc(submissionId);
+        List<SubmissionComment> comments = (versionNumber != null)
+                ? submissionCommentRepository.findBySubmissionIdAndVersionNumberOrderByCreatedAtAsc(submissionId, versionNumber)
+                : submissionCommentRepository.findBySubmissionIdOrderByCreatedAtAsc(submissionId);
+
         return comments.stream()
                 .map(SubmissionCommentResponse::fromEntity)
                 .collect(Collectors.toList());
@@ -65,9 +70,18 @@ public class SubmissionCommentServiceImpl implements SubmissionCommentService {
         User teacher = userRepository.findById(teacherId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy giáo viên với ID: " + teacherId));
 
+        int targetVersion = 1;
+        if (request.getVersionNumber() != null && request.getVersionNumber() > 0) {
+            targetVersion = request.getVersionNumber();
+        } else {
+            int maxVer = submissionVersionRepository.findMaxVersionNumberBySubmissionId(submissionId);
+            targetVersion = maxVer > 0 ? maxVer : 1;
+        }
+
         SubmissionComment comment = SubmissionComment.builder()
                 .submission(submission)
                 .teacher(teacher)
+                .versionNumber(targetVersion)
                 .quoteText(request.getQuoteText())
                 .occurrenceIndex(request.getOccurrenceIndex())
                 .imageCode(request.getImageCode())
@@ -97,3 +111,4 @@ public class SubmissionCommentServiceImpl implements SubmissionCommentService {
         submissionCommentRepository.delete(comment);
     }
 }
+

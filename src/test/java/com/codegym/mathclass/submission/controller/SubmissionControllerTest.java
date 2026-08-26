@@ -96,10 +96,10 @@ class SubmissionControllerTest {
 
             when(submissionService.createSubmission(eq(1L), any(SubmissionRequest.class))).thenReturn(response);
 
-            mockMvc.perform(post("/api/submissions")
+            mockMvc.perform(post("/submissions")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isOk())
+                    .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.id").value(10L))
                     .andExpect(jsonPath("$.status").value(SubmissionStatus.SUBMITTED.toString()));
 
@@ -108,7 +108,7 @@ class SubmissionControllerTest {
     }
 
     @Nested
-    @DisplayName("PUT /api/submissions/{submissionId} Integration Tests")
+    @DisplayName("PUT /submissions/{submissionId} Integration Tests")
     class UpdateSubmissionEndpointTests {
 
         @Test
@@ -123,7 +123,7 @@ class SubmissionControllerTest {
 
             when(submissionService.updateSubmission(eq(10L), eq(1L), any(SubmissionRequest.class))).thenReturn(response);
 
-            mockMvc.perform(put("/api/submissions/10")
+            mockMvc.perform(put("/submissions/10")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk())
@@ -134,7 +134,7 @@ class SubmissionControllerTest {
     }
 
     @Nested
-    @DisplayName("PUT /api/submissions/{submissionId}/unsubmit Integration Tests")
+    @DisplayName("PUT /submissions/{submissionId}/unsubmit Integration Tests")
     class UnsubmitSubmissionEndpointTests {
 
         @Test
@@ -146,7 +146,7 @@ class SubmissionControllerTest {
 
             when(submissionService.unsubmitSubmission(10L, 1L)).thenReturn(response);
 
-            mockMvc.perform(put("/api/submissions/10/unsubmit"))
+            mockMvc.perform(put("/submissions/10/unsubmit"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.status").value(SubmissionStatus.DRAFT.toString()));
 
@@ -155,7 +155,7 @@ class SubmissionControllerTest {
     }
 
     @Nested
-    @DisplayName("PUT /api/submissions/{submissionId}/grade Integration Tests")
+    @DisplayName("PUT /submissions/{submissionId}/grade Integration Tests")
     class GradeSubmissionEndpointTests {
 
         @Test
@@ -171,7 +171,7 @@ class SubmissionControllerTest {
 
             when(submissionService.gradeSubmission(eq(10L), eq(1L), any(GradeRequest.class))).thenReturn(response);
 
-            mockMvc.perform(put("/api/submissions/10/grade")
+            mockMvc.perform(put("/submissions/10/grade")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk())
@@ -187,7 +187,7 @@ class SubmissionControllerTest {
             GradeRequest request = new GradeRequest();
             request.setScore(-1.0);
 
-            mockMvc.perform(put("/api/submissions/10/grade")
+            mockMvc.perform(put("/submissions/10/grade")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest());
@@ -201,7 +201,7 @@ class SubmissionControllerTest {
             GradeRequest request = new GradeRequest();
             request.setScore(11.0);
 
-            mockMvc.perform(put("/api/submissions/10/grade")
+            mockMvc.perform(put("/submissions/10/grade")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest());
@@ -211,7 +211,7 @@ class SubmissionControllerTest {
     }
 
     @Nested
-    @DisplayName("GET /api/submissions/my-submission Integration Tests")
+    @DisplayName("GET /submissions/me Integration Tests")
     class GetMySubmissionEndpointTests {
 
         @Test
@@ -222,7 +222,7 @@ class SubmissionControllerTest {
 
             when(submissionService.getMySubmission(100L, 1L)).thenReturn(response);
 
-            mockMvc.perform(get("/api/submissions/my-submission").param("assignmentId", "100"))
+            mockMvc.perform(get("/submissions/me").param("assignmentId", "100"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.id").value(10L));
 
@@ -234,7 +234,7 @@ class SubmissionControllerTest {
         void getMySubmission_NotFound_ReturnsNoContent() throws Exception {
             when(submissionService.getMySubmission(100L, 1L)).thenReturn(null);
 
-            mockMvc.perform(get("/api/submissions/my-submission").param("assignmentId", "100"))
+            mockMvc.perform(get("/submissions/me").param("assignmentId", "100"))
                     .andExpect(status().isNoContent());
 
             verify(submissionService, times(1)).getMySubmission(100L, 1L);
@@ -242,7 +242,7 @@ class SubmissionControllerTest {
     }
 
     @Nested
-    @DisplayName("GET /api/submissions Integration Tests")
+    @DisplayName("GET /submissions Integration Tests")
     class GetSubmissionsByAssignmentEndpointTests {
 
         @Test
@@ -256,7 +256,7 @@ class SubmissionControllerTest {
             when(submissionService.getSubmissionsByAssignment(eq(100L), eq(1L), any(), any(), any(Pageable.class)))
                     .thenReturn(page);
 
-            mockMvc.perform(get("/api/submissions")
+            mockMvc.perform(get("/submissions")
                             .param("assignmentId", "100")
                             .param("page", "0")
                             .param("size", "10"))
@@ -268,7 +268,7 @@ class SubmissionControllerTest {
     }
 
     @Nested
-    @DisplayName("GET /api/submissions/{submissionId} Integration Tests")
+    @DisplayName("GET /submissions/{submissionId} Integration Tests")
     class GetSubmissionDetailEndpointTests {
 
         @Test
@@ -279,7 +279,7 @@ class SubmissionControllerTest {
 
             when(submissionService.getSubmissionDetail(10L, 1L)).thenReturn(response);
 
-            mockMvc.perform(get("/api/submissions/10"))
+            mockMvc.perform(get("/submissions/10"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.id").value(10L));
 
