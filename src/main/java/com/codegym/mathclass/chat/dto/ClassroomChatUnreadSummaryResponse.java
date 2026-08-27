@@ -14,6 +14,7 @@ import java.util.Map;
 @AllArgsConstructor
 public class ClassroomChatUnreadSummaryResponse {
     private boolean hasGroupUnread;
+    private long groupUnreadCount;
     private List<Long> unreadStudentIds;
     private Map<Long, Long> studentUnreadCounts;
 }

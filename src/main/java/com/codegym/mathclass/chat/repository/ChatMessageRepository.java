@@ -164,6 +164,20 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     );
 
     @Query("""
+        SELECT COUNT(m)
+        FROM ChatMessage m
+        WHERE m.classId = :classId
+          AND m.chatType = com.codegym.mathclass.chat.entity.ChatType.CLASS_GROUP
+          AND m.sender.id != :currentUserId
+          AND m.createdAt > :lastReadAt
+        """)
+    long countUnreadGroupMessages(
+        @Param("classId") Long classId,
+        @Param("currentUserId") Long currentUserId,
+        @Param("lastReadAt") java.time.LocalDateTime lastReadAt
+    );
+
+    @Query("""
         SELECT m.sender.id, COUNT(m)
         FROM ChatMessage m
         WHERE m.classId = :classId

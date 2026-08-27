@@ -14,13 +14,14 @@ Tính năng này cung cấp kênh trao đổi **Chat nhóm Lớp học** và **C
 
 ## 2. Acceptance Criteria Checklist (AC)
 
-- [ ] **AC-BE-01:** Mở rộng bảng `chat_messages` hỗ trợ `recipient_id` (nullable) và `chat_type` (`CLASS_GROUP`, `DIRECT_STUDENT`, `DIRECT_TEACHER`).
-- [ ] **AC-BE-02:** Tạo Composite Index `(class_id, chat_type, created_at DESC)` và `(class_id, sender_id, recipient_id, created_at DESC)`.
-- [ ] **AC-BE-03:** Rest API `GET /api/v1/classes/{classCode}/chat/group/messages` lấy lịch sử tin nhắn chat nhóm lớp.
-- [ ] **AC-BE-04:** Rest API `GET /api/v1/classes/{classCode}/chat/direct/{otherUserId}/messages` lấy lịch sử chat 1-1 giữa 2 học sinh.
-- [ ] **AC-BE-05:** STOMP Controller `@MessageMapping("/chat.sendGroup")` xử lý nhận & broadcast tin nhắn nhóm tới `/topic/classroom/{classId}/group`.
-- [ ] **AC-BE-06:** STOMP Controller `@MessageMapping("/chat.sendDirect")` xử lý nhận & gửi tin nhắn 1-1 tới `/topic/classroom/{classId}/direct/{recipientId}` và người gửi.
-- [ ] **AC-BE-07:** Tích hợp `UserPresenceRegistry`: Theo dõi và phát thông báo Online/Offline tới `/topic/presence`.
+- [x] **AC-BE-01:** Mở rộng bảng `chat_messages` hỗ trợ `recipient_id` (nullable) và `chat_type` (`CLASS_GROUP`, `DIRECT_STUDENT`, `DIRECT_TEACHER`).
+- [x] **AC-BE-02:** Tạo Composite Index `(class_id, chat_type, created_at DESC)` và `(class_id, sender_id, recipient_id, created_at DESC)`.
+- [x] **AC-BE-03:** Rest API `GET /api/v1/classes/{classCode}/chat/group/messages` lấy lịch sử tin nhắn chat nhóm lớp.
+- [x] **AC-BE-04:** Rest API `GET /api/v1/classes/{classCode}/chat/direct/{otherUserId}/messages` lấy lịch sử chat 1-1 giữa 2 học sinh.
+- [x] **AC-BE-05:** STOMP Controller `@MessageMapping("/chat.sendGroup")` xử lý nhận & broadcast tin nhắn nhóm tới `/topic/classroom/{classId}/group`.
+- [x] **AC-BE-06:** STOMP Controller `@MessageMapping("/chat.sendDirect")` xử lý nhận & gửi tin nhắn 1-1 tới `/topic/classroom/{classId}/direct/{recipientId}` và người gửi.
+- [x] **AC-BE-07:** Tích hợp `UserPresenceRegistry`: Theo dõi và phát thông báo Online/Offline tới `/topic/presence`.
+- [x] **AC-BE-08:** Rest API `GET /api/v1/classes/{classCode}/chat/unread-summary` tính toán chính xác `groupUnreadCount` (truy vấn SQL $O(1)$) và `studentUnreadCounts` cho toàn bộ các kênh chat.
 
 ---
 

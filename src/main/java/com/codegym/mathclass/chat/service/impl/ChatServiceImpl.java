@@ -52,7 +52,7 @@ public class ChatServiceImpl implements ChatService {
         User sender = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy người dùng gửi tin"));
 
-        boolean isTeacher = classroom.getTeacher().getId() == currentUserId;
+        boolean isTeacher = java.util.Objects.equals(classroom.getTeacher().getId(), currentUserId);
         boolean isTargetStudent = request.getStudentId().equals(currentUserId);
         boolean isStudentInClass = classroomRepository.existsByIdAndStudentsId(request.getClassId(), request.getStudentId());
 
@@ -67,6 +67,7 @@ public class ChatServiceImpl implements ChatService {
         ChatMessage chatMessage = ChatMessage.builder()
                 .classId(request.getClassId())
                 .studentId(request.getStudentId())
+                .chatType(com.codegym.mathclass.chat.entity.ChatType.DIRECT_TEACHER)
                 .sender(sender)
                 .content(request.getContent().trim())
                 .isRead(false)
@@ -82,6 +83,7 @@ public class ChatServiceImpl implements ChatService {
                 .id(savedMessage.getId())
                 .classId(savedMessage.getClassId())
                 .studentId(savedMessage.getStudentId())
+                .chatType(com.codegym.mathclass.chat.entity.ChatType.DIRECT_TEACHER)
                 .senderId(sender.getId())
                 .senderName(sender.getFullName())
                 .senderAvatar(sender.getAvatarUrl())
@@ -100,7 +102,7 @@ public class ChatServiceImpl implements ChatService {
         validateClassMember(classroom, currentUserId);
 
         Long targetStudentId = studentId;
-        boolean isTeacher = classroom.getTeacher().getId() == currentUserId;
+        boolean isTeacher = java.util.Objects.equals(classroom.getTeacher().getId(), currentUserId);
 
         if (!isTeacher) {
             targetStudentId = currentUserId;
@@ -124,16 +126,18 @@ public class ChatServiceImpl implements ChatService {
 
         validateClassMember(classroom, currentUserId);
 
-        Long targetStudentId = studentId;
-        boolean isTeacher = classroom.getTeacher().getId() == currentUserId;
-
-        if (!isTeacher) {
-            targetStudentId = currentUserId;
-        } else if (targetStudentId == null) {
-            throw new BadRequestException("Giảng viên cần cung cấp ID học sinh");
+        boolean isTeacher = java.util.Objects.equals(classroom.getTeacher().getId(), currentUserId);
+        Long otherUserId;
+        if (isTeacher) {
+            if (studentId == null) {
+                throw new BadRequestException("Giảng viên cần cung cấp ID học sinh");
+            }
+            otherUserId = studentId;
+        } else {
+            otherUserId = classroom.getTeacher().getId();
         }
 
-        chatMessageRepository.markMessagesAsRead(classroom.getId(), targetStudentId);
+        chatMessageRepository.markDirectMessagesAsRead(classroom.getId(), otherUserId, currentUserId);
     }
 
     @Override
@@ -169,7 +173,7 @@ public class ChatServiceImpl implements ChatService {
         Classroom classroom = classroomRepository.findByClassCode(classCode)
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy lớp học với mã: " + classCode));
 
-        if (classroom.getTeacher().getId() != currentUserId) {
+        if (!java.util.Objects.equals(classroom.getTeacher().getId(), currentUserId)) {
             throw new AccessDeniedException("Chỉ giảng viên phụ trách lớp học mới được lấy danh sách tin nhắn chưa đọc");
         }
 
@@ -177,7 +181,7 @@ public class ChatServiceImpl implements ChatService {
     }
 
     private void validateClassMember(Classroom classroom, Long currentUserId) {
-        boolean isTeacher = classroom.getTeacher().getId() == currentUserId;
+        boolean isTeacher = java.util.Objects.equals(classroom.getTeacher().getId(), currentUserId);
         boolean isStudent = classroomRepository.existsByIdAndStudentsId(classroom.getId(), currentUserId);
 
         if (!isTeacher && !isStudent) {
@@ -235,7 +239,7 @@ public class ChatServiceImpl implements ChatService {
             throw new BadRequestException("Không thể gửi tin nhắn cho chính mình");
         }
 
-        boolean isRecipientMember = classroom.getTeacher().getId() == request.getRecipientId()
+        boolean isRecipientMember = java.util.Objects.equals(classroom.getTeacher().getId(), request.getRecipientId())
                 || classroomRepository.existsByIdAndStudentsId(request.getClassId(), request.getRecipientId());
 
         if (!isRecipientMember) {
@@ -371,15 +375,11 @@ public class ChatServiceImpl implements ChatService {
         List<Long> directUnreadClassIds = chatMessageRepository.findUnreadDirectClassIdsForUser(currentUserId);
         Set<Long> resultSet = new HashSet<>(directUnreadClassIds);
 
-        List<Classroom> classrooms = classroomRepository.findAll();
-        for (Classroom c : classrooms) {
-            boolean isTeacher = c.getTeacher().getId() == currentUserId;
-            boolean isStudent = classroomRepository.existsByIdAndStudentsId(c.getId(), currentUserId);
-            if (isTeacher || isStudent) {
-                java.time.LocalDateTime lastReadAt = getGroupLastReadAt(c.getId(), currentUserId);
-                if (chatMessageRepository.hasUnreadGroupMessage(c.getId(), currentUserId, lastReadAt)) {
-                    resultSet.add(c.getId());
-                }
+        List<Long> userClassroomIds = classroomRepository.findClassroomIdsByUserId(currentUserId);
+        for (Long classId : userClassroomIds) {
+            java.time.LocalDateTime lastReadAt = getGroupLastReadAt(classId, currentUserId);
+            if (chatMessageRepository.hasUnreadGroupMessage(classId, currentUserId, lastReadAt)) {
+                resultSet.add(classId);
             }
         }
 
@@ -396,7 +396,8 @@ public class ChatServiceImpl implements ChatService {
 
         Long classId = classroom.getId();
         java.time.LocalDateTime lastReadAt = getGroupLastReadAt(classId, currentUserId);
-        boolean hasGroupUnread = chatMessageRepository.hasUnreadGroupMessage(classId, currentUserId, lastReadAt);
+        long groupUnreadCount = chatMessageRepository.countUnreadGroupMessages(classId, currentUserId, lastReadAt);
+        boolean hasGroupUnread = groupUnreadCount > 0;
 
         List<Object[]> rawCounts = chatMessageRepository.findUnreadStudentCountsRaw(classId, currentUserId);
         Map<Long, Long> studentUnreadCounts = new HashMap<>();
@@ -413,6 +414,7 @@ public class ChatServiceImpl implements ChatService {
 
         return ClassroomChatUnreadSummaryResponse.builder()
                 .hasGroupUnread(hasGroupUnread)
+                .groupUnreadCount(groupUnreadCount)
                 .unreadStudentIds(unreadStudentIds)
                 .studentUnreadCounts(studentUnreadCounts)
                 .build();
