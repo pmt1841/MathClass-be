@@ -1,6 +1,7 @@
 package com.codegym.mathclass.chat.controller;
 
 import com.codegym.mathclass.chat.dto.ChatMessageResponse;
+import com.codegym.mathclass.chat.dto.ClassroomChatUnreadSummaryResponse;
 import com.codegym.mathclass.chat.service.ChatService;
 import com.codegym.mathclass.common.dto.ApiResponse;
 import com.codegym.mathclass.security.services.CustomUserDetails;
@@ -77,6 +78,72 @@ public class ChatController {
         return ResponseEntity.ok(ApiResponse.<List<Long>>builder()
                 .message("Lấy danh sách học sinh có tin nhắn chưa đọc thành công")
                 .result(unreadStudentIds)
+                .build());
+    }
+
+    @GetMapping("/unread-summary")
+    public ResponseEntity<ApiResponse<ClassroomChatUnreadSummaryResponse>> getUnreadSummary(
+            @PathVariable String classCode,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        ClassroomChatUnreadSummaryResponse summary = chatService.getUnreadSummary(classCode, userDetails.getId());
+        return ResponseEntity.ok(ApiResponse.<ClassroomChatUnreadSummaryResponse>builder()
+                .message("Lấy tóm tắt tin nhắn chưa đọc của lớp học thành công")
+                .result(summary)
+                .build());
+    }
+
+    @GetMapping("/group/messages")
+    public ResponseEntity<ApiResponse<Page<ChatMessageResponse>>> getGroupChatHistory(
+            @PathVariable String classCode,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<ChatMessageResponse> history = chatService.getGroupChatHistory(classCode, userDetails.getId(), pageable);
+        return ResponseEntity.ok(ApiResponse.<Page<ChatMessageResponse>>builder()
+                .message("Lấy lịch sử chat nhóm thành công")
+                .result(history)
+                .build());
+    }
+
+    @PutMapping("/group/read")
+    public ResponseEntity<ApiResponse<Void>> markGroupAsRead(
+            @PathVariable String classCode,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        chatService.markGroupAsRead(classCode, userDetails.getId());
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .message("Đã đánh dấu các tin nhắn nhóm là đã đọc")
+                .build());
+    }
+
+    @GetMapping("/direct/{otherUserId}/messages")
+    public ResponseEntity<ApiResponse<Page<ChatMessageResponse>>> getDirectChatHistory(
+            @PathVariable String classCode,
+            @PathVariable Long otherUserId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<ChatMessageResponse> history = chatService.getDirectChatHistory(classCode, otherUserId, userDetails.getId(), pageable);
+        return ResponseEntity.ok(ApiResponse.<Page<ChatMessageResponse>>builder()
+                .message("Lấy lịch sử chat riêng 1-1 thành công")
+                .result(history)
+                .build());
+    }
+
+    @PutMapping("/direct/{otherUserId}/read")
+    public ResponseEntity<ApiResponse<Void>> markDirectAsRead(
+            @PathVariable String classCode,
+            @PathVariable Long otherUserId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        chatService.markDirectAsRead(classCode, otherUserId, userDetails.getId());
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .message("Đã đánh dấu các tin nhắn riêng là đã đọc")
                 .build());
     }
 }

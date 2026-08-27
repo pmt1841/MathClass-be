@@ -4,6 +4,7 @@ import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.classroom.dto.ClassroomResponse;
 import com.codegym.mathclass.classroom.dto.CreateClassroomRequest;
 import com.codegym.mathclass.classroom.service.ClassroomService;
+import com.codegym.mathclass.chat.service.ChatService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 
 import jakarta.validation.Valid;
@@ -35,6 +36,16 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class ClassroomController {
 
     private final ClassroomService classroomService;
+    private final ChatService chatService;
+
+    @Operation(summary = "Lấy danh sách ID lớp học có tin nhắn chưa đọc", description = "Truy vấn danh sách ID các lớp học mà người dùng hiện tại có tin nhắn chat chưa đọc")
+    @GetMapping("/unread-chat-class-ids")
+    public ResponseEntity<List<Long>> getUnreadChatClassIds(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        long currentUserId = userDetails.getId();
+        List<Long> unreadClassIds = chatService.getUnreadClassIds(currentUserId);
+        return new ResponseEntity<>(unreadClassIds, HttpStatus.OK);
+    }
 
     @Operation(summary = "Tạo lớp học mới", description = "Tạo một lớp học mới và gán người tạo làm Giáo viên (Teacher)")
     @PostMapping

@@ -11,6 +11,9 @@ import com.codegym.mathclass.classroom.repository.ClassroomRepository;
 import com.codegym.mathclass.exception.AccessDeniedException;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.notification.service.NotificationService;
+import com.codegym.mathclass.chat.dto.ClassroomChatUnreadSummaryResponse;
+import com.codegym.mathclass.chat.entity.GroupChatReadState;
+import com.codegym.mathclass.chat.repository.GroupChatReadStateRepository;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,9 +23,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -35,6 +41,7 @@ public class ChatServiceImpl implements ChatService {
     private final UserRepository userRepository;
     private final UserPresenceRegistry userPresenceRegistry;
     private final NotificationService notificationService;
+    private final GroupChatReadStateRepository groupChatReadStateRepository;
 
     @Override
     @Transactional
@@ -45,7 +52,7 @@ public class ChatServiceImpl implements ChatService {
         User sender = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy người dùng gửi tin"));
 
-        boolean isTeacher = classroom.getTeacher().getId() == currentUserId;
+        boolean isTeacher = java.util.Objects.equals(classroom.getTeacher().getId(), currentUserId);
         boolean isTargetStudent = request.getStudentId().equals(currentUserId);
         boolean isStudentInClass = classroomRepository.existsByIdAndStudentsId(request.getClassId(), request.getStudentId());
 
@@ -60,35 +67,13 @@ public class ChatServiceImpl implements ChatService {
         ChatMessage chatMessage = ChatMessage.builder()
                 .classId(request.getClassId())
                 .studentId(request.getStudentId())
+                .chatType(com.codegym.mathclass.chat.entity.ChatType.DIRECT_TEACHER)
                 .sender(sender)
                 .content(request.getContent().trim())
                 .isRead(false)
                 .build();
 
         ChatMessage savedMessage = chatMessageRepository.save(chatMessage);
-
-        // Bổ sung thông báo đẩy SSE + Lưu DB cho người nhận
-        Long notificationTargetUserId;
-        String notificationMessage;
-        String notificationLink;
-
-        if (isTeacher) {
-            // Giảng viên gửi tin nhắn tới Học sinh
-            notificationTargetUserId = request.getStudentId();
-            notificationMessage = "Giảng viên " + sender.getFullName() + " đã gửi cho bạn một tin nhắn mới trong lớp " + classroom.getClassName();
-            notificationLink = "/classes/" + classroom.getClassCode() + "/student?chat=open";
-        } else {
-            // Học sinh gửi tin nhắn tới Giảng viên
-            notificationTargetUserId = classroom.getTeacher().getId();
-            notificationMessage = "Học sinh " + sender.getFullName() + " đã gửi cho bạn một tin nhắn mới trong lớp " + classroom.getClassName();
-            notificationLink = "/classes/" + classroom.getClassCode() + "?tab=chat&studentId=" + sender.getId();
-        }
-
-        try {
-            notificationService.saveAndSendNotification(notificationTargetUserId, notificationMessage, notificationLink);
-        } catch (Exception e) {
-            log.error("Lỗi khi gửi thông báo tin nhắn mới:", e);
-        }
 
         java.time.LocalDateTime msgCreatedAt = savedMessage.getCreatedAt() != null 
                 ? savedMessage.getCreatedAt() 
@@ -98,6 +83,7 @@ public class ChatServiceImpl implements ChatService {
                 .id(savedMessage.getId())
                 .classId(savedMessage.getClassId())
                 .studentId(savedMessage.getStudentId())
+                .chatType(com.codegym.mathclass.chat.entity.ChatType.DIRECT_TEACHER)
                 .senderId(sender.getId())
                 .senderName(sender.getFullName())
                 .senderAvatar(sender.getAvatarUrl())
@@ -116,7 +102,7 @@ public class ChatServiceImpl implements ChatService {
         validateClassMember(classroom, currentUserId);
 
         Long targetStudentId = studentId;
-        boolean isTeacher = classroom.getTeacher().getId() == currentUserId;
+        boolean isTeacher = java.util.Objects.equals(classroom.getTeacher().getId(), currentUserId);
 
         if (!isTeacher) {
             targetStudentId = currentUserId;
@@ -140,16 +126,18 @@ public class ChatServiceImpl implements ChatService {
 
         validateClassMember(classroom, currentUserId);
 
-        Long targetStudentId = studentId;
-        boolean isTeacher = classroom.getTeacher().getId() == currentUserId;
-
-        if (!isTeacher) {
-            targetStudentId = currentUserId;
-        } else if (targetStudentId == null) {
-            throw new BadRequestException("Giảng viên cần cung cấp ID học sinh");
+        boolean isTeacher = java.util.Objects.equals(classroom.getTeacher().getId(), currentUserId);
+        Long otherUserId;
+        if (isTeacher) {
+            if (studentId == null) {
+                throw new BadRequestException("Giảng viên cần cung cấp ID học sinh");
+            }
+            otherUserId = studentId;
+        } else {
+            otherUserId = classroom.getTeacher().getId();
         }
 
-        chatMessageRepository.markMessagesAsRead(classroom.getId(), targetStudentId, currentUserId);
+        chatMessageRepository.markDirectMessagesAsRead(classroom.getId(), otherUserId, currentUserId);
     }
 
     @Override
@@ -185,7 +173,7 @@ public class ChatServiceImpl implements ChatService {
         Classroom classroom = classroomRepository.findByClassCode(classCode)
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy lớp học với mã: " + classCode));
 
-        if (classroom.getTeacher().getId() != currentUserId) {
+        if (!java.util.Objects.equals(classroom.getTeacher().getId(), currentUserId)) {
             throw new AccessDeniedException("Chỉ giảng viên phụ trách lớp học mới được lấy danh sách tin nhắn chưa đọc");
         }
 
@@ -193,11 +181,243 @@ public class ChatServiceImpl implements ChatService {
     }
 
     private void validateClassMember(Classroom classroom, Long currentUserId) {
-        boolean isTeacher = classroom.getTeacher().getId() == currentUserId;
+        boolean isTeacher = java.util.Objects.equals(classroom.getTeacher().getId(), currentUserId);
         boolean isStudent = classroomRepository.existsByIdAndStudentsId(classroom.getId(), currentUserId);
 
         if (!isTeacher && !isStudent) {
             throw new AccessDeniedException("Bạn không phải là thành viên của lớp học này");
         }
     }
+
+    @Override
+    @Transactional
+    public ChatMessageResponse sendGroupMessage(com.codegym.mathclass.chat.dto.GroupChatMessageRequest request, Long currentUserId) {
+        Classroom classroom = classroomRepository.findById(request.getClassId())
+                .orElseThrow(() -> new BadRequestException("Không tìm thấy lớp học với ID: " + request.getClassId()));
+
+        validateClassMember(classroom, currentUserId);
+
+        User sender = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new BadRequestException("Không tìm thấy người dùng gửi tin"));
+
+        ChatMessage chatMessage = ChatMessage.builder()
+                .classId(request.getClassId())
+                .chatType(com.codegym.mathclass.chat.entity.ChatType.CLASS_GROUP)
+                .sender(sender)
+                .content(request.getContent().trim())
+                .isRead(false)
+                .build();
+
+        ChatMessage savedMessage = chatMessageRepository.save(chatMessage);
+
+        java.time.LocalDateTime msgCreatedAt = savedMessage.getCreatedAt() != null
+                ? savedMessage.getCreatedAt()
+                : java.time.LocalDateTime.now(java.time.ZoneOffset.UTC);
+
+        return ChatMessageResponse.builder()
+                .id(savedMessage.getId())
+                .classId(savedMessage.getClassId())
+                .chatType(com.codegym.mathclass.chat.entity.ChatType.CLASS_GROUP)
+                .senderId(sender.getId())
+                .senderName(sender.getFullName())
+                .senderAvatar(sender.getAvatarUrl())
+                .content(savedMessage.getContent())
+                .isRead(savedMessage.getIsRead())
+                .createdAt(msgCreatedAt)
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public ChatMessageResponse sendDirectMessage(com.codegym.mathclass.chat.dto.DirectChatMessageRequest request, Long currentUserId) {
+        Classroom classroom = classroomRepository.findById(request.getClassId())
+                .orElseThrow(() -> new BadRequestException("Không tìm thấy lớp học với ID: " + request.getClassId()));
+
+        validateClassMember(classroom, currentUserId);
+
+        if (currentUserId.equals(request.getRecipientId())) {
+            throw new BadRequestException("Không thể gửi tin nhắn cho chính mình");
+        }
+
+        boolean isRecipientMember = java.util.Objects.equals(classroom.getTeacher().getId(), request.getRecipientId())
+                || classroomRepository.existsByIdAndStudentsId(request.getClassId(), request.getRecipientId());
+
+        if (!isRecipientMember) {
+            throw new BadRequestException("Người nhận không thuộc lớp học này");
+        }
+
+        User sender = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new BadRequestException("Không tìm thấy người dùng gửi tin"));
+
+        ChatMessage chatMessage = ChatMessage.builder()
+                .classId(request.getClassId())
+                .recipientId(request.getRecipientId())
+                .chatType(com.codegym.mathclass.chat.entity.ChatType.DIRECT_STUDENT)
+                .sender(sender)
+                .content(request.getContent().trim())
+                .isRead(false)
+                .build();
+
+        ChatMessage savedMessage = chatMessageRepository.save(chatMessage);
+
+        java.time.LocalDateTime msgCreatedAt = savedMessage.getCreatedAt() != null
+                ? savedMessage.getCreatedAt()
+                : java.time.LocalDateTime.now(java.time.ZoneOffset.UTC);
+
+        return ChatMessageResponse.builder()
+                .id(savedMessage.getId())
+                .classId(savedMessage.getClassId())
+                .recipientId(savedMessage.getRecipientId())
+                .chatType(com.codegym.mathclass.chat.entity.ChatType.DIRECT_STUDENT)
+                .senderId(sender.getId())
+                .senderName(sender.getFullName())
+                .senderAvatar(sender.getAvatarUrl())
+                .content(savedMessage.getContent())
+                .isRead(savedMessage.getIsRead())
+                .createdAt(msgCreatedAt)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ChatMessageResponse> getGroupChatHistory(String classCode, Long currentUserId, Pageable pageable) {
+        Classroom classroom = classroomRepository.findByClassCode(classCode)
+                .orElseThrow(() -> new BadRequestException("Không tìm thấy lớp học với mã: " + classCode));
+
+        validateClassMember(classroom, currentUserId);
+
+        Page<com.codegym.mathclass.chat.entity.ChatMessage> messages =
+                chatMessageRepository.findGroupHistoryByClassId(classroom.getId(), pageable);
+
+        return messages.map(m -> ChatMessageResponse.builder()
+                .id(m.getId())
+                .classId(m.getClassId())
+                .studentId(m.getStudentId())
+                .recipientId(m.getRecipientId())
+                .chatType(m.getChatType())
+                .senderId(m.getSender() != null ? m.getSender().getId() : null)
+                .senderName(m.getSender() != null ? m.getSender().getFullName() : "Vô danh")
+                .senderAvatar(m.getSender() != null ? m.getSender().getAvatarUrl() : null)
+                .content(m.getContent())
+                .isRead(m.getIsRead())
+                .createdAt(m.getCreatedAt())
+                .build());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ChatMessageResponse> getDirectChatHistory(String classCode, Long otherUserId, Long currentUserId, Pageable pageable) {
+        Classroom classroom = classroomRepository.findByClassCode(classCode)
+                .orElseThrow(() -> new BadRequestException("Không tìm thấy lớp học với mã: " + classCode));
+
+        validateClassMember(classroom, currentUserId);
+
+        Page<com.codegym.mathclass.chat.entity.ChatMessage> messages =
+                chatMessageRepository.findDirectHistoryByClassIdAndUsers(classroom.getId(), currentUserId, otherUserId, pageable);
+
+        return messages.map(m -> ChatMessageResponse.builder()
+                .id(m.getId())
+                .classId(m.getClassId())
+                .studentId(m.getStudentId())
+                .recipientId(m.getRecipientId())
+                .chatType(m.getChatType())
+                .senderId(m.getSender() != null ? m.getSender().getId() : null)
+                .senderName(m.getSender() != null ? m.getSender().getFullName() : "Vô danh")
+                .senderAvatar(m.getSender() != null ? m.getSender().getAvatarUrl() : null)
+                .content(m.getContent())
+                .isRead(m.getIsRead())
+                .createdAt(m.getCreatedAt())
+                .build());
+    }
+
+    @Override
+    @Transactional
+    public void markDirectAsRead(String classCode, Long otherUserId, Long currentUserId) {
+        Classroom classroom = classroomRepository.findByClassCode(classCode)
+                .orElseThrow(() -> new BadRequestException("Không tìm thấy lớp học với mã: " + classCode));
+
+        validateClassMember(classroom, currentUserId);
+
+        chatMessageRepository.markDirectMessagesAsRead(classroom.getId(), otherUserId, currentUserId);
+    }
+
+    private java.time.LocalDateTime getGroupLastReadAt(Long classId, Long userId) {
+        return groupChatReadStateRepository.findByClassIdAndUserId(classId, userId)
+                .map(GroupChatReadState::getLastReadAt)
+                .orElse(java.time.LocalDateTime.of(1970, 1, 1, 0, 0));
+    }
+
+    @Override
+    @Transactional
+    public void markGroupAsRead(String classCode, Long currentUserId) {
+        Classroom classroom = classroomRepository.findByClassCode(classCode)
+                .orElseThrow(() -> new BadRequestException("Không tìm thấy lớp học với mã: " + classCode));
+
+        validateClassMember(classroom, currentUserId);
+
+        Long classId = classroom.getId();
+        java.time.LocalDateTime now = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC);
+
+        GroupChatReadState readState = groupChatReadStateRepository.findByClassIdAndUserId(classId, currentUserId)
+                .orElse(GroupChatReadState.builder()
+                        .classId(classId)
+                        .userId(currentUserId)
+                        .lastReadAt(now)
+                        .build());
+
+        readState.setLastReadAt(now);
+        groupChatReadStateRepository.save(readState);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Long> getUnreadClassIds(Long currentUserId) {
+        List<Long> directUnreadClassIds = chatMessageRepository.findUnreadDirectClassIdsForUser(currentUserId);
+        Set<Long> resultSet = new HashSet<>(directUnreadClassIds);
+
+        List<Long> userClassroomIds = classroomRepository.findClassroomIdsByUserId(currentUserId);
+        for (Long classId : userClassroomIds) {
+            java.time.LocalDateTime lastReadAt = getGroupLastReadAt(classId, currentUserId);
+            if (chatMessageRepository.hasUnreadGroupMessage(classId, currentUserId, lastReadAt)) {
+                resultSet.add(classId);
+            }
+        }
+
+        return new ArrayList<>(resultSet);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ClassroomChatUnreadSummaryResponse getUnreadSummary(String classCode, Long currentUserId) {
+        Classroom classroom = classroomRepository.findByClassCode(classCode)
+                .orElseThrow(() -> new BadRequestException("Không tìm thấy lớp học với mã: " + classCode));
+
+        validateClassMember(classroom, currentUserId);
+
+        Long classId = classroom.getId();
+        java.time.LocalDateTime lastReadAt = getGroupLastReadAt(classId, currentUserId);
+        long groupUnreadCount = chatMessageRepository.countUnreadGroupMessages(classId, currentUserId, lastReadAt);
+        boolean hasGroupUnread = groupUnreadCount > 0;
+
+        List<Object[]> rawCounts = chatMessageRepository.findUnreadStudentCountsRaw(classId, currentUserId);
+        Map<Long, Long> studentUnreadCounts = new HashMap<>();
+        List<Long> unreadStudentIds = new ArrayList<>();
+
+        for (Object[] row : rawCounts) {
+            if (row != null && row.length >= 2 && row[0] != null && row[1] != null) {
+                Long studentId = (Long) row[0];
+                Long count = (Long) row[1];
+                studentUnreadCounts.put(studentId, count);
+                unreadStudentIds.add(studentId);
+            }
+        }
+
+        return ClassroomChatUnreadSummaryResponse.builder()
+                .hasGroupUnread(hasGroupUnread)
+                .groupUnreadCount(groupUnreadCount)
+                .unreadStudentIds(unreadStudentIds)
+                .studentUnreadCounts(studentUnreadCounts)
+                .build();
+    }
 }
+
