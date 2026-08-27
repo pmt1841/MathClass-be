@@ -10,6 +10,8 @@ import org.springframework.data.domain.Pageable;
 import com.codegym.mathclass.assignment.entity.AssignmentStatus;
 import com.codegym.mathclass.assignment.dto.AssignmentImageDto;
 import org.springframework.web.multipart.MultipartFile;
+import java.util.List;
+import java.util.Map;
 import java.io.IOException;
 
 public interface AssignmentService {
@@ -19,6 +21,11 @@ public interface AssignmentService {
      * Chưa giao cho lớp nào.
      */
     AssignmentResponse createAssignment(CreateAssignmentRequest request, long teacherId);
+
+    /**
+     * Tạo hàng loạt bài tập cùng lúc (mỗi bài là một bản ghi DRAFT riêng biệt).
+     */
+    List<AssignmentResponse> createBatchAssignments(List<CreateAssignmentRequest> requests, long teacherId);
 
     /**
      * Bước 2: Giáo viên publish bài tập và chọn các lớp để giao.
@@ -68,7 +75,7 @@ public interface AssignmentService {
     /**
      * Upload file (.txt, .docx, ...) và trích xuất nội dung văn bản
      */
-    java.util.Map<String, Object> extractTextFromFile(org.springframework.web.multipart.MultipartFile file) throws Exception;
+    Map<String, Object> extractTextFromFile(MultipartFile file) throws Exception;
 
     /**
      * Lấy danh sách các bài tập công khai (PUBLIC) trong Thư viện

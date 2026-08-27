@@ -246,4 +246,39 @@ class AssignmentControllerTest {
             verify(assignmentService, times(1)).uploadImageForAssignment(any(MultipartFile.class));
         }
     }
+
+    @Nested
+    @DisplayName("POST /assignments/batch Integration Tests")
+    class BatchCreateAssignmentsEndpointTests {
+
+        @Test
+        @DisplayName("Should create batch assignments successfully and return 201 Created")
+        void createBatchAssignments_ValidRequest_ReturnsCreated() throws Exception {
+            CreateAssignmentRequest req1 = new CreateAssignmentRequest();
+            req1.setTitle("Bài tập 1");
+            CreateAssignmentRequest req2 = new CreateAssignmentRequest();
+            req2.setTitle("Bài tập 2");
+
+            AssignmentResponse res1 = new AssignmentResponse();
+            res1.setId(101L);
+            res1.setTitle("Bài tập 1");
+            AssignmentResponse res2 = new AssignmentResponse();
+            res2.setId(102L);
+            res2.setTitle("Bài tập 2");
+
+            when(assignmentService.createBatchAssignments(any(), eq(1L))).thenReturn(java.util.List.of(res1, res2));
+
+            mockMvc.perform(post("/assignments/batch")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(java.util.List.of(req1, req2))))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.length()").value(2))
+                    .andExpect(jsonPath("$[0].id").value(101L))
+                    .andExpect(jsonPath("$[0].title").value("Bài tập 1"))
+                    .andExpect(jsonPath("$[1].id").value(102L))
+                    .andExpect(jsonPath("$[1].title").value("Bài tập 2"));
+
+            verify(assignmentService, times(1)).createBatchAssignments(any(), eq(1L));
+        }
+    }
 }

@@ -573,4 +573,60 @@ class AssignmentServiceImplTest {
                     .hasMessageContaining("Bạn không có quyền thay đổi thiết lập của bài tập này");
         }
     }
+
+    @Nested
+    @DisplayName("createBatchAssignments Tests")
+    class CreateBatchAssignmentsTests {
+
+        @Test
+        @DisplayName("Should save list of assignments successfully")
+        void createBatchAssignments_Success() {
+            CreateAssignmentRequest req1 = new CreateAssignmentRequest();
+            req1.setTitle("Bài 1");
+            req1.setContent("Nội dung bài 1");
+
+            CreateAssignmentRequest req2 = new CreateAssignmentRequest();
+            req2.setTitle("Bài 2");
+            req2.setContent("Nội dung bài 2");
+
+            Assignment assignment1 = new Assignment();
+            assignment1.setId(101L);
+            assignment1.setTitle("Bài 1");
+
+            Assignment assignment2 = new Assignment();
+            assignment2.setId(102L);
+            assignment2.setTitle("Bài 2");
+
+            AssignmentResponse res1 = new AssignmentResponse();
+            res1.setId(101L);
+            res1.setTitle("Bài 1");
+
+            AssignmentResponse res2 = new AssignmentResponse();
+            res2.setId(102L);
+            res2.setTitle("Bài 2");
+
+            when(userRepository.findById(teacherId)).thenReturn(Optional.of(teacher));
+            when(assignmentRepository.save(any(Assignment.class))).thenReturn(assignment1, assignment2);
+            when(assignmentMapper.toAssignmentResponse(any(Assignment.class))).thenReturn(res1, res2);
+
+            List<AssignmentResponse> results = assignmentService.createBatchAssignments(List.of(req1, req2), teacherId);
+
+            assertThat(results).hasSize(2);
+            assertThat(results.get(0).getTitle()).isEqualTo("Bài 1");
+            assertThat(results.get(1).getTitle()).isEqualTo("Bài 2");
+            verify(assignmentRepository, times(2)).save(any(Assignment.class));
+        }
+
+        @Test
+        @DisplayName("Should return empty list when requests is null or empty")
+        void createBatchAssignments_EmptyOrNull_ReturnsEmptyList() {
+            List<AssignmentResponse> resNull = assignmentService.createBatchAssignments(null, teacherId);
+            assertThat(resNull).isEmpty();
+
+            List<AssignmentResponse> resEmpty = assignmentService.createBatchAssignments(List.of(), teacherId);
+            assertThat(resEmpty).isEmpty();
+
+            verify(assignmentRepository, never()).save(any(Assignment.class));
+        }
+    }
 }
