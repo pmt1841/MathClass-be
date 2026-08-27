@@ -215,6 +215,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 "STUDENT_HINT", 1,
                                 "CANVAS_LATEX", 2,
                                 "QUESTION_GEN", 3,
+                                "BATCH_QUESTION_GEN", 2,
                                 "SUBMISSION_GRADING", 5);
                 defaults.forEach((task, cost) -> {
                         AiCreditConfig existing = aiCreditConfigRepository.findByTask(task).orElse(null);
@@ -603,6 +604,43 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 4. Tọa độ các điểm và miền vẽ phải nằm trong hệ tọa độ Đề-các chuẩn [-6, 6].
                                 """;
 
+                String defaultBatchQuestionGenPrompt = """
+                                Bạn là một chuyên gia Sư phạm Toán học.
+                                Nhiệm vụ của bạn là đọc và phân tích toàn bộ tài liệu/đề thi dưới đây (được trích xuất từ file đề thi Word/PDF/Text):
+                                \"\"\"
+                                {{document_content}}
+                                \"\"\"
+
+                                YÊU CẦU PHÂN TÍCH & TÁCH THÀNH CÁC BÀI TẬP LẺ ĐỘC LẬP:
+                                1. Phân tích tài liệu, tự động nhận diện và bóc tách từng câu hỏi/bài toán thành một BÀI TẬP RIÊNG BIỆT (ví dụ nếu file có 3 câu thì tách thành 3 bài tập riêng lẻ).
+                                2. Tự động đặt Tiêu đề ngắn gọn, súc tích cho từng bài tập lẻ đó dựa trên nội dung câu hỏi (ví dụ: "Bài 1: Rút gọn biểu thức", "Bài 2: Giải hệ phương trình", "Bài 3: Tính diện tích tam giác"...).
+                                3. Nếu trong tài liệu có các thẻ mã ảnh như [IMAGE_...], hãy giữ nguyên đúng vị trí của thẻ ảnh đó trong nội dung bài tập tương ứng.
+                                4. Đối với từng bài tập trong danh sách 'questions':
+                                   - "id": Mã bài tập ngắn (ví dụ: "q1", "q2",...).
+                                   - "title": Tên đề mục / tiêu đề ngắn gọn cho bài tập lẻ (ví dụ: "Bài 1: Rút gọn biểu thức và tính giá trị", "Bài 2: Giải hệ phương trình bậc nhất hai ẩn", "Bài 3: Bài toán thực tế hình học"...).
+                                   - "content": Toàn bộ nội dung đề bài chi tiết của bài tập đó (dạng Markdown + công thức KaTeX). Tuyệt đối KHÔNG kèm lời giải, chỉ lấy nội dung đề bài để học sinh làm.
+
+                                YÊU CẦU ĐỊNH DẠNG KATEX / CÔNG THỨC TOÁN (RẤT QUAN TRỌNG):
+                                1. TẤT CẢ công thức toán học, đại lượng, biến số (R, S, x, y, \\pi, \\alpha...), số đo và đơn vị (6\\text{ cm}, \\text{cm}^2...) trong 'content' BẮT BUỘC kẹp giữa 2 dấu đô-la $...$ (inline math) hoặc $$...$$ (block math).
+                                   - Ví dụ ĐÚNG: $x^2 + 2x + 1 = 0$, $\\frac{a}{b}$, $AB = 6\\text{ cm}$, $AC = 8\\text{ cm}$, $S = \\pi R^2$, $\\pi \\approx 3.14$, $S = 24\\text{ cm}^2$.
+                                   - TUYỆT ĐỐI KHÔNG để mất dấu gạch chéo \\ khi viết \\text{ cm} hay \\frac{a}{b}.
+                                2. Dấu $ CHỈ bọc TRỰC TIẾP công thức toán, TUYỆT ĐỐI KHÔNG bọc chữ tiếng Việt thông thường.
+                                3. TUYỆT ĐỐI KHÔNG dùng ngoặc tròn hay \\(...\\) hay [...] để THAY THẾ cho dấu đô-la bọc công thức toán.
+
+                                YÊU CẦU ĐỊNH DẠNG JSON BẮT BUỘC:
+                                Phản hồi CHỈ trả về duy nhất một JSON Object hợp lệ, KHÔNG kèm văn bản hay giải thích bên ngoài, KHÔNG kẹp trong markdown fence ```json, đúng schema sau:
+                                {
+                                  "suggestedTitle": "Đề thi khảo sát chất lượng Toán",
+                                  "questions": [
+                                    {
+                                      "id": "q1",
+                                      "title": "Bài 1: Rút gọn biểu thức chứa căn",
+                                      "content": "Nội dung câu hỏi 1 với công thức KaTeX $...$"
+                                    }
+                                  ]
+                                }
+                                """;
+
                 upsertSystemPrompt("PROMPT_STUDENT_HINT", "Prompt Gợi ý Tư duy Làm bài", "STUDENT_HINT",
                                 defaultHintPrompt,
                                 "title,problem_content,student_content,subject",
@@ -625,6 +663,10 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 defaultQuestionGenPrompt,
                                 "grade_level,difficulty,topic,question_type,canvas_requirement,explanation_requirement",
                                 "Tự động tạo bài tập tự luận môn Toán.");
+                upsertSystemPrompt("PROMPT_BATCH_QUESTION_GEN", "Prompt Tạo Hàng Loạt Bài Tập từ Tài Liệu", "BATCH_QUESTION_GEN",
+                                defaultBatchQuestionGenPrompt,
+                                "grade_level,topic,canvas_requirement,explanation_requirement,document_content",
+                                "Tự động phân tích và bóc tách tài liệu/file đề thi thành danh sách các bài tập toán.");
         }
 
         private void upsertSystemPrompt(String code, String name, String taskCode, String defaultContent,

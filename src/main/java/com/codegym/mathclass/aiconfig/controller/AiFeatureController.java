@@ -39,6 +39,7 @@ public class AiFeatureController {
             "SUBMISSION_GRADING",
             "STUDENT_HINT",
             "QUESTION_GEN",
+            "BATCH_QUESTION_GEN",
             "CANVAS_LATEX",
             "ERROR_ANALYSIS"
     );

@@ -134,6 +134,7 @@ public class AiCreditServiceImpl implements AiCreditService {
             case "STUDENT_HINT" -> "Gợi ý tư duy làm bài";
             case "CANVAS_LATEX" -> "Trợ lý AI Canvas";
             case "QUESTION_GEN" -> "Sinh đề";
+            case "BATCH_QUESTION_GEN" -> "AI tách đề";
             case "SUBMISSION_GRADING" -> "Chấm bài tự động";
             case "ERROR_ANALYSIS" -> "Phân tích lỗi sai";
             default -> task;

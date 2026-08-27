@@ -77,9 +77,8 @@ public class AiQuestionServiceImpl implements AiQuestionService {
         int reserved = 0;
         if (charge) {
             costPerCall = creditCfg.get().getCostPerCall() != null ? creditCfg.get().getCostPerCall() : 0;
-            tokensPerCredit = creditCfg.get().getTokensPerCredit();
-            int maxToken = taskConfig.getMaxToken() != null ? taskConfig.getMaxToken() : 2048;
-            reserved = AiCreditService.estimateCredits(maxToken, costPerCall, tokensPerCredit);
+            tokensPerCredit = creditCfg.get().getTokensPerCredit() != null ? creditCfg.get().getTokensPerCredit() : 1000;
+            reserved = Math.max(costPerCall, 3);
             if (reserved > 0) {
                 aiCreditService.reserve(userId, TASK_QUESTION_GEN, reserved);
             }

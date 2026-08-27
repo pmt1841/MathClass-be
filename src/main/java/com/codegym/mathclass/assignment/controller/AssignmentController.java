@@ -57,6 +57,18 @@ public class AssignmentController {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
+    @Operation(summary = "Tạo hàng loạt bài tập cùng lúc (DRAFT)", description = "Giáo viên tạo nhiều bài tập nháp độc lập cùng lúc")
+    @PostMapping("/batch")
+    @PreAuthorize("hasAuthority('assignment:create')")
+    public ResponseEntity<java.util.List<AssignmentResponse>> createBatchAssignments(
+            @Valid @RequestBody java.util.List<CreateAssignmentRequest> requests,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        long teacherId = userDetails.getId();
+        java.util.List<AssignmentResponse> responses = assignmentService.createBatchAssignments(requests, teacherId);
+        return new ResponseEntity<>(responses, HttpStatus.CREATED);
+    }
+
     @Operation(summary = "Giao bài tập cho các lớp (Publish)", description = "Chuyển trạng thái từ DRAFT sang PUBLISHED và chọn danh sách các lớp để giao bài")
     @PutMapping("/{id}/publish")
     @PreAuthorize("hasAuthority('assignment:publish')")

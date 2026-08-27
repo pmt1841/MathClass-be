@@ -34,6 +34,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import com.codegym.mathclass.assignment.entity.AssignmentVisibility;
@@ -120,6 +121,19 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         Assignment saved = assignmentRepository.save(assignment);
         return assignmentMapper.toAssignmentResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public List<AssignmentResponse> createBatchAssignments(List<CreateAssignmentRequest> requests, long teacherId) {
+        if (requests == null || requests.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<AssignmentResponse> responses = new ArrayList<>();
+        for (CreateAssignmentRequest request : requests) {
+            responses.add(createAssignment(request, teacherId));
+        }
+        return responses;
     }
 
     @Override

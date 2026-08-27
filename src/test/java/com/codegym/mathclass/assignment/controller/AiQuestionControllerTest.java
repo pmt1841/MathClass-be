@@ -23,6 +23,9 @@ class AiQuestionControllerTest {
     @Mock
     private AiQuestionService aiQuestionService;
 
+    @Mock
+    private com.codegym.mathclass.assignment.service.AiBatchQuestionService aiBatchQuestionService;
+
     @InjectMocks
     private AiQuestionController aiQuestionController;
 
@@ -52,6 +55,32 @@ class AiQuestionControllerTest {
         assertEquals(mockResponse, responseEntity.getBody());
 
         verify(aiQuestionService).generateQuestion(req, null);
+    }
+
+    @Test
+    @DisplayName("Should batch generate questions successfully and return 200 OK")
+    void testBatchGenerateQuestions_Success() {
+        com.codegym.mathclass.assignment.dto.BatchGenerateQuestionsRequest req =
+                com.codegym.mathclass.assignment.dto.BatchGenerateQuestionsRequest.builder()
+                        .textContent("Bài 1: Giải phương trình x + 1 = 2")
+                        .build();
+
+        com.codegym.mathclass.assignment.dto.BatchGenerateQuestionsResponse mockResponse =
+                com.codegym.mathclass.assignment.dto.BatchGenerateQuestionsResponse.builder()
+                        .suggestedTitle("Đề kiểm tra")
+                        .totalQuestions(1)
+                        .build();
+
+        when(aiBatchQuestionService.batchGenerateQuestions(any(), any())).thenReturn(mockResponse);
+
+        var responseEntity = aiQuestionController.batchGenerateQuestions(req, null);
+
+        assertNotNull(responseEntity);
+        assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
+        assertNotNull(responseEntity.getBody());
+        assertEquals(mockResponse, responseEntity.getBody());
+
+        verify(aiBatchQuestionService).batchGenerateQuestions(req, null);
     }
 
     @Test

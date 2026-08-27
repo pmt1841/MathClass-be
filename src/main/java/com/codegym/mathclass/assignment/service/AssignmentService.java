@@ -21,6 +21,11 @@ public interface AssignmentService {
     AssignmentResponse createAssignment(CreateAssignmentRequest request, long teacherId);
 
     /**
+     * Tạo hàng loạt bài tập cùng lúc (mỗi bài là một bản ghi DRAFT riêng biệt).
+     */
+    java.util.List<AssignmentResponse> createBatchAssignments(java.util.List<CreateAssignmentRequest> requests, long teacherId);
+
+    /**
      * Bước 2: Giáo viên publish bài tập và chọn các lớp để giao.
      * Chuyển trạng thái bản nháp thành ARCHIVED, tạo các bản clone cho mỗi lớp.
      */
