@@ -34,10 +34,8 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class AiBatchQuestionServiceImplTest {
@@ -211,5 +209,229 @@ class AiBatchQuestionServiceImplTest {
         assertNotNull(response);
         assertEquals("Đề thi khảo sát", response.getSuggestedTitle());
         assertEquals(1, response.getTotalQuestions());
+    }
+
+    @Test
+    @DisplayName("Should reserve credits before call and settle credits on success for non-admin user")
+    void testCreditLifecycle_ReserveAndSettle_Success() throws Exception {
+        BatchGenerateQuestionsRequest request = BatchGenerateQuestionsRequest.builder()
+                .textContent("Bài 1: Giải phương trình 2x = 4")
+                .build();
+
+        com.codegym.mathclass.user.entity.User teacherUser = new com.codegym.mathclass.user.entity.User();
+        teacherUser.setId(1L);
+        teacherUser.setRole(com.codegym.mathclass.user.entity.Role.TEACHER);
+
+        com.codegym.mathclass.aiconfig.credit.entity.AiCreditConfig creditConfig =
+                com.codegym.mathclass.aiconfig.credit.entity.AiCreditConfig.builder()
+                        .task("BATCH_QUESTION_GEN")
+                        .enabled(true)
+                        .costPerCall(2)
+                        .tokensPerCredit(1000)
+                        .build();
+
+        when(taskConfigRepository.findByTask("BATCH_QUESTION_GEN")).thenReturn(Optional.of(mockTaskConfig));
+        when(aiCreditService.getCreditConfig("BATCH_QUESTION_GEN")).thenReturn(Optional.of(creditConfig));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(teacherUser));
+        when(promptRenderService.renderPrompt(any())).thenReturn(
+                RenderPromptResponse.builder().renderedPrompt("Rendered Prompt Content").build()
+        );
+        when(keySelectionService.selectKeyForProvider(mockProvider)).thenReturn(mockApiKey);
+        when(aiProviderStrategyFactory.getStrategy(ProviderProtocol.GOOGLE_GEMINI_COMPATIBLE)).thenReturn(aiProviderStrategy);
+
+        String jsonAiResponse = """
+                {
+                  "suggestedTitle": "Đề kiểm tra",
+                  "questions": [
+                    { "id": "q1", "title": "Bài 1", "content": "$2x = 4$" }
+                  ]
+                }
+                """;
+
+        when(aiProviderStrategy.executePrompt(eq(mockProvider), eq(mockTaskConfig), eq("test-api-key"), anyString()))
+                .thenReturn(new AiExecutionResult(jsonAiResponse, 100));
+
+        BatchGenerateQuestionsResponse response = aiBatchQuestionService.batchGenerateQuestions(request, 1L);
+
+        assertNotNull(response);
+        verify(aiCreditService).reserve(1L, "BATCH_QUESTION_GEN", 2);
+        verify(aiCreditService).settle(eq(1L), eq("BATCH_QUESTION_GEN"), eq(2), anyInt());
+    }
+
+    @Test
+    @DisplayName("Should refund reserved credits when AI execution throws exception")
+    void testCreditLifecycle_RefundOnException() throws Exception {
+        BatchGenerateQuestionsRequest request = BatchGenerateQuestionsRequest.builder()
+                .textContent("Bài 1: Giải phương trình 2x = 4")
+                .build();
+
+        com.codegym.mathclass.user.entity.User teacherUser = new com.codegym.mathclass.user.entity.User();
+        teacherUser.setId(1L);
+        teacherUser.setRole(com.codegym.mathclass.user.entity.Role.TEACHER);
+
+        com.codegym.mathclass.aiconfig.credit.entity.AiCreditConfig creditConfig =
+                com.codegym.mathclass.aiconfig.credit.entity.AiCreditConfig.builder()
+                        .task("BATCH_QUESTION_GEN")
+                        .enabled(true)
+                        .costPerCall(2)
+                        .tokensPerCredit(1000)
+                        .build();
+
+        when(taskConfigRepository.findByTask("BATCH_QUESTION_GEN")).thenReturn(Optional.of(mockTaskConfig));
+        when(aiCreditService.getCreditConfig("BATCH_QUESTION_GEN")).thenReturn(Optional.of(creditConfig));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(teacherUser));
+        when(promptRenderService.renderPrompt(any())).thenReturn(
+                RenderPromptResponse.builder().renderedPrompt("Rendered Prompt Content").build()
+        );
+        when(keySelectionService.selectKeyForProvider(mockProvider)).thenReturn(mockApiKey);
+        when(aiProviderStrategyFactory.getStrategy(ProviderProtocol.GOOGLE_GEMINI_COMPATIBLE)).thenReturn(aiProviderStrategy);
+
+        when(aiProviderStrategy.executePrompt(eq(mockProvider), eq(mockTaskConfig), eq("test-api-key"), anyString()))
+                .thenThrow(new RuntimeException("Connection timeout"));
+
+        assertThrows(AiGenerationException.class, () -> aiBatchQuestionService.batchGenerateQuestions(request, 1L));
+
+        verify(aiCreditService).reserve(1L, "BATCH_QUESTION_GEN", 2);
+        verify(aiCreditService, atLeastOnce()).refund(1L, "BATCH_QUESTION_GEN", 2);
+        verify(aiCreditService, never()).settle(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    @DisplayName("Should NOT reserve or charge credits for ADMIN user")
+    void testCreditLifecycle_FreeForAdmin() throws Exception {
+        BatchGenerateQuestionsRequest request = BatchGenerateQuestionsRequest.builder()
+                .textContent("Bài 1: Giải phương trình 2x = 4")
+                .build();
+
+        com.codegym.mathclass.user.entity.User adminUser = new com.codegym.mathclass.user.entity.User();
+        adminUser.setId(99L);
+        adminUser.setRole(com.codegym.mathclass.user.entity.Role.ADMIN);
+
+        com.codegym.mathclass.aiconfig.credit.entity.AiCreditConfig creditConfig =
+                com.codegym.mathclass.aiconfig.credit.entity.AiCreditConfig.builder()
+                        .task("BATCH_QUESTION_GEN")
+                        .enabled(true)
+                        .costPerCall(2)
+                        .build();
+
+        when(taskConfigRepository.findByTask("BATCH_QUESTION_GEN")).thenReturn(Optional.of(mockTaskConfig));
+        when(aiCreditService.getCreditConfig("BATCH_QUESTION_GEN")).thenReturn(Optional.of(creditConfig));
+        when(userRepository.findById(99L)).thenReturn(Optional.of(adminUser));
+        when(promptRenderService.renderPrompt(any())).thenReturn(
+                RenderPromptResponse.builder().renderedPrompt("Rendered Prompt Content").build()
+        );
+        when(keySelectionService.selectKeyForProvider(mockProvider)).thenReturn(mockApiKey);
+        when(aiProviderStrategyFactory.getStrategy(ProviderProtocol.GOOGLE_GEMINI_COMPATIBLE)).thenReturn(aiProviderStrategy);
+
+        String jsonAiResponse = """
+                {
+                  "suggestedTitle": "Đề kiểm tra",
+                  "questions": [
+                    { "id": "q1", "title": "Bài 1", "content": "$2x = 4$" }
+                  ]
+                }
+                """;
+
+        when(aiProviderStrategy.executePrompt(eq(mockProvider), eq(mockTaskConfig), eq("test-api-key"), anyString()))
+                .thenReturn(new AiExecutionResult(jsonAiResponse, 200));
+
+        BatchGenerateQuestionsResponse response = aiBatchQuestionService.batchGenerateQuestions(request, 99L);
+
+        assertNotNull(response);
+        verify(aiCreditService, never()).reserve(any(), any(), anyInt());
+        verify(aiCreditService, never()).settle(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    @DisplayName("Should handle 401 and 429 failover and succeed with next available key")
+    void testFailover_401And429_RetriesNextKey() throws Exception {
+        BatchGenerateQuestionsRequest request = BatchGenerateQuestionsRequest.builder()
+                .textContent("Bài 1: Giải phương trình 2x = 4")
+                .build();
+
+        ApiKey key1 = ApiKey.builder().encryptedKey("key-1").provider(mockProvider).build();
+        key1.setId(101L);
+        ApiKey key2 = ApiKey.builder().encryptedKey("key-2").provider(mockProvider).build();
+        key2.setId(102L);
+        ApiKey key3 = ApiKey.builder().encryptedKey("key-3").provider(mockProvider).build();
+        key3.setId(103L);
+
+        when(taskConfigRepository.findByTask("BATCH_QUESTION_GEN")).thenReturn(Optional.of(mockTaskConfig));
+        when(aiCreditService.getCreditConfig("BATCH_QUESTION_GEN")).thenReturn(Optional.empty());
+        when(promptRenderService.renderPrompt(any())).thenReturn(
+                RenderPromptResponse.builder().renderedPrompt("Rendered Prompt Content").build()
+        );
+        when(aiProviderStrategyFactory.getStrategy(ProviderProtocol.GOOGLE_GEMINI_COMPATIBLE)).thenReturn(aiProviderStrategy);
+
+        when(keySelectionService.selectKeyForProvider(mockProvider)).thenReturn(key1, key2, key3);
+
+        when(aiProviderStrategy.executePrompt(eq(mockProvider), eq(mockTaskConfig), eq("key-1"), anyString()))
+                .thenThrow(new AiGenerationException(401, "Invalid API key"));
+        when(aiProviderStrategy.executePrompt(eq(mockProvider), eq(mockTaskConfig), eq("key-2"), anyString()))
+                .thenThrow(new AiGenerationException(429, "Rate limit exceeded"));
+
+        String jsonAiResponse = """
+                {
+                  "suggestedTitle": "Đề kiểm tra",
+                  "questions": [
+                    { "id": "q1", "title": "Bài 1", "content": "$2x = 4$" }
+                  ]
+                }
+                """;
+        when(aiProviderStrategy.executePrompt(eq(mockProvider), eq(mockTaskConfig), eq("key-3"), anyString()))
+                .thenReturn(new AiExecutionResult(jsonAiResponse, 200));
+
+        BatchGenerateQuestionsResponse response = aiBatchQuestionService.batchGenerateQuestions(request, 1L);
+
+        assertNotNull(response);
+        assertEquals("Đề kiểm tra", response.getSuggestedTitle());
+        verify(keySelectionService).markKeyAsInactive(101L);
+        verify(keySelectionService).cooldownKey(102L, 300);
+    }
+
+    @Test
+    @DisplayName("Should throw AiGenerationException 503 when TaskConfig is disabled")
+    void testTaskConfigDisabled_ThrowsAiGenerationException503() {
+        BatchGenerateQuestionsRequest request = BatchGenerateQuestionsRequest.builder()
+                .textContent("Bài 1: Giải phương trình")
+                .build();
+
+        when(taskConfigRepository.findByTask("BATCH_QUESTION_GEN")).thenReturn(Optional.empty());
+        when(taskConfigRepository.findByTask("QUESTION_GEN")).thenReturn(Optional.empty());
+
+        AiGenerationException ex = assertThrows(
+                AiGenerationException.class,
+                () -> aiBatchQuestionService.batchGenerateQuestions(request, 1L)
+        );
+
+        assertEquals(503, ex.getStatusCode());
+    }
+
+    @Test
+    @DisplayName("Should throw AiGenerationException 503 when Provider is inactive")
+    void testProviderInactive_ThrowsAiGenerationException503() {
+        BatchGenerateQuestionsRequest request = BatchGenerateQuestionsRequest.builder()
+                .textContent("Bài 1: Giải phương trình")
+                .build();
+
+        Provider inactiveProvider = Provider.builder()
+                .code("GEMINI")
+                .status(ProviderStatus.INACTIVE)
+                .build();
+
+        TaskConfig taskConfigWithInactiveProvider = TaskConfig.builder()
+                .task("BATCH_QUESTION_GEN")
+                .provider(inactiveProvider)
+                .enabled(true)
+                .build();
+
+        when(taskConfigRepository.findByTask("BATCH_QUESTION_GEN")).thenReturn(Optional.of(taskConfigWithInactiveProvider));
+
+        AiGenerationException ex = assertThrows(
+                AiGenerationException.class,
+                () -> aiBatchQuestionService.batchGenerateQuestions(request, 1L)
+        );
+
+        assertEquals(503, ex.getStatusCode());
     }
 }

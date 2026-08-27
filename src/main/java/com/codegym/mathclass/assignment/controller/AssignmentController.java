@@ -33,6 +33,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import com.codegym.mathclass.assignment.entity.AssignmentStatus;
 import org.springframework.security.core.GrantedAuthority;
+import java.util.List;
+import java.util.Map;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
@@ -60,12 +62,12 @@ public class AssignmentController {
     @Operation(summary = "Tạo hàng loạt bài tập cùng lúc (DRAFT)", description = "Giáo viên tạo nhiều bài tập nháp độc lập cùng lúc")
     @PostMapping("/batch")
     @PreAuthorize("hasAuthority('assignment:create')")
-    public ResponseEntity<java.util.List<AssignmentResponse>> createBatchAssignments(
-            @Valid @RequestBody java.util.List<CreateAssignmentRequest> requests,
+    public ResponseEntity<List<AssignmentResponse>> createBatchAssignments(
+            @Valid @RequestBody List<CreateAssignmentRequest> requests,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         long teacherId = userDetails.getId();
-        java.util.List<AssignmentResponse> responses = assignmentService.createBatchAssignments(requests, teacherId);
+        List<AssignmentResponse> responses = assignmentService.createBatchAssignments(requests, teacherId);
         return new ResponseEntity<>(responses, HttpStatus.CREATED);
     }
 
@@ -191,7 +193,7 @@ public class AssignmentController {
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal CustomUserDetails userDetails) throws Exception {
 
-        java.util.Map<String, Object> result = assignmentService.extractTextFromFile(file);
+        Map<String, Object> result = assignmentService.extractTextFromFile(file);
         return ResponseEntity.ok(TextExtractionResponse.builder().data(result).build());
     }
 }
