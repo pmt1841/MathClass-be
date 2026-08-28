@@ -228,8 +228,141 @@ class StudentRemarkAiServiceImplTest {
     }
 
     @Test
-    @DisplayName("Should fallback gracefully when AI output is not standard JSON")
-    void evaluateStudentProgress_AiReturnsPlainText_GracefulFallback() {
+    @DisplayName("[BE-01] Should classify incomplete assignment without deadline as activeIncompleteAssignments")
+    void evaluateStudentProgress_NoDeadline_CountsAsActiveIncomplete() {
+        AiStudentRemarkEvaluateRequest request = AiStudentRemarkEvaluateRequest.builder().days(7).build();
+
+        Assignment aNoDeadline = Assignment.builder()
+                .title("Bài tập tự do không thời hạn")
+                .deadline(null)
+                .build();
+        aNoDeadline.setId(301L);
+
+        when(classroomRepository.findByClassCode("MATH101")).thenReturn(Optional.of(classroom));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(student));
+        when(assignmentRepository.findPublishedAssignmentsByClassCodeAndDateRange(eq("MATH101"), any(), any()))
+                .thenReturn(List.of(aNoDeadline));
+        when(submissionRepository.findAllByAssignmentIdInAndStudentId(anyList(), eq(2L)))
+                .thenReturn(Collections.emptyList());
+        when(systemPromptRepository.findByCode("PROMPT_STUDENT_REMARK")).thenReturn(Optional.empty());
+        when(aiPromptExecutionService.executePrompt(eq("STUDENT_REMARK"), anyString(), eq(1L)))
+                .thenReturn("{\"strengths\":\"N/A\",\"weaknesses\":\"N/A\",\"generalAssessment\":\"Đánh giá chung\"}");
+
+        AiStudentRemarkEvaluationResponse response = studentRemarkAiService.evaluateStudentProgress(
+                "MATH101", 2L, 1L, request);
+
+        assertThat(response.getTotalAssignments()).isEqualTo(1);
+        assertThat(response.getCompletedAssignments()).isEqualTo(0);
+        assertThat(response.getActiveIncompleteAssignments()).isEqualTo(1);
+        assertThat(response.getOverdueAssignments()).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("[BE-02] Should treat DRAFT submission as incomplete and classify as overdue when deadline is passed")
+    void evaluateStudentProgress_DraftSubmissionPastDeadline_CountsAsOverdue() {
+        AiStudentRemarkEvaluateRequest request = AiStudentRemarkEvaluateRequest.builder().days(7).build();
+
+        Assignment aPast = Assignment.builder()
+                .title("Bài tập quá hạn có bản nháp")
+                .deadline(java.time.LocalDateTime.now().minusDays(2))
+                .build();
+        aPast.setId(302L);
+
+        Submission sDraft = Submission.builder()
+                .assignment(aPast)
+                .student(student)
+                .status(SubmissionStatus.DRAFT)
+                .score(null)
+                .build();
+
+        when(classroomRepository.findByClassCode("MATH101")).thenReturn(Optional.of(classroom));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(student));
+        when(assignmentRepository.findPublishedAssignmentsByClassCodeAndDateRange(eq("MATH101"), any(), any()))
+                .thenReturn(List.of(aPast));
+        when(submissionRepository.findAllByAssignmentIdInAndStudentId(eq(List.of(302L)), eq(2L)))
+                .thenReturn(List.of(sDraft));
+        when(systemPromptRepository.findByCode("PROMPT_STUDENT_REMARK")).thenReturn(Optional.empty());
+        when(aiPromptExecutionService.executePrompt(eq("STUDENT_REMARK"), anyString(), eq(1L)))
+                .thenReturn("{\"strengths\":\"N/A\",\"weaknesses\":\"N/A\",\"generalAssessment\":\"Đánh giá\"}");
+
+        AiStudentRemarkEvaluationResponse response = studentRemarkAiService.evaluateStudentProgress(
+                "MATH101", 2L, 1L, request);
+
+        assertThat(response.getTotalAssignments()).isEqualTo(1);
+        assertThat(response.getCompletedAssignments()).isEqualTo(0);
+        assertThat(response.getOverdueAssignments()).isEqualTo(1);
+        assertThat(response.getActiveIncompleteAssignments()).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("[BE-03] Should correctly calculate averageScore only on submissions that have non-null score")
+    void evaluateStudentProgress_MixedScoredSubmissions_CalculatesAverageCorrectly() {
+        AiStudentRemarkEvaluateRequest request = AiStudentRemarkEvaluateRequest.builder().days(7).build();
+
+        Assignment a1 = Assignment.builder().title("Bài 1").maxScore(10.0).build();
+        a1.setId(401L);
+        Assignment a2 = Assignment.builder().title("Bài 2").maxScore(10.0).build();
+        a2.setId(402L);
+
+        Submission s1 = Submission.builder()
+                .assignment(a1)
+                .student(student)
+                .status(SubmissionStatus.GRADED)
+                .score(8.0)
+                .build();
+
+        Submission s2 = Submission.builder()
+                .assignment(a2)
+                .student(student)
+                .status(SubmissionStatus.SUBMITTED)
+                .score(null) // Chưa chấm
+                .build();
+
+        when(classroomRepository.findByClassCode("MATH101")).thenReturn(Optional.of(classroom));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(student));
+        when(assignmentRepository.findPublishedAssignmentsByClassCodeAndDateRange(eq("MATH101"), any(), any()))
+                .thenReturn(List.of(a1, a2));
+        when(submissionRepository.findAllByAssignmentIdInAndStudentId(eq(List.of(401L, 402L)), eq(2L)))
+                .thenReturn(List.of(s1, s2));
+        when(systemPromptRepository.findByCode("PROMPT_STUDENT_REMARK")).thenReturn(Optional.empty());
+        when(aiPromptExecutionService.executePrompt(eq("STUDENT_REMARK"), anyString(), eq(1L)))
+                .thenReturn("{\"strengths\":\"N/A\",\"weaknesses\":\"N/A\",\"generalAssessment\":\"Đánh giá\"}");
+
+        AiStudentRemarkEvaluationResponse response = studentRemarkAiService.evaluateStudentProgress(
+                "MATH101", 2L, 1L, request);
+
+        assertThat(response.getCompletedAssignments()).isEqualTo(2);
+        assertThat(response.getAverageScore()).isEqualTo(8.0);
+    }
+
+    @Test
+    @DisplayName("[BE-04] Should throw ResourceNotFoundException when classroom does not exist (404)")
+    void evaluateStudentProgress_ClassNotFound_ThrowsResourceNotFoundException() {
+        AiStudentRemarkEvaluateRequest request = AiStudentRemarkEvaluateRequest.builder().days(7).build();
+
+        when(classroomRepository.findByClassCode("UNKNOWN")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> studentRemarkAiService.evaluateStudentProgress("UNKNOWN", 2L, 1L, request))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Không tìm thấy lớp học");
+    }
+
+    @Test
+    @DisplayName("[BE-05] Should throw ResourceNotFoundException when student does not exist (404)")
+    void evaluateStudentProgress_StudentNotFound_ThrowsResourceNotFoundException() {
+        AiStudentRemarkEvaluateRequest request = AiStudentRemarkEvaluateRequest.builder().days(7).build();
+
+        when(classroomRepository.findByClassCode("MATH101")).thenReturn(Optional.of(classroom));
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> studentRemarkAiService.evaluateStudentProgress("MATH101", 999L, 1L, request))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Không tìm thấy học sinh");
+    }
+
+    @Test
+    @DisplayName("[BE-07] Should fallback gracefully when AI output is null or empty string")
+    void evaluateStudentProgress_AiReturnsEmptyOrNull_GracefulFallback() {
         AiStudentRemarkEvaluateRequest request = AiStudentRemarkEvaluateRequest.builder().days(3).build();
 
         when(classroomRepository.findByClassCode("MATH101")).thenReturn(Optional.of(classroom));
@@ -238,16 +371,25 @@ class StudentRemarkAiServiceImplTest {
                 .thenReturn(Collections.emptyList());
         when(systemPromptRepository.findByCode("PROMPT_STUDENT_REMARK")).thenReturn(Optional.empty());
 
+        // Test with empty string
         when(aiPromptExecutionService.executePrompt(eq("STUDENT_REMARK"), anyString(), eq(1L)))
-                .thenReturn("Học sinh chăm ngoan, tiến độ học tập ổn định.");
+                .thenReturn("");
 
         AiStudentRemarkEvaluationResponse response = studentRemarkAiService.evaluateStudentProgress(
                 "MATH101", 2L, 1L, request);
 
         assertThat(response).isNotNull();
-        assertThat(response.getTotalAssignments()).isEqualTo(0);
-        assertThat(response.getCompletedAssignments()).isEqualTo(0);
         assertThat(response.getGeneralAssessment()).contains("hoàn thành 0/0 bài tập");
-        assertThat(response.getGeneralAssessment()).contains("Học sinh chăm ngoan");
+        assertThat(response.getGeneralAssessment()).contains("AI không trả về nội dung đánh giá");
+
+        // Test with null
+        when(aiPromptExecutionService.executePrompt(eq("STUDENT_REMARK"), anyString(), eq(1L)))
+                .thenReturn(null);
+
+        AiStudentRemarkEvaluationResponse responseNull = studentRemarkAiService.evaluateStudentProgress(
+                "MATH101", 2L, 1L, request);
+
+        assertThat(responseNull).isNotNull();
+        assertThat(responseNull.getGeneralAssessment()).contains("AI không trả về nội dung đánh giá");
     }
 }
