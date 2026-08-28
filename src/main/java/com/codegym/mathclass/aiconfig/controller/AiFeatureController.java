@@ -41,7 +41,7 @@ public class AiFeatureController {
             "QUESTION_GEN",
             "BATCH_QUESTION_GEN",
             "CANVAS_LATEX",
-            "ERROR_ANALYSIS"
+            "STUDENT_REMARK"
     );
 
     private final TaskConfigRepository taskConfigRepository;

@@ -142,7 +142,7 @@ public class DashboardServiceImpl implements DashboardService {
                 .name(student.getFullName())
                 .className(className)
                 .issueType("low_score")
-                .detail(String.format("Điểm TB: %.1f", avgScore))
+                .detail(String.format(java.util.Locale.US, "Điểm TB: %.1f", avgScore))
                 .avatar(student.getFullName().substring(0, 1).toUpperCase())
                 .build());
         }

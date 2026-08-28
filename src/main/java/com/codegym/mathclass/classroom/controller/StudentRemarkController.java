@@ -1,7 +1,10 @@
 package com.codegym.mathclass.classroom.controller;
 
+import com.codegym.mathclass.classroom.dto.AiStudentRemarkEvaluateRequest;
+import com.codegym.mathclass.classroom.dto.AiStudentRemarkEvaluationResponse;
 import com.codegym.mathclass.classroom.dto.CreateStudentRemarkRequest;
 import com.codegym.mathclass.classroom.dto.StudentRemarkResponse;
+import com.codegym.mathclass.classroom.service.StudentRemarkAiService;
 import com.codegym.mathclass.classroom.service.StudentRemarkService;
 import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.security.services.CustomUserDetails;
@@ -31,6 +34,21 @@ import java.util.List;
 public class StudentRemarkController {
 
     private final StudentRemarkService studentRemarkService;
+    private final StudentRemarkAiService studentRemarkAiService;
+
+    @Operation(summary = "AI Đánh giá tiến độ học sinh", description = "Quét bài tập đã giao và bài nộp trong khoảng thời gian để AI sinh nhận xét điểm mạnh, điểm yếu và đánh giá chung")
+    @PostMapping("/ai-evaluate")
+    @PreAuthorize("hasAuthority('classroom:manage_requests')")
+    public ResponseEntity<AiStudentRemarkEvaluationResponse> evaluateStudentWithAi(
+            @PathVariable String classCode,
+            @PathVariable Long studentId,
+            @Valid @RequestBody AiStudentRemarkEvaluateRequest request,
+            @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+
+        AiStudentRemarkEvaluationResponse response = studentRemarkAiService.evaluateStudentProgress(
+                classCode, studentId, customUserDetails.getId(), request);
+        return ResponseEntity.ok(response);
+    }
 
     @Operation(summary = "Lấy lịch sử nhận xét của học sinh", description = "Truy vấn danh sách các nhận xét (điểm mạnh, điểm yếu) của học sinh trong lớp theo thời gian")
     @GetMapping

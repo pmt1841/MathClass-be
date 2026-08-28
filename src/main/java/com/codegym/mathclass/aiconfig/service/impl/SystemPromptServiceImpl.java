@@ -221,7 +221,6 @@ public class SystemPromptServiceImpl implements SystemPromptService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public PromptTestExecuteResponse testExecutePrompt(PromptTestExecuteRequest request, String adminEmail) {
         String taskCode = request.getTaskCode();
         String contentTemplate = request.getCustomContent();

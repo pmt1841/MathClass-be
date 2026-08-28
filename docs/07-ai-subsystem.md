@@ -89,7 +89,7 @@ Hệ thống phân tách rõ ràng cấu hình cho từng tác vụ AI trong b�
 | `STUDENT_HINT` | Gợi ý tư duy | 1 Credit | `gemini-1.5-flash` / `gpt-4o-mini` | Gợi ý từng bước không lộ đáp án |
 | `CANVAS_LATEX` | Chuyển chữ viết tay → LaTeX | 2 Credits | `gemini-1.5-flash` (Vision) | Nhận diện chữ viết tay qua Canvas |
 | `SUBMISSION_GRADING` | Chấm điểm tự động | 5 Credits | `gpt-4o` / `claude-3-5-sonnet` | Chấm bài tự luận và nhận xét |
-| `ERROR_ANALYSIS` | Phân tích lỗi sai | 2 Credits | `gemini-1.5-flash` | Phân tích nguyên nhân học sinh làm sai |
+| `STUDENT_REMARK` | AI Đánh giá & Nhận xét học sinh | 5 Credits | `gemini-1.5-flash` / `gpt-4o` | Quét dữ liệu bài tập và sinh nhận xét tổng quan |
 
 > ⚡ **Caffeine Caching:** Cấu hình Task Routing được cache trong bộ nhớ với Caffeine (TTL 10 phút). Khi Admin cập nhật cấu hình trên UI, hệ thống kích hoạt `@CacheEvict` để xóa cache tức thì.
 

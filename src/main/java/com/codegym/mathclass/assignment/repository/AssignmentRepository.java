@@ -52,4 +52,11 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long>, J
 
     @Query("SELECT a FROM Assignment a WHERE a.teacher.id = :teacherId AND a.deadline < :now AND a.status = 'PUBLISHED'")
     List<Assignment> findAssignmentsPastDeadline(@Param("teacherId") long teacherId, @Param("now") LocalDateTime now);
+
+    @Query("SELECT a FROM Assignment a WHERE a.classroom.classCode = :classCode AND a.status = 'PUBLISHED' AND a.createdAt >= :start AND a.createdAt <= :end ORDER BY a.createdAt ASC")
+    List<Assignment> findPublishedAssignmentsByClassCodeAndDateRange(
+            @Param("classCode") String classCode,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
 }
