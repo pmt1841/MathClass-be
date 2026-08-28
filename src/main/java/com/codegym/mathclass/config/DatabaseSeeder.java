@@ -216,7 +216,8 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 "CANVAS_LATEX", 2,
                                 "QUESTION_GEN", 3,
                                 "BATCH_QUESTION_GEN", 2,
-                                "SUBMISSION_GRADING", 5);
+                                "SUBMISSION_GRADING", 5,
+                                "STUDENT_REMARK", 5);
                 defaults.forEach((task, cost) -> {
                         AiCreditConfig existing = aiCreditConfigRepository.findByTask(task).orElse(null);
                         if (existing == null) {
@@ -641,6 +642,45 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 }
                                 """;
 
+                String defaultStudentRemarkPrompt = """
+                                Bạn là một trợ lý AI sư phạm môn Toán chuyên nghiệp, tinh tế và tận tâm.
+                                Nhiệm vụ của bạn là phân tích dữ liệu học tập của học sinh trong lớp học dựa trên các bài tập đã giao, hạn nộp và kết quả làm bài của học sinh trong khoảng thời gian xác định, từ đó đưa ra nhận xét, đánh giá toàn diện, chính xác, khích lệ và mang tính xây dựng.
+
+                                THÔNG TIN HỌC SINH & LỚP HỌC:
+                                - Tên học sinh: {{student_name}}
+                                - Lớp học: {{class_name}}
+                                - Khoảng thời gian quét: từ ngày {{start_date}} đến ngày {{end_date}}
+                                - Thống kê bài tập:
+                                  + Tổng số bài tập được giao: {{total_assignments}}
+                                  + Số bài đã hoàn thành: {{completed_assignments}}
+                                  + Số bài chưa nộp nhưng ĐÃ QUÁ HẠN: {{overdue_assignments}}
+                                  + Số bài chưa nộp nhưng VẪN CÒN HẠN LÀM: {{active_incomplete_assignments}}
+
+                                CHI TIẾT TỪNG BÀI TẬP VÀ TRẠNG THÁI:
+                                {{submission_details}}
+
+                                QUY TẮC ĐÁNH GIÁ SƯ PHẠM (RẤT QUAN TRỌNG):
+                                1. Phân biệt rõ giữa bài tập ĐÃ HẾT HẠN và bài tập CÒN HẠN LÀM:
+                                   - Nếu học sinh mới hoàn thành một phần bài tập (ví dụ 1/5 bài) nhưng các bài còn lại VẪN CÒN TRONG HẠN NỘP:
+                                     + Hãy đánh giá với giọng điệu nhẹ nhàng, ghi nhận những bài đã làm và nhắc nhở khéo léo, động viên: "Em chú ý sắp xếp thời gian hợp lý để hoàn thành các bài tập còn lại trước thời hạn quy định nhé."
+                                     + TUYỆT ĐỐI KHÔNG dùng từ ngữ nặng nề, không vội phán xét học sinh lười biếng hay lơ là vì các bài tập này vẫn đang trong thời hạn làm bài hợp lệ.
+                                   - Nếu học sinh có bài tập ĐÃ QUÁ HẠN mà chưa nộp:
+                                     + Nhắc nhở nghiêm túc hơn về tính tự giác và tuân thủ thời hạn, khuyên học sinh chủ động hoàn thành hoặc liên hệ thầy/cô nếu gặp vướng mắc.
+                                2. Điểm mạnh (strengths): Nêu rõ các điểm học sinh làm tốt (tư duy logic, giải đúng các dạng toán nào, tiến độ nộp bài, tính cẩn thận...).
+                                3. Điểm yếu & Cần cải thiện (weaknesses): Chỉ ra các lỗ hổng kiến thức từ các bài đã làm hoặc lưu ý về quản lý thời gian nếu có bài quá hạn.
+                                4. Đánh giá chung & Phương pháp cải thiện (generalAssessment):
+                                   - BẮT BUỘC mở đầu bằng câu tóm tắt: "Trong khoảng thời gian từ {{start_date}} đến {{end_date}}, học sinh đã hoàn thành {{completed_assignments}}/{{total_assignments}} bài tập được giao."
+                                   - Kèm theo nhận xét tổng quan về tiến độ (nêu rõ số bài còn hạn nộp hoặc đã quá hạn nếu có), lời khuyên và phương pháp luyện tập cụ thể giúp học sinh tiến bộ.
+
+                                YÊU CẦU ĐỊNH DẠNG:
+                                Trả về DUY NHẤT một khối JSON hợp lệ theo cấu trúc sau (không kèm lời giải thích bên ngoài):
+                                {
+                                  "strengths": "Điểm mạnh và ưu điểm của học sinh...",
+                                  "weaknesses": "Điểm yếu và các nội dung cần cải thiện...",
+                                  "generalAssessment": "Trong khoảng thời gian từ {{start_date}} đến {{end_date}}, học sinh đã hoàn thành {{completed_assignments}}/{{total_assignments}} bài tập được giao. ..."
+                                }
+                                """;
+
                 upsertSystemPrompt("PROMPT_STUDENT_HINT", "Prompt Gợi ý Tư duy Làm bài", "STUDENT_HINT",
                                 defaultHintPrompt,
                                 "title,problem_content,student_content,subject",
@@ -667,6 +707,10 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 defaultBatchQuestionGenPrompt,
                                 "grade_level,topic,canvas_requirement,explanation_requirement,document_content",
                                 "Tự động phân tích và bóc tách tài liệu/file đề thi thành danh sách các bài tập toán.");
+                upsertSystemPrompt("PROMPT_STUDENT_REMARK", "Prompt AI Đánh giá & Nhận xét Học sinh", "STUDENT_REMARK",
+                                defaultStudentRemarkPrompt,
+                                "student_name,class_name,start_date,end_date,total_assignments,completed_assignments,overdue_assignments,active_incomplete_assignments,submission_details",
+                                "Phân tích dữ liệu học tập và sinh nhận xét đánh giá định tính cho học sinh theo mốc thời gian.");
         }
 
         private void upsertSystemPrompt(String code, String name, String taskCode, String defaultContent,
@@ -677,7 +721,8 @@ public class DatabaseSeeder implements CommandLineRunner {
                         existing.syncMetadata(name, taskCode, defaultContent, allowedVariables, description);
                         if (existing.getCurrentContent() == null || existing.getCurrentContent().isBlank()
                                 || !existing.getCurrentContent().contains("{{explanation_requirement}}")
-                                || existing.getCurrentContent().contains("CHỈ sinh ra nội dung lời giải chi tiết KHI yêu cầu (prompt)")) {
+                                || existing.getCurrentContent().contains("CHỈ sinh ra nội dung lời giải chi tiết KHI yêu cầu (prompt)")
+                                || (code.equals("PROMPT_STUDENT_REMARK") && !existing.getCurrentContent().contains("{{overdue_assignments}}"))) {
                                 existing.setCurrentContent(defaultContent);
                         }
                         systemPromptRepository.save(existing);

@@ -39,7 +39,7 @@ public class SubmissionComment extends BaseEntity {
     private User teacher;
 
     @Builder.Default
-    @Column(name = "version_number", nullable = false)
+    @Column(name = "version_number", nullable = false, columnDefinition = "integer default 1")
     private Integer versionNumber = 1;
 
     @Column(name = "quote_text", columnDefinition = "TEXT")

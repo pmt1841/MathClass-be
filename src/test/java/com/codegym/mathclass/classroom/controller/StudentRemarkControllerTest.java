@@ -27,6 +27,9 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 
+import com.codegym.mathclass.classroom.dto.AiStudentRemarkEvaluateRequest;
+import com.codegym.mathclass.classroom.dto.AiStudentRemarkEvaluationResponse;
+import com.codegym.mathclass.classroom.service.StudentRemarkAiService;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -41,6 +44,9 @@ class StudentRemarkControllerTest {
 
     @Mock
     private StudentRemarkService studentRemarkService;
+
+    @Mock
+    private StudentRemarkAiService studentRemarkAiService;
 
     @InjectMocks
     private StudentRemarkController studentRemarkController;
@@ -158,6 +164,84 @@ class StudentRemarkControllerTest {
                     .andExpect(status().isNoContent());
 
             verify(studentRemarkService).deleteStudentRemark("MATH101", 2L, 5L, 1L);
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /classrooms/{classCode}/students/{studentId}/remarks/ai-evaluate Tests")
+    class AiEvaluateTests {
+
+        @Test
+        @DisplayName("Should evaluate student progress via AI and return status 200 OK")
+        void evaluateStudentWithAi_ReturnsEvaluationResponse() throws Exception {
+            AiStudentRemarkEvaluateRequest request =
+                    AiStudentRemarkEvaluateRequest.builder()
+                            .days(7)
+                            .build();
+
+            AiStudentRemarkEvaluationResponse response =
+                    AiStudentRemarkEvaluationResponse.builder()
+                            .startDate(java.time.LocalDate.now().minusDays(7))
+                            .endDate(java.time.LocalDate.now())
+                            .totalAssignments(5)
+                            .completedAssignments(4)
+                            .overdueAssignments(0)
+                            .activeIncompleteAssignments(1)
+                            .averageScore(8.5)
+                            .strengths("Tư duy tốt")
+                            .weaknesses("Làm bài hơi vội")
+                            .generalAssessment("Hoàn thành 4/5 bài tập")
+                            .build();
+
+            when(studentRemarkAiService.evaluateStudentProgress(
+                    eq("MATH101"), eq(2L), eq(1L), any(AiStudentRemarkEvaluateRequest.class)))
+                    .thenReturn(response);
+
+            mockMvc.perform(post("/classrooms/MATH101/students/2/remarks/ai-evaluate")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totalAssignments").value(5))
+                    .andExpect(jsonPath("$.completedAssignments").value(4))
+                    .andExpect(jsonPath("$.overdueAssignments").value(0))
+                    .andExpect(jsonPath("$.activeIncompleteAssignments").value(1))
+                    .andExpect(jsonPath("$.strengths").value("Tư duy tốt"))
+                    .andExpect(jsonPath("$.generalAssessment").value("Hoàn thành 4/5 bài tập"));
+
+            verify(studentRemarkAiService).evaluateStudentProgress(
+                    eq("MATH101"), eq(2L), eq(1L), any(AiStudentRemarkEvaluateRequest.class));
+        }
+
+        @Test
+        @DisplayName("[BE-06] Should return 400 Bad Request when days < 1 (Bean Validation @Min)")
+        void evaluateStudentWithAi_DaysLessThanMin_Returns400BadRequest() throws Exception {
+            AiStudentRemarkEvaluateRequest request =
+                    AiStudentRemarkEvaluateRequest.builder()
+                            .days(0)
+                            .build();
+
+            mockMvc.perform(post("/classrooms/MATH101/students/2/remarks/ai-evaluate")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest());
+
+            verifyNoInteractions(studentRemarkAiService);
+        }
+
+        @Test
+        @DisplayName("[BE-06] Should return 400 Bad Request when days > 365 (Bean Validation @Max)")
+        void evaluateStudentWithAi_DaysGreaterThanMax_Returns400BadRequest() throws Exception {
+            AiStudentRemarkEvaluateRequest request =
+                    AiStudentRemarkEvaluateRequest.builder()
+                            .days(500)
+                            .build();
+
+            mockMvc.perform(post("/classrooms/MATH101/students/2/remarks/ai-evaluate")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest());
+
+            verifyNoInteractions(studentRemarkAiService);
         }
     }
 }

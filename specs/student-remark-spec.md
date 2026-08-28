@@ -104,6 +104,35 @@ CREATE INDEX idx_student_remarks_lookup ON student_remarks(classroom_id, student
 - **Security:** `@PreAuthorize("hasAuthority('classroom:manage_requests')")`
 - **Response 204 No Content**
 
+### 4.4. AI Quét Dữ liệu & Đánh giá Tiến độ Học sinh
+- **Method / URL:** `POST /api/v1/classrooms/{classCode}/students/{studentId}/remarks/ai-evaluate`
+- **Security:** `@PreAuthorize("hasAuthority('classroom:manage_requests')")`
+- **Task Code:** `STUDENT_REMARK` (System Prompt: `PROMPT_STUDENT_REMARK`)
+- **Credit Policy:** Phí tối thiểu 5 credit / 1000 tokens = 1 credit (`AiCreditConfig`).
+- **Request Body:**
+```json
+{
+  "days": 7,
+  "startDate": "2026-08-21",
+  "endDate": "2026-08-28"
+}
+```
+- **Response 200 OK:**
+```json
+{
+  "startDate": "2026-08-21",
+  "endDate": "2026-08-28",
+  "totalAssignments": 5,
+  "completedAssignments": 4,
+  "overdueAssignments": 0,
+  "activeIncompleteAssignments": 1,
+  "averageScore": 8.75,
+  "strengths": "Nắm chắc kiến thức giải phương trình, phản xạ nhanh và trình bày lời giải rõ ràng.",
+  "weaknesses": "Còn hay nhầm lẫn dấu khi biến đổi biểu thức chứa phân thức.",
+  "generalAssessment": "Trong khoảng thời gian từ 21/08/2026 đến 28/08/2026, học sinh đã hoàn thành 4/5 bài tập được giao (1 bài còn lại vẫn trong hạn nộp). Cần rèn luyện thêm tính cẩn thận và chủ động hoàn thành bài tập còn lại trước thời hạn."
+}
+```
+
 ---
 
 ## 5. Decision Log
@@ -113,35 +142,39 @@ CREATE INDEX idx_student_remarks_lookup ON student_remarks(classroom_id, student
 | 1 | Lưu nhận xét dạng snapshot ghi đè hay lịch sử nhiều mốc thời gian | Lưu lịch sử nhiều bản ghi theo thời gian (`List<StudentRemark>`) | Giúp giáo viên và phụ huynh/học sinh theo dõi được toàn bộ tiến trình thay đổi, tiến bộ qua từng tuần/tháng. |
 | 2 | Phân tách 3 trường: Điểm mạnh, Điểm yếu, Đánh giá chung | Tách thành 3 cột riêng biệt thay vì 1 trường comment duy nhất | Cấu trúc dữ liệu rõ ràng, dễ phân tích, hiển thị trực quan dạng badge màu (Xanh lá / Vàng cam / Xanh dương). |
 | 3 | Quyền truy cập API xem nhận xét | Giáo viên phụ trách lớp và chính học sinh được nhận xét | Đảm bảo tính bảo mật và sự riêng tư cá nhân của học sinh. |
+| 4 | Cấu hình AI Đánh giá học sinh | Quản lý qua Task `STUDENT_REMARK`, seed prompt `PROMPT_STUDENT_REMARK` và cấu hình qua Admin | Không hardcode prompt hay logic tính phí trong code, hỗ trợ dynamic credit & provider routing. |
 
 ---
 
 ## 6. Verification Strategy & Test Plan
 
-### 6.1. Unit Test Suites
-1. **`StudentRemarkServiceImplTest`**:
-   - `getStudentRemarks`:
-     - Test thành công khi người gọi là giáo viên của lớp.
-     - Test thành công khi người gọi chính là học sinh sở hữu nhận xét.
-     - Test ném `AccessDeniedException` khi người gọi là học sinh khác trong lớp.
-     - Test ném `ResourceNotFoundException` khi lớp học không tồn tại.
-   - `createStudentRemark`:
-     - Test thành công khi giáo viên lớp tạo nhận xét hợp lệ.
-     - Test ném `BadRequestException` khi học sinh không thuộc lớp học.
-     - Test ném `BadRequestException` khi tất cả các trường nhận xét đều rỗng.
-     - Test ném `AccessDeniedException` khi người gọi không phải giáo viên lớp.
-   - `deleteStudentRemark`:
-     - Test xóa thành công nhận xét.
-     - Test ném `ResourceNotFoundException` khi không tìm thấy nhận xét.
-     - Test ném `AccessDeniedException` khi người dùng không có quyền xóa.
-2. **`StudentRemarkControllerTest`**:
-   - Test ánh xạ URL, status code (200, 201, 204), và serialization DTO.
+### 6.1. Backend Test Matrix & Coverage
+| Layer | Test Suite Class | Test Case | Target / Scenarios | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **Controller** | `StudentRemarkControllerTest` | `getStudentRemarks_ReturnsList` | GET `/remarks` trả về 200 OK + danh sách nhận xét | ✅ Pass |
+| **Controller** | `StudentRemarkControllerTest` | `createStudentRemark_ReturnsCreated` | POST `/remarks` trả về 201 Created + DTO | ✅ Pass |
+| **Controller** | `StudentRemarkControllerTest` | `deleteStudentRemark_ReturnsNoContent` | DELETE `/remarks/{id}` trả về 204 No Content | ✅ Pass |
+| **Controller** | `StudentRemarkControllerTest` | `evaluateStudentWithAi_ReturnsEvaluationResponse` | POST `/ai-evaluate` trả về 200 OK + AI evaluation DTO | ✅ Pass |
+| **Service** | `StudentRemarkServiceImplTest` | `getStudentRemarks_TeacherAccess_Success` | Giáo viên truy vấn nhận xét học sinh trong lớp | ✅ Pass |
+| **Service** | `StudentRemarkServiceImplTest` | `getStudentRemarks_StudentSelfAccess_Success` | Học sinh tự xem nhận xét của chính mình | ✅ Pass |
+| **Service** | `StudentRemarkServiceImplTest` | `getStudentRemarks_OtherStudentAccess_Forbidden` | Học sinh khác xem bị ném `AccessDeniedException` | ✅ Pass |
+| **Service** | `StudentRemarkServiceImplTest` | `createStudentRemark_Success` | Tạo nhận xét thành công và lưu database | ✅ Pass |
+| **Service** | `StudentRemarkServiceImplTest` | `createStudentRemark_AllFieldsBlank_ThrowsBadRequest` | Cả 3 trường rỗng ném `BadRequestException` | ✅ Pass |
+| **Service** | `StudentRemarkServiceImplTest` | `deleteStudentRemark_Success` | Xóa nhận xét thành công | ✅ Pass |
+| **AI Service** | `StudentRemarkAiServiceImplTest` | `evaluateStudentProgress_Success_ValidTimeframeAndData` | Quét bài tập, tính điểm TB, parse JSON nhận xét từ AI | ✅ Pass |
+| **AI Service** | `StudentRemarkAiServiceImplTest` | `evaluateStudentProgress_Deadlines_ClassifiesOverdueAndActive` | Phân loại bài tập quá hạn vs bài tập còn hạn làm | ✅ Pass |
+| **AI Service** | `StudentRemarkAiServiceImplTest` | `evaluateStudentProgress_InvalidDateRange_ThrowsBadRequestException` | `startDate` sau `endDate` ném `BadRequestException` | ✅ Pass |
+| **AI Service** | `StudentRemarkAiServiceImplTest` | `evaluateStudentProgress_NotTeacher_ThrowsAccessDeniedException` | Không phải giáo viên lớp ném `AccessDeniedException` | ✅ Pass |
+| **AI Service** | `StudentRemarkAiServiceImplTest` | `evaluateStudentProgress_StudentNotMember_ThrowsBadRequestException` | Học sinh ngoài lớp ném `BadRequestException` | ✅ Pass |
+| **AI Service** | `StudentRemarkAiServiceImplTest` | `evaluateStudentProgress_AiReturnsPlainText_GracefulFallback` | Phản hồi AI dạng plain text tự động fallback an toàn | ✅ Pass |
 
 ### 6.2. Commands Verification
 ```bash
-# Chạy biên dịch Backend
+# 1. Kiểm tra biên dịch Java
 ./gradlew compileJava
 
-# Chạy toàn bộ Test suite của Classroom
+# 2. Chạy toàn bộ Test suite của Classroom (Controller + Service + AI Service)
 ./gradlew test --tests "com.codegym.mathclass.classroom.*"
 ```
+
+**Kết quả kiểm tra:** `BUILD SUCCESSFUL` (100% tests passing).

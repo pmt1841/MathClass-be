@@ -36,6 +36,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
@@ -67,7 +68,7 @@ public class AiCreditServiceImpl implements AiCreditService {
     // ---------- Tài khoản ----------
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public UserAiAccount getOrCreateAccount(Long userId) {
         return userAiAccountRepository.findByUserId(userId)
                 .orElseGet(() -> {
@@ -82,14 +83,14 @@ public class AiCreditServiceImpl implements AiCreditService {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public UserAiAccount getAccountForUpdate(Long userId) {
         return userAiAccountRepository.findByUserIdForUpdate(userId)
                 .orElseGet(() -> getOrCreateAccount(userId));
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void grantDefaultForNewUser(Long userId, Role role) {
         Role effectiveRole = role != null ? role : Role.STUDENT;
         int defaultCredits = getDefaultCredits(effectiveRole);
@@ -136,13 +137,13 @@ public class AiCreditServiceImpl implements AiCreditService {
             case "QUESTION_GEN" -> "Sinh đề";
             case "BATCH_QUESTION_GEN" -> "AI tách đề";
             case "SUBMISSION_GRADING" -> "Chấm bài tự động";
-            case "ERROR_ANALYSIS" -> "Phân tích lỗi sai";
+            case "STUDENT_REMARK" -> "AI Đánh giá & Nhận xét học sinh";
             default -> task;
         };
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void reserve(Long userId, String task, int cost) {
         if (cost <= 0) {
             return;
@@ -159,7 +160,7 @@ public class AiCreditServiceImpl implements AiCreditService {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void refund(Long userId, String task, int cost) {
         if (cost <= 0) {
             return;
@@ -174,7 +175,7 @@ public class AiCreditServiceImpl implements AiCreditService {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void refundTaskIfReserved(Long userId, String task) {
         if (userId == null || task == null || task.isBlank()) {
             return;
@@ -197,7 +198,7 @@ public class AiCreditServiceImpl implements AiCreditService {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void settle(Long userId, String task, int reserved, int actual) {
         if (reserved <= 0) {
             return;
@@ -216,7 +217,7 @@ public class AiCreditServiceImpl implements AiCreditService {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void adjustByAdmin(Long userId, int amount, String reason) {
         UserAiAccount account = getAccountForUpdate(userId);
         int newBalance = account.getBalance() + amount;
@@ -227,11 +228,12 @@ public class AiCreditServiceImpl implements AiCreditService {
         if (amount > 0) {
             account.setTotalEarned(account.getTotalEarned() + amount);
         } else {
-            account.setTotalSpent(account.getTotalSpent() + Math.min(-amount, account.getTotalSpent()));
+            account.setTotalSpent(account.getTotalSpent() + Math.abs(amount));
         }
         userAiAccountRepository.save(account);
-        recordTransaction(userId, amount, CreditTransactionType.ADMIN_ADJUST, null, null,
-                reason != null && !reason.isBlank() ? reason : "Admin điều chỉnh credit");
+        CreditTransactionType type = amount >= 0 ? CreditTransactionType.ADMIN_ADJUST : CreditTransactionType.CONSUME;
+        recordTransaction(userId, amount, type, null, null,
+                reason != null && !reason.isBlank() ? reason : "Điều chỉnh credit bởi Admin");
     }
 
     // ---------- Cấu hình chi phí theo task ----------
@@ -447,7 +449,7 @@ public class AiCreditServiceImpl implements AiCreditService {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordTransaction(Long userId, int amount, CreditTransactionType type, String task,
                                   Long referenceId, String description) {
         CreditTransaction transaction = CreditTransaction.builder()
