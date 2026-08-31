@@ -306,6 +306,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional
     public MessageResponse forgotPassword(ForgotPasswordRequest request) {
         String email = request.getEmail().toLowerCase().trim();
         LocalDateTime now = LocalDateTime.now();
@@ -315,7 +316,7 @@ public class AuthServiceImpl implements AuthService {
         }
         forgotPasswordRateLimitMap.put(email, now);
 
-        Optional<User> userOptional = userRepository.findByEmail(request.getEmail());
+        Optional<User> userOptional = userRepository.findByEmail(email);
 
         if (userOptional.isPresent()) {
             User user = userOptional.get();
@@ -328,31 +329,41 @@ public class AuthServiceImpl implements AuthService {
             String tokenHash = hashToken(rawToken);
 
             Optional<PasswordResetToken> existingTokenOpt = passwordResetTokenRepository.findByUserAndIsUsedFalse(user);
-            PasswordResetToken resetToken;
-            if (existingTokenOpt.isPresent()) {
-                resetToken = existingTokenOpt.get();
-                resetToken.setTokenHash(tokenHash);
-                resetToken.setExpiryDate(LocalDateTime.now().plusMinutes(15));
-            } else {
-                resetToken = PasswordResetToken.builder()
-                        .user(user)
-                        .tokenHash(tokenHash)
-                        .expiryDate(LocalDateTime.now().plusMinutes(15))
-                        .isUsed(false)
-                        .build();
-            }
+            PasswordResetToken resetToken = getResetToken(user, tokenHash, existingTokenOpt);
             passwordResetTokenRepository.save(resetToken);
 
             String resetLink = frontendUrl + "/reset-password?token=" + rawToken;
 
-            Context context = new Context();
-            context.setVariable("fullName", user.getFullName());
-            context.setVariable("resetLink", resetLink);
-            emailService.sendHtmlMailAsync(user.getEmail(), "Yêu cầu khôi phục mật khẩu MathClass", "forgot-password",
-                    context);
+            sendEmailToUser(user, resetLink);
         }
 
         return new MessageResponse("Nếu email của bạn hợp lệ, một liên kết đặt lại mật khẩu đã được gửi đến hộp thư.");
+    }
+
+    private void sendEmailToUser(User user, String resetLink) {
+        Context context = new Context();
+        context.setVariable("fullName", user.getFullName());
+        context.setVariable("resetLink", resetLink);
+        emailService.sendHtmlMailAsync(user.getEmail(), "Yêu cầu khôi phục mật khẩu MathClass", "forgot-password",
+                context);
+    }
+
+    private PasswordResetToken getResetToken(User user, String tokenHash,
+            Optional<PasswordResetToken> existingTokenOpt) {
+        PasswordResetToken resetToken;
+        if (existingTokenOpt.isPresent()) {
+            resetToken = existingTokenOpt.get();
+            resetToken.setTokenHash(tokenHash);
+            resetToken.setExpiryDate(LocalDateTime.now().plusMinutes(15));
+        } else {
+            resetToken = PasswordResetToken.builder()
+                    .user(user)
+                    .tokenHash(tokenHash)
+                    .expiryDate(LocalDateTime.now().plusMinutes(15))
+                    .isUsed(false)
+                    .build();
+        }
+        return resetToken;
     }
 
     @Override
