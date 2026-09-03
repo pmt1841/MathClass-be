@@ -111,10 +111,22 @@ public class UserServiceImpl implements UserService {
             throw new BadRequestException("Không thể thay đổi ảnh đại diện cho tài khoản liên kết Google");
         }
 
+        String oldAvatarUrl = user.getAvatarUrl();
+
         try {
             String avatarUrl = supabaseStorageService.uploadImage(file, "avatar");
             user.setAvatarUrl(avatarUrl);
             userRepository.save(user);
+
+            // Tức thời dọn dẹp avatar cũ trên Supabase nếu là ảnh thuộc hệ thống
+            if (oldAvatarUrl != null && !oldAvatarUrl.isBlank()) {
+                try {
+                    supabaseStorageService.deleteImageByUrl(oldAvatarUrl);
+                } catch (Exception e) {
+                    // Bắt lỗi an toàn, tránh làm gián đoạn luồng người dùng
+                }
+            }
+
             return avatarUrl;
         } catch (IOException e) {
             throw new RuntimeException("Lỗi khi upload ảnh đại diện: " + e.getMessage());

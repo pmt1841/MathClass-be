@@ -188,6 +188,24 @@ class UserServiceImplTest {
         }
 
         @Test
+        @DisplayName("Should delete old avatar on Supabase when updating new avatar")
+        void uploadAvatar_WithExistingOldAvatar_DeletesOldAvatar() throws IOException {
+            Long userId = 1L;
+            String oldAvatarUrl = "https://xyz.supabase.co/storage/v1/object/public/avatar/images/old.jpg";
+            mockUser.setAvatarUrl(oldAvatarUrl);
+            MultipartFile mockFile = mock(MultipartFile.class);
+            String expectedUrl = "https://xyz.supabase.co/storage/v1/object/public/avatar/images/new.jpg";
+
+            when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+            when(supabaseStorageService.uploadImage(mockFile, "avatar")).thenReturn(expectedUrl);
+
+            String resultUrl = userService.uploadAvatar(userId, mockFile);
+
+            assertThat(resultUrl).isEqualTo(expectedUrl);
+            verify(supabaseStorageService).deleteImageByUrl(oldAvatarUrl);
+        }
+
+        @Test
         @DisplayName("Should throw BadRequestException when user not found on upload avatar")
         void uploadAvatar_UserDoesNotExist_ThrowsBadRequestException() {
             Long userId = 99L;

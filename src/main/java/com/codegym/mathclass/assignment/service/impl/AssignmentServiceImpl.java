@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import com.codegym.mathclass.assignment.repository.AssignmentImageRepository;
 import com.codegym.mathclass.assignment.entity.AssignmentVisibility;
 import com.codegym.mathclass.assignment.dto.SheetSiblingDto;
 import com.codegym.mathclass.assignment.dto.UpdateVisibilityRequest;
@@ -69,7 +70,7 @@ import org.apache.pdfbox.text.PDFTextStripper;
 public class AssignmentServiceImpl implements AssignmentService {
 
     private final AssignmentRepository assignmentRepository;
-
+    private final AssignmentImageRepository assignmentImageRepository;
     private final UserRepository userRepository;
     private final ClassroomRepository classroomRepository;
     private final SubmissionRepository submissionRepository;
@@ -382,8 +383,27 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         // 3. Xử lý theo trạng thái
         if (assignment.getStatus() == AssignmentStatus.DRAFT) {
+            // Thu thập các URL ảnh cần xóa nếu không bị bài tập khác dùng chung
+            List<String> imageUrlsToDelete = new ArrayList<>();
+            if (assignment.getImages() != null) {
+                for (AssignmentImage img : assignment.getImages()) {
+                    if (img.getImageUrl() != null && !assignmentImageRepository.existsByImageUrlAndAssignmentIdNot(img.getImageUrl(), assignmentId)) {
+                        imageUrlsToDelete.add(img.getImageUrl());
+                    }
+                }
+            }
+
             // Bản nháp -> xóa cứng
             assignmentRepository.delete(assignment);
+
+            // Dọn dẹp ảnh mồ côi trên Supabase
+            for (String url : imageUrlsToDelete) {
+                try {
+                    supabaseStorageService.deleteImageByUrl(url);
+                } catch (Exception e) {
+                    // Bắt lỗi an toàn, không gián đoạn luồng
+                }
+            }
         } else {
             // Không phải nháp -> xóa mềm
             // Nếu là bài gốc (ARCHIVED), các bản clone không bị xóa/ẩn mà đổi parentId =
