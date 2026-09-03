@@ -19,6 +19,8 @@ import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.EmailService;
 import com.codegym.mathclass.utils.SupabaseStorageService;
+import com.codegym.mathclass.assignment.repository.AssignmentImageRepository;
+import com.codegym.mathclass.assignment.entity.AssignmentImage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -43,6 +45,9 @@ class AssignmentServiceImplTest {
 
     @Mock
     private AssignmentRepository assignmentRepository;
+
+    @Mock
+    private AssignmentImageRepository assignmentImageRepository;
 
     @Mock
     private UserRepository userRepository;
@@ -465,6 +470,30 @@ class AssignmentServiceImplTest {
         }
 
         @Test
+        @DisplayName("Should hard delete draft assignment and cleanup unused images on Supabase")
+        void deleteAssignment_Draft_CleansUpOrphanImages() {
+            AssignmentImage image1 = new AssignmentImage();
+            image1.setImageUrl("https://xyz.supabase.co/storage/v1/object/public/assignment_image/images/img1.png");
+
+            AssignmentImage image2 = new AssignmentImage();
+            image2.setImageUrl("https://xyz.supabase.co/storage/v1/object/public/assignment_image/images/img2.png");
+
+            draftAssignment.setImages(List.of(image1, image2));
+            draftAssignment.setStatus(AssignmentStatus.DRAFT);
+
+            when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(draftAssignment));
+            when(submissionRepository.existsByAssignmentId(assignmentId)).thenReturn(false);
+            when(assignmentImageRepository.existsByImageUrlAndAssignmentIdNot(image1.getImageUrl(), assignmentId)).thenReturn(false);
+            when(assignmentImageRepository.existsByImageUrlAndAssignmentIdNot(image2.getImageUrl(), assignmentId)).thenReturn(true); // Shared with another assignment
+
+            assignmentService.deleteAssignment(assignmentId, teacherId);
+
+            verify(assignmentRepository).delete(draftAssignment);
+            verify(supabaseStorageService).deleteImageByUrl(image1.getImageUrl());
+            verify(supabaseStorageService, never()).deleteImageByUrl(image2.getImageUrl());
+        }
+
+        @Test
         @DisplayName("Should delete PUBLISHED assignment soft by setting status to DELETED")
         void deleteAssignment_PublishedNoSubmissions_SoftDeletes() {
             draftAssignment.setStatus(AssignmentStatus.PUBLISHED);
@@ -630,3 +659,4 @@ class AssignmentServiceImplTest {
         }
     }
 }
+
