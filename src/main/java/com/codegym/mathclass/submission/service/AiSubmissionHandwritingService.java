@@ -9,5 +9,9 @@ public interface AiSubmissionHandwritingService {
 
     HandwritingLatexResponse convertHandwritingToLatex(HandwritingLatexRequest request, Long userId);
 
+    HandwritingLatexResponse convertHandwritingToLatex(HandwritingLatexRequest request, Long userId, boolean chargeCredits);
+
     SketchGeometryResponse normalizeSketchToGeometry(SketchGeometryRequest request, Long userId);
+
+    SketchGeometryResponse normalizeSketchToGeometry(SketchGeometryRequest request, Long userId, boolean chargeCredits);
 }

@@ -110,6 +110,20 @@ public class AiResponseUtils {
     }
 
     /**
+     * Tự động bảo toàn các dấu gạch chéo ngược (\) trong mã công thức toán LaTeX
+     * bên trong chuỗi JSON do LLM sinh ra trước khi đưa vào Jackson ObjectMapper.
+     * Ngăn chặn Jackson unescape các lệnh như \pi -> pi, \approx -> approx, \frac -> frac...
+     */
+    public static String escapeLatexBackslashesInJson(String json) {
+        if (json == null || json.isBlank()) {
+            return json;
+        }
+        // Bắt mọi dấu \ đơn lẻ không phải escape sequence hợp lệ của JSON (\", \\, \/, \b, \f, \n, \r, \t, unicode)
+        // và escape thành \\ để Jackson parse ra đúng ký tự \ trong chuỗi Java
+        return json.replaceAll("(?<!\\\\)\\\\(?!(?:[bfrnt](?![a-zA-Z])|[\"\\\\/]|u[0-9a-fA-F]{4}))", "\\\\\\\\");
+    }
+
+    /**
      * Loại bỏ toàn bộ markdown code fence bao ngoài văn bản (vd: ```xml, ```markdown, ```).
      *
      * @param text chuỗi văn bản cần làm sạch

@@ -37,10 +37,14 @@ public class AiPromptExecutionService {
 
     /** Giữ nguyên API cũ: không thu phí credit (tương thích ngược). */
     public String executePrompt(String taskCode, String prompt) {
-        return executePrompt(taskCode, prompt, null);
+        return executePrompt(taskCode, prompt, null, true);
     }
 
     public String executePrompt(String taskCode, String prompt, Long userId) {
+        return executePrompt(taskCode, prompt, userId, true);
+    }
+
+    public String executePrompt(String taskCode, String prompt, Long userId, boolean chargeCredits) {
         Optional<TaskConfig> configOpt = taskConfigRepository.findByTask(taskCode);
         if (configOpt.isEmpty()) {
             log.warn("TaskConfig '{}' chưa được cấu hình.", taskCode);
@@ -60,7 +64,8 @@ public class AiPromptExecutionService {
         }
 
         Optional<AiCreditConfig> creditCfg = aiCreditService.getCreditConfig(taskCode);
-        boolean charge = creditCfg.isPresent()
+        boolean charge = chargeCredits
+                && creditCfg.isPresent()
                 && Boolean.TRUE.equals(creditCfg.get().getEnabled())
                 && userId != null
                 && !isAdmin(userId);
@@ -101,6 +106,10 @@ public class AiPromptExecutionService {
     }
 
     public String executePromptWithImage(String taskCode, String prompt, String base64Image, String mimeType, Long userId) {
+        return executePromptWithImage(taskCode, prompt, base64Image, mimeType, userId, true);
+    }
+
+    public String executePromptWithImage(String taskCode, String prompt, String base64Image, String mimeType, Long userId, boolean chargeCredits) {
         Optional<TaskConfig> configOpt = taskConfigRepository.findByTask(taskCode);
         if (configOpt.isEmpty()) {
             log.warn("TaskConfig '{}' chưa được cấu hình.", taskCode);
@@ -120,7 +129,8 @@ public class AiPromptExecutionService {
         }
 
         Optional<AiCreditConfig> creditCfg = aiCreditService.getCreditConfig(taskCode);
-        boolean charge = creditCfg.isPresent()
+        boolean charge = chargeCredits
+                && creditCfg.isPresent()
                 && Boolean.TRUE.equals(creditCfg.get().getEnabled())
                 && userId != null
                 && !isAdmin(userId);

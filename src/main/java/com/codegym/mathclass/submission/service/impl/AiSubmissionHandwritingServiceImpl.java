@@ -39,14 +39,27 @@ public class AiSubmissionHandwritingServiceImpl implements AiSubmissionHandwriti
 
     @Override
     public HandwritingLatexResponse convertHandwritingToLatex(HandwritingLatexRequest request, Long userId) {
+        return convertHandwritingToLatex(request, userId, true);
+    }
+
+    @Override
+    public HandwritingLatexResponse convertHandwritingToLatex(HandwritingLatexRequest request, Long userId, boolean chargeCredits) {
         String prompt = resolvePrompt(PROMPT_HANDWRITING_LATEX_CODE);
 
-        String aiOutput = aiPromptExecutionService.executePromptWithImage(
-                TASK_CODE,
-                prompt,
-                request.getImageData(),
-                request.getMimeType(),
-                userId);
+        String aiOutput = chargeCredits
+                ? aiPromptExecutionService.executePromptWithImage(
+                        TASK_CODE,
+                        prompt,
+                        request.getImageData(),
+                        request.getMimeType(),
+                        userId)
+                : aiPromptExecutionService.executePromptWithImage(
+                        TASK_CODE,
+                        prompt,
+                        request.getImageData(),
+                        request.getMimeType(),
+                        userId,
+                        false);
 
         String cleanLatex = LaTeXSanitizer.extractCleanLatex(aiOutput);
 
@@ -58,14 +71,27 @@ public class AiSubmissionHandwritingServiceImpl implements AiSubmissionHandwriti
 
     @Override
     public SketchGeometryResponse normalizeSketchToGeometry(SketchGeometryRequest request, Long userId) {
+        return normalizeSketchToGeometry(request, userId, true);
+    }
+
+    @Override
+    public SketchGeometryResponse normalizeSketchToGeometry(SketchGeometryRequest request, Long userId, boolean chargeCredits) {
         String prompt = resolvePrompt(PROMPT_SKETCH_GEOMETRY_CODE);
 
-        String aiOutput = aiPromptExecutionService.executePromptWithImage(
-                TASK_CODE,
-                prompt,
-                request.getCanvasImageData(),
-                request.getMimeType(),
-                userId);
+        String aiOutput = chargeCredits
+                ? aiPromptExecutionService.executePromptWithImage(
+                        TASK_CODE,
+                        prompt,
+                        request.getCanvasImageData(),
+                        request.getMimeType(),
+                        userId)
+                : aiPromptExecutionService.executePromptWithImage(
+                        TASK_CODE,
+                        prompt,
+                        request.getCanvasImageData(),
+                        request.getMimeType(),
+                        userId,
+                        false);
 
         String cleanJson = AiResponseUtils.extractCleanJson(aiOutput);
         String shapeType = "CUSTOM_GEOMETRY";

@@ -52,6 +52,11 @@ public class AiQuestionServiceImpl implements AiQuestionService {
 
     @Override
     public AiGeneratedQuestionResponse generateQuestion(GenerateQuestionRequest request, Long userId) {
+        return generateQuestion(request, userId, true);
+    }
+
+    @Override
+    public AiGeneratedQuestionResponse generateQuestion(GenerateQuestionRequest request, Long userId, boolean chargeCredits) {
         if (request == null || request.getPrompt() == null || request.getPrompt().isBlank()) {
             throw new IllegalArgumentException("Yêu cầu câu hỏi (Prompt) không được để trống");
         }
@@ -67,7 +72,8 @@ public class AiQuestionServiceImpl implements AiQuestionService {
         }
 
         Optional<AiCreditConfig> creditCfg = aiCreditService.getCreditConfig(TASK_QUESTION_GEN);
-        boolean charge = creditCfg.isPresent()
+        boolean charge = chargeCredits
+                && creditCfg.isPresent()
                 && Boolean.TRUE.equals(creditCfg.get().getEnabled())
                 && userId != null
                 && !isAdmin(userId);
@@ -226,10 +232,7 @@ public class AiQuestionServiceImpl implements AiQuestionService {
                 throw new AiGenerationException("Phản hồi từ AI bị rỗng.");
             }
             String jsonText = AiResponseUtils.extractCleanJson(rawResponseBody);
-            // Pre-escape các lệnh LaTeX phổ biến để tránh bị JSON parser nuốt dấu \ (ví dụ \t trong \text biến thành ký tự TAB)
-            jsonText = jsonText.replaceAll("(?<!\\\\)\\\\text\\{", "\\\\\\\\text{");
-            jsonText = jsonText.replaceAll("(?<!\\\\)\\\\frac\\{", "\\\\\\\\frac{");
-            jsonText = jsonText.replaceAll("(?<!\\\\)\\\\sqrt\\{", "\\\\\\\\sqrt{");
+            jsonText = AiResponseUtils.escapeLatexBackslashesInJson(jsonText);
             return objectMapper.readValue(jsonText, AiGeneratedQuestionResponse.class);
         } catch (JsonProcessingException e) {
             log.error("Không thể parse JSON từ AI response: {}", e.getMessage());

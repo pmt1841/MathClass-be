@@ -72,6 +72,11 @@ public class AiGradingServiceImpl implements AiGradingService {
 
     @Override
     public AiGradingResponse requestAiGrading(long submissionId, AiGradingRequest request, long teacherId) {
+        return requestAiGrading(submissionId, request, teacherId, true);
+    }
+
+    @Override
+    public AiGradingResponse requestAiGrading(long submissionId, AiGradingRequest request, long teacherId, boolean chargeCredits) {
         Submission submission = submissionRepository.findByIdWithDetails(submissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài nộp"));
 
@@ -86,7 +91,7 @@ public class AiGradingServiceImpl implements AiGradingService {
         }
 
         String prompt = buildGradingPrompt(assignment, submission);
-        String rawAiResponse = executePromptWithRetryOnEmpty(prompt, teacherId);
+        String rawAiResponse = executePromptWithRetryOnEmpty(prompt, teacherId, chargeCredits);
 
         return parseAiResponse(rawAiResponse, assignment, submission);
     }
@@ -98,11 +103,13 @@ public class AiGradingServiceImpl implements AiGradingService {
      * Lỗi runtime từ dịch vụ AI (timeout, kết nối...) được bọc thành BadRequestException
      * kèm nguyên nhân thật để frontend hiển thị được (thay vì 500 mặc định).
      */
-    private String executePromptWithRetryOnEmpty(String prompt, long teacherId) {
+    private String executePromptWithRetryOnEmpty(String prompt, long teacherId, boolean chargeCredits) {
         String raw = null;
         for (int attempt = 1; attempt <= MAX_EMPTY_RESPONSE_ATTEMPTS; attempt++) {
             try {
-                raw = aiPromptExecutionService.executePrompt(GRADING_TASK_CODE, prompt, teacherId);
+                raw = chargeCredits
+                        ? aiPromptExecutionService.executePrompt(GRADING_TASK_CODE, prompt, teacherId)
+                        : aiPromptExecutionService.executePrompt(GRADING_TASK_CODE, prompt, teacherId, false);
             } catch (RuntimeException e) {
                 String cause = e.getMessage() != null ? e.getMessage() : "Lỗi không xác định từ dịch vụ AI";
                 log.error("Gọi AI chấm bài thất bại (lần thử {}/{}): {}", attempt, MAX_EMPTY_RESPONSE_ATTEMPTS, cause, e);

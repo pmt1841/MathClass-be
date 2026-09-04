@@ -17,4 +17,6 @@ public interface AiGradingService {
      * @return Dự thảo điểm + nhận xét + lỗi hình vẽ (KHÔNG ghi vào DB)
      */
     AiGradingResponse requestAiGrading(long submissionId, AiGradingRequest request, long teacherId);
+
+    AiGradingResponse requestAiGrading(long submissionId, AiGradingRequest request, long teacherId, boolean chargeCredits);
 }

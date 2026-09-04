@@ -58,5 +58,16 @@ class AiResponseUtilsTest {
         assertThat(clean).contains("\"suggestedScore\": 1.0");
         assertThat(clean).contains("\"draftFeedback\"");
     }
+
+    @Test
+    @DisplayName("escapeLatexBackslashesInJson: bảo toàn dấu \\ trong các lệnh LaTeX khi parse qua JSON")
+    void escapeLatexBackslashesInJson_preservesLatexCommands() {
+        String jsonWithLatex = "{\"content\": \"(lấy $\\pi \\approx 3.14$ và $\\frac{1}{2}$ và $\\text{cm}$)\"}";
+        String escaped = AiResponseUtils.escapeLatexBackslashesInJson(jsonWithLatex);
+        assertThat(escaped).contains("\\\\pi");
+        assertThat(escaped).contains("\\\\approx");
+        assertThat(escaped).contains("\\\\frac");
+        assertThat(escaped).contains("\\\\text");
+    }
 }
 

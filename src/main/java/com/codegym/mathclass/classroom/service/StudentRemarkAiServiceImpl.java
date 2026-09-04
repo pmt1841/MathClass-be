@@ -57,6 +57,16 @@ public class StudentRemarkAiServiceImpl implements StudentRemarkAiService {
             Long studentId,
             Long currentUserId,
             AiStudentRemarkEvaluateRequest request) {
+        return evaluateStudentProgress(classCode, studentId, currentUserId, request, true);
+    }
+
+    @Override
+    public AiStudentRemarkEvaluationResponse evaluateStudentProgress(
+            String classCode,
+            Long studentId,
+            Long currentUserId,
+            AiStudentRemarkEvaluateRequest request,
+            boolean chargeCredits) {
 
         Classroom classroom = classroomRepository.findByClassCode(classCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lớp học"));
@@ -178,8 +188,10 @@ public class StudentRemarkAiServiceImpl implements StudentRemarkAiService {
                 .replace("{{active_incomplete_assignments}}", String.valueOf(activeIncompleteAssignments))
                 .replace("{{submission_details}}", detailsBuilder.toString().trim());
 
-        // 4. Gọi thực thi AI qua AiPromptExecutionService (tự trừ credit, tối thiểu 5 credit / 1000 tokens)
-        String rawAiOutput = aiPromptExecutionService.executePrompt(TASK_STUDENT_REMARK, fullPrompt, currentUserId);
+        // 4. Gọi thực thi AI qua AiPromptExecutionService (tự trừ credit nếu chargeCredits = true, tối thiểu 5 credit / 1000 tokens)
+        String rawAiOutput = chargeCredits
+                ? aiPromptExecutionService.executePrompt(TASK_STUDENT_REMARK, fullPrompt, currentUserId)
+                : aiPromptExecutionService.executePrompt(TASK_STUDENT_REMARK, fullPrompt, currentUserId, false);
 
         // 5. Parse kết quả từ AI
         AiRemarkJsonResult parsed = parseAiOutput(rawAiOutput, formattedStartDate, formattedEndDate, totalAssignments, completedAssignments);
