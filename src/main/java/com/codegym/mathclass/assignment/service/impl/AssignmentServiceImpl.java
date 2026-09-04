@@ -44,25 +44,17 @@ import com.codegym.mathclass.assignment.dto.UpdateVisibilityRequest;
 
 import com.codegym.mathclass.assignment.mapper.AssignmentMapper;
 import com.codegym.mathclass.assignment.entity.AssignmentImage;
-import com.codegym.mathclass.utils.SupabaseStorageService;
+import com.codegym.mathclass.storage.service.StorageService;
+import com.codegym.mathclass.storage.dto.StoragePolicy;
+import com.codegym.mathclass.assignment.strategy.parser.DocumentParserFactory;
+import com.codegym.mathclass.assignment.strategy.parser.DocumentParserStrategy;
+import com.codegym.mathclass.assignment.dto.DocumentParseResult;
 import com.codegym.mathclass.assignment.dto.AssignmentImageDto;
 import com.codegym.mathclass.assignment.dto.AssignmentDrawingRequest;
 import com.codegym.mathclass.assignment.dto.AssignmentImageRequest;
 import com.codegym.mathclass.utils.EmailService;
 import org.thymeleaf.context.Context;
 import org.springframework.beans.factory.annotation.Value;
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.apache.poi.xwpf.usermodel.XWPFParagraph;
-import org.apache.poi.xwpf.usermodel.XWPFRun;
-import org.apache.poi.xwpf.usermodel.XWPFPicture;
-import org.apache.poi.xwpf.usermodel.XWPFPictureData;
-import org.apache.poi.xwpf.usermodel.IBodyElement;
-import org.apache.poi.xwpf.usermodel.XWPFTable;
-import org.apache.poi.xwpf.usermodel.XWPFTableRow;
-import org.apache.poi.xwpf.usermodel.XWPFTableCell;
-import java.nio.charset.StandardCharsets;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.text.PDFTextStripper;
 
 
 @Service
@@ -75,7 +67,8 @@ public class AssignmentServiceImpl implements AssignmentService {
     private final ClassroomRepository classroomRepository;
     private final SubmissionRepository submissionRepository;
     private final AssignmentMapper assignmentMapper;
-    private final SupabaseStorageService supabaseStorageService;
+    private final StorageService storageService;
+    private final DocumentParserFactory documentParserFactory;
     private final EmailService emailService;
     private final TagService tagService;
 
@@ -396,10 +389,10 @@ public class AssignmentServiceImpl implements AssignmentService {
             // Bản nháp -> xóa cứng
             assignmentRepository.delete(assignment);
 
-            // Dọn dẹp ảnh mồ côi trên Supabase
+            // Dọn dẹp ảnh mồ côi trên dịch vụ lưu trữ
             for (String url : imageUrlsToDelete) {
                 try {
-                    supabaseStorageService.deleteImageByUrl(url);
+                    storageService.delete(url);
                 } catch (Exception e) {
                     // Bắt lỗi an toàn, không gián đoạn luồng
                 }
@@ -475,7 +468,7 @@ public class AssignmentServiceImpl implements AssignmentService {
     @Override
     public AssignmentImageDto uploadImageForAssignment(org.springframework.web.multipart.MultipartFile file)
             throws java.io.IOException {
-        String publicUrl = supabaseStorageService.uploadImage(file, "assignment_image");
+        String publicUrl = storageService.upload(file, StoragePolicy.ASSIGNMENT_IMAGE);
         String imageCode = "[IMAGE_" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase() + "]";
         return new AssignmentImageDto(imageCode, publicUrl);
     }
@@ -483,201 +476,10 @@ public class AssignmentServiceImpl implements AssignmentService {
     @Override
     public java.util.Map<String, Object> extractTextFromFile(org.springframework.web.multipart.MultipartFile file)
             throws Exception {
-        String filename = file.getOriginalFilename();
-        if (filename == null) {
-            throw new BadRequestException("Tên file không hợp lệ");
-        }
-
-        filename = filename.toLowerCase();
-
-        if (filename.endsWith(".txt")) {
-            return java.util.Map.of("content", new String(file.getBytes(), StandardCharsets.UTF_8), "images",
-                    new ArrayList<>());
-        } else if (filename.endsWith(".docx")) {
-            try (java.io.InputStream is = file.getInputStream();
-                    XWPFDocument document = new XWPFDocument(is)) {
-                List<AssignmentImageDto> extractedImages = new ArrayList<>();
-                String content = convertDocxToMarkdown(document, extractedImages);
-                return java.util.Map.of("content", content, "images", extractedImages);
-            }
-        } else if (filename.endsWith(".pdf")) {
-            try (java.io.InputStream is = file.getInputStream();
-                    PDDocument document = PDDocument.load(is)) {
-                PDFTextStripper stripper = new PDFTextStripper();
-                stripper.setSortByPosition(true);
-                String content = stripper.getText(document);
-
-                // Normalize newlines and replace single newlines with double newlines
-                // so Markdown parses them as separate paragraphs/lines instead of collapsing
-                // them.
-                if (content != null) {
-                    content = content.replaceAll("\\r\\n?", "\n");
-                    content = content.replaceAll("\\n+", "\n\n");
-                }
-
-                return java.util.Map.of("content", content != null ? content : "", "images", new ArrayList<>());
-            }
-        } else {
-            throw new BadRequestException("Chỉ hỗ trợ file .txt, .docx, hoặc .pdf");
-        }
-    }
-
-    private String convertDocxToMarkdown(XWPFDocument document, List<AssignmentImageDto> extractedImages) {
-        StringBuilder md = new StringBuilder();
-        for (IBodyElement element : document.getBodyElements()) {
-            if (element instanceof XWPFParagraph) {
-                md.append(processParagraph((XWPFParagraph) element, extractedImages));
-            } else if (element instanceof XWPFTable) {
-                md.append(processTable((XWPFTable) element, extractedImages));
-            }
-        }
-        return md.toString().trim();
-    }
-
-    private String processParagraph(XWPFParagraph p, List<AssignmentImageDto> extractedImages) {
-        if (p.isEmpty() || (p.getText().trim().isEmpty()
-                && p.getRuns().stream().noneMatch(r -> !r.getEmbeddedPictures().isEmpty()))) {
-            return "\n";
-        }
-
-        String style = p.getStyleID();
-        String prefix = "";
-        if (style != null) {
-            if (style.contains("Heading1") || "1".equals(style))
-                prefix = "# ";
-            else if (style.contains("Heading2") || "2".equals(style))
-                prefix = "## ";
-            else if (style.contains("Heading3") || "3".equals(style))
-                prefix = "### ";
-            else if (style.contains("Heading4") || "4".equals(style))
-                prefix = "#### ";
-            else if (style.contains("Heading5") || "5".equals(style))
-                prefix = "##### ";
-            else if (style.contains("Heading6") || "6".equals(style))
-                prefix = "###### ";
-        }
-
-        String listPrefix = "";
-        if (p.getNumID() != null) {
-            // Determine indentation based on level
-            int level = p.getNumIlvl() != null ? p.getNumIlvl().intValue() : 0;
-            listPrefix = "  ".repeat(level) + "- ";
-        }
-
-        StringBuilder paraMd = new StringBuilder();
-        for (XWPFRun run : p.getRuns()) {
-            String runText = run.text();
-            if (runText != null && !runText.isEmpty()) {
-                boolean bold = run.isBold();
-                boolean italic = run.isItalic();
-
-                runText = runText.replace("\n", " ");
-
-                if (bold || italic) {
-                    // Extract leading spaces
-                    String leadingSpaces = "";
-                    while (runText.startsWith(" ")) {
-                        leadingSpaces += " ";
-                        runText = runText.substring(1);
-                    }
-                    // Extract trailing spaces
-                    String trailingSpaces = "";
-                    while (runText.endsWith(" ")) {
-                        trailingSpaces += " ";
-                        runText = runText.substring(0, runText.length() - 1);
-                    }
-
-                    paraMd.append(leadingSpaces);
-                    if (!runText.isEmpty()) {
-                        if (bold && italic)
-                            paraMd.append("***").append(runText).append("***");
-                        else if (bold)
-                            paraMd.append("**").append(runText).append("**");
-                        else if (italic)
-                            paraMd.append("*").append(runText).append("*");
-                    }
-                    paraMd.append(trailingSpaces);
-                } else {
-                    paraMd.append(runText);
-                }
-            }
-
-            // Xử lý ảnh nhúng
-            List<XWPFPicture> pictures = run.getEmbeddedPictures();
-            if (pictures != null && !pictures.isEmpty()) {
-                for (XWPFPicture pic : pictures) {
-                    try {
-                        XWPFPictureData picData = pic.getPictureData();
-                        byte[] byteData = picData.getData();
-                        String ext = picData.suggestFileExtension();
-                        String originalName = picData.getFileName();
-                        if (originalName == null || originalName.isEmpty()) {
-                            originalName = "image." + ext;
-                        }
-                        String contentType = picData.getPackagePart().getContentType();
-
-                        // Upload to Supabase
-                        String publicUrl = supabaseStorageService.uploadImage(byteData, originalName, contentType,
-                                "assignment_image");
-
-                        // Generate unique code
-                        String imageCode = "[IMAGE_"
-                                + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase() + "]";
-
-                        // Add to list and markdown
-                        extractedImages.add(new AssignmentImageDto(imageCode, publicUrl));
-                        paraMd.append(" ").append(imageCode).append(" ");
-                    } catch (Exception e) {
-                        System.err.println("Failed to extract and upload image: " + e.getMessage());
-                    }
-                }
-            }
-        }
-
-        if (!prefix.isEmpty()) {
-            return prefix + paraMd.toString() + "\n\n";
-        } else if (!listPrefix.isEmpty()) {
-            return listPrefix + paraMd.toString() + "\n";
-        } else {
-            return paraMd.toString() + "\n\n";
-        }
-    }
-
-    private String processTable(XWPFTable table, List<AssignmentImageDto> extractedImages) {
-        StringBuilder tableMd = new StringBuilder("\n");
-        int rowIndex = 0;
-        for (XWPFTableRow row : table.getRows()) {
-            tableMd.append("|");
-            for (XWPFTableCell cell : row.getTableCells()) {
-                StringBuilder cellContent = new StringBuilder();
-                for (IBodyElement element : cell.getBodyElements()) {
-                    if (element instanceof XWPFParagraph) {
-                        String pText = processParagraph((XWPFParagraph) element, extractedImages).trim();
-                        if (!pText.isEmpty()) {
-                            if (cellContent.length() > 0)
-                                cellContent.append("<br>");
-                            cellContent.append(pText);
-                        }
-                    } else if (element instanceof XWPFTable) {
-                        cellContent.append("[Nested Table]");
-                    }
-                }
-                // escape pipe char if exists in cell content
-                tableMd.append(" ").append(cellContent.toString().replace("|", "\\|")).append(" |");
-            }
-            tableMd.append("\n");
-
-            // Add separator after first row
-            if (rowIndex == 0) {
-                tableMd.append("|");
-                for (int i = 0; i < row.getTableCells().size(); i++) {
-                    tableMd.append("---|");
-                }
-                tableMd.append("\n");
-            }
-            rowIndex++;
-        }
-        return tableMd.toString() + "\n";
+        String filename = file != null ? file.getOriginalFilename() : null;
+        DocumentParserStrategy parser = documentParserFactory.getParser(filename);
+        DocumentParseResult result = parser.parse(file);
+        return java.util.Map.of("content", result.content(), "images", result.images());
     }
 
     @Override

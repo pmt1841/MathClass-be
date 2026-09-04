@@ -6,7 +6,8 @@ import com.codegym.mathclass.bugreport.dto.UpdateBugReportStatusRequest;
 import com.codegym.mathclass.bugreport.entity.BugErrorType;
 import com.codegym.mathclass.bugreport.entity.BugReportStatus;
 import com.codegym.mathclass.bugreport.service.BugReportService;
-import com.codegym.mathclass.utils.SupabaseStorageService;
+import com.codegym.mathclass.storage.service.StorageService;
+import com.codegym.mathclass.storage.dto.StoragePolicy;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,7 +45,7 @@ class BugReportControllerTest {
     private BugReportService bugReportService;
 
     @Mock
-    private SupabaseStorageService supabaseStorageService;
+    private StorageService storageService;
 
     @InjectMocks
     private BugReportController bugReportController;
@@ -106,7 +107,7 @@ class BugReportControllerTest {
     @DisplayName("Should upload public image successfully without ApiResponse wrapping")
     void uploadPublicBugReportImage_Success() throws Exception {
         MockMultipartFile file = new MockMultipartFile("file", "test.jpg", "image/jpeg", "image bytes".getBytes());
-        when(supabaseStorageService.uploadImage(any(), eq("assignment_image"))).thenReturn("http://supabase.url/test.jpg");
+        when(storageService.upload(any(), eq(StoragePolicy.BUG_REPORT))).thenReturn("http://supabase.url/test.jpg");
 
         mockMvc.perform(multipart("/bug-reports/public/upload-image").file(file))
                 .andExpect(status().isOk())

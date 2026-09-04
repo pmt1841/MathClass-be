@@ -10,7 +10,8 @@ import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.mapper.UserMapper;
 import com.codegym.mathclass.user.repository.RolePermissionRepository;
 import com.codegym.mathclass.user.repository.UserRepository;
-import com.codegym.mathclass.utils.SupabaseStorageService;
+import com.codegym.mathclass.storage.service.StorageService;
+import com.codegym.mathclass.storage.dto.StoragePolicy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -51,7 +52,7 @@ class UserServiceImplTest {
     private UserMapper userMapper;
 
     @Mock
-    private SupabaseStorageService supabaseStorageService;
+    private StorageService storageService;
 
     @Mock
     private RolePermissionRepository rolePermissionRepository;
@@ -178,7 +179,7 @@ class UserServiceImplTest {
             String expectedUrl = "https://example.com/new-avatar.png";
 
             when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
-            when(supabaseStorageService.uploadImage(mockFile, "avatar")).thenReturn(expectedUrl);
+            when(storageService.upload(mockFile, StoragePolicy.AVATAR)).thenReturn(expectedUrl);
 
             String resultUrl = userService.uploadAvatar(userId, mockFile);
 
@@ -197,12 +198,12 @@ class UserServiceImplTest {
             String expectedUrl = "https://xyz.supabase.co/storage/v1/object/public/avatar/images/new.jpg";
 
             when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
-            when(supabaseStorageService.uploadImage(mockFile, "avatar")).thenReturn(expectedUrl);
+            when(storageService.upload(mockFile, StoragePolicy.AVATAR)).thenReturn(expectedUrl);
 
             String resultUrl = userService.uploadAvatar(userId, mockFile);
 
             assertThat(resultUrl).isEqualTo(expectedUrl);
-            verify(supabaseStorageService).deleteImageByUrl(oldAvatarUrl);
+            verify(storageService).delete(oldAvatarUrl);
         }
 
         @Test
@@ -227,7 +228,7 @@ class UserServiceImplTest {
             MultipartFile mockFile = mock(MultipartFile.class);
 
             when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
-            when(supabaseStorageService.uploadImage(mockFile, "avatar")).thenThrow(new IOException("Upload failed"));
+            when(storageService.upload(mockFile, StoragePolicy.AVATAR)).thenThrow(new IOException("Upload failed"));
 
             assertThatThrownBy(() -> userService.uploadAvatar(userId, mockFile))
                     .isInstanceOf(RuntimeException.class)
@@ -250,7 +251,7 @@ class UserServiceImplTest {
                     .hasMessageContaining("Không thể thay đổi ảnh đại diện cho tài khoản liên kết Google");
 
             verify(userRepository, never()).save(any());
-            verifyNoInteractions(supabaseStorageService);
+            verifyNoInteractions(storageService);
         }
     }
 

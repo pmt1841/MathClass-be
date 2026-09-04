@@ -6,7 +6,8 @@ import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.mapper.UserMapper;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.user.service.UserService;
-import com.codegym.mathclass.utils.SupabaseStorageService;
+import com.codegym.mathclass.storage.service.StorageService;
+import com.codegym.mathclass.storage.dto.StoragePolicy;
 import com.codegym.mathclass.user.dto.request.UpdateProfileRequest;
 import com.codegym.mathclass.user.repository.RolePermissionRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +27,6 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.io.IOException;
-import java.time.LocalDateTime;
 import com.codegym.mathclass.auth.service.RefreshTokenService;
 import com.codegym.mathclass.exception.TooManyRequestsException;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -38,7 +38,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
-    private final SupabaseStorageService supabaseStorageService;
+    private final StorageService storageService;
     private final RolePermissionRepository rolePermissionRepository;
     private final PasswordHistoryRepository passwordHistoryRepository;
     private final PasswordEncoder passwordEncoder;
@@ -114,14 +114,14 @@ public class UserServiceImpl implements UserService {
         String oldAvatarUrl = user.getAvatarUrl();
 
         try {
-            String avatarUrl = supabaseStorageService.uploadImage(file, "avatar");
+            String avatarUrl = storageService.upload(file, StoragePolicy.AVATAR);
             user.setAvatarUrl(avatarUrl);
             userRepository.save(user);
 
-            // Tức thời dọn dẹp avatar cũ trên Supabase nếu là ảnh thuộc hệ thống
+            // Tức thời dọn dẹp avatar cũ nếu là ảnh thuộc hệ thống
             if (oldAvatarUrl != null && !oldAvatarUrl.isBlank()) {
                 try {
-                    supabaseStorageService.deleteImageByUrl(oldAvatarUrl);
+                    storageService.delete(oldAvatarUrl);
                 } catch (Exception e) {
                     // Bắt lỗi an toàn, tránh làm gián đoạn luồng người dùng
                 }
