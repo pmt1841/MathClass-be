@@ -27,6 +27,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.redisson.api.RBucket;
 import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.Codec;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Duration;
@@ -102,7 +103,7 @@ class AiJobServiceImplTest {
         when(aiCreditService.getCreditConfig(taskCode)).thenReturn(Optional.of(creditConfig));
         when(userRepository.findById(userId)).thenReturn(Optional.of(teacher));
         when(taskConfigRepository.findByTask(taskCode)).thenReturn(Optional.of(taskConfig));
-        doReturn(bucket).when(redissonClient).getBucket(anyString());
+        doReturn(bucket).when(redissonClient).getBucket(anyString(), any(Codec.class));
 
         AiJobSubmitResponse response = aiJobService.submitJob(taskCode, userId, payload);
 
@@ -133,7 +134,7 @@ class AiJobServiceImplTest {
 
         when(aiCreditService.getCreditConfig(taskCode)).thenReturn(Optional.of(creditConfig));
         when(userRepository.findById(userId)).thenReturn(Optional.of(admin));
-        doReturn(bucket).when(redissonClient).getBucket(anyString());
+        doReturn(bucket).when(redissonClient).getBucket(anyString(), any(Codec.class));
 
         AiJobSubmitResponse response = aiJobService.submitJob(taskCode, userId, payload);
 
@@ -159,7 +160,7 @@ class AiJobServiceImplTest {
                 .createdAt(Instant.now())
                 .build();
 
-        doReturn(bucket).when(redissonClient).getBucket(anyString());
+        doReturn(bucket).when(redissonClient).getBucket(anyString(), any(Codec.class));
         when(bucket.isExists()).thenReturn(true);
         when(bucket.get()).thenReturn(objectMapper.writeValueAsString(mockJob));
 
@@ -185,7 +186,7 @@ class AiJobServiceImplTest {
                 .createdAt(Instant.now())
                 .build();
 
-        doReturn(bucket).when(redissonClient).getBucket(anyString());
+        doReturn(bucket).when(redissonClient).getBucket(anyString(), any(Codec.class));
         when(bucket.isExists()).thenReturn(true);
         when(bucket.get()).thenReturn(objectMapper.writeValueAsString(mockJob));
 
@@ -209,7 +210,7 @@ class AiJobServiceImplTest {
                 .status(AiJobStatus.QUEUED)
                 .build();
 
-        doReturn(bucket).when(redissonClient).getBucket(anyString());
+        doReturn(bucket).when(redissonClient).getBucket(anyString(), any(Codec.class));
         when(bucket.isExists()).thenReturn(true);
         when(bucket.get()).thenReturn(objectMapper.writeValueAsString(mockJob));
 
@@ -218,14 +219,45 @@ class AiJobServiceImplTest {
     }
 
     @Test
-    @DisplayName("getJobStatus - Ném ResourceNotFoundException khi job không tồn tại hoặc hết hạn")
-    void getJobStatus_ThrowsNotFound_NonExistent() {
-        String jobId = "not-found-id";
+    @DisplayName("getJobStatus - Ném AccessDeniedException khi job không có userId (system job) và người gọi không phải Admin")
+    void getJobStatus_ThrowsAccessDenied_NullOwnerNotAdmin() throws Exception {
+        String jobId = "job-system-123";
+        Long strangerId = 10L;
 
-        doReturn(bucket).when(redissonClient).getBucket(anyString());
-        when(bucket.isExists()).thenReturn(false);
+        AiJobResultResponse mockJob = AiJobResultResponse.builder()
+                .jobId(jobId)
+                .userId(null)
+                .taskCode("QUESTION_GEN")
+                .status(AiJobStatus.QUEUED)
+                .build();
 
-        assertThrows(ResourceNotFoundException.class,
-                () -> aiJobService.getJobStatus(jobId, 1L, false));
+        doReturn(bucket).when(redissonClient).getBucket(anyString(), any(Codec.class));
+        when(bucket.isExists()).thenReturn(true);
+        when(bucket.get()).thenReturn(objectMapper.writeValueAsString(mockJob));
+
+        assertThrows(AccessDeniedException.class,
+                () -> aiJobService.getJobStatus(jobId, strangerId, false));
+    }
+
+    @Test
+    @DisplayName("updateJobStatus - Cập nhật trạng thái và retryCount vào Redis")
+    void updateJobStatus_UpdatesRetryCount() throws Exception {
+        String jobId = "job-retry-123";
+
+        AiJobResultResponse mockJob = AiJobResultResponse.builder()
+                .jobId(jobId)
+                .userId(10L)
+                .taskCode("QUESTION_GEN")
+                .status(AiJobStatus.PROCESSING)
+                .retryCount(0)
+                .build();
+
+        doReturn(bucket).when(redissonClient).getBucket(anyString(), any(Codec.class));
+        when(bucket.isExists()).thenReturn(true);
+        when(bucket.get()).thenReturn(objectMapper.writeValueAsString(mockJob));
+
+        aiJobService.updateJobStatus(jobId, AiJobStatus.RETRYING, null, "Lỗi quota", 2);
+
+        verify(bucket).set(anyString(), any(Duration.class));
     }
 }

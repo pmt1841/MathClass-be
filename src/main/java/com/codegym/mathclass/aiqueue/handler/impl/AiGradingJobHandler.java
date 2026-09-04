@@ -1,5 +1,7 @@
 package com.codegym.mathclass.aiqueue.handler.impl;
 
+import com.codegym.mathclass.aiconfig.credit.entity.AiCreditConfig;
+import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
 import com.codegym.mathclass.aiqueue.dto.AiJobExecutionResult;
 import com.codegym.mathclass.aiqueue.dto.AiJobMessage;
 import com.codegym.mathclass.aiqueue.dto.payload.AiGradingJobPayload;
@@ -11,6 +13,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.Objects;
+import java.util.Optional;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -19,6 +24,7 @@ public class AiGradingJobHandler implements AiJobHandler {
     public static final String TASK_CODE = "SUBMISSION_GRADING";
 
     private final AiGradingService aiGradingService;
+    private final AiCreditService aiCreditService;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -38,10 +44,19 @@ public class AiGradingJobHandler implements AiJobHandler {
                 false
         );
 
-        int cost = message.getReservedCredits() > 0 ? message.getReservedCredits() : 5;
+        int actual = calculateActualCredits(response.getCompletionTokens(), message.getReservedCredits());
+
         return AiJobExecutionResult.builder()
                 .resultData(response)
-                .actualCredits(cost)
+                .actualCredits(actual)
                 .build();
+    }
+
+    private int calculateActualCredits(Integer completionTokens, int reservedCredits) {
+        Optional<AiCreditConfig> creditCfg = aiCreditService.getCreditConfig(TASK_CODE);
+        int costPerCall = creditCfg.map(AiCreditConfig::getCostPerCall).filter(Objects::nonNull).orElse(0);
+        Integer tokensPerCredit = creditCfg.map(AiCreditConfig::getTokensPerCredit).orElse(null);
+        int computed = AiCreditService.computeCredits(completionTokens, costPerCall, tokensPerCredit);
+        return reservedCredits > 0 ? Math.min(computed, reservedCredits) : computed;
     }
 }

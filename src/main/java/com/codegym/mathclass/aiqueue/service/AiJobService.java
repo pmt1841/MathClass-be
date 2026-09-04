@@ -12,5 +12,7 @@ public interface AiJobService {
 
     void updateJobStatus(String jobId, AiJobStatus status, Object result, String errorMessage);
 
+    void updateJobStatus(String jobId, AiJobStatus status, Object result, String errorMessage, Integer retryCount);
+
     AiJobResultResponse getJobInternal(String jobId);
 }

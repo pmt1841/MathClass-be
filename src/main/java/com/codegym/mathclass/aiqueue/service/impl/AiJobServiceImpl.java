@@ -23,6 +23,8 @@ import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import org.redisson.client.codec.StringCodec;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
@@ -136,7 +138,7 @@ public class AiJobServiceImpl implements AiJobService {
     public AiJobResultResponse getJobStatus(String jobId, Long requestingUserId, boolean isAdmin) {
         AiJobResultResponse job = getJobInternal(jobId);
 
-        if (!isAdmin && job.getUserId() != null && !Objects.equals(job.getUserId(), requestingUserId)) {
+        if (!isAdmin && (job.getUserId() == null || !Objects.equals(job.getUserId(), requestingUserId))) {
             throw new AccessDeniedException("Bạn không có quyền truy cập thông tin tác vụ AI này");
         }
 
@@ -145,7 +147,7 @@ public class AiJobServiceImpl implements AiJobService {
 
     @Override
     public AiJobResultResponse getJobInternal(String jobId) {
-        RBucket<String> bucket = redissonClient.getBucket(AI_JOB_PREFIX + jobId);
+        RBucket<String> bucket = redissonClient.getBucket(AI_JOB_PREFIX + jobId, StringCodec.INSTANCE);
         if (!bucket.isExists()) {
             throw new ResourceNotFoundException("Không tìm thấy tác vụ AI hoặc tác vụ đã hết hạn lưu trữ");
         }
@@ -160,6 +162,11 @@ public class AiJobServiceImpl implements AiJobService {
 
     @Override
     public void updateJobStatus(String jobId, AiJobStatus status, Object result, String errorMessage) {
+        updateJobStatus(jobId, status, result, errorMessage, null);
+    }
+
+    @Override
+    public void updateJobStatus(String jobId, AiJobStatus status, Object result, String errorMessage, Integer retryCount) {
         try {
             AiJobResultResponse job = getJobInternal(jobId);
             job.setStatus(status);
@@ -168,6 +175,9 @@ public class AiJobServiceImpl implements AiJobService {
             }
             if (errorMessage != null) {
                 job.setErrorMessage(errorMessage);
+            }
+            if (retryCount != null) {
+                job.setRetryCount(retryCount);
             }
             if (status == AiJobStatus.COMPLETED || status == AiJobStatus.FAILED) {
                 job.setCompletedAt(Instant.now());
@@ -180,7 +190,7 @@ public class AiJobServiceImpl implements AiJobService {
 
     private void saveJobState(AiJobResultResponse jobState) {
         try {
-            RBucket<String> bucket = redissonClient.getBucket(AI_JOB_PREFIX + jobState.getJobId());
+            RBucket<String> bucket = redissonClient.getBucket(AI_JOB_PREFIX + jobState.getJobId(), StringCodec.INSTANCE);
             String json = objectMapper.writeValueAsString(jobState);
             bucket.set(json, Duration.ofSeconds(jobTtlSeconds));
         } catch (JsonProcessingException e) {

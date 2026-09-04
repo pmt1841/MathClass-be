@@ -159,6 +159,7 @@ public class AiBatchQuestionServiceImpl implements AiBatchQuestionService {
                     BatchGenerateQuestionsResponse response = parseBatchResponse(result.content());
                     response.setModel(modelToUse);
                     response.setExtractedImages(extractedImages);
+                    response.setCompletionTokens(result.completionTokens());
 
                     if (response.getQuestions() != null) {
                         for (BatchQuestionItem q : response.getQuestions()) {

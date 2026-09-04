@@ -4,6 +4,7 @@ import com.codegym.mathclass.aiconfig.dto.request.RenderPromptRequest;
 import com.codegym.mathclass.aiconfig.dto.response.RenderPromptResponse;
 import com.codegym.mathclass.aiconfig.service.AiPromptExecutionService;
 import com.codegym.mathclass.aiconfig.service.PromptRenderService;
+import com.codegym.mathclass.aiconfig.strategy.AiExecutionResult;
 import com.codegym.mathclass.exception.ResourceNotFoundException;
 import com.codegym.mathclass.submission.dto.HandwritingLatexRequest;
 import com.codegym.mathclass.submission.dto.HandwritingLatexResponse;
@@ -46,26 +47,20 @@ public class AiSubmissionHandwritingServiceImpl implements AiSubmissionHandwriti
     public HandwritingLatexResponse convertHandwritingToLatex(HandwritingLatexRequest request, Long userId, boolean chargeCredits) {
         String prompt = resolvePrompt(PROMPT_HANDWRITING_LATEX_CODE);
 
-        String aiOutput = chargeCredits
-                ? aiPromptExecutionService.executePromptWithImage(
-                        TASK_CODE,
-                        prompt,
-                        request.getImageData(),
-                        request.getMimeType(),
-                        userId)
-                : aiPromptExecutionService.executePromptWithImage(
-                        TASK_CODE,
-                        prompt,
-                        request.getImageData(),
-                        request.getMimeType(),
-                        userId,
-                        false);
+        AiExecutionResult execResult = aiPromptExecutionService.executePromptWithImageWithResult(
+                TASK_CODE,
+                prompt,
+                request.getImageData(),
+                request.getMimeType(),
+                userId,
+                chargeCredits);
 
-        String cleanLatex = LaTeXSanitizer.extractCleanLatex(aiOutput);
+        String cleanLatex = LaTeXSanitizer.extractCleanLatex(execResult.content());
 
         return HandwritingLatexResponse.builder()
                 .latex(cleanLatex)
-                .rawAiOutput(aiOutput)
+                .rawAiOutput(execResult.content())
+                .completionTokens(execResult.completionTokens())
                 .build();
     }
 
@@ -78,22 +73,15 @@ public class AiSubmissionHandwritingServiceImpl implements AiSubmissionHandwriti
     public SketchGeometryResponse normalizeSketchToGeometry(SketchGeometryRequest request, Long userId, boolean chargeCredits) {
         String prompt = resolvePrompt(PROMPT_SKETCH_GEOMETRY_CODE);
 
-        String aiOutput = chargeCredits
-                ? aiPromptExecutionService.executePromptWithImage(
-                        TASK_CODE,
-                        prompt,
-                        request.getCanvasImageData(),
-                        request.getMimeType(),
-                        userId)
-                : aiPromptExecutionService.executePromptWithImage(
-                        TASK_CODE,
-                        prompt,
-                        request.getCanvasImageData(),
-                        request.getMimeType(),
-                        userId,
-                        false);
+        AiExecutionResult execResult = aiPromptExecutionService.executePromptWithImageWithResult(
+                TASK_CODE,
+                prompt,
+                request.getCanvasImageData(),
+                request.getMimeType(),
+                userId,
+                chargeCredits);
 
-        String cleanJson = AiResponseUtils.extractCleanJson(aiOutput);
+        String cleanJson = AiResponseUtils.extractCleanJson(execResult.content());
         String shapeType = "CUSTOM_GEOMETRY";
         try {
             JsonNode node = objectMapper.readTree(cleanJson);
@@ -107,6 +95,7 @@ public class AiSubmissionHandwritingServiceImpl implements AiSubmissionHandwriti
         return SketchGeometryResponse.builder()
                 .shapeType(shapeType)
                 .geometryJson(cleanJson)
+                .completionTokens(execResult.completionTokens())
                 .build();
     }
 

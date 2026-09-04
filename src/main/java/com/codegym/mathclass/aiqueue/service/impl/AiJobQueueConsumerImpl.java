@@ -123,7 +123,7 @@ public class AiJobQueueConsumerImpl implements AiJobQueueConsumer, SmartLifecycl
         String jobId = message.getJobId();
         log.info("AI Worker bắt đầu xử lý jobId: {} (task: {})", jobId, message.getTaskCode());
 
-        aiJobService.updateJobStatus(jobId, AiJobStatus.PROCESSING, null, null);
+        aiJobService.updateJobStatus(jobId, AiJobStatus.PROCESSING, null, null, message.getRetryCount());
 
         AiJobHandler handler = handlers.stream()
                 .filter(h -> h.canHandle(message.getTaskCode()))
@@ -148,7 +148,7 @@ public class AiJobQueueConsumerImpl implements AiJobQueueConsumer, SmartLifecycl
                 aiCreditService.settle(message.getUserId(), message.getTaskCode(), message.getReservedCredits(), actual);
             }
 
-            aiJobService.updateJobStatus(jobId, AiJobStatus.COMPLETED, result.getResultData(), null);
+            aiJobService.updateJobStatus(jobId, AiJobStatus.COMPLETED, result.getResultData(), null, message.getRetryCount());
 
             Map<String, Object> eventData = new HashMap<>();
             eventData.put("eventType", "AI_JOB_COMPLETED");
@@ -182,7 +182,8 @@ public class AiJobQueueConsumerImpl implements AiJobQueueConsumer, SmartLifecycl
                 message.getJobId(),
                 AiJobStatus.RETRYING,
                 null,
-                "Đang tự động thử lại (lần " + nextRetry + "/" + MAX_RETRIES + "): " + e.getMessage()
+                "Đang tự động thử lại (lần " + nextRetry + "/" + MAX_RETRIES + "): " + e.getMessage(),
+                nextRetry
         );
 
         RDelayedQueue<AiJobMessage> delayQ = (delayedQueue != null)
@@ -201,7 +202,7 @@ public class AiJobQueueConsumerImpl implements AiJobQueueConsumer, SmartLifecycl
             aiCreditService.refund(message.getUserId(), message.getTaskCode(), message.getReservedCredits());
         }
 
-        aiJobService.updateJobStatus(jobId, AiJobStatus.FAILED, null, errorMessage);
+        aiJobService.updateJobStatus(jobId, AiJobStatus.FAILED, null, errorMessage, message.getRetryCount());
 
         Map<String, Object> eventData = new HashMap<>();
         eventData.put("eventType", "AI_JOB_FAILED");

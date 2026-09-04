@@ -45,6 +45,10 @@ public class AiPromptExecutionService {
     }
 
     public String executePrompt(String taskCode, String prompt, Long userId, boolean chargeCredits) {
+        return executePromptWithResult(taskCode, prompt, userId, chargeCredits).content();
+    }
+
+    public AiExecutionResult executePromptWithResult(String taskCode, String prompt, Long userId, boolean chargeCredits) {
         Optional<TaskConfig> configOpt = taskConfigRepository.findByTask(taskCode);
         if (configOpt.isEmpty()) {
             log.warn("TaskConfig '{}' chưa được cấu hình.", taskCode);
@@ -95,7 +99,7 @@ public class AiPromptExecutionService {
                 int actual = AiCreditService.computeCredits(result.completionTokens(), costPerCall, tokensPerCredit);
                 aiCreditService.settle(userId, taskCode, reserved, actual);
             }
-            return result.content();
+            return result;
         } catch (Exception e) {
             if (reserved > 0) {
                 aiCreditService.refund(userId, taskCode, reserved);
@@ -110,6 +114,10 @@ public class AiPromptExecutionService {
     }
 
     public String executePromptWithImage(String taskCode, String prompt, String base64Image, String mimeType, Long userId, boolean chargeCredits) {
+        return executePromptWithImageWithResult(taskCode, prompt, base64Image, mimeType, userId, chargeCredits).content();
+    }
+
+    public AiExecutionResult executePromptWithImageWithResult(String taskCode, String prompt, String base64Image, String mimeType, Long userId, boolean chargeCredits) {
         Optional<TaskConfig> configOpt = taskConfigRepository.findByTask(taskCode);
         if (configOpt.isEmpty()) {
             log.warn("TaskConfig '{}' chưa được cấu hình.", taskCode);
@@ -159,7 +167,7 @@ public class AiPromptExecutionService {
                 int actual = AiCreditService.computeCredits(result.completionTokens(), costPerCall, tokensPerCredit);
                 aiCreditService.settle(userId, taskCode, reserved, actual);
             }
-            return result.content();
+            return result;
         } catch (Exception e) {
             if (reserved > 0) {
                 aiCreditService.refund(userId, taskCode, reserved);

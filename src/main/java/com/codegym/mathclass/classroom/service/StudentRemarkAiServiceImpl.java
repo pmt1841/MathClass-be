@@ -3,6 +3,7 @@ package com.codegym.mathclass.classroom.service;
 import com.codegym.mathclass.aiconfig.entity.SystemPrompt;
 import com.codegym.mathclass.aiconfig.repository.SystemPromptRepository;
 import com.codegym.mathclass.aiconfig.service.AiPromptExecutionService;
+import com.codegym.mathclass.aiconfig.strategy.AiExecutionResult;
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.repository.AssignmentRepository;
 import com.codegym.mathclass.classroom.dto.AiStudentRemarkEvaluateRequest;
@@ -189,12 +190,10 @@ public class StudentRemarkAiServiceImpl implements StudentRemarkAiService {
                 .replace("{{submission_details}}", detailsBuilder.toString().trim());
 
         // 4. Gọi thực thi AI qua AiPromptExecutionService (tự trừ credit nếu chargeCredits = true, tối thiểu 5 credit / 1000 tokens)
-        String rawAiOutput = chargeCredits
-                ? aiPromptExecutionService.executePrompt(TASK_STUDENT_REMARK, fullPrompt, currentUserId)
-                : aiPromptExecutionService.executePrompt(TASK_STUDENT_REMARK, fullPrompt, currentUserId, false);
+        AiExecutionResult execResult = aiPromptExecutionService.executePromptWithResult(TASK_STUDENT_REMARK, fullPrompt, currentUserId, chargeCredits);
 
         // 5. Parse kết quả từ AI
-        AiRemarkJsonResult parsed = parseAiOutput(rawAiOutput, formattedStartDate, formattedEndDate, totalAssignments, completedAssignments);
+        AiRemarkJsonResult parsed = parseAiOutput(execResult.content(), formattedStartDate, formattedEndDate, totalAssignments, completedAssignments);
 
         return AiStudentRemarkEvaluationResponse.builder()
                 .startDate(startDate)
@@ -207,6 +206,7 @@ public class StudentRemarkAiServiceImpl implements StudentRemarkAiService {
                 .strengths(parsed.getStrengths())
                 .weaknesses(parsed.getWeaknesses())
                 .generalAssessment(parsed.getGeneralAssessment())
+                .completionTokens(execResult.completionTokens())
                 .build();
     }
 

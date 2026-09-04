@@ -13,4 +13,5 @@ public class HandwritingLatexResponse {
 
     private String latex;
     private String rawAiOutput;
+    private Integer completionTokens;
 }

@@ -95,9 +95,9 @@ class AiJobQueueConsumerTest {
 
         consumer.processMessage(message);
 
-        verify(aiJobService).updateJobStatus(eq(jobId), eq(AiJobStatus.PROCESSING), any(), any());
+        verify(aiJobService).updateJobStatus(eq(jobId), eq(AiJobStatus.PROCESSING), any(), any(), eq(0));
         verify(aiCreditService).settle(userId, taskCode, 3, 3);
-        verify(aiJobService).updateJobStatus(eq(jobId), eq(AiJobStatus.COMPLETED), eq("Đáp án đề thi"), any());
+        verify(aiJobService).updateJobStatus(eq(jobId), eq(AiJobStatus.COMPLETED), eq("Đáp án đề thi"), any(), eq(0));
         verify(notificationService).sendAiJobEvent(eq(userId), eq("AI_JOB_COMPLETED"), any());
     }
 
@@ -125,7 +125,7 @@ class AiJobQueueConsumerTest {
 
         consumer.processMessage(message);
 
-        verify(aiJobService).updateJobStatus(eq(jobId), eq(AiJobStatus.RETRYING), any(), anyString());
+        verify(aiJobService).updateJobStatus(eq(jobId), eq(AiJobStatus.RETRYING), any(), anyString(), eq(1));
         verify(delayedQueue).offer(eq(message), eq(5L), eq(TimeUnit.SECONDS));
     }
 
@@ -152,7 +152,7 @@ class AiJobQueueConsumerTest {
         consumer.processMessage(message);
 
         verify(aiCreditService).refund(userId, taskCode, 5);
-        verify(aiJobService).updateJobStatus(eq(jobId), eq(AiJobStatus.FAILED), any(), anyString());
+        verify(aiJobService).updateJobStatus(eq(jobId), eq(AiJobStatus.FAILED), any(), anyString(), eq(3));
         verify(notificationService).sendAiJobEvent(eq(userId), eq("AI_JOB_FAILED"), any());
     }
 
@@ -180,7 +180,7 @@ class AiJobQueueConsumerTest {
 
         consumer.processMessage(message);
 
-        verify(aiJobService).updateJobStatus(eq(jobId), eq(AiJobStatus.RETRYING), any(), anyString());
+        verify(aiJobService).updateJobStatus(eq(jobId), eq(AiJobStatus.RETRYING), any(), anyString(), eq(1));
         verify(delayedQueue).offer(eq(message), eq(5L), eq(TimeUnit.SECONDS));
     }
 }

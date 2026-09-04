@@ -1,5 +1,7 @@
 package com.codegym.mathclass.aiqueue.handler.impl;
 
+import com.codegym.mathclass.aiconfig.credit.entity.AiCreditConfig;
+import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
 import com.codegym.mathclass.aiqueue.dto.AiJobExecutionResult;
 import com.codegym.mathclass.aiqueue.dto.AiJobMessage;
 import com.codegym.mathclass.aiqueue.dto.payload.AiHandwritingJobPayload;
@@ -12,6 +14,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.Objects;
+import java.util.Optional;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -20,6 +25,7 @@ public class AiHandwritingJobHandler implements AiJobHandler {
     public static final String TASK_CODE = "CANVAS_LATEX";
 
     private final AiSubmissionHandwritingService handwritingService;
+    private final AiCreditService aiCreditService;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -33,6 +39,7 @@ public class AiHandwritingJobHandler implements AiJobHandler {
         AiHandwritingJobPayload payload = objectMapper.readValue(message.getPayloadJson(), AiHandwritingJobPayload.class);
 
         Object resultData;
+        Integer completionTokens;
         if ("SKETCH_GEOMETRY".equalsIgnoreCase(payload.getSubTask())) {
             SketchGeometryResponse response = handwritingService.normalizeSketchToGeometry(
                     payload.getSketchRequest(),
@@ -40,6 +47,7 @@ public class AiHandwritingJobHandler implements AiJobHandler {
                     false
             );
             resultData = response;
+            completionTokens = response.getCompletionTokens();
         } else {
             HandwritingLatexResponse response = handwritingService.convertHandwritingToLatex(
                     payload.getLatexRequest(),
@@ -47,12 +55,22 @@ public class AiHandwritingJobHandler implements AiJobHandler {
                     false
             );
             resultData = response;
+            completionTokens = response.getCompletionTokens();
         }
 
-        int cost = message.getReservedCredits() > 0 ? message.getReservedCredits() : 2;
+        int actual = calculateActualCredits(completionTokens, message.getReservedCredits());
+
         return AiJobExecutionResult.builder()
                 .resultData(resultData)
-                .actualCredits(cost)
+                .actualCredits(actual)
                 .build();
+    }
+
+    private int calculateActualCredits(Integer completionTokens, int reservedCredits) {
+        Optional<AiCreditConfig> creditCfg = aiCreditService.getCreditConfig(TASK_CODE);
+        int costPerCall = creditCfg.map(AiCreditConfig::getCostPerCall).filter(Objects::nonNull).orElse(0);
+        Integer tokensPerCredit = creditCfg.map(AiCreditConfig::getTokensPerCredit).orElse(null);
+        int computed = AiCreditService.computeCredits(completionTokens, costPerCall, tokensPerCredit);
+        return reservedCredits > 0 ? Math.min(computed, reservedCredits) : computed;
     }
 }

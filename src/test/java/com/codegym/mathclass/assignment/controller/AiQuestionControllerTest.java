@@ -2,6 +2,7 @@ package com.codegym.mathclass.assignment.controller;
 
 import com.codegym.mathclass.aiqueue.dto.AiJobStatus;
 import com.codegym.mathclass.aiqueue.dto.AiJobSubmitResponse;
+import com.codegym.mathclass.aiqueue.dto.payload.AiBatchQuestionJobPayload;
 import com.codegym.mathclass.aiqueue.service.AiJobService;
 import com.codegym.mathclass.assignment.dto.AiGeneratedQuestionResponse;
 import com.codegym.mathclass.assignment.dto.BatchGenerateQuestionsRequest;
@@ -138,8 +139,8 @@ class AiQuestionControllerTest {
                 5L, "Teacher", "teacher@mathclass.com", "pass", true, null, List.of()
         );
 
-        com.codegym.mathclass.aiqueue.dto.payload.AiBatchQuestionJobPayload mockPayload =
-                com.codegym.mathclass.aiqueue.dto.payload.AiBatchQuestionJobPayload.builder()
+        AiBatchQuestionJobPayload mockPayload =
+                AiBatchQuestionJobPayload.builder()
                         .textContent("Bài 1: Giải phương trình x + 1 = 2")
                         .userId(5L)
                         .build();

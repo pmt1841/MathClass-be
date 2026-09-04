@@ -151,6 +151,7 @@ public class AiQuestionServiceImpl implements AiQuestionService {
                     if (dto.getTopic() == null)
                         dto.setTopic(request.getTopic());
                     dto.setModel(modelToUse);
+                    dto.setCompletionTokens(result.completionTokens());
 
                     boolean shouldIncludeExplanation = Boolean.TRUE.equals(request.getIncludeExplanation());
                     if (!shouldIncludeExplanation) {
