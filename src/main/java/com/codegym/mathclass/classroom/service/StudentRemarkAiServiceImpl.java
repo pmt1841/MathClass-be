@@ -3,6 +3,7 @@ package com.codegym.mathclass.classroom.service;
 import com.codegym.mathclass.aiconfig.entity.SystemPrompt;
 import com.codegym.mathclass.aiconfig.repository.SystemPromptRepository;
 import com.codegym.mathclass.aiconfig.service.AiPromptExecutionService;
+import com.codegym.mathclass.aiconfig.strategy.AiExecutionResult;
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.repository.AssignmentRepository;
 import com.codegym.mathclass.classroom.dto.AiStudentRemarkEvaluateRequest;
@@ -57,6 +58,16 @@ public class StudentRemarkAiServiceImpl implements StudentRemarkAiService {
             Long studentId,
             Long currentUserId,
             AiStudentRemarkEvaluateRequest request) {
+        return evaluateStudentProgress(classCode, studentId, currentUserId, request, true);
+    }
+
+    @Override
+    public AiStudentRemarkEvaluationResponse evaluateStudentProgress(
+            String classCode,
+            Long studentId,
+            Long currentUserId,
+            AiStudentRemarkEvaluateRequest request,
+            boolean chargeCredits) {
 
         Classroom classroom = classroomRepository.findByClassCode(classCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lớp học"));
@@ -178,11 +189,11 @@ public class StudentRemarkAiServiceImpl implements StudentRemarkAiService {
                 .replace("{{active_incomplete_assignments}}", String.valueOf(activeIncompleteAssignments))
                 .replace("{{submission_details}}", detailsBuilder.toString().trim());
 
-        // 4. Gọi thực thi AI qua AiPromptExecutionService (tự trừ credit, tối thiểu 5 credit / 1000 tokens)
-        String rawAiOutput = aiPromptExecutionService.executePrompt(TASK_STUDENT_REMARK, fullPrompt, currentUserId);
+        // 4. Gọi thực thi AI qua AiPromptExecutionService (tự trừ credit nếu chargeCredits = true, tối thiểu 5 credit / 1000 tokens)
+        AiExecutionResult execResult = aiPromptExecutionService.executePromptWithResult(TASK_STUDENT_REMARK, fullPrompt, currentUserId, chargeCredits);
 
         // 5. Parse kết quả từ AI
-        AiRemarkJsonResult parsed = parseAiOutput(rawAiOutput, formattedStartDate, formattedEndDate, totalAssignments, completedAssignments);
+        AiRemarkJsonResult parsed = parseAiOutput(execResult.content(), formattedStartDate, formattedEndDate, totalAssignments, completedAssignments);
 
         return AiStudentRemarkEvaluationResponse.builder()
                 .startDate(startDate)
@@ -195,6 +206,7 @@ public class StudentRemarkAiServiceImpl implements StudentRemarkAiService {
                 .strengths(parsed.getStrengths())
                 .weaknesses(parsed.getWeaknesses())
                 .generalAssessment(parsed.getGeneralAssessment())
+                .completionTokens(execResult.completionTokens())
                 .build();
     }
 

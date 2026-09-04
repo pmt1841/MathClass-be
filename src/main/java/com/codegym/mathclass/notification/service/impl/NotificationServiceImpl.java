@@ -117,6 +117,26 @@ public class NotificationServiceImpl implements NotificationService {
         return notificationRepository.countByUserIdAndIsReadFalse(userId);
     }
 
+    @Override
+    public void sendAiJobEvent(Long userId, String eventName, Object data) {
+        if (userId == null) {
+            return;
+        }
+        List<SseEmitter> userEmitters = emitters.get(userId);
+        if (userEmitters != null && !userEmitters.isEmpty()) {
+            for (SseEmitter emitter : userEmitters) {
+                try {
+                    emitter.send(SseEmitter.event()
+                            .name(eventName)
+                            .data(data));
+                } catch (IOException e) {
+                    log.warn("Lỗi gửi SSE event {} cho user {}: {}", eventName, userId, e.getMessage());
+                    removeEmitter(userId, emitter);
+                }
+            }
+        }
+    }
+
     private NotificationResponse mapToResponse(Notification notification) {
         return NotificationResponse.builder()
                 .id(notification.getId())

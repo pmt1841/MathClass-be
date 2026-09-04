@@ -4,6 +4,7 @@ import com.codegym.mathclass.aiconfig.dto.request.RenderPromptRequest;
 import com.codegym.mathclass.aiconfig.dto.response.RenderPromptResponse;
 import com.codegym.mathclass.aiconfig.service.AiPromptExecutionService;
 import com.codegym.mathclass.aiconfig.service.PromptRenderService;
+import com.codegym.mathclass.aiconfig.strategy.AiExecutionResult;
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.exception.AccessDeniedException;
 import com.codegym.mathclass.exception.BadRequestException;
@@ -72,6 +73,11 @@ public class AiGradingServiceImpl implements AiGradingService {
 
     @Override
     public AiGradingResponse requestAiGrading(long submissionId, AiGradingRequest request, long teacherId) {
+        return requestAiGrading(submissionId, request, teacherId, true);
+    }
+
+    @Override
+    public AiGradingResponse requestAiGrading(long submissionId, AiGradingRequest request, long teacherId, boolean chargeCredits) {
         Submission submission = submissionRepository.findByIdWithDetails(submissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài nộp"));
 
@@ -86,9 +92,11 @@ public class AiGradingServiceImpl implements AiGradingService {
         }
 
         String prompt = buildGradingPrompt(assignment, submission);
-        String rawAiResponse = executePromptWithRetryOnEmpty(prompt, teacherId);
+        AiExecutionResult execResult = executePromptWithRetryOnEmpty(prompt, teacherId, chargeCredits);
 
-        return parseAiResponse(rawAiResponse, assignment, submission);
+        AiGradingResponse response = parseAiResponse(execResult.content(), assignment, submission);
+        response.setCompletionTokens(execResult.completionTokens());
+        return response;
     }
 
     /**
@@ -98,18 +106,18 @@ public class AiGradingServiceImpl implements AiGradingService {
      * Lỗi runtime từ dịch vụ AI (timeout, kết nối...) được bọc thành BadRequestException
      * kèm nguyên nhân thật để frontend hiển thị được (thay vì 500 mặc định).
      */
-    private String executePromptWithRetryOnEmpty(String prompt, long teacherId) {
-        String raw = null;
+    private AiExecutionResult executePromptWithRetryOnEmpty(String prompt, long teacherId, boolean chargeCredits) {
+        AiExecutionResult result = null;
         for (int attempt = 1; attempt <= MAX_EMPTY_RESPONSE_ATTEMPTS; attempt++) {
             try {
-                raw = aiPromptExecutionService.executePrompt(GRADING_TASK_CODE, prompt, teacherId);
+                result = aiPromptExecutionService.executePromptWithResult(GRADING_TASK_CODE, prompt, teacherId, chargeCredits);
             } catch (RuntimeException e) {
                 String cause = e.getMessage() != null ? e.getMessage() : "Lỗi không xác định từ dịch vụ AI";
                 log.error("Gọi AI chấm bài thất bại (lần thử {}/{}): {}", attempt, MAX_EMPTY_RESPONSE_ATTEMPTS, cause, e);
                 throw new BadRequestException("AI chấm bài tạm thời không khả dụng: " + cause);
             }
-            if (raw != null && !raw.isBlank()) {
-                return raw;
+            if (result != null && result.content() != null && !result.content().isBlank()) {
+                return result;
             }
             log.warn("AI chấm bài trả về phản hồi rỗng (lần thử {}/{}) cho task '{}'",
                     attempt, MAX_EMPTY_RESPONSE_ATTEMPTS, GRADING_TASK_CODE);

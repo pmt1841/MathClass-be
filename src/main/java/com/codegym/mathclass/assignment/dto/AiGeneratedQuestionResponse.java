@@ -20,4 +20,5 @@ public class AiGeneratedQuestionResponse {
     private String topic;
     private String model;
     private CanvasDataResponse canvasData;
+    private Integer completionTokens;
 }

@@ -23,4 +23,5 @@ public class BatchGenerateQuestionsResponse {
     @Builder.Default
     private List<AssignmentImageDto> extractedImages = new ArrayList<>();
     private String model;
+    private Integer completionTokens;
 }

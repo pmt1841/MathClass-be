@@ -12,4 +12,5 @@ public interface NotificationService {
     void markAllAsRead(Long userId);
     void markAsRead(Long notificationId, Long userId);
     long getUnreadCount(Long userId);
+    void sendAiJobEvent(Long userId, String eventName, Object data);
 }
