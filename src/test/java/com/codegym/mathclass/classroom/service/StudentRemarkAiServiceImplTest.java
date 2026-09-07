@@ -3,6 +3,7 @@ package com.codegym.mathclass.classroom.service;
 import com.codegym.mathclass.aiconfig.entity.SystemPrompt;
 import com.codegym.mathclass.aiconfig.repository.SystemPromptRepository;
 import com.codegym.mathclass.aiconfig.service.AiPromptExecutionService;
+import com.codegym.mathclass.aiconfig.strategy.AiExecutionResult;
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.repository.AssignmentRepository;
 import com.codegym.mathclass.classroom.dto.AiStudentRemarkEvaluateRequest;
@@ -89,6 +90,8 @@ class StudentRemarkAiServiceImplTest {
                 .students(new HashSet<>(List.of(student)))
                 .build();
         classroom.setId(100L);
+
+        lenient().when(classroomRepository.existsByIdAndStudentsId(eq(100L), eq(2L))).thenReturn(true);
     }
 
     @Test
@@ -133,8 +136,8 @@ class StudentRemarkAiServiceImplTest {
                   "generalAssessment": "Trong khoảng thời gian từ 21/08/2026 đến 28/08/2026, học sinh đã hoàn thành 1/2 bài tập được giao. Cần chủ động làm nốt bài tập còn lại."
                 }
                 """;
-        when(aiPromptExecutionService.executePrompt(eq("STUDENT_REMARK"), anyString(), eq(1L)))
-                .thenReturn(mockAiResponse);
+        when(aiPromptExecutionService.executePromptWithResult(eq("STUDENT_REMARK"), anyString(), eq(1L), anyBoolean()))
+                .thenReturn(new AiExecutionResult(mockAiResponse, 100));
 
         AiStudentRemarkEvaluationResponse response = studentRemarkAiService.evaluateStudentProgress(
                 "MATH101", 2L, 1L, request);
@@ -174,8 +177,8 @@ class StudentRemarkAiServiceImplTest {
         when(submissionRepository.findAllByAssignmentIdInAndStudentId(anyList(), eq(2L)))
                 .thenReturn(Collections.emptyList());
         when(systemPromptRepository.findByCode("PROMPT_STUDENT_REMARK")).thenReturn(Optional.empty());
-        when(aiPromptExecutionService.executePrompt(eq("STUDENT_REMARK"), anyString(), eq(1L)))
-                .thenReturn("{\"strengths\":\"N/A\",\"weaknesses\":\"N/A\",\"generalAssessment\":\"Trong khoảng thời gian từ 21/08/2026 đến 28/08/2026, học sinh đã hoàn thành 0/2 bài tập được giao.\"}");
+        when(aiPromptExecutionService.executePromptWithResult(eq("STUDENT_REMARK"), anyString(), eq(1L), anyBoolean()))
+                .thenReturn(new AiExecutionResult("{\"strengths\":\"N/A\",\"weaknesses\":\"N/A\",\"generalAssessment\":\"Trong khoảng thời gian từ 21/08/2026 đến 28/08/2026, học sinh đã hoàn thành 0/2 bài tập được giao.\"}", 50));
 
         AiStudentRemarkEvaluationResponse response = studentRemarkAiService.evaluateStudentProgress(
                 "MATH101", 2L, 1L, request);
@@ -215,12 +218,13 @@ class StudentRemarkAiServiceImplTest {
     }
 
     @Test
-    @DisplayName("Should throw BadRequestException when student is not a class member")
+    @DisplayName("Should throw BadRequestException when student is not a member of the class")
     void evaluateStudentProgress_StudentNotMember_ThrowsBadRequestException() {
         AiStudentRemarkEvaluateRequest request = AiStudentRemarkEvaluateRequest.builder().days(7).build();
 
         when(classroomRepository.findByClassCode("MATH101")).thenReturn(Optional.of(classroom));
         when(userRepository.findById(3L)).thenReturn(Optional.of(otherStudent));
+        when(classroomRepository.existsByIdAndStudentsId(100L, 3L)).thenReturn(false);
 
         assertThatThrownBy(() -> studentRemarkAiService.evaluateStudentProgress("MATH101", 3L, 1L, request))
                 .isInstanceOf(BadRequestException.class)
@@ -245,8 +249,8 @@ class StudentRemarkAiServiceImplTest {
         when(submissionRepository.findAllByAssignmentIdInAndStudentId(anyList(), eq(2L)))
                 .thenReturn(Collections.emptyList());
         when(systemPromptRepository.findByCode("PROMPT_STUDENT_REMARK")).thenReturn(Optional.empty());
-        when(aiPromptExecutionService.executePrompt(eq("STUDENT_REMARK"), anyString(), eq(1L)))
-                .thenReturn("{\"strengths\":\"N/A\",\"weaknesses\":\"N/A\",\"generalAssessment\":\"Đánh giá chung\"}");
+        when(aiPromptExecutionService.executePromptWithResult(eq("STUDENT_REMARK"), anyString(), eq(1L), anyBoolean()))
+                .thenReturn(new AiExecutionResult("{\"strengths\":\"N/A\",\"weaknesses\":\"N/A\",\"generalAssessment\":\"Đánh giá chung\"}", 50));
 
         AiStudentRemarkEvaluationResponse response = studentRemarkAiService.evaluateStudentProgress(
                 "MATH101", 2L, 1L, request);
@@ -282,8 +286,8 @@ class StudentRemarkAiServiceImplTest {
         when(submissionRepository.findAllByAssignmentIdInAndStudentId(eq(List.of(302L)), eq(2L)))
                 .thenReturn(List.of(sDraft));
         when(systemPromptRepository.findByCode("PROMPT_STUDENT_REMARK")).thenReturn(Optional.empty());
-        when(aiPromptExecutionService.executePrompt(eq("STUDENT_REMARK"), anyString(), eq(1L)))
-                .thenReturn("{\"strengths\":\"N/A\",\"weaknesses\":\"N/A\",\"generalAssessment\":\"Đánh giá\"}");
+        when(aiPromptExecutionService.executePromptWithResult(eq("STUDENT_REMARK"), anyString(), eq(1L), anyBoolean()))
+                .thenReturn(new AiExecutionResult("{\"strengths\":\"N/A\",\"weaknesses\":\"N/A\",\"generalAssessment\":\"Đánh giá\"}", 50));
 
         AiStudentRemarkEvaluationResponse response = studentRemarkAiService.evaluateStudentProgress(
                 "MATH101", 2L, 1L, request);
@@ -325,8 +329,8 @@ class StudentRemarkAiServiceImplTest {
         when(submissionRepository.findAllByAssignmentIdInAndStudentId(eq(List.of(401L, 402L)), eq(2L)))
                 .thenReturn(List.of(s1, s2));
         when(systemPromptRepository.findByCode("PROMPT_STUDENT_REMARK")).thenReturn(Optional.empty());
-        when(aiPromptExecutionService.executePrompt(eq("STUDENT_REMARK"), anyString(), eq(1L)))
-                .thenReturn("{\"strengths\":\"N/A\",\"weaknesses\":\"N/A\",\"generalAssessment\":\"Đánh giá\"}");
+        when(aiPromptExecutionService.executePromptWithResult(eq("STUDENT_REMARK"), anyString(), eq(1L), anyBoolean()))
+                .thenReturn(new AiExecutionResult("{\"strengths\":\"N/A\",\"weaknesses\":\"N/A\",\"generalAssessment\":\"Đánh giá\"}", 50));
 
         AiStudentRemarkEvaluationResponse response = studentRemarkAiService.evaluateStudentProgress(
                 "MATH101", 2L, 1L, request);
@@ -372,8 +376,8 @@ class StudentRemarkAiServiceImplTest {
         when(systemPromptRepository.findByCode("PROMPT_STUDENT_REMARK")).thenReturn(Optional.empty());
 
         // Test with empty string
-        when(aiPromptExecutionService.executePrompt(eq("STUDENT_REMARK"), anyString(), eq(1L)))
-                .thenReturn("");
+        when(aiPromptExecutionService.executePromptWithResult(eq("STUDENT_REMARK"), anyString(), eq(1L), anyBoolean()))
+                .thenReturn(new AiExecutionResult("", 0));
 
         AiStudentRemarkEvaluationResponse response = studentRemarkAiService.evaluateStudentProgress(
                 "MATH101", 2L, 1L, request);
@@ -383,8 +387,8 @@ class StudentRemarkAiServiceImplTest {
         assertThat(response.getGeneralAssessment()).contains("AI không trả về nội dung đánh giá");
 
         // Test with null
-        when(aiPromptExecutionService.executePrompt(eq("STUDENT_REMARK"), anyString(), eq(1L)))
-                .thenReturn(null);
+        when(aiPromptExecutionService.executePromptWithResult(eq("STUDENT_REMARK"), anyString(), eq(1L), anyBoolean()))
+                .thenReturn(new AiExecutionResult(null, 0));
 
         AiStudentRemarkEvaluationResponse responseNull = studentRemarkAiService.evaluateStudentProgress(
                 "MATH101", 2L, 1L, request);
