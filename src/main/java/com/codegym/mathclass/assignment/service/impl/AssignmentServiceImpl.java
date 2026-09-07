@@ -50,6 +50,12 @@ import com.codegym.mathclass.assignment.strategy.parser.DocumentParserFactory;
 import com.codegym.mathclass.assignment.strategy.parser.DocumentParserStrategy;
 import com.codegym.mathclass.assignment.dto.DocumentParseResult;
 import com.codegym.mathclass.assignment.dto.AssignmentImageDto;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
+import java.util.Map;
+import java.util.UUID;
+import com.codegym.mathclass.assignment.dto.DocumentParseResult;
+import com.codegym.mathclass.assignment.dto.AssignmentImageDto;
 import com.codegym.mathclass.assignment.dto.AssignmentDrawingRequest;
 import com.codegym.mathclass.assignment.dto.AssignmentImageRequest;
 import com.codegym.mathclass.utils.EmailService;
@@ -466,20 +472,18 @@ public class AssignmentServiceImpl implements AssignmentService {
     }
 
     @Override
-    public AssignmentImageDto uploadImageForAssignment(org.springframework.web.multipart.MultipartFile file)
-            throws java.io.IOException {
+    public AssignmentImageDto uploadImageForAssignment(MultipartFile file) throws IOException {
         String publicUrl = storageService.upload(file, StoragePolicy.ASSIGNMENT_IMAGE);
-        String imageCode = "[IMAGE_" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase() + "]";
+        String imageCode = "[IMAGE_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase() + "]";
         return new AssignmentImageDto(imageCode, publicUrl);
     }
 
     @Override
-    public java.util.Map<String, Object> extractTextFromFile(org.springframework.web.multipart.MultipartFile file)
-            throws Exception {
+    public Map<String, Object> extractTextFromFile(MultipartFile file) throws Exception {
         String filename = file != null ? file.getOriginalFilename() : null;
         DocumentParserStrategy parser = documentParserFactory.getParser(filename);
         DocumentParseResult result = parser.parse(file);
-        return java.util.Map.of("content", result.content(), "images", result.images());
+        return Map.of("content", result.content(), "images", result.images());
     }
 
     @Override

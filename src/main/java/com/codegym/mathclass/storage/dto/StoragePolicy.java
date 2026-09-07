@@ -13,18 +13,18 @@ public record StoragePolicy(
     public static final StoragePolicy AVATAR = new StoragePolicy(
             2 * 1024 * 1024L, // 2MB
             List.of("image/png", "image/jpeg", "image/jpg", "image/webp"),
-            "avatars"
+            "avatar"
     );
 
     public static final StoragePolicy ASSIGNMENT_IMAGE = new StoragePolicy(
             10 * 1024 * 1024L, // 10MB
             List.of("image/png", "image/jpeg", "image/jpg", "image/webp"),
-            "assignment_images"
+            "assignment_image"
     );
 
     public static final StoragePolicy BUG_REPORT = new StoragePolicy(
             10 * 1024 * 1024L, // 10MB
             List.of("image/png", "image/jpeg", "image/jpg", "image/webp", "text/plain"),
-            "bug_reports"
+            "bug_report"
     );
 }

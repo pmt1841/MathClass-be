@@ -59,9 +59,25 @@ public class StorageService {
     }
 
     /**
-     * Xóa tệp theo URL.
+     * Xóa tệp theo URL (tự động nhận diện Strategy theo định dạng URL hoặc theo cấu hình active).
      */
     public void delete(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) {
+            return;
+        }
+        if (fileUrl.startsWith("/uploads/")) {
+            StorageStrategy local = storageStrategies.get("localStorageStrategy");
+            if (local != null) {
+                local.delete(fileUrl);
+                return;
+            }
+        } else if (fileUrl.contains("/storage/v1/object/")) {
+            StorageStrategy supabase = storageStrategies.get("supabaseStorageStrategy");
+            if (supabase != null) {
+                supabase.delete(fileUrl);
+                return;
+            }
+        }
         getActiveStrategy().delete(fileUrl);
     }
 
@@ -71,7 +87,8 @@ public class StorageService {
             throw new BadRequestException("Kích thước tệp không được vượt quá " + maxMb + "MB");
         }
 
-        if (contentType != null && !policy.allowedMimeTypes().contains(contentType.toLowerCase())) {
+        if (contentType == null || contentType.isBlank()
+                || !policy.allowedMimeTypes().contains(contentType.toLowerCase())) {
             throw new BadRequestException("Chỉ chấp nhận các định dạng tệp: " + String.join(", ", policy.allowedMimeTypes()));
         }
     }

@@ -1,6 +1,7 @@
 package com.codegym.mathclass.storage.strategy;
 
 import com.codegym.mathclass.storage.dto.StoragePolicy;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -13,6 +14,7 @@ import java.util.UUID;
  * LocalStorageStrategy triển khai lưu trữ tệp trực tiếp trên ổ đĩa cục bộ của Server (phục vụ Dev/Offline/Test).
  */
 @Component("localStorageStrategy")
+@Slf4j
 public class LocalStorageStrategy implements StorageStrategy {
 
     private static final String BASE_UPLOAD_DIR = "./uploads";
@@ -43,10 +45,18 @@ public class LocalStorageStrategy implements StorageStrategy {
             return;
         }
         String relativePath = fileUrl.substring("/uploads/".length());
-        Path filePath = Paths.get(BASE_UPLOAD_DIR, relativePath);
+        Path basePath = Paths.get(BASE_UPLOAD_DIR).toAbsolutePath().normalize();
+        Path filePath = basePath.resolve(relativePath).normalize();
+
+        if (!filePath.startsWith(basePath)) {
+            log.warn("[LocalStorage] Phát hiện nỗ lực Path Traversal bị chặn: {}", fileUrl);
+            return;
+        }
+
         try {
             Files.deleteIfExists(filePath);
-        } catch (IOException ignored) {
+        } catch (IOException e) {
+            log.error("[LocalStorage] Lỗi khi xóa file cục bộ: {}", fileUrl, e);
         }
     }
 

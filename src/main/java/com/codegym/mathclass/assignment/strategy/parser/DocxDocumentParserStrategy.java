@@ -5,6 +5,7 @@ import com.codegym.mathclass.assignment.dto.DocumentParseResult;
 import com.codegym.mathclass.storage.dto.StoragePolicy;
 import com.codegym.mathclass.storage.service.StorageService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.IBodyElement;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
@@ -27,6 +28,7 @@ import java.util.UUID;
  */
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class DocxDocumentParserStrategy implements DocumentParserStrategy {
 
     private final StorageService storageService;
@@ -135,7 +137,7 @@ public class DocxDocumentParserStrategy implements DocumentParserStrategy {
                         extractedImages.add(new AssignmentImageDto(imageCode, publicUrl));
                         paraMd.append(" ").append(imageCode).append(" ");
                     } catch (Exception e) {
-                        System.err.println("Failed to extract and upload image from DOCX: " + e.getMessage());
+                        log.warn("Failed to extract and upload image from DOCX: {}", e.getMessage(), e);
                     }
                 }
             }
