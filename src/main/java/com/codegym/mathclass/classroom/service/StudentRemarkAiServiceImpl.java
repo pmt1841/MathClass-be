@@ -62,6 +62,7 @@ public class StudentRemarkAiServiceImpl implements StudentRemarkAiService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public AiStudentRemarkEvaluationResponse evaluateStudentProgress(
             String classCode,
             Long studentId,
@@ -79,7 +80,7 @@ public class StudentRemarkAiServiceImpl implements StudentRemarkAiService {
         User student = userRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy học sinh"));
 
-        boolean isMember = classroom.getStudents().stream().anyMatch(s -> Objects.equals(s.getId(), studentId));
+        boolean isMember = classroomRepository.existsByIdAndStudentsId(classroom.getId(), studentId);
         if (!isMember) {
             throw new BadRequestException("Học sinh không thuộc lớp học này");
         }
