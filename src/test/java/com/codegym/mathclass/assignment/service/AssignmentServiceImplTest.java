@@ -18,7 +18,8 @@ import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.EmailService;
-import com.codegym.mathclass.utils.SupabaseStorageService;
+import com.codegym.mathclass.storage.service.StorageService;
+import com.codegym.mathclass.assignment.strategy.parser.DocumentParserFactory;
 import com.codegym.mathclass.assignment.repository.AssignmentImageRepository;
 import com.codegym.mathclass.assignment.entity.AssignmentImage;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,7 +60,10 @@ class AssignmentServiceImplTest {
     private AssignmentMapper assignmentMapper;
 
     @Mock
-    private SupabaseStorageService supabaseStorageService;
+    private StorageService storageService;
+
+    @Mock
+    private DocumentParserFactory documentParserFactory;
 
     @Mock
     private SubmissionRepository submissionRepository;
@@ -489,8 +493,8 @@ class AssignmentServiceImplTest {
             assignmentService.deleteAssignment(assignmentId, teacherId);
 
             verify(assignmentRepository).delete(draftAssignment);
-            verify(supabaseStorageService).deleteImageByUrl(image1.getImageUrl());
-            verify(supabaseStorageService, never()).deleteImageByUrl(image2.getImageUrl());
+            verify(storageService).delete(image1.getImageUrl());
+            verify(storageService, never()).delete(image2.getImageUrl());
         }
 
         @Test

@@ -8,7 +8,8 @@ import com.codegym.mathclass.bugreport.entity.BugReportStatus;
 import com.codegym.mathclass.bugreport.service.BugReportService;
 import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.security.services.CustomUserDetails;
-import com.codegym.mathclass.utils.SupabaseStorageService;
+import com.codegym.mathclass.storage.service.StorageService;
+import com.codegym.mathclass.storage.dto.StoragePolicy;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -34,7 +35,7 @@ import java.util.Map;
 public class BugReportController {
 
     private final BugReportService bugReportService;
-    private final SupabaseStorageService supabaseStorageService;
+    private final StorageService storageService;
 
     private String getClientIp(HttpServletRequest httpRequest) {
         if (httpRequest == null) return "127.0.0.1";
@@ -58,17 +59,7 @@ public class BugReportController {
     @PostMapping("/bug-reports/public/upload-image")
     public ResponseEntity<Map<String, String>> uploadPublicBugReportImage(
             @RequestParam("file") MultipartFile file) throws Exception {
-        if (file == null || file.isEmpty()) {
-            throw new com.codegym.mathclass.exception.BadRequestException("Tập tin đính kèm không được để trống");
-        }
-        if (file.getSize() > 5 * 1024 * 1024) {
-            throw new com.codegym.mathclass.exception.BadRequestException("Dung lượng ảnh đính kèm vượt quá 5MB");
-        }
-        String contentType = file.getContentType();
-        if (contentType == null || !contentType.startsWith("image/")) {
-            throw new com.codegym.mathclass.exception.BadRequestException("Chỉ chấp nhận tập tin định dạng hình ảnh (PNG, JPG, JPEG, WEBP)");
-        }
-        String publicUrl = supabaseStorageService.uploadImage(file, "assignment_image");
+        String publicUrl = storageService.upload(file, StoragePolicy.BUG_REPORT);
         return ResponseEntity.ok(Map.of("imageUrl", publicUrl));
     }
 
