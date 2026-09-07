@@ -1,25 +1,23 @@
 package com.codegym.mathclass.notification.service.impl;
 
 import com.codegym.mathclass.exception.ResourceNotFoundException;
+import com.codegym.mathclass.notification.dto.NotificationPayload;
 import com.codegym.mathclass.notification.dto.NotificationResponse;
 import com.codegym.mathclass.notification.entity.Notification;
 import com.codegym.mathclass.notification.repository.NotificationRepository;
 import com.codegym.mathclass.notification.service.NotificationService;
+import com.codegym.mathclass.notification.strategy.CompositeNotificationStrategy;
+import com.codegym.mathclass.notification.strategy.SseNotificationStrategy;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 @Service
 @RequiredArgsConstructor
@@ -28,38 +26,12 @@ public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
-
-    // Default timeout 30 mins
-    private static final long DEFAULT_TIMEOUT = 30 * 60 * 1000L;
-    private final Map<Long, List<SseEmitter>> emitters = new ConcurrentHashMap<>();
+    private final SseNotificationStrategy sseNotificationStrategy;
+    private final CompositeNotificationStrategy compositeNotificationStrategy;
 
     @Override
     public SseEmitter createEmitter(Long userId) {
-        SseEmitter emitter = new SseEmitter(DEFAULT_TIMEOUT);
-        emitters.computeIfAbsent(userId, k -> new CopyOnWriteArrayList<>()).add(emitter);
-
-        emitter.onCompletion(() -> removeEmitter(userId, emitter));
-        emitter.onTimeout(() -> removeEmitter(userId, emitter));
-        emitter.onError((e) -> removeEmitter(userId, emitter));
-
-        // Send dummy event to establish connection
-        try {
-            emitter.send(SseEmitter.event().name("INIT").data("Connected"));
-        } catch (IOException e) {
-            removeEmitter(userId, emitter);
-        }
-        
-        return emitter;
-    }
-
-    private void removeEmitter(Long userId, SseEmitter emitter) {
-        List<SseEmitter> userEmitters = emitters.get(userId);
-        if (userEmitters != null) {
-            userEmitters.remove(emitter);
-            if (userEmitters.isEmpty()) {
-                emitters.remove(userId);
-            }
-        }
+        return sseNotificationStrategy.createEmitter(userId);
     }
 
     @Override
@@ -78,17 +50,20 @@ public class NotificationServiceImpl implements NotificationService {
         Notification saved = notificationRepository.save(notification);
         NotificationResponse response = mapToResponse(saved);
 
-        List<SseEmitter> userEmitters = emitters.get(userId);
-        if (userEmitters != null) {
-            for (SseEmitter emitter : userEmitters) {
-                try {
-                    emitter.send(SseEmitter.event()
-                            .name("NOTIFICATION")
-                            .data(response));
-                } catch (IOException e) {
-                    removeEmitter(userId, emitter);
-                }
-            }
+        NotificationPayload payload = new NotificationPayload(
+                userId,
+                "Thông báo từ MathClass",
+                message,
+                link,
+                "NOTIFICATION",
+                response
+        );
+
+        try {
+            compositeNotificationStrategy.send(payload);
+        } catch (Exception e) {
+            log.error("[NotificationServiceImpl] Lỗi khi phân phối thông báo cho user {}: {}",
+                    userId, e.getMessage(), e);
         }
     }
 
@@ -122,19 +97,15 @@ public class NotificationServiceImpl implements NotificationService {
         if (userId == null) {
             return;
         }
-        List<SseEmitter> userEmitters = emitters.get(userId);
-        if (userEmitters != null && !userEmitters.isEmpty()) {
-            for (SseEmitter emitter : userEmitters) {
-                try {
-                    emitter.send(SseEmitter.event()
-                            .name(eventName)
-                            .data(data));
-                } catch (IOException e) {
-                    log.warn("Lỗi gửi SSE event {} cho user {}: {}", eventName, userId, e.getMessage());
-                    removeEmitter(userId, emitter);
-                }
-            }
-        }
+        NotificationPayload payload = new NotificationPayload(
+                userId,
+                null,
+                null,
+                null,
+                eventName,
+                data
+        );
+        sseNotificationStrategy.send(payload);
     }
 
     private NotificationResponse mapToResponse(Notification notification) {
