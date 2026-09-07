@@ -13,6 +13,7 @@ import com.codegym.mathclass.aiconfig.service.PromptRenderService;
 import com.codegym.mathclass.aiconfig.strategy.AiExecutionResult;
 import com.codegym.mathclass.aiconfig.strategy.AiProviderStrategy;
 import com.codegym.mathclass.aiconfig.strategy.AiProviderStrategyFactory;
+import com.codegym.mathclass.aiqueue.dto.payload.AiBatchQuestionJobPayload;
 import com.codegym.mathclass.assignment.dto.AssignmentImageDto;
 import com.codegym.mathclass.assignment.dto.BatchGenerateQuestionsRequest;
 import com.codegym.mathclass.assignment.dto.BatchGenerateQuestionsResponse;
@@ -61,8 +62,13 @@ public class AiBatchQuestionServiceImpl implements AiBatchQuestionService {
             .configure(JsonReadFeature.ALLOW_TRAILING_COMMA.mappedFeature(), true);
 
     @Override
-    @SuppressWarnings("unchecked")
     public BatchGenerateQuestionsResponse batchGenerateQuestions(BatchGenerateQuestionsRequest request, Long userId) {
+        return batchGenerateQuestions(request, userId, true);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public BatchGenerateQuestionsResponse batchGenerateQuestions(BatchGenerateQuestionsRequest request, Long userId, boolean chargeCredits) {
         String documentContent = "";
         List<AssignmentImageDto> extractedImages = new ArrayList<>();
 
@@ -98,7 +104,8 @@ public class AiBatchQuestionServiceImpl implements AiBatchQuestionService {
         }
 
         Optional<AiCreditConfig> creditCfg = aiCreditService.getCreditConfig(TASK_BATCH_QUESTION_GEN);
-        boolean charge = creditCfg.isPresent()
+        boolean charge = chargeCredits
+                && creditCfg.isPresent()
                 && Boolean.TRUE.equals(creditCfg.get().getEnabled())
                 && userId != null
                 && !isAdmin(userId);
@@ -152,6 +159,7 @@ public class AiBatchQuestionServiceImpl implements AiBatchQuestionService {
                     BatchGenerateQuestionsResponse response = parseBatchResponse(result.content());
                     response.setModel(modelToUse);
                     response.setExtractedImages(extractedImages);
+                    response.setCompletionTokens(result.completionTokens());
 
                     if (response.getQuestions() != null) {
                         for (BatchQuestionItem q : response.getQuestions()) {
@@ -234,9 +242,7 @@ public class AiBatchQuestionServiceImpl implements AiBatchQuestionService {
                 throw new AiGenerationException("Phản hồi từ AI bị rỗng.");
             }
             String jsonText = AiResponseUtils.extractCleanJson(rawResponseBody);
-            jsonText = jsonText.replaceAll("(?<!\\\\)\\\\text\\{", "\\\\\\\\text{");
-            jsonText = jsonText.replaceAll("(?<!\\\\)\\\\frac\\{", "\\\\\\\\frac{");
-            jsonText = jsonText.replaceAll("(?<!\\\\)\\\\sqrt\\{", "\\\\\\\\sqrt{");
+            jsonText = AiResponseUtils.escapeLatexBackslashesInJson(jsonText);
             return objectMapper.readValue(jsonText, BatchGenerateQuestionsResponse.class);
         } catch (JsonProcessingException e) {
             log.error("Không thể parse JSON từ AI response: {}", e.getMessage());
@@ -276,4 +282,42 @@ public class AiBatchQuestionServiceImpl implements AiBatchQuestionService {
                     + documentContent;
         }
     }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public AiBatchQuestionJobPayload prepareBatchJobPayload(BatchGenerateQuestionsRequest request, Long userId) {
+        String textContent = "";
+        List<AssignmentImageDto> extractedImages = new ArrayList<>();
+
+        if (request.getFile() != null && !request.getFile().isEmpty()) {
+            try {
+                Map<String, Object> extracted = assignmentService.extractTextFromFile(request.getFile());
+                textContent = (String) extracted.getOrDefault("content", "");
+                Object imagesObj = extracted.get("images");
+                if (imagesObj instanceof List<?>) {
+                    extractedImages = (List<AssignmentImageDto>) imagesObj;
+                }
+            } catch (Exception e) {
+                throw new BadRequestException("Không thể đọc nội dung file tài liệu: " + e.getMessage());
+            }
+        } else if (request.getTextContent() != null && !request.getTextContent().isBlank()) {
+            textContent = request.getTextContent().trim();
+        }
+
+        if (textContent.isBlank()) {
+            throw new BadRequestException("Nội dung tài liệu/đề bài trống. Vui lòng tải lên file hoặc nhập nội dung.");
+        }
+
+        return AiBatchQuestionJobPayload.builder()
+                .textContent(textContent)
+                .extractedImages(extractedImages)
+                .grade(request.getGrade())
+                .topic(request.getTopic())
+                .questionType(request.getQuestionType())
+                .includeExplanation(request.getIncludeExplanation())
+                .includeCanvasDiagram(request.getIncludeCanvasDiagram())
+                .userId(userId)
+                .build();
+    }
 }
+

@@ -6,7 +6,9 @@ import com.codegym.mathclass.assignment.dto.AiGeneratedQuestionResponse;
 public interface AiQuestionService {
     AiGeneratedQuestionResponse generateQuestion(GenerateQuestionRequest request, Long userId);
 
+    AiGeneratedQuestionResponse generateQuestion(GenerateQuestionRequest request, Long userId, boolean chargeCredits);
+
     default AiGeneratedQuestionResponse generateQuestion(GenerateQuestionRequest request) {
-        return generateQuestion(request, null);
+        return generateQuestion(request, null, true);
     }
 }

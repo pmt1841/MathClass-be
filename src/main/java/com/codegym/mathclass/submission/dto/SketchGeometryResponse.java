@@ -13,4 +13,5 @@ public class SketchGeometryResponse {
 
     private String shapeType;
     private String geometryJson;
+    private Integer completionTokens;
 }

@@ -44,4 +44,7 @@ public class AiStudentRemarkEvaluationResponse {
 
     @Schema(description = "Đánh giá chung và phương pháp cải thiện", example = "Học sinh đã hoàn thành 8/10 bài tập trong khoảng thời gian từ 21/08/2026 đến 28/08/2026...")
     private String generalAssessment;
+
+    @Schema(description = "Số lượng completion tokens từ AI", example = "450")
+    private Integer completionTokens;
 }

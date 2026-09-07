@@ -1,5 +1,8 @@
 package com.codegym.mathclass.classroom.controller;
 
+import com.codegym.mathclass.aiqueue.dto.AiJobSubmitResponse;
+import com.codegym.mathclass.aiqueue.dto.payload.StudentRemarkJobPayload;
+import com.codegym.mathclass.aiqueue.service.AiJobService;
 import com.codegym.mathclass.classroom.dto.AiStudentRemarkEvaluateRequest;
 import com.codegym.mathclass.classroom.dto.AiStudentRemarkEvaluationResponse;
 import com.codegym.mathclass.classroom.dto.CreateStudentRemarkRequest;
@@ -22,6 +25,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -35,19 +39,55 @@ public class StudentRemarkController {
 
     private final StudentRemarkService studentRemarkService;
     private final StudentRemarkAiService studentRemarkAiService;
+    private final AiJobService aiJobService;
 
-    @Operation(summary = "AI Đánh giá tiến độ học sinh", description = "Quét bài tập đã giao và bài nộp trong khoảng thời gian để AI sinh nhận xét điểm mạnh, điểm yếu và đánh giá chung")
+    @Operation(summary = "AI Đánh giá tiến độ học sinh", description = "Quét bài tập đã giao và bài nộp trong khoảng thời gian để AI sinh nhận xét điểm mạnh, điểm yếu và đánh giá chung. Hỗ trợ async=true để đưa vào hàng đợi Redis")
     @PostMapping("/ai-evaluate")
     @PreAuthorize("hasAuthority('classroom:manage_requests')")
-    public ResponseEntity<AiStudentRemarkEvaluationResponse> evaluateStudentWithAi(
+    public ResponseEntity<?> evaluateStudentWithAi(
+            @PathVariable String classCode,
+            @PathVariable Long studentId,
+            @Valid @RequestBody AiStudentRemarkEvaluateRequest request,
+            @RequestParam(name = "async", defaultValue = "false") boolean async,
+            @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+
+        if (async) {
+            return enqueueRemarkJob(classCode, studentId, request, customUserDetails.getId());
+        }
+
+        AiStudentRemarkEvaluationResponse response = studentRemarkAiService.evaluateStudentProgress(
+                classCode, studentId, customUserDetails.getId(), request);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "AI Đánh giá tiến độ học sinh bất đồng bộ qua Redis Queue",
+            description = "Đưa yêu cầu đánh giá học sinh vào hàng đợi Redis và nhận ngay 202 Accepted kèm jobId trong < 100ms")
+    @PostMapping("/ai-evaluate/async")
+    @PreAuthorize("hasAuthority('classroom:manage_requests')")
+    public ResponseEntity<AiJobSubmitResponse> evaluateStudentWithAiAsync(
             @PathVariable String classCode,
             @PathVariable Long studentId,
             @Valid @RequestBody AiStudentRemarkEvaluateRequest request,
             @AuthenticationPrincipal CustomUserDetails customUserDetails) {
 
-        AiStudentRemarkEvaluationResponse response = studentRemarkAiService.evaluateStudentProgress(
-                classCode, studentId, customUserDetails.getId(), request);
-        return ResponseEntity.ok(response);
+        return enqueueRemarkJob(classCode, studentId, request, customUserDetails.getId());
+    }
+
+    private ResponseEntity<AiJobSubmitResponse> enqueueRemarkJob(
+            String classCode,
+            Long studentId,
+            AiStudentRemarkEvaluateRequest request,
+            Long teacherId) {
+
+        StudentRemarkJobPayload payload = StudentRemarkJobPayload.builder()
+                .classCode(classCode)
+                .studentId(studentId)
+                .currentUserId(teacherId)
+                .request(request)
+                .build();
+
+        AiJobSubmitResponse submitResponse = aiJobService.submitJob("STUDENT_REMARK", teacherId, payload);
+        return ResponseEntity.accepted().body(submitResponse);
     }
 
     @Operation(summary = "Lấy lịch sử nhận xét của học sinh", description = "Truy vấn danh sách các nhận xét (điểm mạnh, điểm yếu) của học sinh trong lớp theo thời gian")

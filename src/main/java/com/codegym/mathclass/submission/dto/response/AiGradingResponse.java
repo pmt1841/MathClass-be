@@ -37,4 +37,7 @@ public class AiGradingResponse {
      * Được tính server-side từ assignment.content (quyết định, không phụ thuộc AI).
      */
     private Boolean hasCanvasComparison;
+
+    /** Số token đầu ra hoàn tất từ AI */
+    private Integer completionTokens;
 }

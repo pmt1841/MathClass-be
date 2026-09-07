@@ -15,4 +15,12 @@ public interface StudentRemarkAiService {
             Long currentUserId,
             AiStudentRemarkEvaluateRequest request
     );
+
+    AiStudentRemarkEvaluationResponse evaluateStudentProgress(
+            String classCode,
+            Long studentId,
+            Long currentUserId,
+            AiStudentRemarkEvaluateRequest request,
+            boolean chargeCredits
+    );
 }
