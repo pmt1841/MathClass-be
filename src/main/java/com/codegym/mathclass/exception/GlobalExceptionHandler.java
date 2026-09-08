@@ -10,6 +10,7 @@ import java.util.Map;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.data.core.PropertyReferenceException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -101,6 +102,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(response);
     }
 
+    @ExceptionHandler(PropertyReferenceException.class)
+    public ResponseEntity<Map<String, String>> handlePropertyReferenceException(PropertyReferenceException ex) {
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Trường sắp xếp không hợp lệ: " + ex.getPropertyName());
+        response.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleGeneralException(Exception ex) {

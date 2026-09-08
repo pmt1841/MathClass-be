@@ -5,6 +5,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,7 +14,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "credit_transactions")
+@Table(name = "credit_transactions", indexes = {
+        @Index(name = "idx_credit_txn_user_created", columnList = "user_id, created_at DESC"),
+        @Index(name = "idx_credit_txn_user_type_created", columnList = "user_id, type, created_at DESC")
+})
 @Getter
 @Setter
 @NoArgsConstructor
