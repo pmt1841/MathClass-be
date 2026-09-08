@@ -10,13 +10,12 @@ CREATE INDEX IF NOT EXISTS idx_chat_messages_direct ON chat_messages(class_id, s
 -- Table group_chat_read_states
 CREATE TABLE IF NOT EXISTS group_chat_read_states (
     id BIGSERIAL PRIMARY KEY,
-    class_id BIGINT NOT NULL,
-    user_id BIGINT NOT NULL,
-    last_read_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE,
-    updated_at TIMESTAMP WITH TIME ZONE,
-    CONSTRAINT uk_group_chat_read_state UNIQUE (class_id, user_id)
+    class_id BIGINT NOT NULL REFERENCES classrooms(id),
+    user_id BIGINT NOT NULL REFERENCES users(id),
+    last_read_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_group_chat_read_state ON group_chat_read_states(class_id, user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_group_chat_read_state ON group_chat_read_states(class_id, user_id);
 

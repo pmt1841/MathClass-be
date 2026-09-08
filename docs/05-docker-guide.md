@@ -151,11 +151,19 @@ RUN sed -i 's/\r$//' gradlew && chmod +x gradlew
 
 Nếu chạy script local không qua Docker, thực hiện lệnh tương tự trên terminal Git Bash/Linux.
 
-### 5.4. Reset dữ liệu về trạng thái khởi tạo mẫu (Data Seeding)
+### 5.4. Reset dữ liệu về trạng thái khởi tạo mẫu (Data Seeding & Migration)
 
-Nếu ứng dụng được cấu hình `mathclass.seed.enabled=true`, bạn có thể reset lại toàn bộ DB về dữ liệu ban đầu bằng lệnh:
+Khi làm việc với Flyway kết hợp bộ Seeder tự động (`mathclass.seed.enabled=true`), bạn có thể reset lại toàn bộ Database về trạng thái ban đầu bằng lệnh:
 
 ```bash
+# Xóa container kèm volume dữ liệu cũ
 docker compose down -v
+
+# Khởi tạo lại container mới
 docker compose up -d
 ```
+
+**Quy trình khởi chạy tự động của hệ thống:**
+1. **Flyway Migration:** Khi Spring Boot khởi động, Flyway tự động quét thư mục `db/migration` và thực thi tuần tự các script DDL (`V1__init_schema.sql` -> `V2...` -> `V3...`) để tạo cấu trúc bảng sạch và chuẩn hóa.
+2. **Database Seeding:** Sau khi Schema DDL hoàn tất, `DatabaseSeeder` mới tiến hành nạp tài khoản mẫu, vai trò và dữ liệu demo thử nghiệm.
+

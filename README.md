@@ -46,6 +46,7 @@
 - **Ngôn ngữ lập trình:** Java 21
 - **Framework chính:** Spring Boot 4.1.0 (Spring Web, Spring Data JPA, Spring Security, Spring Mail, Validation, Actuator)
 - **Cơ sở dữ liệu:** PostgreSQL 16 (Lưu trữ quan hệ & dữ liệu dạng `jsonb`)
+- **Database Migration:** Flyway (Quản trị phiên bản Schema & DDL an toàn)
 - **Xác thực & Bảo mật:** Spring Security, JJWT (Cookie HTTP-Only & Header Bearer Token), Google OAuth2 Client, 2FA TOTP (Google Authenticator), Mã hóa AES-256-GCM
 - **AI Gateway & Integration:** OpenAI SDK, Google Generative AI, Anthropic Client, LangChain4j / Custom HTTP Clients
 - **Document Processing:** Apache POI (DOCX) & Apache PDFBox (PDF)
@@ -191,11 +192,12 @@ docker-compose up --build
 - **Đường dẫn Swagger UI:** `http://localhost:8080/swagger-ui.html`
 - **OpenAPI JSON Docs:** `http://localhost:8080/v3/api-docs`
 
-### Hướng dẫn thử nghiệm API trên Swagger UI:
+### Hướng dẫn thử nghiệm API trên Swagger UI
+
 1. Khởi chạy Backend và truy cập `http://localhost:8080/swagger-ui.html`.
 2. Thực hiện gọi API `POST /api/v1/auth/login` để lấy JWT Token.
 3. Bấm nút **Authorize** (ở góc phải màn hình Swagger).
-4. Nhập chuỗi JWT Token nhận được (không bao gồm chữ `Bearer `) và chọn **Authorize**.
+4. Nhập chuỗi JWT Token nhận được (không bao gồm chữ `Bearer`) và chọn **Authorize**.
 5. Bây giờ bạn có thể thử nghiệm trực tiếp tất cả các APIs yêu cầu xác thực ngay trên giao diện Swagger.
 
 ---
@@ -212,5 +214,3 @@ docker-compose up --build
 - 🔐 [Two-Factor Authentication (2FA TOTP Guide)](docs/06-two-factor-authentication.md)
 - 🤖 [AI Subsystem & Credit Quota Guide](docs/07-ai-subsystem.md)
 - 🔑 [Infisical Secret Management Guide (MAT-289)](docs/08-infisical-secrets-guide.md)
-
-

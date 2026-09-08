@@ -75,6 +75,13 @@
   - Ưu tiên sử dụng Derived Query Methods của Spring Data JPA. Nếu query phức tạp (Join nhiều bảng), bắt buộc phải dùng `@Query` viết JPQL hoặc Native Query.
   - Đối với các tác vụ `UPDATE` hoặc `DELETE` số lượng lớn qua JPA, bắt buộc phải có annotation `@Modifying` và `@Transactional`.
 
+- **Quy tắc Database Migration (Flyway):**
+  - Mọi thay đổi về cấu trúc CSDL (tạo bảng, thêm/sửa cột, index, constraint) **BẮT BUỘC** viết thành script SQL trong `src/main/resources/db/migration/`.
+  - **Quy chuẩn đặt tên file:** `V<Số_tăng_dần>__<tên_mô_tả_snake_case>.sql` (2 dấu gạch dưới `__`). Ví dụ: `V4__add_assignment_due_date.sql`. Hỗ trợ số phụ: `V4_1__...sql`.
+  - **Quy tắc phối hợp Git (Nhóm 3 người):** *"Ai merge trước giữ số, ai merge sau rebase và đổi số kế tiếp"*. Tuyệt đối không commit file trùng số version với nhánh chính.
+  - **Phân định DDL và Mock Data:** Thư mục `db/migration` **CHỈ** chứa DDL cấu trúc. Tuyệt đối **KHÔNG** đưa dữ liệu mẫu (Users test, bài tập, lớp học) vào file SQL migration để tránh vỡ sequence PostgreSQL và ô nhiễm dữ liệu Production. Dữ liệu mẫu tiếp tục duy trì tại `DatabaseSeeder.java`.
+  - **Cấu hình Hibernate:** Luôn duy trì `spring.jpa.hibernate.ddl-auto=validate`. Tuyệt đối không tự ý đổi lại thành `update` hay `create`.
+
 ### 7.3. Validation & DTO Module
 
 - **Quy tắc Input:** Tất cả các Request DTO nhận dữ liệu từ Client tại Controller phải được validate bằng annotation (`@NotNull`, `@NotBlank`, `@Size`, `@Email`,...).
