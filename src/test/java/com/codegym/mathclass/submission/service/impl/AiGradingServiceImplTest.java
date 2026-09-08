@@ -49,6 +49,12 @@ class AiGradingServiceImplTest {
     @Mock
     private PromptRenderService promptRenderService;
 
+    @org.mockito.Spy
+    private com.codegym.mathclass.ai.strategy.parser.AiResponseParserFactory aiResponseParserFactory =
+            new com.codegym.mathclass.ai.strategy.parser.AiResponseParserFactory(
+                    java.util.List.of(new com.codegym.mathclass.ai.strategy.parser.impl.AiGradingResponseParser(new com.fasterxml.jackson.databind.ObjectMapper()))
+            );
+
     @InjectMocks
     private AiGradingServiceImpl aiGradingService;
 

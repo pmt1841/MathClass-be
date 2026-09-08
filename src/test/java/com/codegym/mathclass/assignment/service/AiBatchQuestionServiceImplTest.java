@@ -64,6 +64,12 @@ class AiBatchQuestionServiceImplTest {
     @Mock
     private AiProviderStrategy aiProviderStrategy;
 
+    @org.mockito.Spy
+    private com.codegym.mathclass.ai.strategy.parser.AiResponseParserFactory aiResponseParserFactory =
+            new com.codegym.mathclass.ai.strategy.parser.AiResponseParserFactory(
+                    java.util.List.of(new com.codegym.mathclass.ai.strategy.parser.impl.AiQuestionResponseParser(new com.fasterxml.jackson.databind.ObjectMapper()))
+            );
+
     @InjectMocks
     private AiBatchQuestionServiceImpl aiBatchQuestionService;
 

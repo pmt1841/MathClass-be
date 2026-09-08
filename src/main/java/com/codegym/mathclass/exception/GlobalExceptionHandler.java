@@ -102,6 +102,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(response);
     }
 
+    @ExceptionHandler(com.codegym.mathclass.ai.strategy.parser.exception.AiParsingException.class)
+    public ResponseEntity<Map<String, String>> handleAiParsingException(com.codegym.mathclass.ai.strategy.parser.exception.AiParsingException ex) {
+        Map<String, String> response = new HashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(response);
+    }
+
     @ExceptionHandler(PropertyReferenceException.class)
     public ResponseEntity<Map<String, String>> handlePropertyReferenceException(PropertyReferenceException ex) {
         Map<String, String> response = new HashMap<>();

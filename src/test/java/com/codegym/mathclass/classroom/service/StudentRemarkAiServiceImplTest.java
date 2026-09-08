@@ -55,6 +55,12 @@ class StudentRemarkAiServiceImplTest {
     @Mock
     private AiPromptExecutionService aiPromptExecutionService;
 
+    @org.mockito.Spy
+    private com.codegym.mathclass.ai.strategy.parser.AiResponseParserFactory aiResponseParserFactory =
+            new com.codegym.mathclass.ai.strategy.parser.AiResponseParserFactory(
+                    java.util.List.of(new com.codegym.mathclass.ai.strategy.parser.impl.AiRemarkResponseParser(new com.fasterxml.jackson.databind.ObjectMapper()))
+            );
+
     @InjectMocks
     private StudentRemarkAiServiceImpl studentRemarkAiService;
 

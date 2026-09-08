@@ -1,5 +1,8 @@
 package com.codegym.mathclass.submission.service.impl;
 
+import com.codegym.mathclass.ai.strategy.parser.AiResponseParser;
+import com.codegym.mathclass.ai.strategy.parser.AiResponseParserFactory;
+import com.codegym.mathclass.ai.strategy.parser.AiResponseType;
 import com.codegym.mathclass.aiconfig.dto.request.RenderPromptRequest;
 import com.codegym.mathclass.aiconfig.dto.response.RenderPromptResponse;
 import com.codegym.mathclass.aiconfig.service.AiPromptExecutionService;
@@ -33,6 +36,7 @@ public class AiSubmissionHandwritingServiceImpl implements AiSubmissionHandwriti
 
     private final AiPromptExecutionService aiPromptExecutionService;
     private final PromptRenderService promptRenderService;
+    private final AiResponseParserFactory aiResponseParserFactory;
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS.mappedFeature(), true)
             .configure(JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER.mappedFeature(), true)
@@ -55,12 +59,27 @@ public class AiSubmissionHandwritingServiceImpl implements AiSubmissionHandwriti
                 userId,
                 chargeCredits);
 
-        String cleanLatex = LaTeXSanitizer.extractCleanLatex(execResult.content());
+        String rawContent = execResult != null && execResult.content() != null ? execResult.content()
+                : aiPromptExecutionService.executePromptWithImage(TASK_CODE, prompt, request.getImageData(), request.getMimeType(), userId);
+        Integer completionTokens = execResult != null ? execResult.completionTokens() : null;
+
+        AiResponseParser<HandwritingLatexResponse> parser = aiResponseParserFactory.getParser(AiResponseType.HANDWRITING);
+        HandwritingLatexResponse response = parser.parse(rawContent);
+        if (response != null) {
+            response.setCompletionTokens(completionTokens);
+            response.setRawAiOutput(rawContent);
+            if (response.getLatex() != null) {
+                response.setLatex(LaTeXSanitizer.extractCleanLatex(response.getLatex()));
+            }
+            return response;
+        }
+
+        String cleanLatex = LaTeXSanitizer.extractCleanLatex(rawContent);
 
         return HandwritingLatexResponse.builder()
                 .latex(cleanLatex)
-                .rawAiOutput(execResult.content())
-                .completionTokens(execResult.completionTokens())
+                .rawAiOutput(rawContent)
+                .completionTokens(completionTokens)
                 .build();
     }
 
@@ -81,7 +100,11 @@ public class AiSubmissionHandwritingServiceImpl implements AiSubmissionHandwriti
                 userId,
                 chargeCredits);
 
-        String cleanJson = AiResponseUtils.extractCleanJson(execResult.content());
+        String rawContent = execResult != null && execResult.content() != null ? execResult.content()
+                : aiPromptExecutionService.executePromptWithImage(TASK_CODE, prompt, request.getCanvasImageData(), request.getMimeType(), userId);
+        Integer completionTokens = execResult != null ? execResult.completionTokens() : null;
+
+        String cleanJson = AiResponseUtils.extractCleanJson(rawContent);
         String shapeType = "CUSTOM_GEOMETRY";
         try {
             JsonNode node = objectMapper.readTree(cleanJson);
@@ -95,7 +118,7 @@ public class AiSubmissionHandwritingServiceImpl implements AiSubmissionHandwriti
         return SketchGeometryResponse.builder()
                 .shapeType(shapeType)
                 .geometryJson(cleanJson)
-                .completionTokens(execResult.completionTokens())
+                .completionTokens(completionTokens)
                 .build();
     }
 
