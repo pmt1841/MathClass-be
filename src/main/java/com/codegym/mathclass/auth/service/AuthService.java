@@ -7,11 +7,14 @@ import com.codegym.mathclass.auth.dto.request.ResetPasswordRequest;
 import com.codegym.mathclass.auth.dto.response.UserInfoResponse;
 import com.codegym.mathclass.auth.dto.response.MessageResponse;
 import com.codegym.mathclass.auth.dto.request.GoogleAuthRequest;
+import com.codegym.mathclass.auth.dto.request.Admin2FaLoginRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 public interface AuthService {
     UserInfoResponse authenticateUser(LoginRequest loginRequest, HttpServletResponse response);
+
+    UserInfoResponse authenticateAdmin2Fa(Admin2FaLoginRequest request, HttpServletRequest httpRequest, HttpServletResponse response);
 
     MessageResponse logoutUser(HttpServletRequest request, HttpServletResponse response);
 
@@ -27,3 +30,4 @@ public interface AuthService {
 
     MessageResponse refreshToken(HttpServletRequest request, HttpServletResponse response);
 }
+

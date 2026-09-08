@@ -1,5 +1,7 @@
 package com.codegym.mathclass.auth.service.impl;
 
+import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
+import com.codegym.mathclass.auth.audit.AuthAuditLogger;
 import com.codegym.mathclass.auth.dto.request.*;
 import com.codegym.mathclass.auth.dto.response.MessageResponse;
 import com.codegym.mathclass.auth.dto.response.UserInfoResponse;
@@ -7,17 +9,16 @@ import com.codegym.mathclass.auth.entity.PasswordResetToken;
 import com.codegym.mathclass.auth.entity.RefreshToken;
 import com.codegym.mathclass.auth.repository.PasswordResetTokenRepository;
 import com.codegym.mathclass.auth.service.RefreshTokenService;
+import com.codegym.mathclass.auth.strategy.AuthStrategy;
+import com.codegym.mathclass.auth.strategy.AuthStrategyFactory;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.TooManyRequestsException;
 import com.codegym.mathclass.notification.entity.NotificationSettings;
 import com.codegym.mathclass.notification.repository.NotificationSettingsRepository;
-import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
 import com.codegym.mathclass.security.jwt.JwtUtils;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
-import com.codegym.mathclass.auth.entity.UserTwoFactorAuth;
-import com.codegym.mathclass.auth.repository.UserTwoFactorAuthRepository;
 import com.codegym.mathclass.user.mapper.UserMapper;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.user.service.PermissionCacheService;
@@ -34,11 +35,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.thymeleaf.context.Context;
@@ -59,7 +55,10 @@ import static org.mockito.Mockito.*;
 class AuthServiceImplTest {
 
     @Mock
-    private AuthenticationManager authenticationManager;
+    private AuthStrategyFactory authStrategyFactory;
+
+    @Mock
+    private AuthAuditLogger authAuditLogger;
 
     @Mock
     private UserRepository userRepository;
@@ -86,19 +85,21 @@ class AuthServiceImplTest {
     private RefreshTokenService refreshTokenService;
 
     @Mock
-    private UserMapper userMapper;
-
-    @Mock
     private AiCreditService aiCreditService;
 
     @Mock
-    private UserTwoFactorAuthRepository userTwoFactorAuthRepository;
+    private AuthStrategy<LoginRequest> localAuthStrategy;
+
+    @Mock
+    private AuthStrategy<GoogleAuthRequest> googleAuthStrategy;
+
+    @Mock
+    private AuthStrategy<Admin2FaLoginRequest> admin2FaAuthStrategy;
 
     @InjectMocks
     private AuthServiceImpl authService;
 
     private User mockUser;
-    private CustomUserDetails mockUserDetails;
     private HttpServletResponse mockResponse;
     private HttpServletRequest mockRequest;
 
@@ -115,16 +116,6 @@ class AuthServiceImplTest {
                 .build();
         mockUser.setId(1L);
 
-        mockUserDetails = new CustomUserDetails(
-                1L,
-                "Test Student",
-                "student@test.com",
-                "encodedPassword",
-                true,
-                null,
-                Collections.singletonList(new SimpleGrantedAuthority("ROLE_STUDENT"))
-        );
-
         mockResponse = mock(HttpServletResponse.class);
         mockRequest = mock(HttpServletRequest.class);
     }
@@ -134,185 +125,83 @@ class AuthServiceImplTest {
     class AuthenticateUserTests {
 
         @Test
-        @DisplayName("Should authenticate user and set cookies when credentials and role match")
+        @DisplayName("Should delegate to LocalPasswordAuthStrategy and log audit success")
         void authenticateUser_ValidCredentials_Success() {
             LoginRequest loginRequest = new LoginRequest();
             loginRequest.setEmail("student@test.com");
             loginRequest.setPassword("password");
-            loginRequest.setRole("STUDENT");
-
-            Authentication authentication = mock(Authentication.class);
-            RefreshToken mockRefreshToken = RefreshToken.builder()
-                    .id(1L)
-                    .token("refresh-token-uuid")
-                    .user(mockUser)
-                    .expiryDate(Instant.now().plusSeconds(86400))
-                    .build();
 
             UserInfoResponse expectedUserInfo = new UserInfoResponse(1L, "student@test.com", "Test Student", "STUDENT", null, List.of());
 
-            when(userRepository.findByEmail("student@test.com")).thenReturn(Optional.of(mockUser));
-            when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(authentication);
-            when(authentication.getPrincipal()).thenReturn(mockUserDetails);
-            when(jwtUtils.generateJwtCookie(eq(mockUserDetails), anyBoolean())).thenReturn(ResponseCookie.from("mathclass_jwt", "jwt-token").build());
-            when(jwtUtils.generateJwtToken(authentication)).thenReturn("jwt-token");
-            when(refreshTokenService.createRefreshToken(1L)).thenReturn(mockRefreshToken);
-            when(jwtUtils.generateRefreshJwtCookie(anyString(), anyBoolean())).thenReturn(ResponseCookie.from("mathclass_refresh", "refresh-token-uuid").build());
-            when(userMapper.toUserInfoResponse(eq(mockUserDetails), anyString())).thenReturn(expectedUserInfo);
+            when(authStrategyFactory.<LoginRequest>getStrategy(AuthType.LOCAL)).thenReturn(localAuthStrategy);
+            when(localAuthStrategy.authenticate(loginRequest, mockResponse)).thenReturn(expectedUserInfo);
 
             UserInfoResponse response = authService.authenticateUser(loginRequest, mockResponse);
 
             assertThat(response).isNotNull();
             assertThat(response.getEmail()).isEqualTo("student@test.com");
-            assertThat(response.getUserRole()).isEqualTo("STUDENT");
-            verify(mockResponse, times(2)).addHeader(eq(HttpHeaders.SET_COOKIE), anyString());
+            verify(authAuditLogger, times(1)).logSuccess(eq(1L), eq("student@test.com"), eq(AuthType.LOCAL), anyString(), anyString());
         }
 
         @Test
-        @DisplayName("Should return preAuthToken with isSetupRequired=true when ADMIN has not enabled 2FA")
-        void authenticateUser_AdminUser_2faNotEnabled_ReturnsSetupRequired() {
-            User adminUser = User.builder()
-                    .email("admin@test.com")
-                    .fullName("Admin User")
-                    .password("encodedPassword")
-                    .role(Role.ADMIN)
-                    .isActive(true)
-                    .build();
-            adminUser.setId(99L);
-
-            CustomUserDetails adminDetails = new CustomUserDetails(
-                    99L, "Admin User", "admin@test.com", "encodedPassword", true, null,
-                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN"))
-            );
-
-            LoginRequest loginRequest = new LoginRequest();
-            loginRequest.setEmail("admin@test.com");
-            loginRequest.setPassword("password");
-
-            Authentication authentication = mock(Authentication.class);
-
-            when(userRepository.findByEmail("admin@test.com")).thenReturn(Optional.of(adminUser));
-            when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(authentication);
-            when(authentication.getPrincipal()).thenReturn(adminDetails);
-            when(userTwoFactorAuthRepository.findByUserId(99L)).thenReturn(Optional.empty());
-            when(jwtUtils.generatePreAuthToken("admin@test.com", 99L, "ADMIN")).thenReturn("pre-auth-token-123");
-
-            UserInfoResponse response = authService.authenticateUser(loginRequest, mockResponse);
-
-            assertThat(response).isNotNull();
-            assertThat(response.getIs2faRequired()).isTrue();
-            assertThat(response.getIsSetupRequired()).isTrue();
-            assertThat(response.getPreAuthToken()).isEqualTo("pre-auth-token-123");
-            assertThat(response.getMessage()).contains("bắt buộc thiết lập xác thực 2 bước");
-            // Đảm bảo không cấp JWT / Refresh cookie
-            verify(mockResponse, never()).addHeader(eq(HttpHeaders.SET_COOKIE), anyString());
-        }
-
-        @Test
-        @DisplayName("Should return preAuthToken with isSetupRequired=false when ADMIN has enabled 2FA")
-        void authenticateUser_AdminUser_2faEnabled_ReturnsVerifyRequired() {
-            User adminUser = User.builder()
-                    .email("admin@test.com")
-                    .fullName("Admin User")
-                    .password("encodedPassword")
-                    .role(Role.ADMIN)
-                    .isActive(true)
-                    .build();
-            adminUser.setId(99L);
-
-            CustomUserDetails adminDetails = new CustomUserDetails(
-                    99L, "Admin User", "admin@test.com", "encodedPassword", true, null,
-                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN"))
-            );
-
-            UserTwoFactorAuth auth2fa = UserTwoFactorAuth.builder()
-                    .userId(99L)
-                    .isEnabled(true)
-                    .secretKey("JBSWY3DPEHPK3PXP")
-                    .build();
-
-            LoginRequest loginRequest = new LoginRequest();
-            loginRequest.setEmail("admin@test.com");
-            loginRequest.setPassword("password");
-
-            Authentication authentication = mock(Authentication.class);
-
-            when(userRepository.findByEmail("admin@test.com")).thenReturn(Optional.of(adminUser));
-            when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(authentication);
-            when(authentication.getPrincipal()).thenReturn(adminDetails);
-            when(userTwoFactorAuthRepository.findByUserId(99L)).thenReturn(Optional.of(auth2fa));
-            when(jwtUtils.generatePreAuthToken("admin@test.com", 99L, "ADMIN")).thenReturn("pre-auth-token-456");
-
-            UserInfoResponse response = authService.authenticateUser(loginRequest, mockResponse);
-
-            assertThat(response).isNotNull();
-            assertThat(response.getIs2faRequired()).isTrue();
-            assertThat(response.getIsSetupRequired()).isFalse();
-            assertThat(response.getPreAuthToken()).isEqualTo("pre-auth-token-456");
-            assertThat(response.getMessage()).contains("Vui lòng nhập mã xác thực");
-            verify(mockResponse, never()).addHeader(eq(HttpHeaders.SET_COOKIE), anyString());
-        }
-
-        @Test
-        @DisplayName("Should throw BadRequestException when email is not found")
-        void authenticateUser_EmailNotFound_ThrowsException() {
-            LoginRequest loginRequest = new LoginRequest();
-            loginRequest.setEmail("notfound@test.com");
-            loginRequest.setPassword("password");
-
-            when(userRepository.findByEmail("notfound@test.com")).thenReturn(Optional.empty());
-
-            assertThatThrownBy(() -> authService.authenticateUser(loginRequest, mockResponse))
-                    .isInstanceOf(BadRequestException.class)
-                    .hasMessageContaining("Email hoặc mật khẩu không đúng");
-        }
-
-        @Test
-        @DisplayName("Should throw BadRequestException when STUDENT attempts login to TEACHER portal")
-        void authenticateUser_StudentTriesTeacherPortal_ThrowsException() {
+        @DisplayName("Should log audit failure and rethrow exception on strategy error")
+        void authenticateUser_StrategyFailure_LogsAndRethrows() {
             LoginRequest loginRequest = new LoginRequest();
             loginRequest.setEmail("student@test.com");
-            loginRequest.setPassword("password");
-            loginRequest.setRole("TEACHER");
+            loginRequest.setPassword("wrong");
 
-            when(userRepository.findByEmail("student@test.com")).thenReturn(Optional.of(mockUser));
+            when(authStrategyFactory.<LoginRequest>getStrategy(AuthType.LOCAL)).thenReturn(localAuthStrategy);
+            when(localAuthStrategy.authenticate(loginRequest, mockResponse)).thenThrow(new BadRequestException("Email hoặc mật khẩu không đúng. Vui lòng thử lại."));
 
             assertThatThrownBy(() -> authService.authenticateUser(loginRequest, mockResponse))
                     .isInstanceOf(BadRequestException.class)
                     .hasMessageContaining("Email hoặc mật khẩu không đúng");
+
+            verify(authAuditLogger, times(1)).logFailure(eq("student@test.com"), eq(AuthType.LOCAL), anyString(), anyString(), anyString());
         }
+    }
+
+    @Nested
+    @DisplayName("authenticateWithGoogle Tests")
+    class AuthenticateWithGoogleTests {
 
         @Test
-        @DisplayName("Should throw BadRequestException when TEACHER attempts login to STUDENT portal")
-        void authenticateUser_TeacherTriesStudentPortal_ThrowsException() {
-            User teacherUser = User.builder().email("teacher@test.com").role(Role.TEACHER).build();
-            teacherUser.setId(2L);
+        @DisplayName("Should delegate to GoogleOAuth2AuthStrategy and log audit success")
+        void authenticateWithGoogle_Success() {
+            GoogleAuthRequest googleRequest = new GoogleAuthRequest();
+            googleRequest.setCredential("google-token-123");
 
-            LoginRequest loginRequest = new LoginRequest();
-            loginRequest.setEmail("teacher@test.com");
-            loginRequest.setPassword("password");
-            loginRequest.setRole("STUDENT");
+            UserInfoResponse expectedUserInfo = new UserInfoResponse(1L, "student@test.com", "Test Student", "STUDENT", null, List.of());
 
-            when(userRepository.findByEmail("teacher@test.com")).thenReturn(Optional.of(teacherUser));
+            when(authStrategyFactory.<GoogleAuthRequest>getStrategy(AuthType.GOOGLE)).thenReturn(googleAuthStrategy);
+            when(googleAuthStrategy.authenticate(googleRequest, mockResponse)).thenReturn(expectedUserInfo);
 
-            assertThatThrownBy(() -> authService.authenticateUser(loginRequest, mockResponse))
-                    .isInstanceOf(BadRequestException.class)
-                    .hasMessageContaining("Email hoặc mật khẩu không đúng");
+            UserInfoResponse response = authService.authenticateWithGoogle(googleRequest, mockResponse);
+
+            assertThat(response).isNotNull();
+            assertThat(response.getEmail()).isEqualTo("student@test.com");
+            verify(authAuditLogger, times(1)).logSuccess(eq(1L), eq("student@test.com"), eq(AuthType.GOOGLE), anyString(), anyString());
         }
+    }
+
+    @Nested
+    @DisplayName("authenticateAdmin2Fa Tests")
+    class AuthenticateAdmin2FaTests {
 
         @Test
-        @DisplayName("Should throw BadRequestException when password is incorrect (BadCredentialsException)")
-        void authenticateUser_BadCredentials_ThrowsException() {
-            LoginRequest loginRequest = new LoginRequest();
-            loginRequest.setEmail("student@test.com");
-            loginRequest.setPassword("wrongpassword");
+        @DisplayName("Should delegate to AdminPortalAuthStrategy and log audit success")
+        void authenticateAdmin2Fa_Success() {
+            Admin2FaLoginRequest adminRequest = new Admin2FaLoginRequest("admin@test.com", "AdminPass123!", "123456");
+            UserInfoResponse expectedUserInfo = new UserInfoResponse(99L, "admin@test.com", "Admin User", "ADMIN", null, List.of());
 
-            when(userRepository.findByEmail("student@test.com")).thenReturn(Optional.of(mockUser));
-            when(authenticationManager.authenticate(any())).thenThrow(new BadCredentialsException("Bad credentials"));
+            when(authStrategyFactory.<Admin2FaLoginRequest>getStrategy(AuthType.ADMIN_2FA)).thenReturn(admin2FaAuthStrategy);
+            when(admin2FaAuthStrategy.authenticate(adminRequest, mockResponse)).thenReturn(expectedUserInfo);
 
-            assertThatThrownBy(() -> authService.authenticateUser(loginRequest, mockResponse))
-                    .isInstanceOf(BadRequestException.class)
-                    .hasMessageContaining("Email hoặc mật khẩu không đúng");
+            UserInfoResponse response = authService.authenticateAdmin2Fa(adminRequest, mockRequest, mockResponse);
+
+            assertThat(response).isNotNull();
+            assertThat(response.getEmail()).isEqualTo("admin@test.com");
+            verify(authAuditLogger, times(1)).logSuccess(eq(99L), eq("admin@test.com"), eq(AuthType.ADMIN_2FA), any(), any());
         }
     }
 
@@ -450,10 +339,8 @@ class AuthServiceImplTest {
 
             when(userRepository.findByEmail("rate@test.com")).thenReturn(Optional.of(mockUser));
 
-            // First call -> Success
             authService.forgotPassword(request);
 
-            // Second immediate call -> Rate limited
             assertThatThrownBy(() -> authService.forgotPassword(request))
                     .isInstanceOf(TooManyRequestsException.class)
                     .hasMessageContaining("Bạn đã gửi yêu cầu quá nhanh");
