@@ -71,7 +71,7 @@ public class SseNotificationStrategy implements NotificationStrategy {
         for (SseEmitter emitter : userEmitters) {
             try {
                 emitter.send(SseEmitter.event().name(eventName).data(eventData));
-            } catch (IOException e) {
+            } catch (Exception e) {
                 log.warn("[SseStrategy] Lỗi khi gửi SSE event {} cho user {}: {}", eventName, userId, e.getMessage());
                 removeEmitter(userId, emitter);
             }

@@ -4,6 +4,7 @@ import com.codegym.mathclass.notification.dto.NotificationChannel;
 import com.codegym.mathclass.notification.dto.NotificationPayload;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 @Component("compositeNotificationStrategy")
@@ -25,6 +26,7 @@ public class CompositeNotificationStrategy implements NotificationStrategy {
     }
 
     @Override
+    @Async
     public void send(NotificationPayload payload) {
         if (payload == null || payload.recipientId() == null) {
             return;

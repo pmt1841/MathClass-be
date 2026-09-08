@@ -7,8 +7,8 @@ import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.web.util.HtmlUtils;
 
 import org.thymeleaf.context.Context;
 
@@ -19,6 +19,9 @@ public class EmailNotificationStrategy implements NotificationStrategy {
 
     private final UserRepository userRepository;
     private final EmailService emailService;
+
+    @Value("${frontend.url:${FRONTEND_URL:http://localhost:3000}}")
+    private String frontendUrl;
 
     @Override
     public boolean supports(NotificationChannel channel) {
@@ -38,21 +41,29 @@ public class EmailNotificationStrategy implements NotificationStrategy {
         }
 
         String toEmail = user.getEmail();
-        String fullName = user.getFullName() != null ? user.getFullName() : "Nguoidung";
+        String fullName = user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName() : "Nguoidung";
         String title = payload.title() != null && !payload.title().isBlank()
                 ? payload.title()
                 : "Thông báo từ MathClass";
         String message = payload.message() != null ? payload.message() : "";
-        String link = payload.link() != null ? payload.link() : "";
+        String rawLink = payload.link() != null ? payload.link().trim() : "";
+
+        String fullLink = rawLink;
+        if (rawLink.startsWith("/")) {
+            String baseUrl = (frontendUrl != null && frontendUrl.endsWith("/"))
+                    ? frontendUrl.substring(0, frontendUrl.length() - 1)
+                    : (frontendUrl != null ? frontendUrl : "http://localhost:3000");
+            fullLink = baseUrl + rawLink;
+        }
 
         log.info("[EmailStrategy] Đang gửi mail thông báo tới: {} ({})", toEmail, title);
 
         try {
             Context context = new Context();
-            context.setVariable("fullName", HtmlUtils.htmlEscape(fullName));
-            context.setVariable("title", HtmlUtils.htmlEscape(title));
-            context.setVariable("message", HtmlUtils.htmlEscape(message));
-            context.setVariable("link", link);
+            context.setVariable("fullName", fullName);
+            context.setVariable("title", title);
+            context.setVariable("message", message);
+            context.setVariable("link", fullLink);
 
             emailService.sendHtmlMailAsync(toEmail, "[MathClass] " + title, "email-notification-template", context);
         } catch (Exception e) {

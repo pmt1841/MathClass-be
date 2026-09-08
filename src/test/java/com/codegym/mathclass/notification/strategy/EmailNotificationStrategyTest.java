@@ -9,8 +9,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.thymeleaf.context.Context;
 
 import java.util.Optional;
@@ -33,6 +35,7 @@ class EmailNotificationStrategyTest {
     @BeforeEach
     void setUp() {
         emailStrategy = new EmailNotificationStrategy(userRepository, emailService);
+        ReflectionTestUtils.setField(emailStrategy, "frontendUrl", "http://localhost:3000");
     }
 
     @Test
@@ -43,8 +46,8 @@ class EmailNotificationStrategyTest {
     }
 
     @Test
-    @DisplayName("Gửi email thành công khi tìm thấy user có địa chỉ email hợp lệ")
-    void send_ValidUserWithEmail_CallsEmailService() {
+    @DisplayName("Gửi email thành công và ghép domain tuyệt đối cho link tương đối")
+    void send_ValidUserWithEmail_PrefixesAbsoluteDomainToRelativeLink() {
         User user = new User();
         user.setId(1L);
         user.setEmail("student@gmail.com");
@@ -58,12 +61,18 @@ class EmailNotificationStrategyTest {
 
         emailStrategy.send(payload);
 
+        ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.forClass(Context.class);
         verify(emailService, times(1)).sendHtmlMailAsync(
                 eq("student@gmail.com"),
                 contains("Bài tập mới"),
                 eq("email-notification-template"),
-                any(Context.class)
+                contextCaptor.capture()
         );
+
+        Context context = contextCaptor.getValue();
+        assertEquals("http://localhost:3000/assignments/1", context.getVariable("link"));
+        assertEquals("Nguyen Van A", context.getVariable("fullName"));
+        assertEquals("Bài tập mới", context.getVariable("title"));
     }
 
     @Test
