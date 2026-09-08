@@ -18,36 +18,36 @@ public class AuthAuditLogger {
     private final AuthAuditLogRepository authAuditLogRepository;
 
     @Async
-    public void logSuccess(Long userId, String email, AuthType authType, HttpServletRequest request) {
+    public void logSuccess(Long userId, String email, AuthType authType, String clientIp, String userAgent) {
         try {
             AuthAuditLog auditLog = AuthAuditLog.builder()
                     .userId(userId)
                     .email(email)
                     .authType(authType)
                     .status("SUCCESS")
-                    .clientIp(extractClientIp(request))
-                    .userAgent(extractUserAgent(request))
+                    .clientIp(clientIp)
+                    .userAgent(userAgent)
                     .build();
             authAuditLogRepository.save(auditLog);
-            log.info("Audit Log [SUCCESS]: user={}, authType={}, ip={}", email, authType, auditLog.getClientIp());
+            log.info("Audit Log [SUCCESS]: user={}, authType={}, ip={}", email, authType, clientIp);
         } catch (Exception e) {
             log.error("Lỗi khi ghi Audit Log [SUCCESS]: {}", e.getMessage(), e);
         }
     }
 
     @Async
-    public void logFailure(String email, AuthType authType, String failureReason, HttpServletRequest request) {
+    public void logFailure(String email, AuthType authType, String failureReason, String clientIp, String userAgent) {
         try {
             AuthAuditLog auditLog = AuthAuditLog.builder()
                     .email(email != null ? email : "UNKNOWN")
                     .authType(authType)
                     .status("FAILED")
                     .failureReason(failureReason)
-                    .clientIp(extractClientIp(request))
-                    .userAgent(extractUserAgent(request))
+                    .clientIp(clientIp)
+                    .userAgent(userAgent)
                     .build();
             authAuditLogRepository.save(auditLog);
-            log.warn("Audit Log [FAILED]: user={}, authType={}, reason={}, ip={}", email, authType, failureReason, auditLog.getClientIp());
+            log.warn("Audit Log [FAILED]: user={}, authType={}, reason={}, ip={}", email, authType, failureReason, clientIp);
         } catch (Exception e) {
             log.error("Lỗi khi ghi Audit Log [FAILED]: {}", e.getMessage(), e);
         }

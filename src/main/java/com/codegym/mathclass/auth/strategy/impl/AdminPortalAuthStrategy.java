@@ -83,31 +83,34 @@ public class AdminPortalAuthStrategy implements AuthStrategy<Admin2FaLoginReques
         }
 
         Optional<UserTwoFactorAuth> auth2faOpt = userTwoFactorAuthRepository.findByUserId(user.getId());
-        if (auth2faOpt.isPresent() && auth2faOpt.get().isEnabled()) {
-            UserTwoFactorAuth auth2fa = auth2faOpt.get();
-
-            if (auth2fa.getLockedUntil() != null && auth2fa.getLockedUntil().isAfter(LocalDateTime.now())) {
-                throw new TooManyRequestsException("Bạn đã nhập sai mã xác thực quá " + MAX_FAILED_ATTEMPTS + " lần liên tiếp. Vui lòng thử lại sau " + LOCKOUT_MINUTES + " phút.");
-            }
-
-            int codeInt;
-            try {
-                codeInt = Integer.parseInt(request.otpCode().trim());
-            } catch (NumberFormatException e) {
-                handleFailedAttempt(auth2fa);
-                throw new BadRequestException("Mã xác thực 2FA phải bao gồm 6 chữ số.");
-            }
-
-            boolean isValid = totpService.verifyCode(auth2fa.getSecretKey(), codeInt);
-            if (!isValid) {
-                handleFailedAttempt(auth2fa);
-                throw new BadRequestException("Mã xác thực 2FA không chính xác hoặc đã hết hạn.");
-            }
-
-            auth2fa.setFailedAttempts(0);
-            auth2fa.setLockedUntil(null);
-            userTwoFactorAuthRepository.save(auth2fa);
+        if (auth2faOpt.isEmpty() || !auth2faOpt.get().isEnabled() || auth2faOpt.get().getSecretKey() == null) {
+            throw new BadRequestException("Tài khoản Quản trị viên chưa thiết lập hoặc chưa kích hoạt xác thực 2 bước (2FA). Vui lòng hoàn tất thiết lập 2FA.");
         }
+
+        UserTwoFactorAuth auth2fa = auth2faOpt.get();
+
+        if (auth2fa.getLockedUntil() != null && auth2fa.getLockedUntil().isAfter(LocalDateTime.now())) {
+            throw new TooManyRequestsException("Bạn đã nhập sai mã xác thực quá " + MAX_FAILED_ATTEMPTS + " lần liên tiếp. Vui lòng thử lại sau " + LOCKOUT_MINUTES + " phút.");
+        }
+
+        int codeInt;
+        try {
+            codeInt = Integer.parseInt(request.otpCode().trim());
+        } catch (NumberFormatException e) {
+            handleFailedAttempt(auth2fa);
+            throw new BadRequestException("Mã xác thực 2FA phải bao gồm 6 chữ số.");
+        }
+
+        boolean isValid = totpService.verifyCode(auth2fa.getSecretKey(), codeInt);
+        if (!isValid) {
+            handleFailedAttempt(auth2fa);
+            throw new BadRequestException("Mã xác thực 2FA không chính xác hoặc đã hết hạn.");
+        }
+
+        auth2fa.setFailedAttempts(0);
+        auth2fa.setLockedUntil(null);
+        userTwoFactorAuthRepository.save(auth2fa);
+
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();

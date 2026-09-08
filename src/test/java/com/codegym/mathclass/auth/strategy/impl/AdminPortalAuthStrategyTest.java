@@ -39,7 +39,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -139,6 +138,21 @@ class AdminPortalAuthStrategyTest {
         assertThatThrownBy(() -> strategy.authenticate(request, mockResponse))
                 .isInstanceOf(AccessDeniedException.class)
                 .hasMessageContaining("Tài khoản không có quyền truy cập hệ thống Quản trị viên.");
+    }
+
+    @Test
+    @DisplayName("Should throw BadRequestException when admin user has not enabled 2FA")
+    void authenticate_2faNotEnabled_ThrowsException() {
+        Admin2FaLoginRequest request = new Admin2FaLoginRequest("admin@test.com", "password", "123456");
+        Authentication authentication = mock(Authentication.class);
+
+        when(userRepository.findByEmail("admin@test.com")).thenReturn(Optional.of(adminUser));
+        when(authenticationManager.authenticate(any())).thenReturn(authentication);
+        when(userTwoFactorAuthRepository.findByUserId(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> strategy.authenticate(request, mockResponse))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("chưa thiết lập hoặc chưa kích hoạt xác thực 2 bước (2FA)");
     }
 
     @Test

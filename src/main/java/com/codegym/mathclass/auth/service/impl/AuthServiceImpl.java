@@ -71,10 +71,10 @@ public class AuthServiceImpl implements AuthService {
         try {
             AuthStrategy<LoginRequest> strategy = authStrategyFactory.getStrategy(AuthType.LOCAL);
             UserInfoResponse userInfo = strategy.authenticate(loginRequest, response);
-            authAuditLogger.logSuccess(userInfo.getId(), userInfo.getEmail(), AuthType.LOCAL, null);
+            authAuditLogger.logSuccess(userInfo.getId(), userInfo.getEmail(), AuthType.LOCAL, "LOCAL_CLIENT", "HTTP_LOCAL");
             return userInfo;
         } catch (Exception e) {
-            authAuditLogger.logFailure(loginRequest != null ? loginRequest.getEmail() : null, AuthType.LOCAL, e.getMessage(), null);
+            authAuditLogger.logFailure(loginRequest != null ? loginRequest.getEmail() : null, AuthType.LOCAL, e.getMessage(), "LOCAL_CLIENT", "HTTP_LOCAL");
             throw e;
         }
     }
@@ -84,26 +84,29 @@ public class AuthServiceImpl implements AuthService {
         try {
             AuthStrategy<GoogleAuthRequest> strategy = authStrategyFactory.getStrategy(AuthType.GOOGLE);
             UserInfoResponse userInfo = strategy.authenticate(request, response);
-            authAuditLogger.logSuccess(userInfo.getId(), userInfo.getEmail(), AuthType.GOOGLE, null);
+            authAuditLogger.logSuccess(userInfo.getId(), userInfo.getEmail(), AuthType.GOOGLE, "GOOGLE_SSO", "HTTP_GOOGLE");
             return userInfo;
         } catch (Exception e) {
-            authAuditLogger.logFailure(null, AuthType.GOOGLE, e.getMessage(), null);
+            authAuditLogger.logFailure(null, AuthType.GOOGLE, e.getMessage(), "GOOGLE_SSO", "HTTP_GOOGLE");
             throw e;
         }
     }
 
     @Override
     public UserInfoResponse authenticateAdmin2Fa(Admin2FaLoginRequest request, HttpServletRequest httpRequest, HttpServletResponse response) {
+        String clientIp = authAuditLogger.extractClientIp(httpRequest);
+        String userAgent = authAuditLogger.extractUserAgent(httpRequest);
         try {
             AuthStrategy<Admin2FaLoginRequest> strategy = authStrategyFactory.getStrategy(AuthType.ADMIN_2FA);
             UserInfoResponse userInfo = strategy.authenticate(request, response);
-            authAuditLogger.logSuccess(userInfo.getId(), userInfo.getEmail(), AuthType.ADMIN_2FA, httpRequest);
+            authAuditLogger.logSuccess(userInfo.getId(), userInfo.getEmail(), AuthType.ADMIN_2FA, clientIp, userAgent);
             return userInfo;
         } catch (Exception e) {
-            authAuditLogger.logFailure(request != null ? request.email() : null, AuthType.ADMIN_2FA, e.getMessage(), httpRequest);
+            authAuditLogger.logFailure(request != null ? request.email() : null, AuthType.ADMIN_2FA, e.getMessage(), clientIp, userAgent);
             throw e;
         }
     }
+
 
     @Override
     public MessageResponse logoutUser(HttpServletRequest request, HttpServletResponse response) {

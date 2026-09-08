@@ -140,7 +140,7 @@ class AuthServiceImplTest {
 
             assertThat(response).isNotNull();
             assertThat(response.getEmail()).isEqualTo("student@test.com");
-            verify(authAuditLogger, times(1)).logSuccess(eq(1L), eq("student@test.com"), eq(AuthType.LOCAL), any());
+            verify(authAuditLogger, times(1)).logSuccess(eq(1L), eq("student@test.com"), eq(AuthType.LOCAL), anyString(), anyString());
         }
 
         @Test
@@ -157,7 +157,7 @@ class AuthServiceImplTest {
                     .isInstanceOf(BadRequestException.class)
                     .hasMessageContaining("Email hoặc mật khẩu không đúng");
 
-            verify(authAuditLogger, times(1)).logFailure(eq("student@test.com"), eq(AuthType.LOCAL), anyString(), any());
+            verify(authAuditLogger, times(1)).logFailure(eq("student@test.com"), eq(AuthType.LOCAL), anyString(), anyString(), anyString());
         }
     }
 
@@ -180,7 +180,7 @@ class AuthServiceImplTest {
 
             assertThat(response).isNotNull();
             assertThat(response.getEmail()).isEqualTo("student@test.com");
-            verify(authAuditLogger, times(1)).logSuccess(eq(1L), eq("student@test.com"), eq(AuthType.GOOGLE), any());
+            verify(authAuditLogger, times(1)).logSuccess(eq(1L), eq("student@test.com"), eq(AuthType.GOOGLE), anyString(), anyString());
         }
     }
 
@@ -201,7 +201,7 @@ class AuthServiceImplTest {
 
             assertThat(response).isNotNull();
             assertThat(response.getEmail()).isEqualTo("admin@test.com");
-            verify(authAuditLogger, times(1)).logSuccess(eq(99L), eq("admin@test.com"), eq(AuthType.ADMIN_2FA), eq(mockRequest));
+            verify(authAuditLogger, times(1)).logSuccess(eq(99L), eq("admin@test.com"), eq(AuthType.ADMIN_2FA), any(), any());
         }
     }
 

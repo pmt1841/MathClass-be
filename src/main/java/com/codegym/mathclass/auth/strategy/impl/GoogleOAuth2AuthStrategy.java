@@ -19,13 +19,13 @@ import com.codegym.mathclass.user.mapper.UserMapper;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.user.service.PermissionCacheService;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -37,7 +37,6 @@ import java.util.Map;
 import java.util.Optional;
 
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class GoogleOAuth2AuthStrategy implements AuthStrategy<GoogleAuthRequest> {
 
@@ -48,6 +47,29 @@ public class GoogleOAuth2AuthStrategy implements AuthStrategy<GoogleAuthRequest>
     private final RefreshTokenService refreshTokenService;
     private final UserMapper userMapper;
     private final AiCreditService aiCreditService;
+    private final RestTemplate restTemplate;
+
+    public GoogleOAuth2AuthStrategy(
+            UserRepository userRepository,
+            NotificationSettingsRepository notificationSettingsRepository,
+            PermissionCacheService permissionCacheService,
+            JwtUtils jwtUtils,
+            RefreshTokenService refreshTokenService,
+            UserMapper userMapper,
+            AiCreditService aiCreditService) {
+        this.userRepository = userRepository;
+        this.notificationSettingsRepository = notificationSettingsRepository;
+        this.permissionCacheService = permissionCacheService;
+        this.jwtUtils = jwtUtils;
+        this.refreshTokenService = refreshTokenService;
+        this.userMapper = userMapper;
+        this.aiCreditService = aiCreditService;
+
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5000);
+        factory.setReadTimeout(10000);
+        this.restTemplate = new RestTemplate(factory);
+    }
 
     @Override
     public boolean supports(AuthType authType) {
@@ -58,7 +80,6 @@ public class GoogleOAuth2AuthStrategy implements AuthStrategy<GoogleAuthRequest>
     @SuppressWarnings("unchecked")
     public UserInfoResponse authenticate(GoogleAuthRequest request, HttpServletResponse httpResponse) {
         try {
-            RestTemplate restTemplate = new RestTemplate();
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(request.getCredential());
             HttpEntity<String> entity = new HttpEntity<>("parameters", headers);
