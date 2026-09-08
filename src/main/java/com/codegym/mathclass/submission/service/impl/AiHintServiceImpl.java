@@ -189,7 +189,7 @@ public class AiHintServiceImpl implements AiHintService {
         RenderPromptResponse renderRes = promptRenderService.renderPrompt(renderReq);
 
         if (renderRes == null || renderRes.getRenderedPrompt() == null || renderRes.getRenderedPrompt().isBlank()) {
-            throw new ResourceNotFoundException("Chưa cấu hình System Prompt 'PROMPT_STUDENT_HINT' trong CSDL.");
+            throw new ResourceNotFoundException("Tính năng gợi ý AI hiện đang được bảo trì, vui lòng quay lại sau.");
         }
 
         return renderRes.getRenderedPrompt();

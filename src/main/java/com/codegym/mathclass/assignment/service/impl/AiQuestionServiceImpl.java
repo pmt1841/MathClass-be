@@ -64,11 +64,11 @@ public class AiQuestionServiceImpl implements AiQuestionService {
         TaskConfig taskConfig = taskConfigRepository.findByTask(TASK_QUESTION_GEN)
                 .filter(TaskConfig::getEnabled)
                 .orElseThrow(() -> new AiGenerationException(503,
-                        "Tính năng sinh đề chưa được cấu hình hoặc đã bị tắt trong AI Config."));
+                        "Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau."));
 
         Provider provider = taskConfig.getProvider();
         if (provider == null || provider.getStatus() != ProviderStatus.ACTIVE) {
-            throw new AiGenerationException(503, "Provider cấu hình cho việc sinh đề không tồn tại hoặc đã bị tắt.");
+            throw new AiGenerationException(503, "Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau.");
         }
 
         Optional<AiCreditConfig> creditCfg = aiCreditService.getCreditConfig(TASK_QUESTION_GEN);

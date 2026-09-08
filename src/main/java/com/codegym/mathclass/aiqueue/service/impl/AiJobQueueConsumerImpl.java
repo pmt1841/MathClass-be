@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit;
 public class AiJobQueueConsumerImpl implements AiJobQueueConsumer, SmartLifecycle {
 
     public static final String AI_JOB_QUEUE_NAME = "ai:job:queue";
-    public static final int MAX_RETRIES = 3;
+    public static final int MAX_RETRIES = 0;
 
     @Value("${mathclass.ai.queue.concurrency:4}")
     private int concurrency;
@@ -73,11 +73,11 @@ public class AiJobQueueConsumerImpl implements AiJobQueueConsumer, SmartLifecycl
             return;
         }
         isRunning = false;
-        log.info("Đang dừng AI Job Queue Consumer...");
+        log.info("Dừng AI Job Queue Consumer...");
         if (executorService != null) {
             executorService.shutdown();
             try {
-                if (!executorService.awaitTermination(20, TimeUnit.SECONDS)) {
+                if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
                     executorService.shutdownNow();
                 }
             } catch (InterruptedException e) {
@@ -85,7 +85,6 @@ public class AiJobQueueConsumerImpl implements AiJobQueueConsumer, SmartLifecycl
                 Thread.currentThread().interrupt();
             }
         }
-        log.info("Đã dừng AI Job Queue Consumer an toàn");
     }
 
     @Override
@@ -100,12 +99,9 @@ public class AiJobQueueConsumerImpl implements AiJobQueueConsumer, SmartLifecycl
     }
 
     private void runWorkerLoop() {
-        RBlockingQueue<AiJobMessage> queue = (blockingQueue != null)
-                ? blockingQueue
-                : redissonClient.getBlockingQueue(AI_JOB_QUEUE_NAME);
-        while (isRunning && !Thread.currentThread().isInterrupted()) {
+        while (isRunning) {
             try {
-                AiJobMessage message = queue.poll(2, TimeUnit.SECONDS);
+                AiJobMessage message = blockingQueue.poll(2, TimeUnit.SECONDS);
                 if (message != null) {
                     processMessage(message);
                 }
@@ -132,7 +128,7 @@ public class AiJobQueueConsumerImpl implements AiJobQueueConsumer, SmartLifecycl
 
         if (handler == null) {
             log.error("Không tìm thấy handler cho task: {}", message.getTaskCode());
-            handleFinalFailure(message, "Hệ thống chưa hỗ trợ xử lý tác vụ: " + message.getTaskCode());
+            handleFinalFailure(message, "Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau.");
             return;
         }
 
@@ -162,34 +158,36 @@ public class AiJobQueueConsumerImpl implements AiJobQueueConsumer, SmartLifecycl
 
         } catch (Exception e) {
             log.error("Lỗi khi xử lý tác vụ AI jobId {}: {}", jobId, e.getMessage(), e);
-            if (isRetryable(e) && message.getRetryCount() < MAX_RETRIES) {
-                handleRetry(message, e);
-            } else {
-                handleFinalFailure(message, e.getMessage() != null ? e.getMessage() : "Xử lý tác vụ AI thất bại");
-            }
+            // Không retry ngầm gây treo người dùng: hoàn credit và thông báo dừng ngay
+            String userErrorMessage = sanitizeErrorMessage(e.getMessage());
+            handleFinalFailure(message, userErrorMessage);
         }
     }
 
-    private void handleRetry(AiJobMessage message, Exception e) {
-        int nextRetry = message.getRetryCount() + 1;
-        message.setRetryCount(nextRetry);
-
-        long delaySeconds = nextRetry == 1 ? 5L : (nextRetry == 2 ? 15L : 45L);
-        log.warn("Đưa jobId: {} vào Delayed Queue thử lại lần {} sau {} giây. Lý do: {}",
-                message.getJobId(), nextRetry, delaySeconds, e.getMessage());
-
-        aiJobService.updateJobStatus(
-                message.getJobId(),
-                AiJobStatus.RETRYING,
-                null,
-                "Đang tự động thử lại (lần " + nextRetry + "/" + MAX_RETRIES + "): " + e.getMessage(),
-                nextRetry
-        );
-
-        RDelayedQueue<AiJobMessage> delayQ = (delayedQueue != null)
-                ? delayedQueue
-                : redissonClient.getDelayedQueue(redissonClient.getBlockingQueue(AI_JOB_QUEUE_NAME));
-        delayQ.offer(message, delaySeconds, TimeUnit.SECONDS);
+    private String sanitizeErrorMessage(String rawMessage) {
+        if (rawMessage == null || rawMessage.isBlank()) {
+            return "Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau.";
+        }
+        String lower = rawMessage.toLowerCase();
+        if (lower.contains("bảo trì")
+                || lower.contains("cấu hình")
+                || lower.contains("provider")
+                || lower.contains("api key")
+                || lower.contains("vô hiệu hóa")
+                || lower.contains("tạm khóa")
+                || lower.contains("không khả dụng")
+                || lower.contains("quota")
+                || lower.contains("429")
+                || lower.contains("resource_exhausted")
+                || lower.contains("timeout")
+                || lower.contains("timed out")
+                || lower.contains("500")
+                || lower.contains("502")
+                || lower.contains("503")
+                || lower.contains("504")) {
+            return "Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau.";
+        }
+        return rawMessage;
     }
 
     private void handleFinalFailure(AiJobMessage message, String errorMessage) {

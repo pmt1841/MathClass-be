@@ -52,19 +52,19 @@ public class AiPromptExecutionService {
         Optional<TaskConfig> configOpt = taskConfigRepository.findByTask(taskCode);
         if (configOpt.isEmpty()) {
             log.warn("TaskConfig '{}' chưa được cấu hình.", taskCode);
-            throw new RuntimeException("Tác vụ AI '" + taskCode + "' chưa được hệ thống cấu hình.");
+            throw new RuntimeException("Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau.");
         }
 
         TaskConfig config = configOpt.get();
         if (!Boolean.TRUE.equals(config.getEnabled())) {
             log.warn("Tác vụ AI '{}' hiện đang bị vô hiệu hóa.", taskCode);
-            throw new RuntimeException("Tác vụ AI '" + taskCode + "' hiện đang bị tạm khóa.");
+            throw new RuntimeException("Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau.");
         }
 
         Provider provider = config.getProvider();
         if (provider == null || provider.getStatus() != com.codegym.mathclass.aiconfig.entity.ProviderStatus.ACTIVE) {
             log.warn("Provider AI cho tác vụ '{}' không khả dụng.", taskCode);
-            throw new RuntimeException("Dịch vụ AI Provider hiện không khả dụng.");
+            throw new RuntimeException("Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau.");
         }
 
         Optional<AiCreditConfig> creditCfg = aiCreditService.getCreditConfig(taskCode);
@@ -121,19 +121,19 @@ public class AiPromptExecutionService {
         Optional<TaskConfig> configOpt = taskConfigRepository.findByTask(taskCode);
         if (configOpt.isEmpty()) {
             log.warn("TaskConfig '{}' chưa được cấu hình.", taskCode);
-            throw new RuntimeException("Tác vụ AI '" + taskCode + "' chưa được hệ thống cấu hình.");
+            throw new RuntimeException("Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau.");
         }
 
         TaskConfig config = configOpt.get();
         if (!Boolean.TRUE.equals(config.getEnabled())) {
             log.warn("Tác vụ AI '{}' hiện đang bị vô hiệu hóa.", taskCode);
-            throw new RuntimeException("Tác vụ AI '" + taskCode + "' hiện đang bị tạm khóa.");
+            throw new RuntimeException("Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau.");
         }
 
         Provider provider = config.getProvider();
         if (provider == null || provider.getStatus() != com.codegym.mathclass.aiconfig.entity.ProviderStatus.ACTIVE) {
             log.warn("Provider AI cho tác vụ '{}' không khả dụng.", taskCode);
-            throw new RuntimeException("Dịch vụ AI Provider hiện không khả dụng.");
+            throw new RuntimeException("Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau.");
         }
 
         Optional<AiCreditConfig> creditCfg = aiCreditService.getCreditConfig(taskCode);

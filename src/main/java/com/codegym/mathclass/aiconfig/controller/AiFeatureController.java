@@ -3,6 +3,8 @@ package com.codegym.mathclass.aiconfig.controller;
 import com.codegym.mathclass.aiconfig.entity.Provider;
 import com.codegym.mathclass.aiconfig.entity.ProviderStatus;
 import com.codegym.mathclass.aiconfig.entity.TaskConfig;
+import com.codegym.mathclass.aiconfig.entity.ApiKeyStatus;
+import com.codegym.mathclass.aiconfig.repository.ApiKeyRepository;
 import com.codegym.mathclass.aiconfig.repository.TaskConfigRepository;
 import com.codegym.mathclass.common.annotation.ApiVersion;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,8 +24,8 @@ import java.util.Optional;
 /**
  * Trạng thái bật/tắt các tính năng AI cho giao diện người dùng (giáo viên/học sinh).
  *
- * Giúp FE ẩn các nút tính năng AI khi admin CHƯA cấu hình hoặc đã TẮT task tương ứng
- * (ví dụ: nút "AI chấm sơ bộ" chỉ hiển thị khi task SUBMISSION_GRADING được bật).
+ * Giúp FE ẩn các nút tính năng AI khi admin CHƯA cấu hình, đã TẮT task hoặc chưa có API Key khả dụng
+ * (ví dụ: nút "AI chấm sơ bộ" chỉ hiển thị khi task SUBMISSION_GRADING được bật và có Key active).
  *
  * Khác với TaskConfigController (admin-only), endpoint này cho phép mọi user đã đăng nhập.
  */
@@ -45,10 +47,11 @@ public class AiFeatureController {
     );
 
     private final TaskConfigRepository taskConfigRepository;
+    private final ApiKeyRepository apiKeyRepository;
 
     @Operation(summary = "Trạng thái tính năng AI",
             description = "Trả về map taskCode -> enabled. enabled=true khi task đã được cấu hình, "
-                    + "cờ enabled=true và provider liên kết đang ACTIVE.")
+                    + "cờ enabled=true, provider liên kết đang ACTIVE và có ít nhất 1 API Key active.")
     @GetMapping("/features")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Boolean>> getFeatures() {
@@ -69,6 +72,9 @@ public class AiFeatureController {
             return false;
         }
         Provider provider = config.getProvider();
-        return provider != null && provider.getStatus() == ProviderStatus.ACTIVE;
+        if (provider == null || provider.getStatus() != ProviderStatus.ACTIVE) {
+            return false;
+        }
+        return apiKeyRepository.existsByProviderIdAndStatus(provider.getId(), ApiKeyStatus.ACTIVE);
     }
 }

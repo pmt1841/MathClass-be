@@ -106,7 +106,7 @@ public class AiSubmissionHandwritingServiceImpl implements AiSubmissionHandwriti
                 .build();
         RenderPromptResponse res = promptRenderService.renderPrompt(renderRequest);
         if (res == null || res.getRenderedPrompt() == null || res.getRenderedPrompt().isBlank()) {
-            throw new ResourceNotFoundException("Chưa cấu hình System Prompt '" + promptCode + "' trong CSDL.");
+            throw new ResourceNotFoundException("Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau.");
         }
         return res.getRenderedPrompt();
     }

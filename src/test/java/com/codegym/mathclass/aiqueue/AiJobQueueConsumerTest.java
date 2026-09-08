@@ -102,8 +102,8 @@ class AiJobQueueConsumerTest {
     }
 
     @Test
-    @DisplayName("processMessage - Lỗi Rate Limit (429): đưa vào Delayed Queue với backoff 5s")
-    void processMessage_RateLimit_RetriesWithDelayedQueue() throws Exception {
+    @DisplayName("processMessage - Lỗi Rate Limit (429): không retry ngầm, hoàn 100% credit và cập nhật FAILED với thông báo bảo trì ngay")
+    void processMessage_RateLimit_FailsImmediatelyWithoutRetries() throws Exception {
         String taskCode = "BATCH_QUESTION_GEN";
         String jobId = "job-002";
         Long userId = 10L;
@@ -120,17 +120,16 @@ class AiJobQueueConsumerTest {
 
         when(jobHandler.canHandle(taskCode)).thenReturn(true);
         when(jobHandler.execute(message)).thenThrow(new RuntimeException("429 Too Many Requests: Quota exceeded"));
-        doReturn(blockingQueue).when(redissonClient).getBlockingQueue(anyString());
-        doReturn(delayedQueue).when(redissonClient).getDelayedQueue(blockingQueue);
 
         consumer.processMessage(message);
 
-        verify(aiJobService).updateJobStatus(eq(jobId), eq(AiJobStatus.RETRYING), any(), anyString(), eq(1));
-        verify(delayedQueue).offer(eq(message), eq(5L), eq(TimeUnit.SECONDS));
+        verify(aiCreditService).refund(userId, taskCode, 2);
+        verify(aiJobService).updateJobStatus(eq(jobId), eq(AiJobStatus.FAILED), any(), eq("Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau."), eq(0));
+        verify(notificationService).sendAiJobEvent(eq(userId), eq("AI_JOB_FAILED"), any());
     }
 
     @Test
-    @DisplayName("processMessage - Lỗi không thể retry hoặc vượt quá 3 lần: hoàn trả 100% credit, cập nhật FAILED")
+    @DisplayName("processMessage - Lỗi dữ liệu không hợp lệ: hoàn trả 100% credit, cập nhật FAILED ngay")
     void processMessage_FatalError_RefundsCreditsAndMarksFailed() throws Exception {
         String taskCode = "SUBMISSION_GRADING";
         String jobId = "job-003";
@@ -142,7 +141,7 @@ class AiJobQueueConsumerTest {
                 .taskCode(taskCode)
                 .payloadJson("{}")
                 .reservedCredits(5)
-                .retryCount(3)
+                .retryCount(0)
                 .createdAt(Instant.now())
                 .build();
 
@@ -152,13 +151,13 @@ class AiJobQueueConsumerTest {
         consumer.processMessage(message);
 
         verify(aiCreditService).refund(userId, taskCode, 5);
-        verify(aiJobService).updateJobStatus(eq(jobId), eq(AiJobStatus.FAILED), any(), anyString(), eq(3));
+        verify(aiJobService).updateJobStatus(eq(jobId), eq(AiJobStatus.FAILED), any(), eq("Dữ liệu bài tập không hợp lệ"), eq(0));
         verify(notificationService).sendAiJobEvent(eq(userId), eq("AI_JOB_FAILED"), any());
     }
 
     @Test
-    @DisplayName("processMessage - Lỗi BadRequestException mang thông điệp tạm thời (AI tạm thời không khả dụng): vẫn được retry")
-    void processMessage_TransientBadRequestException_RetriesWithDelayedQueue() throws Exception {
+    @DisplayName("processMessage - Lỗi tạm thời / bảo trì: chuyển thành thông báo bảo trì thân thiện và FAILED ngay")
+    void processMessage_TransientBadRequestException_SanitizesMessageAndFailsImmediately() throws Exception {
         String taskCode = "SUBMISSION_GRADING";
         String jobId = "job-004";
         Long userId = 10L;
@@ -175,12 +174,11 @@ class AiJobQueueConsumerTest {
 
         when(jobHandler.canHandle(taskCode)).thenReturn(true);
         when(jobHandler.execute(message)).thenThrow(new BadRequestException("AI chấm bài tạm thời không khả dụng: 429 Too Many Requests"));
-        doReturn(blockingQueue).when(redissonClient).getBlockingQueue(anyString());
-        doReturn(delayedQueue).when(redissonClient).getDelayedQueue(blockingQueue);
 
         consumer.processMessage(message);
 
-        verify(aiJobService).updateJobStatus(eq(jobId), eq(AiJobStatus.RETRYING), any(), anyString(), eq(1));
-        verify(delayedQueue).offer(eq(message), eq(5L), eq(TimeUnit.SECONDS));
+        verify(aiCreditService).refund(userId, taskCode, 5);
+        verify(aiJobService).updateJobStatus(eq(jobId), eq(AiJobStatus.FAILED), any(), eq("Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau."), eq(0));
+        verify(notificationService).sendAiJobEvent(eq(userId), eq("AI_JOB_FAILED"), any());
     }
 }
