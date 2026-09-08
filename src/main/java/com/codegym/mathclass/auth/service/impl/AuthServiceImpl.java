@@ -1,64 +1,56 @@
 package com.codegym.mathclass.auth.service.impl;
 
+import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
+import com.codegym.mathclass.auth.audit.AuthAuditLogger;
+import com.codegym.mathclass.auth.dto.request.*;
+import com.codegym.mathclass.auth.dto.response.MessageResponse;
+import com.codegym.mathclass.auth.dto.response.UserInfoResponse;
+import com.codegym.mathclass.auth.entity.PasswordResetToken;
+import com.codegym.mathclass.auth.entity.RefreshToken;
+import com.codegym.mathclass.auth.repository.PasswordResetTokenRepository;
 import com.codegym.mathclass.auth.service.AuthService;
 import com.codegym.mathclass.auth.service.RefreshTokenService;
-import com.codegym.mathclass.auth.entity.RefreshToken;
-import com.codegym.mathclass.auth.dto.request.GoogleAuthRequest;
-import com.codegym.mathclass.auth.dto.request.LoginRequest;
-import com.codegym.mathclass.auth.dto.request.SignupRequest;
-import com.codegym.mathclass.auth.dto.request.ForgotPasswordRequest;
-import com.codegym.mathclass.auth.dto.request.ResetPasswordRequest;
-import com.codegym.mathclass.auth.dto.response.UserInfoResponse;
-import com.codegym.mathclass.auth.dto.response.MessageResponse;
+import com.codegym.mathclass.auth.strategy.AuthStrategy;
+import com.codegym.mathclass.auth.strategy.AuthStrategyFactory;
+import com.codegym.mathclass.exception.BadRequestException;
+import com.codegym.mathclass.exception.TooManyRequestsException;
+import com.codegym.mathclass.notification.entity.NotificationSettings;
+import com.codegym.mathclass.notification.repository.NotificationSettingsRepository;
 import com.codegym.mathclass.security.jwt.JwtUtils;
 import com.codegym.mathclass.security.services.CustomUserDetails;
-import com.codegym.mathclass.user.repository.UserRepository;
-import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.entity.Role;
+import com.codegym.mathclass.user.entity.User;
+import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.user.service.PermissionCacheService;
-import java.util.List;
-import com.codegym.mathclass.notification.entity.NotificationSettings;
-import com.codegym.mathclass.user.mapper.UserMapper;
-import com.codegym.mathclass.notification.repository.NotificationSettingsRepository;
-import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
 import com.codegym.mathclass.utils.EmailService;
-import com.codegym.mathclass.exception.BadRequestException;
-
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-
-import java.util.Optional;
-import java.util.Map;
-import java.util.UUID;
-import java.security.SecureRandom;
-import java.time.LocalDateTime;
-import java.util.Base64;
-
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.thymeleaf.context.Context;
-import org.springframework.http.*;
-import org.springframework.web.client.*;
 import org.springframework.transaction.annotation.Transactional;
-import com.codegym.mathclass.auth.entity.PasswordResetToken;
-import com.codegym.mathclass.auth.repository.PasswordResetTokenRepository;
-import com.codegym.mathclass.auth.entity.UserTwoFactorAuth;
-import com.codegym.mathclass.auth.repository.UserTwoFactorAuthRepository;
-import com.codegym.mathclass.user.entity.Provider;
-import com.codegym.mathclass.exception.TooManyRequestsException;
+import org.thymeleaf.context.Context;
+
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.util.Base64;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthServiceImpl implements AuthService {
-    private final AuthenticationManager authenticationManager;
+
+    private final AuthStrategyFactory authStrategyFactory;
+    private final AuthAuditLogger authAuditLogger;
     private final UserRepository userRepository;
     private final NotificationSettingsRepository notificationSettingsRepository;
     private final PermissionCacheService permissionCacheService;
@@ -67,9 +59,7 @@ public class AuthServiceImpl implements AuthService {
     private final EmailService emailService;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final RefreshTokenService refreshTokenService;
-    private final UserMapper userMapper;
     private final AiCreditService aiCreditService;
-    private final UserTwoFactorAuthRepository userTwoFactorAuthRepository;
 
     private final ConcurrentHashMap<String, LocalDateTime> forgotPasswordRateLimitMap = new ConcurrentHashMap<>();
 
@@ -78,83 +68,41 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public UserInfoResponse authenticateUser(LoginRequest loginRequest, HttpServletResponse response) {
-        Optional<User> userOptional = userRepository.findByEmail(loginRequest.getEmail());
-        if (!userOptional.isPresent()) {
-            throw new BadRequestException("Email hoặc mật khẩu không đúng. Vui lòng thử lại.");
-        }
-
-        User user = userOptional.get();
-        if (loginRequest.getRole() != null && !loginRequest.getRole().isEmpty()) {
-            try {
-                Role requestedRole = Role.valueOf(loginRequest.getRole().toUpperCase());
-                // Học sinh không thể đăng nhập trang Giáo viên
-                if (requestedRole == Role.TEACHER && user.getRole() == Role.STUDENT) {
-                    throw new BadRequestException("Email hoặc mật khẩu không đúng. Vui lòng thử lại.");
-                }
-                // Giáo viên/Admin không nên đăng nhập trang Học sinh
-                if (requestedRole == Role.STUDENT && user.getRole() != Role.STUDENT) {
-                    throw new BadRequestException("Email hoặc mật khẩu không đúng. Vui lòng thử lại.");
-                }
-            } catch (IllegalArgumentException e) {
-                // Bỏ qua nếu role từ frontend gửi lên không hợp lệ
-            }
-        }
-
-        if (!user.isActive()) {
-            String reasonText = user.getLockReason() != null && !user.getLockReason().trim().isEmpty()
-                    ? user.getLockReason()
-                    : "Vi phạm tiêu chuẩn sử dụng hệ thống.";
-            throw new BadRequestException("Tài khoản của bạn đã bị khóa. Lý do: " + reasonText);
-        }
-
-        Authentication authentication;
         try {
-            authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
-        } catch (BadCredentialsException e) {
-            throw new BadRequestException("Email hoặc mật khẩu không đúng. Vui lòng thử lại.");
+            AuthStrategy<LoginRequest> strategy = authStrategyFactory.getStrategy(AuthType.LOCAL);
+            UserInfoResponse userInfo = strategy.authenticate(loginRequest, response);
+            authAuditLogger.logSuccess(userInfo.getId(), userInfo.getEmail(), AuthType.LOCAL, null);
+            return userInfo;
         } catch (Exception e) {
-            throw new BadRequestException("Lỗi đăng nhập: Tài khoản của bạn có thể đã bị khóa hoặc chưa kích hoạt.");
+            authAuditLogger.logFailure(loginRequest != null ? loginRequest.getEmail() : null, AuthType.LOCAL, e.getMessage(), null);
+            throw e;
         }
+    }
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-
-        // Nếu là tài khoản ADMIN -> Bắt buộc xác thực cấp 2 (2FA Google Authenticator)
-        if (user.getRole() == Role.ADMIN) {
-            Optional<UserTwoFactorAuth> auth2faOpt = userTwoFactorAuthRepository.findByUserId(user.getId());
-            boolean is2faEnabled = auth2faOpt.isPresent() && auth2faOpt.get().isEnabled();
-
-            String preAuthToken = jwtUtils.generatePreAuthToken(user.getEmail(), user.getId(), Role.ADMIN.name());
-
-            return UserInfoResponse.builder()
-                    .id(user.getId())
-                    .email(user.getEmail())
-                    .fullName(user.getFullName())
-                    .userRole(Role.ADMIN.name())
-                    .avatarUrl(user.getAvatarUrl())
-                    .is2faRequired(true)
-                    .isSetupRequired(!is2faEnabled)
-                    .preAuthToken(preAuthToken)
-                    .message(is2faEnabled
-                            ? "Vui lòng nhập mã xác thực từ Google Authenticator."
-                            : "Tài khoản Quản trị viên bắt buộc thiết lập xác thực 2 bước.")
-                    .build();
+    @Override
+    public UserInfoResponse authenticateWithGoogle(GoogleAuthRequest request, HttpServletResponse response) {
+        try {
+            AuthStrategy<GoogleAuthRequest> strategy = authStrategyFactory.getStrategy(AuthType.GOOGLE);
+            UserInfoResponse userInfo = strategy.authenticate(request, response);
+            authAuditLogger.logSuccess(userInfo.getId(), userInfo.getEmail(), AuthType.GOOGLE, null);
+            return userInfo;
+        } catch (Exception e) {
+            authAuditLogger.logFailure(null, AuthType.GOOGLE, e.getMessage(), null);
+            throw e;
         }
+    }
 
-        user.setLastActiveAt(LocalDateTime.now());
-        userRepository.save(user);
-
-        ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails, loginRequest.isRememberMe());
-        RefreshToken refreshToken = refreshTokenService.createRefreshToken(userDetails.getId());
-        ResponseCookie jwtRefreshCookie = jwtUtils.generateRefreshJwtCookie(refreshToken.getToken(),
-                loginRequest.isRememberMe());
-
-        response.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
-        response.addHeader(HttpHeaders.SET_COOKIE, jwtRefreshCookie.toString());
-
-        String jwtToken = jwtUtils.generateJwtToken(authentication);
-        return userMapper.toUserInfoResponse(userDetails, jwtToken);
+    @Override
+    public UserInfoResponse authenticateAdmin2Fa(Admin2FaLoginRequest request, HttpServletRequest httpRequest, HttpServletResponse response) {
+        try {
+            AuthStrategy<Admin2FaLoginRequest> strategy = authStrategyFactory.getStrategy(AuthType.ADMIN_2FA);
+            UserInfoResponse userInfo = strategy.authenticate(request, response);
+            authAuditLogger.logSuccess(userInfo.getId(), userInfo.getEmail(), AuthType.ADMIN_2FA, httpRequest);
+            return userInfo;
+        } catch (Exception e) {
+            authAuditLogger.logFailure(request != null ? request.email() : null, AuthType.ADMIN_2FA, e.getMessage(), httpRequest);
+            throw e;
+        }
     }
 
     @Override
@@ -183,11 +131,6 @@ public class AuthServiceImpl implements AuthService {
                     .map(refreshTokenService::verifyExpiration)
                     .map(RefreshToken::getUser)
                     .map(user -> {
-                        /*
-                         * BẢO MẬT KHÓA TÀI KHOẢN:
-                         * Nếu tài khoản đã bị khóa (isActive = false), lập tức chặn và không cấp thêm
-                         * JWT Cookie mới.
-                         */
                         if (!user.isActive()) {
                             throw new BadRequestException(
                                     "Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ hỗ trợ.");
@@ -395,125 +338,5 @@ public class AuthServiceImpl implements AuthService {
         return new MessageResponse(
                 "Mật khẩu của bạn đã được cập nhật thành công. Vui lòng đăng nhập bằng mật khẩu mới.",
                 user.getRole().name());
-    }
-
-    @Value("${spring.security.oauth2.client.registration.google.client-id:}")
-    private String googleClientId;
-
-    @Override
-    public UserInfoResponse authenticateWithGoogle(GoogleAuthRequest request, HttpServletResponse httpResponse) {
-        try {
-            RestTemplate restTemplate = new RestTemplate();
-            HttpHeaders headers = new HttpHeaders();
-            headers.setBearerAuth(request.getCredential());
-            HttpEntity<String> entity = new HttpEntity<>("parameters",
-                    headers);
-
-            ResponseEntity<Map> response = restTemplate.exchange(
-                    "https://www.googleapis.com/oauth2/v3/userinfo",
-                    HttpMethod.GET,
-                    entity,
-                    Map.class);
-
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                Map<String, Object> payload = response.getBody();
-
-                String email = (String) payload.get("email");
-                String name = (String) payload.get("name");
-                String pictureUrl = (String) payload.get("picture");
-
-                Optional<User> userOptional = userRepository.findByEmail(email);
-                User user;
-
-                if (userOptional.isPresent()) {
-                    user = userOptional.get();
-
-                    /*
-                     * BẢO MẬT KHÓA TÀI KHOẢN (GOOGLE LOGIN):
-                     * Ngăn chặn tài khoản đã bị Admin khóa đăng nhập qua Google.
-                     */
-                    if (!user.isActive()) {
-                        throw new BadRequestException(
-                                "Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ hỗ trợ.");
-                    }
-
-                    if (request.getRole() != null && !request.getRole().isEmpty()) {
-                        try {
-                            Role requestedRole = Role.valueOf(request.getRole().toUpperCase());
-                            if (requestedRole == Role.TEACHER && user.getRole() == Role.STUDENT) {
-                                throw new BadRequestException(
-                                        "Tài khoản học sinh không thể truy cập hệ thống của giáo viên.");
-                            }
-                            if (requestedRole == Role.STUDENT && user.getRole() != Role.STUDENT) {
-                                throw new BadRequestException(
-                                        "Tài khoản giáo viên không thể truy cập hệ thống của học sinh.");
-                            }
-                        } catch (IllegalArgumentException e) {
-                            // ignore
-                        }
-                    }
-
-                    if (user.getAvatarUrl() == null || user.getAvatarUrl().isEmpty()) {
-                        user.setAvatarUrl(pictureUrl);
-                        userRepository.save(user);
-                    }
-                } else {
-                    Role role = Role.STUDENT; // Default
-                    if (request.getRole() != null) {
-                        try {
-                            role = Role.valueOf(request.getRole().toUpperCase());
-                        } catch (IllegalArgumentException e) {
-                            // ignore
-                        }
-                    }
-
-                    user = User.builder()
-                            .email(email)
-                            .fullName(name)
-                            .avatarUrl(pictureUrl)
-                            .isActive(true)
-                            .role(role)
-                            .provider(Provider.GOOGLE)
-                            .password(null)
-                            .phoneNumber("")
-                            .build();
-
-                    userRepository.save(user);
-
-                    aiCreditService.grantDefaultForNewUser(user.getId(), user.getRole());
-
-                    NotificationSettings settings = NotificationSettings.builder()
-                            .userId(user.getId())
-                            .build();
-                    notificationSettingsRepository.save(settings);
-                }
-
-                List<String> permissions = permissionCacheService.getPermissionsByRole(user.getRole());
-                CustomUserDetails userDetails = CustomUserDetails.build(user, permissions);
-
-                Authentication authentication = new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities());
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-
-                ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails, request.isRememberMe());
-                RefreshToken refreshToken = refreshTokenService.createRefreshToken(userDetails.getId());
-                ResponseCookie jwtRefreshCookie = jwtUtils.generateRefreshJwtCookie(refreshToken.getToken(),
-                        request.isRememberMe());
-
-                httpResponse.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
-                httpResponse.addHeader(HttpHeaders.SET_COOKIE, jwtRefreshCookie.toString());
-
-                String jwtToken = jwtUtils.generateJwtToken(authentication);
-                return userMapper.toUserInfoResponse(userDetails, jwtToken);
-
-            } else {
-                throw new BadRequestException("Token xác thực Google không hợp lệ.");
-            }
-        } catch (BadRequestException e) {
-            throw e;
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new BadRequestException("Đăng nhập thất bại. Vui lòng thử lại sau.");
-        }
     }
 }
