@@ -5,6 +5,8 @@ import com.codegym.mathclass.notification.dto.NotificationResponse;
 import com.codegym.mathclass.notification.entity.Notification;
 import com.codegym.mathclass.notification.repository.NotificationRepository;
 import com.codegym.mathclass.notification.service.impl.NotificationServiceImpl;
+import com.codegym.mathclass.notification.strategy.CompositeNotificationStrategy;
+import com.codegym.mathclass.notification.strategy.SseNotificationStrategy;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,6 +40,12 @@ class NotificationServiceImplTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private SseNotificationStrategy sseNotificationStrategy;
+
+    @Mock
+    private CompositeNotificationStrategy compositeNotificationStrategy;
+
     @InjectMocks
     private NotificationServiceImpl notificationService;
 
@@ -63,11 +71,15 @@ class NotificationServiceImplTest {
     class CreateEmitterTests {
 
         @Test
-        @DisplayName("Should create and return SSE emitter")
+        @DisplayName("Should create and return SSE emitter delegating to SseStrategy")
         void createEmitter_ValidUserId_ReturnsEmitter() {
-            SseEmitter emitter = notificationService.createEmitter(1L);
+            SseEmitter dummyEmitter = new SseEmitter();
+            when(sseNotificationStrategy.createEmitter(1L)).thenReturn(dummyEmitter);
 
-            assertThat(emitter).isNotNull();
+            SseEmitter result = notificationService.createEmitter(1L);
+
+            assertThat(result).isNotNull();
+            verify(sseNotificationStrategy, times(1)).createEmitter(1L);
         }
     }
 
@@ -76,15 +88,15 @@ class NotificationServiceImplTest {
     class SaveAndSendNotificationTests {
 
         @Test
-        @DisplayName("Should save notification and push via SSE emitter when user exists")
+        @DisplayName("Should save notification and dispatch payload asynchronously via Strategy Engine")
         void saveAndSendNotification_ValidData_Success() {
-            SseEmitter emitter = notificationService.createEmitter(1L);
             when(userRepository.findById(1L)).thenReturn(Optional.of(user));
             when(notificationRepository.save(any(Notification.class))).thenReturn(notification);
 
             notificationService.saveAndSendNotification(1L, "Test message", "/test");
 
             verify(notificationRepository, times(1)).save(any(Notification.class));
+            verify(compositeNotificationStrategy, times(1)).send(any());
         }
 
         @Test
@@ -97,6 +109,7 @@ class NotificationServiceImplTest {
                     .hasMessage("User not found");
 
             verify(notificationRepository, never()).save(any());
+            verify(compositeNotificationStrategy, never()).send(any());
         }
     }
 

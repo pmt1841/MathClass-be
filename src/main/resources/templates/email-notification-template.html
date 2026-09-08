@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{email-layout :: html}">
+<body>
+    <th:block th:fragment="content">
+        <h2>Xin chào <span th:text="${fullName}">Người dùng</span>,</h2>
+        <h3 style="color: #4f46e5; margin-top: 10px;" th:text="${title}">Thông báo từ MathClass</h3>
+        <p style="font-size: 15px; color: #334155; line-height: 1.6;" th:text="${message}">Nội dung thông báo...</p>
+        <div style="text-align: center; margin-top: 24px;" th:if="${link != null and !link.isBlank()}">
+            <a th:href="${link}" class="btn" style="color: #ffffff; background-color: #4f46e5; padding: 10px 20px; border-radius: 6px; text-decoration: none; display: inline-block;">Xem chi tiết</a>
+        </div>
+    </th:block>
+</body>
+</html>
