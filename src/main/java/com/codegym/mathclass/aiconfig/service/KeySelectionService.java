@@ -62,7 +62,7 @@ public class KeySelectionService {
                 .collect(Collectors.toList());
 
         if (availableKeys.isEmpty()) {
-            throw new IllegalStateException("Không có API Key nào khả dụng cho Provider: " + provider.getName());
+            throw new IllegalStateException("Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau.");
         }
 
         ApiKey selectedKey;

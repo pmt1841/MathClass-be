@@ -114,7 +114,10 @@ public class AiGradingServiceImpl implements AiGradingService {
             } catch (RuntimeException e) {
                 String cause = e.getMessage() != null ? e.getMessage() : "Lỗi không xác định từ dịch vụ AI";
                 log.error("Gọi AI chấm bài thất bại (lần thử {}/{}): {}", attempt, MAX_EMPTY_RESPONSE_ATTEMPTS, cause, e);
-                throw new BadRequestException("AI chấm bài tạm thời không khả dụng: " + cause);
+                if (cause.contains("bảo trì")) {
+                    throw new BadRequestException(cause);
+                }
+                throw new BadRequestException("Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau.");
             }
             if (result != null && result.content() != null && !result.content().isBlank()) {
                 return result;
@@ -122,8 +125,7 @@ public class AiGradingServiceImpl implements AiGradingService {
             log.warn("AI chấm bài trả về phản hồi rỗng (lần thử {}/{}) cho task '{}'",
                     attempt, MAX_EMPTY_RESPONSE_ATTEMPTS, GRADING_TASK_CODE);
         }
-        throw new BadRequestException("AI phản hồi rỗng (task " + GRADING_TASK_CODE
-                + "). Vui lòng kiểm tra cấu hình Provider/Model trên trang Admin AI Config hoặc thử lại sau.");
+        throw new BadRequestException("Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau.");
     }
 
     private String buildGradingPrompt(Assignment assignment, Submission submission) {
@@ -148,7 +150,7 @@ public class AiGradingServiceImpl implements AiGradingService {
         RenderPromptResponse renderResponse = promptRenderService.renderPrompt(renderRequest);
 
         if (renderResponse == null || renderResponse.getRenderedPrompt() == null || renderResponse.getRenderedPrompt().isBlank()) {
-            throw new ResourceNotFoundException("Chưa cấu hình System Prompt 'PROMPT_SUBMISSION_GRADING' trong CSDL.");
+            throw new ResourceNotFoundException("Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau.");
         }
 
         return renderResponse.getRenderedPrompt();

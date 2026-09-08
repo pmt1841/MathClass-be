@@ -96,11 +96,11 @@ public class AiBatchQuestionServiceImpl implements AiBatchQuestionService {
                 .filter(TaskConfig::getEnabled)
                 .or(() -> taskConfigRepository.findByTask(TASK_QUESTION_GEN_FALLBACK).filter(TaskConfig::getEnabled))
                 .orElseThrow(() -> new AiGenerationException(503,
-                        "Tính năng tạo hàng loạt bài tập bằng AI chưa được cấu hình hoặc đã bị tắt trong AI Config."));
+                        "Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau."));
 
         Provider provider = taskConfig.getProvider();
         if (provider == null || provider.getStatus() != ProviderStatus.ACTIVE) {
-            throw new AiGenerationException(503, "Provider AI cho tác vụ tạo hàng loạt bài tập không khả dụng.");
+            throw new AiGenerationException(503, "Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau.");
         }
 
         Optional<AiCreditConfig> creditCfg = aiCreditService.getCreditConfig(TASK_BATCH_QUESTION_GEN);

@@ -19,4 +19,6 @@ public interface ApiKeyRepository extends JpaRepository<ApiKey, Long> {
     @Modifying
     @Query("UPDATE ApiKey k SET k.status = :status WHERE k.provider.id = :providerId")
     int updateStatusByProviderId(@Param("providerId") Long providerId, @Param("status") ApiKeyStatus status);
+
+    boolean existsByProviderIdAndStatus(Long providerId, ApiKeyStatus status);
 }
