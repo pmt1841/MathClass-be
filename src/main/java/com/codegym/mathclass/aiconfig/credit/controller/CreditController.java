@@ -13,6 +13,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import com.codegym.mathclass.aiconfig.credit.entity.CreditTransactionType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,6 +26,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -45,9 +51,11 @@ public class CreditController {
     @Operation(summary = "Lịch sử giao dịch credit của tôi")
     @GetMapping("/transactions")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<CreditTransactionResponse>> getMyTransactions(
+    public ResponseEntity<Page<CreditTransactionResponse>> getMyTransactions(
+            @RequestParam(required = false) CreditTransactionType type,
+            @PageableDefault(size = 15, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(aiCreditService.getTransactions(userDetails.getId(), null));
+        return ResponseEntity.ok(aiCreditService.getTransactions(userDetails.getId(), type, pageable));
     }
 
     @Operation(summary = "Danh sách gói credit đang bán")

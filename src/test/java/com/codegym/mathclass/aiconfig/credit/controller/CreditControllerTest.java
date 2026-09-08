@@ -3,6 +3,8 @@ package com.codegym.mathclass.aiconfig.credit.controller;
 import com.codegym.mathclass.aiconfig.credit.dto.response.CreditBalanceResponse;
 import com.codegym.mathclass.aiconfig.credit.dto.response.CreditPackageResponse;
 import com.codegym.mathclass.aiconfig.credit.dto.response.CreditPurchaseResponse;
+import com.codegym.mathclass.aiconfig.credit.dto.response.CreditTransactionResponse;
+import com.codegym.mathclass.aiconfig.credit.entity.CreditTransactionType;
 import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
 import com.codegym.mathclass.aiconfig.credit.service.CreditPurchaseService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
@@ -14,6 +16,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
@@ -50,7 +55,9 @@ class CreditControllerTest {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(creditController)
-                .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
+                .setCustomArgumentResolvers(
+                        new AuthenticationPrincipalArgumentResolver(),
+                        new PageableHandlerMethodArgumentResolver())
                 .build();
     }
 
@@ -134,6 +141,55 @@ class CreditControllerTest {
                     .andExpect(jsonPath("$.status").value("SUCCESS"))
                     .andExpect(jsonPath("$.creditsAdded").value(100))
                     .andExpect(jsonPath("$.newBalance").value(197));
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /credits/transactions Tests")
+    class GetMyTransactionsTests {
+
+        @Test
+        @DisplayName("Should return paginated transactions with default size 15")
+        void getMyTransactions_defaultPagination() throws Exception {
+            authenticateAs(userId);
+            CreditTransactionResponse item = CreditTransactionResponse.builder()
+                    .id(101L)
+                    .userId(userId)
+                    .amount(100)
+                    .type(CreditTransactionType.PURCHASE.name())
+                    .description("Nạp gói Cơ bản")
+                    .build();
+            when(aiCreditService.getTransactions(eq(userId), eq(null), any()))
+                    .thenReturn(new PageImpl<>(List.of(item), PageRequest.of(0, 15), 1));
+
+            mockMvc.perform(get("/credits/transactions"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content[0].id").value(101L))
+                    .andExpect(jsonPath("$.content[0].type").value("PURCHASE"))
+                    .andExpect(jsonPath("$.totalElements").value(1));
+        }
+
+        @Test
+        @DisplayName("Should filter transactions by type")
+        void getMyTransactions_withTypeFilter() throws Exception {
+            authenticateAs(userId);
+            CreditTransactionResponse item = CreditTransactionResponse.builder()
+                    .id(102L)
+                    .userId(userId)
+                    .amount(-2)
+                    .type(CreditTransactionType.CONSUME.name())
+                    .description("Chấm bài AI")
+                    .build();
+            when(aiCreditService.getTransactions(eq(userId), eq(CreditTransactionType.CONSUME), any()))
+                    .thenReturn(new PageImpl<>(List.of(item), PageRequest.of(0, 15), 1));
+
+            mockMvc.perform(get("/credits/transactions")
+                            .param("type", "CONSUME")
+                            .param("page", "0")
+                            .param("size", "15"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content[0].id").value(102L))
+                    .andExpect(jsonPath("$.content[0].type").value("CONSUME"));
         }
     }
 }
