@@ -112,6 +112,21 @@ class TagServiceImplTest {
     }
 
     @Test
+    @DisplayName("replaceTagsByName should deduplicate case-variant names like ['Toán', 'toán']")
+    void replaceTagsByName_CaseInsensitiveDuplicates_DeduplicatesTags() {
+        Assignment assignment = Assignment.builder().assignmentTags(new ArrayList<>()).build();
+        Tag tagToan = Tag.builder().name("Toán").type(TagType.CUSTOM).active(true).build();
+        tagToan.setId(5L);
+        when(tagRepository.findByNameInIgnoreCase(any())).thenReturn(List.of(tagToan));
+
+        tagService.replaceTagsByName(assignment, List.of("Toán", "toán", "TOÁN"));
+
+        assertEquals(1, assignment.getAssignmentTags().size());
+        assertEquals(5L, assignment.getAssignmentTags().get(0).getTag().getId());
+        verify(tagRepository, never()).save(any(Tag.class));
+    }
+
+    @Test
     @DisplayName("copyTags should copy tags from source to target assignment")
     void copyTags_Success() {
         Assignment source = Assignment.builder().assignmentTags(new ArrayList<>()).build();

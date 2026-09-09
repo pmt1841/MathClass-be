@@ -279,7 +279,7 @@ public class AssignmentServiceImpl implements AssignmentService {
     @Override
     @Transactional(readOnly = true)
     public Page<AssignmentResponse> getAssignmentsForCurrentUser(long userId, String role, String keyword,
-            String classCode, AssignmentStatus status, Long gradeTagId, Long subjectTagId, Long difficultyTagId, String studentStatus, Pageable pageable) {
+            String classCode, AssignmentStatus status, Long gradeTagId, Long subjectTagId, Long difficultyTagId, List<String> tagNames, String studentStatus, Pageable pageable) {
         Specification<Assignment> spec = (root, query, cb) -> cb.conjunction();
         
         // Loại bỏ những bài tập đã nằm trong phiếu bài tập
@@ -327,6 +327,9 @@ public class AssignmentServiceImpl implements AssignmentService {
         if (gradeTagId != null) spec = spec.and(AssignmentSpecification.hasTag(gradeTagId));
         if (subjectTagId != null) spec = spec.and(AssignmentSpecification.hasTag(subjectTagId));
         if (difficultyTagId != null) spec = spec.and(AssignmentSpecification.hasTag(difficultyTagId));
+        if (tagNames != null && !tagNames.isEmpty()) {
+            spec = spec.and(AssignmentSpecification.hasTagNames(tagNames));
+        }
 
         Sort sort = pageable.getSort();
         if (sort.isUnsorted()) {

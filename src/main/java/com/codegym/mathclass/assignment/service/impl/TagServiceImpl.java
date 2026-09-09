@@ -68,33 +68,37 @@ public class TagServiceImpl implements TagService {
         if (tagNames == null) {
             return;
         }
-        Set<String> uniqueNames = new java.util.LinkedHashSet<>();
+        // Deduplicate input tag names case-insensitively
+        java.util.Map<String, String> normalizedNamesMap = new java.util.LinkedHashMap<>();
         for (String name : tagNames) {
             if (name != null && !name.trim().isEmpty()) {
-                uniqueNames.add(name.trim());
+                String trimmed = name.trim();
+                normalizedNamesMap.putIfAbsent(trimmed.toLowerCase(), trimmed);
             }
         }
         assignment.getAssignmentTags().clear();
         entityManager.flush();
 
-        if (uniqueNames.isEmpty()) {
+        if (normalizedNamesMap.isEmpty()) {
             return;
         }
 
         // Batch query existing tags to eliminate N+1 queries
-        List<Tag> existingTags = tagRepository.findByNameInIgnoreCase(uniqueNames);
+        List<Tag> existingTags = tagRepository.findByNameInIgnoreCase(normalizedNamesMap.values());
         java.util.Map<String, Tag> tagMap = new java.util.HashMap<>();
         for (Tag tag : existingTags) {
             tagMap.put(tag.getName().toLowerCase(), tag);
         }
 
-        for (String name : uniqueNames) {
-            Tag tag = tagMap.get(name.toLowerCase());
+        Set<Long> addedTagIds = new HashSet<>();
+        for (String originalName : normalizedNamesMap.values()) {
+            String lowerName = originalName.toLowerCase();
+            Tag tag = tagMap.get(lowerName);
             if (tag == null) {
-                tag = tagRepository.save(Tag.builder().name(name).type(TagType.CUSTOM).active(true).build());
-                tagMap.put(name.toLowerCase(), tag);
+                tag = tagRepository.save(Tag.builder().name(originalName).type(TagType.CUSTOM).active(true).build());
+                tagMap.put(lowerName, tag);
             }
-            if (tag.isActive()) {
+            if (tag.isActive() && tag.getId() != 0L && addedTagIds.add(tag.getId())) {
                 assignment.getAssignmentTags().add(AssignmentTag.builder().assignment(assignment).tag(tag).build());
             }
         }

@@ -21,6 +21,10 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long>, J
     @EntityGraph(attributePaths = {"assignmentTags", "assignmentTags.tag"})
     Optional<Assignment> findById(Long id);
 
+    @Override
+    @EntityGraph(attributePaths = {"assignmentTags", "assignmentTags.tag"})
+    Page<Assignment> findAll(org.springframework.data.jpa.domain.Specification<Assignment> spec, Pageable pageable);
+
     @EntityGraph(attributePaths = {"assignmentTags", "assignmentTags.tag"})
     List<Assignment> findByTeacherId(long teacherId);
 
