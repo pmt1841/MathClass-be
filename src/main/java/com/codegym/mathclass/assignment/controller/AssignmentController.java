@@ -105,6 +105,7 @@ public class AssignmentController {
             @RequestParam(required = false) Long gradeTagId,
             @RequestParam(required = false) Long subjectTagId,
             @RequestParam(required = false) Long difficultyTagId,
+            @RequestParam(required = false) List<String> tagNames,
             @RequestParam(required = false) String studentStatus,
             @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -117,7 +118,7 @@ public class AssignmentController {
                 .orElse("");
 
         Page<AssignmentResponse> assignments = assignmentService.getAssignmentsForCurrentUser(
-                userId, role, keyword, classCode, status, gradeTagId, subjectTagId, difficultyTagId, studentStatus, pageable);
+                userId, role, keyword, classCode, status, gradeTagId, subjectTagId, difficultyTagId, tagNames, studentStatus, pageable);
 
         return ResponseEntity.ok(assignments);
     }

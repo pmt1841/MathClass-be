@@ -19,7 +19,12 @@ public class TagController {
     private final TagService tagService;
 
     @GetMapping
-    public ResponseEntity<List<TagResponse>> getTags(@RequestParam(required = false) TagType type) {
+    public ResponseEntity<List<TagResponse>> getTags(
+            @RequestParam(required = false) TagType type,
+            @RequestParam(required = false) String query) {
+        if (query != null) {
+            return ResponseEntity.ok(tagService.searchTags(query));
+        }
         return ResponseEntity.ok(tagService.getActiveTags(type));
     }
 }

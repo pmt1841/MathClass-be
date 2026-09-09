@@ -78,32 +78,52 @@ class TagServiceImplTest {
     }
 
     @Test
-    @DisplayName("replaceTags should throw BadRequestException when tag count exceeds max types")
-    void replaceTags_TooManyTags_ThrowsException() {
-        Assignment assignment = Assignment.builder().assignmentTags(new ArrayList<>()).build();
-        List<Long> invalidIds = List.of(1L, 2L, 3L, 4L);
-
-        assertThrows(BadRequestException.class, () -> tagService.replaceTags(assignment, invalidIds));
-    }
-
-    @Test
-    @DisplayName("requireCompletePublicTags should throw exception if assignment lacks 3 tag types")
+    @DisplayName("requireCompletePublicTags should throw exception if assignment has no tags")
     void requireCompletePublicTags_Incomplete_ThrowsException() {
         Assignment assignment = Assignment.builder().assignmentTags(new ArrayList<>()).build();
-        assignment.getAssignmentTags().add(AssignmentTag.builder().tag(gradeTag).build());
 
         assertThrows(BadRequestException.class, () -> tagService.requireCompletePublicTags(assignment));
     }
 
     @Test
-    @DisplayName("requireCompletePublicTags should pass if assignment has all 3 tag types")
+    @DisplayName("requireCompletePublicTags should pass if assignment has at least 1 tag")
     void requireCompletePublicTags_Complete_Success() {
         Assignment assignment = Assignment.builder().assignmentTags(new ArrayList<>()).build();
         assignment.getAssignmentTags().add(AssignmentTag.builder().tag(gradeTag).build());
-        assignment.getAssignmentTags().add(AssignmentTag.builder().tag(subjectTag).build());
-        assignment.getAssignmentTags().add(AssignmentTag.builder().tag(difficultyTag).build());
 
         assertDoesNotThrow(() -> tagService.requireCompletePublicTags(assignment));
+    }
+
+    @Test
+    @DisplayName("replaceTagsByName should create new tags if not present and link them")
+    void replaceTagsByName_CreatesAndLinksTags() {
+        Assignment assignment = Assignment.builder().assignmentTags(new ArrayList<>()).build();
+        Tag tag10 = Tag.builder().name("Lớp 10").type(TagType.GRADE).active(true).build();
+        tag10.setId(1L);
+        when(tagRepository.findByNameInIgnoreCase(any())).thenReturn(List.of(tag10));
+        Tag newTag = Tag.builder().name("Hình học").active(true).build();
+        newTag.setId(10L);
+        when(tagRepository.save(any(Tag.class))).thenReturn(newTag);
+
+        tagService.replaceTagsByName(assignment, List.of("Lớp 10", "Hình học"));
+
+        assertEquals(2, assignment.getAssignmentTags().size());
+        verify(tagRepository, times(1)).save(any(Tag.class));
+    }
+
+    @Test
+    @DisplayName("replaceTagsByName should deduplicate case-variant names like ['Toán', 'toán']")
+    void replaceTagsByName_CaseInsensitiveDuplicates_DeduplicatesTags() {
+        Assignment assignment = Assignment.builder().assignmentTags(new ArrayList<>()).build();
+        Tag tagToan = Tag.builder().name("Toán").type(TagType.CUSTOM).active(true).build();
+        tagToan.setId(5L);
+        when(tagRepository.findByNameInIgnoreCase(any())).thenReturn(List.of(tagToan));
+
+        tagService.replaceTagsByName(assignment, List.of("Toán", "toán", "TOÁN"));
+
+        assertEquals(1, assignment.getAssignmentTags().size());
+        assertEquals(5L, assignment.getAssignmentTags().get(0).getTag().getId());
+        verify(tagRepository, never()).save(any(Tag.class));
     }
 
     @Test
@@ -121,12 +141,12 @@ class TagServiceImplTest {
     }
 
     @Test
-    @DisplayName("validateTagFilters should throw exception for invalid tag type")
-    void validateTagFilters_WrongType_ThrowsException() {
-        when(tagRepository.findById(1L)).thenReturn(Optional.of(gradeTag));
+    @DisplayName("validateTagFilters should throw exception for inactive tag")
+    void validateTagFilters_Inactive_ThrowsException() {
+        Tag inactiveTag = Tag.builder().name("Cũ").active(false).build();
+        when(tagRepository.findById(1L)).thenReturn(Optional.of(inactiveTag));
 
-        // Subject filter ID passed gradeTag ID
-        assertThrows(BadRequestException.class, () -> tagService.validateTagFilters(null, 1L, null));
+        assertThrows(BadRequestException.class, () -> tagService.validateTagFilters(1L, null, null));
     }
 
     @Test

@@ -80,6 +80,20 @@ public class AssignmentSpecification {
         };
     }
 
+    public static Specification<Assignment> hasTagNames(java.util.List<String> tagNames) {
+        return (root, query, cb) -> {
+            if (tagNames == null || tagNames.isEmpty()) return null;
+            java.util.List<String> cleanNames = tagNames.stream()
+                    .filter(name -> name != null && !name.trim().isEmpty())
+                    .map(name -> name.trim().toLowerCase())
+                    .toList();
+            if (cleanNames.isEmpty()) return null;
+            query.distinct(true);
+            Join<Assignment, AssignmentTag> tags = root.join("assignmentTags", JoinType.INNER);
+            return cb.lower(tags.get("tag").get("name")).in(cleanNames);
+        };
+    }
+
     public static Specification<Assignment> hasStudentStatus(long studentId, String studentStatus) {
         return (root, query, cb) -> {
             if (studentStatus == null || studentStatus.isBlank() || "ALL".equalsIgnoreCase(studentStatus)) {

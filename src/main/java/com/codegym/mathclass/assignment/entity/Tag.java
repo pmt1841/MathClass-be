@@ -13,7 +13,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "tags", uniqueConstraints = @jakarta.persistence.UniqueConstraint(columnNames = {"type", "name"}))
+@Table(name = "tags", uniqueConstraints = @jakarta.persistence.UniqueConstraint(columnNames = {"name"}))
 @Data
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
@@ -21,11 +21,11 @@ import lombok.NoArgsConstructor;
 @Builder
 public class Tag extends BaseEntity {
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String name;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = true)
     private TagType type;
 
     @Builder.Default

@@ -49,7 +49,7 @@ public interface AssignmentService {
      * lọc
      */
     Page<AssignmentResponse> getAssignmentsForCurrentUser(long userId, String role, String keyword, String classCode,
-            AssignmentStatus status, Long gradeTagId, Long subjectTagId, Long difficultyTagId, String studentStatus, Pageable pageable);
+            AssignmentStatus status, Long gradeTagId, Long subjectTagId, Long difficultyTagId, List<String> tagNames, String studentStatus, Pageable pageable);
 
     /**
      * Giáo viên sửa bài tập nếu chưa có học sinh nộp bài.
