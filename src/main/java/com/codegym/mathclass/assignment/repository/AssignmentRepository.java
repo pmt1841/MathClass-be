@@ -12,14 +12,23 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.time.LocalDateTime;
 
+import org.springframework.data.jpa.repository.EntityGraph;
+import java.util.Optional;
+
 public interface AssignmentRepository extends JpaRepository<Assignment, Long>, JpaSpecificationExecutor<Assignment> {
 
+    @Override
+    @EntityGraph(attributePaths = {"assignmentTags", "assignmentTags.tag"})
+    Optional<Assignment> findById(Long id);
+
+    @EntityGraph(attributePaths = {"assignmentTags", "assignmentTags.tag"})
     List<Assignment> findByTeacherId(long teacherId);
 
     /**
      * Lấy assignments theo danh sách IDs, chỉ trả về những bài thuộc về teacherId.
      * Dùng để validate ownership trong publishAssignmentSheet.
      */
+    @EntityGraph(attributePaths = {"assignmentTags", "assignmentTags.tag"})
     List<Assignment> findAllByIdInAndTeacherId(List<Long> ids, long teacherId);
 
 
@@ -30,6 +39,9 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long>, J
     Page<Assignment> findByClassroom_ClassCodeAndStatus(String classCode, AssignmentStatus status, Pageable pageable);
 
     List<Assignment> findByParentId(Long parentId);
+
+    @EntityGraph(attributePaths = {"classroom"})
+    List<Assignment> findByParentIdIn(java.util.Collection<Long> parentIds);
 
     List<Assignment> findByAssignmentSheetId(Long assignmentSheetId);
 

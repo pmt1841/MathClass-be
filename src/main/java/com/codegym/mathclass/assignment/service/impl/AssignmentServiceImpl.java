@@ -114,7 +114,11 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         updateDrawings(assignment, request.getDrawings());
         updateImages(assignment, request.getImages());
-        tagService.replaceTags(assignment, request.getTagIds());
+        if (request.getTagNames() != null) {
+            tagService.replaceTagsByName(assignment, request.getTagNames());
+        } else {
+            tagService.replaceTags(assignment, request.getTagIds());
+        }
         if (assignment.getVisibility() == AssignmentVisibility.PUBLIC) {
             tagService.requireCompletePublicTags(assignment);
         }
@@ -335,28 +339,51 @@ public class AssignmentServiceImpl implements AssignmentService {
                 pageable.getPageSize(), sort);
 
         Page<Assignment> assignments = assignmentRepository.findAll(spec, sortedPageable);
+        if (assignments.isEmpty()) {
+            return Page.empty(sortedPageable);
+        }
+
+        // Batch pre-fetch clones for TEACHER to eliminate N+1 queries
+        java.util.Map<Long, List<String>> cloneClassCodesMap = new java.util.HashMap<>();
+        if (Role.TEACHER.name().equals(role)) {
+            List<Long> parentIds = assignments.getContent().stream().map(Assignment::getId).toList();
+            List<Assignment> clones = assignmentRepository.findByParentIdIn(parentIds);
+            for (Assignment clone : clones) {
+                if (clone.getParentId() != null && clone.getClassroom() != null) {
+                    cloneClassCodesMap.computeIfAbsent(clone.getParentId(), k -> new java.util.ArrayList<>())
+                            .add(clone.getClassroom().getClassCode());
+                }
+            }
+        }
+
+        // Batch pre-fetch submissions for STUDENT to eliminate N+1 queries
+        java.util.Map<Long, com.codegym.mathclass.submission.entity.Submission> submissionMap = new java.util.HashMap<>();
+        if (Role.STUDENT.name().equals(role)) {
+            List<Long> assignmentIds = assignments.getContent().stream().map(Assignment::getId).toList();
+            List<com.codegym.mathclass.submission.entity.Submission> submissions = submissionRepository.findAllByAssignmentIdInAndStudentId(assignmentIds, userId);
+            for (com.codegym.mathclass.submission.entity.Submission sub : submissions) {
+                submissionMap.putIfAbsent(sub.getAssignment().getId(), sub);
+            }
+        }
+
         return assignments.map(assignment -> {
             AssignmentResponse response = assignmentMapper.toAssignmentResponseWithoutContent(assignment);
             if (Role.TEACHER.name().equals(role)) {
-                List<Assignment> clones = assignmentRepository.findByParentId(assignment.getId());
-                List<String> publishedCodes = clones.stream()
-                        .filter(c -> c.getClassroom() != null)
-                        .map(c -> c.getClassroom().getClassCode())
-                        .distinct()
-                        .collect(java.util.stream.Collectors.toList());
+                List<String> rawCodes = cloneClassCodesMap.getOrDefault(assignment.getId(), java.util.Collections.emptyList());
+                List<String> publishedCodes = new java.util.ArrayList<>(rawCodes.stream().distinct().toList());
                 if (assignment.getClassroom() != null && !publishedCodes.contains(assignment.getClassroom().getClassCode())) {
                     publishedCodes.add(assignment.getClassroom().getClassCode());
                 }
                 response.setPublishedClassCodes(publishedCodes);
             }
             if (Role.STUDENT.name().equals(role)) {
-                submissionRepository.findFirstByAssignmentIdAndStudentId(assignment.getId(), userId)
-                        .ifPresent(sub -> {
-                            response.setSubmissionStatus(sub.getStatus().name());
-                            response.setSubmissionCreatedAt(sub.getCreatedAt());
-                            response.setSubmissionUpdatedAt(sub.getUpdatedAt());
-                            response.setSubmissionScore(sub.getScore());
-                        });
+                com.codegym.mathclass.submission.entity.Submission sub = submissionMap.get(assignment.getId());
+                if (sub != null) {
+                    response.setSubmissionStatus(sub.getStatus().name());
+                    response.setSubmissionCreatedAt(sub.getCreatedAt());
+                    response.setSubmissionUpdatedAt(sub.getUpdatedAt());
+                    response.setSubmissionScore(sub.getScore());
+                }
             }
             return response;
         });
@@ -453,17 +480,29 @@ public class AssignmentServiceImpl implements AssignmentService {
         // 5. Xử lý theo trạng thái
         if (assignment.getStatus() == AssignmentStatus.DRAFT) {
             updateDraftAssignment(assignment, request);
-            tagService.replaceTags(assignment, request.getTagIds());
+            if (request.getTagNames() != null) {
+                tagService.replaceTagsByName(assignment, request.getTagNames());
+            } else {
+                tagService.replaceTags(assignment, request.getTagIds());
+            }
             validatePublicTags(assignment);
             assignmentRepository.save(assignment);
         } else if (assignment.getStatus() == AssignmentStatus.ARCHIVED) {
             updateArchivedAssignment(assignment, request);
-            tagService.replaceTags(assignment, request.getTagIds());
+            if (request.getTagNames() != null) {
+                tagService.replaceTagsByName(assignment, request.getTagNames());
+            } else {
+                tagService.replaceTags(assignment, request.getTagIds());
+            }
             validatePublicTags(assignment);
             assignmentRepository.save(assignment);
         } else if (assignment.getStatus() == AssignmentStatus.PUBLISHED) {
             updatePublishedAssignment(assignment, request);
-            tagService.replaceTags(assignment, request.getTagIds());
+            if (request.getTagNames() != null) {
+                tagService.replaceTagsByName(assignment, request.getTagNames());
+            } else {
+                tagService.replaceTags(assignment, request.getTagIds());
+            }
             validatePublicTags(assignment);
             assignmentRepository.save(assignment);
         }

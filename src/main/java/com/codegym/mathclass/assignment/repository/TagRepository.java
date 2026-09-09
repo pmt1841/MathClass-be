@@ -10,7 +10,12 @@ import java.util.Optional;
 
 public interface TagRepository extends JpaRepository<Tag, Long> {
     List<Tag> findByActiveTrueOrderByTypeAscNameAsc();
+    List<Tag> findByActiveTrueOrderByNameAsc();
+    List<Tag> findTop30ByActiveTrueOrderByNameAsc();
     List<Tag> findByActiveTrueAndTypeOrderByNameAsc(TagType type);
+    List<Tag> findByActiveTrueAndNameContainingIgnoreCaseOrderByNameAsc(String name);
     List<Tag> findByIdInAndActiveTrue(Collection<Long> ids);
     Optional<Tag> findByTypeAndName(TagType type, String name);
+    Optional<Tag> findByNameIgnoreCase(String name);
+    List<Tag> findByNameInIgnoreCase(Collection<String> names);
 }

@@ -32,17 +32,29 @@ public class TagServiceImpl implements TagService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<TagResponse> searchTags(String query) {
+        List<Tag> tags;
+        if (query == null || query.trim().isEmpty()) {
+            tags = tagRepository.findTop30ByActiveTrueOrderByNameAsc();
+        } else {
+            tags = tagRepository.findByActiveTrueAndNameContainingIgnoreCaseOrderByNameAsc(query.trim());
+        }
+        return tags.stream().map(TagResponse::fromEntity).toList();
+    }
+
+    @Override
     public void replaceTags(Assignment assignment, List<Long> tagIds) {
         if (tagIds == null) {
             return;
         }
-        if (tagIds.size() > TagType.values().length || tagIds.stream().anyMatch(id -> id == null)
+        if (tagIds.stream().anyMatch(id -> id == null)
                 || new HashSet<>(tagIds).size() != tagIds.size()) {
             throw new BadRequestException("Danh sách tag không hợp lệ");
         }
         List<Tag> tags = tagRepository.findByIdInAndActiveTrue(tagIds);
-        if (tags.size() != tagIds.size() || tags.stream().map(Tag::getType).distinct().count() != tags.size()) {
-            throw new BadRequestException("Tag không tồn tại, đã ngừng hoạt động hoặc bị trùng nhóm");
+        if (tags.size() != tagIds.size()) {
+            throw new BadRequestException("Tag không tồn tại hoặc đã ngừng hoạt động");
         }
         assignment.getAssignmentTags().clear();
         entityManager.flush();
@@ -52,10 +64,46 @@ public class TagServiceImpl implements TagService {
     }
 
     @Override
+    public void replaceTagsByName(Assignment assignment, List<String> tagNames) {
+        if (tagNames == null) {
+            return;
+        }
+        Set<String> uniqueNames = new java.util.LinkedHashSet<>();
+        for (String name : tagNames) {
+            if (name != null && !name.trim().isEmpty()) {
+                uniqueNames.add(name.trim());
+            }
+        }
+        assignment.getAssignmentTags().clear();
+        entityManager.flush();
+
+        if (uniqueNames.isEmpty()) {
+            return;
+        }
+
+        // Batch query existing tags to eliminate N+1 queries
+        List<Tag> existingTags = tagRepository.findByNameInIgnoreCase(uniqueNames);
+        java.util.Map<String, Tag> tagMap = new java.util.HashMap<>();
+        for (Tag tag : existingTags) {
+            tagMap.put(tag.getName().toLowerCase(), tag);
+        }
+
+        for (String name : uniqueNames) {
+            Tag tag = tagMap.get(name.toLowerCase());
+            if (tag == null) {
+                tag = tagRepository.save(Tag.builder().name(name).type(TagType.CUSTOM).active(true).build());
+                tagMap.put(name.toLowerCase(), tag);
+            }
+            if (tag.isActive()) {
+                assignment.getAssignmentTags().add(AssignmentTag.builder().assignment(assignment).tag(tag).build());
+            }
+        }
+    }
+
+    @Override
     public void requireCompletePublicTags(Assignment assignment) {
-        Set<TagType> types = assignment.getAssignmentTags().stream().map(link -> link.getTag().getType()).collect(java.util.stream.Collectors.toSet());
-        if (types.size() != TagType.values().length || !types.containsAll(Set.of(TagType.values()))) {
-            throw new BadRequestException("Cần chọn Khối lớp, Phân môn và Độ khó trước khi chia sẻ vào Thư viện cộng đồng.");
+        if (assignment.getAssignmentTags() == null || assignment.getAssignmentTags().isEmpty()) {
+            throw new BadRequestException("Bài tập cần có ít nhất 1 tag trước khi công khai lên Thư viện cộng đồng.");
         }
     }
 
@@ -75,21 +123,21 @@ public class TagServiceImpl implements TagService {
         if (gradeTagId != null) {
             Tag tag = tagRepository.findById(gradeTagId)
                     .orElseThrow(() -> new BadRequestException("Tag khối lớp không tồn tại"));
-            if (!tag.isActive() || tag.getType() != TagType.GRADE) {
+            if (!tag.isActive()) {
                 throw new BadRequestException("Tag khối lớp không hợp lệ hoặc không còn hoạt động");
             }
         }
         if (subjectTagId != null) {
             Tag tag = tagRepository.findById(subjectTagId)
                     .orElseThrow(() -> new BadRequestException("Tag phân môn không tồn tại"));
-            if (!tag.isActive() || tag.getType() != TagType.SUBJECT) {
+            if (!tag.isActive()) {
                 throw new BadRequestException("Tag phân môn không hợp lệ hoặc không còn hoạt động");
             }
         }
         if (difficultyTagId != null) {
             Tag tag = tagRepository.findById(difficultyTagId)
                     .orElseThrow(() -> new BadRequestException("Tag độ khó không tồn tại"));
-            if (!tag.isActive() || tag.getType() != TagType.DIFFICULTY) {
+            if (!tag.isActive()) {
                 throw new BadRequestException("Tag độ khó không hợp lệ hoặc không còn hoạt động");
             }
         }

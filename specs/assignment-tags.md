@@ -1,216 +1,170 @@
-# Đặc tả Backend: Tag cho bài tập
+# Spec: Hệ thống Dynamic Tag Bài tập (Dynamic Assignment Tag System)
 
-## Feature
+## 1. Objective (Mục tiêu)
 
-Cho phép giáo viên gắn tag cho bài tập lẻ (`Assignment`) để phân loại, tìm
-kiếm và tái sử dụng. Đợt đầu không gắn tag trực tiếp cho phiếu bài tập
-(`AssignmentSheet`).
+Tính năng này nhằm thiết kế lại hệ thống Gắn nhãn / Phân loại bài tập cho vai trò **Giáo viên** trong hệ thống `MathClass-service`.
+* Chuyển đổi từ cơ chế phân loại 3 nhóm cố định (*Khối lớp, Phân môn, Độ khó*) sang **Hệ thống Dynamic Tag linh hoạt** (cho phép nhập chuỗi tag tự do như `#Lớp_10`, `#Bất_đẳng_thức`, `#Kiểm_tra_15p`).
+* **Tự động lưu & Tra cứu gợi ý (Autocomplete Search)**: Khi giáo viên gõ ký tự vào ô nhập tag (ví dụ: `L`, `10`), hệ thống tra cứu và xổ gợi ý danh sách các tag đã tồn tại từ CSDL. Các tag mới được nhập lần đầu sẽ tự động lưu vào CSDL cho các lần gợi ý sau.
+* **Quy tắc gắn tag linh hoạt (Phương án B)**: Tag **không bắt buộc** khi tạo bài nháp thủ công, sinh bài AI hoặc bóc tách file DOCX/PDF. Tuy nhiên, bài tập **bắt buộc phải có tối thiểu 1 tag** khi gạt công khai lên Thư viện cộng đồng (`PUBLIC`).
+* **Cho phép sửa tag bài PUBLIC**: Giáo viên có thể trực tiếp thêm/xóa tag của bài tập ngay cả khi bài tập đang ở trạng thái `PUBLIC`. Tag mới được đồng bộ tức thì sang Thư viện cộng đồng.
 
-Ba nhóm tag cố định:
+---
 
-- Khối lớp: `10`, `11`, `12`.
-- Phân môn: `Đại số`, `Hình học`.
-- Độ khó: `Dễ`, `Vừa`, `Khó`.
+## 2. Tech Stack & Environment
 
-Tag là tùy chọn trong kho cá nhân. Bài chia sẻ vào Thư viện cộng đồng
-(`visibility = PUBLIC`) phải có đủ một tag của mỗi nhóm.
+* **Language & Framework**: Java 21, Spring Boot 4.1.0, Spring Data JPA.
+* **Database**: PostgreSQL 16 (chạy trong Docker container `mathclass-db`).
+* **Security**: Spring Security (Phân quyền theo **Permission/Authority** thông qua `@PreAuthorize("hasAuthority(...)")`).
 
-## Business Goal
+---
 
-- Giúp giáo viên tổ chức kho bài theo khối lớp, phân môn và độ khó.
-- Cho phép tìm nhanh bài phù hợp để giao, đưa vào phiếu hoặc tái sử dụng.
-- Đảm bảo bài trong Thư viện cộng đồng có metadata đầy đủ và đáng tin cậy.
-- Chuẩn bị data model để Admin quản lý giá trị tag về sau mà không đổi cấu trúc
-  của `Assignment`.
+## 3. Build & Test Commands
 
-## Functional Requirements
+```bash
+# Biên dịch ứng dụng
+./gradlew build -x test
 
-- Giáo viên có thể gắn, thay đổi hoặc bỏ tag khi tạo/cập nhật bài tập lẻ.
-- Giáo viên chỉ chọn tag đang hoạt động từ danh sách hệ thống; chưa có quyền
-  tạo, sửa, xóa tag trong đợt này.
-- Một bài có tối đa một tag cho mỗi nhóm: khối lớp, phân môn, độ khó.
-- API trả danh sách/chi tiết bài phải trả các tag đã gắn.
-- API danh sách bài hỗ trợ lọc kết hợp theo cả ba nhóm tag.
-- API cung cấp danh sách tag đang hoạt động để frontend tạo bộ lọc và control
-  chọn tag.
-- Tag của bài được sao chép nguyên vẹn khi tạo master sheet, giao cho lớp, hoặc
-  clone từ Thư viện.
-- Chia sẻ ra Thư viện bị từ chối nếu bài thiếu bất kỳ nhóm tag bắt buộc nào.
+# Chạy Unit & Integration Tests
+./gradlew test
 
-## Business Rules
+# Chạy ứng dụng local
+./gradlew bootRun
 
-- Tag chỉ gắn trực tiếp với `Assignment`; phiếu không có tag riêng trong scope
-  này.
-- Bài cũ, bài nháp và bài trong kho riêng có thể thiếu tag. Không backfill tự
-  động dữ liệu cũ.
-- Tag được chọn phải tồn tại và `active = true`.
-- Không được gắn trùng `tagId`, hoặc hai tag cùng `type` cho một bài.
-- Bài `PUBLIC` bắt buộc có đúng một `GRADE`, một `SUBJECT`, một `DIFFICULTY`.
-- Rule public được kiểm tra lúc tạo, cập nhật, và `PATCH` visibility.
-- Bản clone là snapshot: đổi tag bài nguồn không làm đổi tag bản đã giao,
-  master sheet, hay bài do giáo viên khác clone.
-- Nhiều filter tag dùng phép AND: bài trả về phải khớp mọi filter được gửi.
-- Seed tag là dữ liệu hệ thống; Admin CRUD tag là scope đợt sau.
-
-## Data Model
-
-Dùng hai bảng mới. Không tạo bảng `tag_types`; `type` là enum cố định vì mới
-có ba nhóm ít thay đổi.
-
-### Bảng `tags`
-
-| Cột | Kiểu | Ràng buộc | Mô tả |
-| --- | --- | --- | --- |
-| `id` | bigint | PK | ID tag |
-| `name` | varchar | not null | Tên hiển thị |
-| `type` | enum/varchar | not null | `GRADE`, `SUBJECT`, `DIFFICULTY` |
-| `active` | boolean | not null, default true | Có được gắn mới không |
-| `created_at`, `updated_at` | datetime | `BaseEntity` | Audit fields |
-
-Ràng buộc unique (`type`, `name`) ngăn hai tag cùng tên trong một nhóm.
-
-### Bảng `assignment_tags`
-
-| Cột | Kiểu | Ràng buộc | Mô tả |
-| --- | --- | --- | --- |
-| `assignment_id` | bigint | FK `assignments.id` | Bài được gắn tag |
-| `tag_id` | bigint | FK `tags.id` | Tag được gắn |
-
-Ràng buộc unique (`assignment_id`, `tag_id`) ngăn liên kết trùng. Rule "một tag
-mỗi type" validate tại Service vì `type` nằm trong bảng `tags`.
-
-```text
-Assignment 1 --- * AssignmentTag * --- 1 Tag
+# Khởi chạy môi trường Docker
+docker-compose up --build -d
 ```
 
-Dùng entity liên kết `AssignmentTag` thay cho `@ManyToMany` trực tiếp để dễ mở
-rộng metadata/audit sau này.
+---
 
-### Seed data
+## 4. Project Structure (Cấu trúc thư mục liên quan)
 
-| Type | Giá trị |
-| --- | --- |
-| `GRADE` | `10`, `11`, `12` |
-| `SUBJECT` | `Đại số`, `Hình học` |
-| `DIFFICULTY` | `Dễ`, `Vừa`, `Khó` |
-
-## API Contract
-
-Các route tuân theo API version hiện có của dự án.
-
-### Danh sách tag
-
-`GET /tags?type={type}`
-
-- Người dùng đã đăng nhập được phép đọc.
-- Chỉ trả tag `active = true`.
-- `type` optional: `GRADE`, `SUBJECT`, `DIFFICULTY`.
-- Response `List<TagResponse>`: `id`, `name`, `type`.
-
-### Tạo và cập nhật bài
-
-Mở rộng `POST /assignments` và `PUT /assignments/{id}`:
-
-```json
-{ "tagIds": [1, 4, 7] }
+```
+src/main/java/com/codegym/mathclass/
+├── assignment/
+│   ├── controller/
+│   │   ├── TagController.java                   # [MODIFY] REST API /api/v1/tags bổ sung query search
+│   │   └── AssignmentController.java            # [MODIFY] REST API /api/v1/assignments
+│   ├── dto/
+│   │   ├── TagResponse.java                     # Trả về thông tin tag (id, name, active)
+│   │   ├── CreateAssignmentRequest.java         # [MODIFY] Thêm List<String> tagNames
+│   │   └── UpdateAssignmentRequest.java         # [MODIFY] Thêm List<String> tagNames
+│   ├── entity/
+│   │   ├── Tag.java                             # [MODIFY] Chuyển type thành nullable / GENERAL
+│   │   ├── TagType.java                         # Enum TagType
+│   │   └── AssignmentTag.java                   # Entity liên kết (assignment_id, tag_id)
+│   ├── repository/
+│   │   ├── TagRepository.java                   # [MODIFY] Thêm query findByActiveTrueAndNameContainingIgnoreCase
+│   │   └── AssignmentTagRepository.java         # Quản lý liên kết assignment_tags
+│   └── service/
+│       ├── TagService.java                      # [MODIFY] Bổ sung replaceTagsByName, searchTags, requireCompletePublicTags
+│       └── impl/
+│           ├── TagServiceImpl.java              # [MODIFY] Xử lý logic tự động lưu tag mới & check PUBLIC (>= 1 tag)
+│           └── AssignmentServiceImpl.java       # [MODIFY] Tích hợp replaceTagsByName
 ```
 
-- `tagIds` optional.
-- Khi có mặt, đây là toàn bộ tập tag mong muốn (replace semantics).
-- Khi cập nhật mà không gửi `tagIds`, giữ tag cũ để tương thích client cũ.
-- Mảng rỗng bỏ toàn bộ tag; bị từ chối nếu bài đang/được đặt `PUBLIC`.
+---
 
-Mở rộng `AssignmentResponse`:
+## 5. Detailed Specifications & Schemas
 
+### 5.1 Data Model & Entity Specifications
+
+#### A. Bảng `tags` (Cập nhật `Tag.java`)
+* `id`: `BIGINT`, PK, Auto-increment.
+* `name`: `VARCHAR(100)`, NOT NULL, UNIQUE (Chuỗi tên tag đã được trim khoảng trắng).
+* `type`: `VARCHAR(50)`, NULLABLE (Tùy chọn, mặc định `null` hoặc `GENERAL`).
+* `active`: `BOOLEAN`, NOT NULL, Default = `true`.
+* `created_at`, `updated_at`: Thuộc tính audit từ `BaseEntity`.
+
+#### B. Bảng `assignment_tags` (Cập nhật `AssignmentTag.java`)
+* `assignment_id`: `BIGINT`, FK trỏ tới `assignments(id)`.
+* `tag_id`: `BIGINT`, FK trỏ tới `tags(id)`.
+* Ràng buộc UNIQUE (`assignment_id`, `tag_id`).
+
+---
+
+### 5.2 API Specifications & Authorization
+
+#### A. Tra cứu & Gợi ý Autocomplete Tag
+* **Endpoint**: `GET /api/v1/tags`
+* **Phân quyền**: Người dùng đã đăng nhập (`Authenticated`).
+* **Query Parameters**:
+  * `query` (String, optional): Từ khóa tìm kiếm tag (ví dụ: `lớp`, `10`).
+* **Logic xử lý**:
+  * Nếu `query` có giá trị ➔ Gọi `tagRepository.findByActiveTrueAndNameContainingIgnoreCaseOrderByNameAsc(query)`.
+  * Nếu `query` trống ➔ Trả về toàn bộ tag đang `active = true` sắp xếp theo tên.
+* **Response**: `List<TagResponse>` (`id`, `name`, `active`).
+
+#### B. Tạo mới Bài tập (kèm Tag linh hoạt)
+* **Endpoint**: `POST /api/v1/assignments`
+* **Phân quyền**: `@PreAuthorize("hasAuthority('assignment:create')")`
+* **Request Payload**:
 ```json
 {
-  "tags": [
-    { "id": 1, "name": "10", "type": "GRADE" },
-    { "id": 4, "name": "Đại số", "type": "SUBJECT" },
-    { "id": 7, "name": "Vừa", "type": "DIFFICULTY" }
-  ]
+  "title": "Bài tập Ôn tập Hàm số",
+  "content": "...",
+  "visibility": "PRIVATE",
+  "tagNames": ["Lớp 10", "Đại số", "Đồ thị"]
 }
 ```
+* **Logic xử lý**:
+  1. Tạo `Assignment` với trạng thái `visibility` tương ứng.
+  2. Nếu `visibility == PUBLIC`, gọi `tagService.requireCompletePublicTags(assignment)` ➔ Kiểm tra `tagNames` phải có ít nhất 1 tag không rỗng. Ném `BadRequestException` nếu thiếu tag.
+  3. Gọi `tagService.replaceTagsByName(assignment, request.getTagNames())`:
+     * Loại bỏ trùng lặp và trim khoảng trắng từng tên tag.
+     * Tìm tag trong DB theo tên (case-insensitive): Nếu chưa có ➔ Tự động lưu mới `Tag(name, active=true)`.
+     * Tạo liên kết trong bảng `assignment_tags`.
 
-### Cập nhật visibility
+#### C. Cập nhật Bài tập & Thẻ bài tập (kèm Tag linh hoạt)
+* **Endpoint**: `PUT /api/v1/assignments/{id}`
+* **Phân quyền**: `@PreAuthorize("hasAuthority('assignment:update')")`
+* **Logic xử lý**:
+  1. Cập nhật thông tin bài tập.
+  2. Nếu bài tập đang ở trạng thái `PUBLIC` hoặc cập nhật sang `PUBLIC`, kiểm tra bài tập phải có **tối thiểu 1 tag**.
+  3. Cho phép cập nhật danh sách tag kể cả khi bài tập đang `PUBLIC`. Khi cập nhật thành công, dữ liệu tag được đồng bộ ngay lên Thư viện cộng đồng.
 
-`PATCH /assignments/{id}/visibility` giữ payload hiện có. Nếu visibility mới là
-`PUBLIC`, Service phải kiểm tra đủ ba nhóm tag trước khi lưu.
+---
 
-### Tìm kiếm và lọc bài
+## 6. Boundaries (Ranh giới & Quy tắc)
 
-Mở rộng `GET /assignments`:
+* **Luôn làm (`Always do`)**:
+  * Chuẩn hóa tên tag (loại bỏ khoảng trắng thừa 2 đầu) trước khi lưu vào CSDL.
+  * So sánh tên tag không phân biệt hoa thường (case-insensitive) để tránh tạo tag trùng lặp (`Lớp 10` = `lớp 10`).
+  * Cho phép bài nháp/private lưu mà không cần tag.
+  * Kiểm tra ít nhất 1 tag khi bài tập ở trạng thái `PUBLIC`.
+  * Dùng `BadRequestException` kèm thông báo tiếng Việt rõ ràng khi vi phạm rule.
+* **Cần xác nhận trước (`Ask first`)**:
+  * Thay đổi cấu trúc bảng `assignment_tags`.
+* **Không bao giờ làm (`Never do`)**:
+  * Chặn giáo viên chỉnh sửa tag khi bài tập đang ở trạng thái `PUBLIC`.
+  * Xóa dữ liệu tag gốc trong CSDL khi một bài tập gỡ bỏ tag đó.
+  * Trả về HTTP 500 khi người dùng nhập tag trùng hoặc gửi mảng tag rỗng.
 
-```text
-?gradeTagId=1&subjectTagId=4&difficultyTagId=7
-```
+---
 
-- Mỗi parameter optional và phải đúng type tương ứng.
-- Kết hợp filter bằng AND; giữ nguyên `keyword`, `classCode`, `status`, phân
-  trang và phân quyền hiện có.
-- Tag ID không tồn tại, inactive hoặc sai type trả `400 Bad Request`.
+## 7. Success Criteria (Tiêu chí Nghiệm thu)
 
-## Validation
+1. [ ] API `GET /api/v1/tags?query={q}` lọc và trả về danh sách gợi ý tag chính xác theo từ khóa không phân biệt hoa thường.
+2. [ ] Gửi `tagNames` mới trong `POST /api/v1/assignments` hoặc `PUT /api/v1/assignments/{id}` tự động tạo mới `Tag` vào CSDL nếu chưa có.
+3. [ ] Bài tập trạng thái `PRIVATE` lưu thành công ngay cả khi mảng `tagNames` rỗng hoặc `null`.
+4. [ ] Bài tập chuyển sang `PUBLIC` bị từ chối với lỗi `400 Bad Request` nếu chưa có tag nào được đính kèm.
+5. [ ] Bài tập đang `PUBLIC` cập nhật tag mới thành công và hiển thị tag mới trên Thư viện cộng đồng.
+6. [ ] JUnit tests và API Integration tests bao phủ toàn bộ luồng tạo, cập nhật, autocomplete và public validation.
 
-- `tagIds` không chứa `null`, không trùng, tối đa ba ID.
-- Load toàn bộ tag bằng một query; số kết quả phải bằng số ID yêu cầu.
-- Mọi tag phải active, và type không được trùng.
-- Public yêu cầu chính xác tập type `{GRADE, SUBJECT, DIFFICULTY}`.
-- Filter tag phải tồn tại, active và đúng type của query parameter.
-- Dùng `BadRequestException`; `GlobalExceptionHandler` trả `{ "error": "..." }`.
-- Thông báo public thiếu tag: `Cần chọn Khối lớp, Phân môn và Độ khó trước khi
-  chia sẻ vào Thư viện cộng đồng.` Frontend cảnh báo sớm, BE thực thi rule cuối.
+---
 
-## Implementation Constraints
+## 8. Comprehensive Test Cases Matrix (Danh sách Test Cases kiểm thử)
 
-- Tuân thủ `Repository -> Service -> ServiceImpl -> Controller`; controller
-  không trả entity trực tiếp.
-- Entity mới kế thừa `BaseEntity`, dùng `@Table` tên số nhiều và các FK
-  `@ManyToOne(fetch = FetchType.LAZY)` phù hợp.
-- Dùng DTO riêng và `@Valid @RequestBody` ở controller.
-- Không sửa `application.properties`, `application-local.properties`, `.env`.
-- Migration/seed phải idempotent và an toàn cho database có dữ liệu cũ.
-- Tránh N+1 khi trả danh sách bài có tag và vẫn đảm bảo phân trang đúng.
-- Không hardcode ID tag trong Java.
-- Tái sử dụng Security hiện có; endpoint đọc tag yêu cầu đăng nhập.
-
-## Decisions After Implementation
-
-- Bài nguồn `ARCHIVED` trong Kho bài tập vẫn là tài sản của giáo viên và được
-  phép cập nhật tag. Bản `PUBLISHED` đã giao cho lớp là snapshot, không sửa tag
-  trực tiếp từ lớp.
-- Khi cập nhật một tập tag, phải xóa và flush các liên kết `AssignmentTag` cũ
-  trước khi thêm liên kết mới. Điều này tránh PostgreSQL unique violation cho
-  cặp (`assignment_id`, `tag_id`) khi tag không thay đổi.
-- `AssignmentResponse.fromEntity` và biến thể không content phải map `tags`.
-  Đây là điều kiện để item trong `AssignmentSheetResponse` trả đúng tag của bài
-  con.
-- Giao lại bài chỉ cho lớp chưa có clone từ bài nguồn. Lớp đã giao phải được
-  coi là read-only trong publish dialog để tránh tạo assignment trùng.
-
-## Acceptance Criteria
-
-- Tạo bài nháp không tag thành công.
-- Gắn tối đa một tag mỗi nhóm và response trả đúng tags.
-- Tag trùng, cùng nhóm, không tồn tại hoặc inactive bị từ chối với lỗi rõ ràng.
-- Bài PRIVATE được thiếu tag; chuyển PUBLIC khi thiếu tag bị từ chối đúng thông
-  báo; bài đủ ba nhóm chuyển PUBLIC thành công.
-- `GET /assignments` lọc đúng từng tag và nhiều tag bằng AND, không làm sai
-  phân trang/phân quyền.
-- `GET /tags` trả tag seed active và lọc được theo type.
-- Tags được sao chép khi publish bài, tạo/publish sheet và clone từ Thư viện.
-- Đổi tag bài nguồn không đổi tags của clone đã tồn tại.
-- Unit test và controller test bao phủ happy path, validation, public rule.
-
-## Task Checklist
-
-- [ ] Kiểm tra convention migration/seed hiện có và chọn cách seed idempotent.
-- [ ] Tạo `TagType`, `Tag`, `AssignmentTag` entities và repositories.
-- [ ] Tạo `TagResponse`; mở rộng DTO create/update/response của Assignment.
-- [ ] Cập nhật mapper để trả tag trong `AssignmentResponse`.
-- [ ] Implement Service validation, replace semantics và public rule.
-- [ ] Sao chép tags tại toàn bộ helper clone assignment hiện có.
-- [ ] Thêm `GET /tags` và filter tag vào `GET /assignments`.
-- [ ] Viết/cập nhật test Service, Controller, Repository/Specification.
-- [ ] Chạy `./gradlew test`, sau đó `./gradlew build`.
-- [ ] Cập nhật API reference/Postman nếu các tài liệu đó đang được duy trì.
+| Mã TC | Phân loại | Tên Test Case | Điều kiện đầu vào / Bước thực hiện | Kết quả mong đợi (Expected Outcome) |
+| :--- | :--- | :--- | :--- | :--- |
+| **TC01** | **Autocomplete** | Tìm kiếm tag theo từ khóa khớp 1 phần | Gọi `GET /api/v1/tags?query=lớp`. | Trả về danh sách các tag chứa từ "lớp" (ví dụ: `Lớp 10`, `Lớp 11`). |
+| **TC02** | **Autocomplete** | Tìm kiếm tag với từ khóa viết hoa/thường | Gọi `GET /api/v1/tags?query=ĐẠI+SỐ`. | Trả về tag `Đại số` (không phân biệt hoa thường). |
+| **TC03** | **Autocomplete** | Tìm kiếm tag không có kết quả | Gọi `GET /api/v1/tags?query=xyz123`. | Trả về mảng rỗng `[]` (HTTP 200 OK). |
+| **TC04** | **Create Assignment** | Tạo bài nháp `PRIVATE` không đính kèm tag | Gửi `POST /api/v1/assignments` với `visibility = PRIVATE` và `tagNames = []`. | Tạo bài tập thành công (HTTP 201 Created), không bị chặn validation. |
+| **TC05** | **Create Assignment** | Tạo bài nháp kèm tag hoàn toàn mới | Gửi `POST /api/v1/assignments` với `tagNames = ["Bất đẳng thức Cosi"]`. | Bài tập được lưu, tag `Bất đẳng thức Cosi` tự động tạo mới trong bảng `tags`. |
+| **TC06** | **Create Assignment** | Tạo bài `PUBLIC` không có tag | Gửi `POST /api/v1/assignments` với `visibility = PUBLIC` và `tagNames = []`. | Trả về lỗi `400 Bad Request`: "Bài tập cần có ít nhất 1 tag trước khi công khai lên Thư viện cộng đồng." |
+| **TC07** | **Create Assignment** | Tạo bài `PUBLIC` có 1 tag trở lên | Gửi `POST /api/v1/assignments` với `visibility = PUBLIC` và `tagNames = ["Lớp 10"]`. | Tạo bài tập công khai thành công (HTTP 201 Created). |
+| **TC08** | **Update Tag** | Cập nhật tag cho bài tập `PRIVATE` | Gọi `PUT /api/v1/assignments/{id}` gửi `tagNames = ["Hình học", "Lớp 11"]`. | Bài tập được cập nhật lại danh sách tag tương ứng. |
+| **TC09** | **Update Tag (Public)** | Cập nhật tag trực tiếp cho bài tập đang `PUBLIC` | Gọi `PUT /api/v1/assignments/{id}` của bài `PUBLIC` với `tagNames = ["Đại số 12"]`. | Cập nhật tag thành công (HTTP 200 OK). Bài tập trong Thư viện hiển thị tag `Đại số 12`. |
+| **TC10** | **Update Tag (Public)** | Gỡ bỏ toàn bộ tag của bài tập đang `PUBLIC` | Gọi `PUT /api/v1/assignments/{id}` của bài `PUBLIC` với `tagNames = []`. | Trả về lỗi `400 Bad Request` do vi phạm quy tắc tối thiểu 1 tag khi công khai. |
+| **TC11** | **Normalization** | Nhập tag có khoảng trắng thừa và ký tự hoa thường | Gửi `tagNames = ["  Lớp 10  ", "đại số"]`. | CSDL lưu tag chuẩn hóa dạng `Lớp 10` và `đại số`, không bị trùng lặp. |
+| **TC12** | **Authorization** | Đăng nhập tài khoản Học sinh gọi API lấy danh sách tag | Gọi `GET /api/v1/tags` bằng token vai trò `STUDENT`. | Phản hồi `200 OK` và trả về danh sách tag active. |
