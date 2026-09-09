@@ -33,9 +33,9 @@ public interface CreditPurchaseOrderRepository extends JpaRepository<CreditPurch
                                           @Param("startDate") LocalDateTime startDate,
                                           @Param("endDate") LocalDateTime endDate);
 
-    long countByStatusAndPaidAtBetween(CreditPurchaseOrderStatus status,
-                                       LocalDateTime startDate,
-                                       LocalDateTime endDate);
+    long countByStatusAndPaidAtGreaterThanEqualAndPaidAtLessThan(CreditPurchaseOrderStatus status,
+                                                                 LocalDateTime startDate,
+                                                                 LocalDateTime endDate);
 
     @Query("SELECT o.packageId, COUNT(o) FROM CreditPurchaseOrder o WHERE o.status = :status GROUP BY o.packageId")
     List<Object[]> countPurchasesByPackage(@Param("status") CreditPurchaseOrderStatus status);

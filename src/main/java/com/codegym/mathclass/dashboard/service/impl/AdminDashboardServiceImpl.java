@@ -124,7 +124,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         }
         double roundedGrowth = Math.round(growth * 10.0) / 10.0;
 
-        long successfulOrdersCount = creditPurchaseOrderRepository.countByStatusAndPaidAtBetween(
+        long successfulOrdersCount = creditPurchaseOrderRepository.countByStatusAndPaidAtGreaterThanEqualAndPaidAtLessThan(
                 CreditPurchaseOrderStatus.SUCCESS, startDate, endDate);
 
         return RevenueStatsResponse.builder()

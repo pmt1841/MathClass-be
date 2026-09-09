@@ -132,7 +132,7 @@ class AdminDashboardServiceImplTest {
         when(creditPurchaseOrderRepository.sumPriceByStatusAndPaidAtBetween(eq(CreditPurchaseOrderStatus.SUCCESS), any(), any()))
                 .thenReturn(5000000L)
                 .thenReturn(4000000L);
-        when(creditPurchaseOrderRepository.countByStatusAndPaidAtBetween(eq(CreditPurchaseOrderStatus.SUCCESS), any(), any()))
+        when(creditPurchaseOrderRepository.countByStatusAndPaidAtGreaterThanEqualAndPaidAtLessThan(eq(CreditPurchaseOrderStatus.SUCCESS), any(), any()))
                 .thenReturn(25L);
 
         // Mock Bug reports
@@ -234,7 +234,7 @@ class AdminDashboardServiceImplTest {
         when(creditPurchaseOrderRepository.sumPriceByStatusAndPaidAtBetween(eq(CreditPurchaseOrderStatus.SUCCESS), any(), any()))
                 .thenReturn(3000000L)
                 .thenReturn(2000000L);
-        when(creditPurchaseOrderRepository.countByStatusAndPaidAtBetween(eq(CreditPurchaseOrderStatus.SUCCESS), any(), any()))
+        when(creditPurchaseOrderRepository.countByStatusAndPaidAtGreaterThanEqualAndPaidAtLessThan(eq(CreditPurchaseOrderStatus.SUCCESS), any(), any()))
                 .thenReturn(15L);
         when(creditTransactionRepository.countAiCallsAndFailuresByTaskAndCreatedAtBetween(any(), any()))
                 .thenReturn(Collections.emptyList());
