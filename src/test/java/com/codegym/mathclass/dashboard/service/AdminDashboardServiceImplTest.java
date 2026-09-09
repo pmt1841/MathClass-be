@@ -268,4 +268,93 @@ class AdminDashboardServiceImplTest {
         assertThat(response.getRecentSystemLogs()).isEmpty();
         assertThat(response.getRecentBugReports()).isEmpty();
     }
+
+    @Test
+    @DisplayName("UT-ADMIN-DASH-03: Tính % tăng trưởng doanh thu khi tháng trước = 0, tháng này > 0 (kỳ vọng 100.0%)")
+    void testRevenueGrowth_LastMonthZero_CurrentMonthPositive() {
+        mockDefaultEmptyStats();
+        when(creditPurchaseOrderRepository.sumPriceByStatusAndPaidAtBetween(eq(CreditPurchaseOrderStatus.SUCCESS), any(), any()))
+                .thenReturn(5000000L) // Tháng này
+                .thenReturn(0L);       // Tháng trước
+
+        AdminDashboardStatsResponse response = adminDashboardService.getAdminDashboardStats(9, 2026);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getRevenueStats().getMonthlyRevenue()).isEqualTo(5000000L);
+        assertThat(response.getRevenueStats().getGrowthPercentage()).isEqualTo(100.0);
+    }
+
+    @Test
+    @DisplayName("UT-ADMIN-DASH-04: Tính % tăng trưởng doanh thu khi cả 2 tháng = 0 (kỳ vọng 0.0%)")
+    void testRevenueGrowth_BothMonthsZero() {
+        mockDefaultEmptyStats();
+        when(creditPurchaseOrderRepository.sumPriceByStatusAndPaidAtBetween(eq(CreditPurchaseOrderStatus.SUCCESS), any(), any()))
+                .thenReturn(0L) // Tháng này
+                .thenReturn(0L); // Tháng trước
+
+        AdminDashboardStatsResponse response = adminDashboardService.getAdminDashboardStats(9, 2026);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getRevenueStats().getMonthlyRevenue()).isEqualTo(0L);
+        assertThat(response.getRevenueStats().getGrowthPercentage()).isEqualTo(0.0);
+    }
+
+    @Test
+    @DisplayName("UT-ADMIN-DASH-05: Tính % tăng trưởng doanh thu âm khi tháng này giảm so với tháng trước (kỳ vọng -25.5%)")
+    void testRevenueGrowth_NegativeGrowth() {
+        mockDefaultEmptyStats();
+        // (14,900,000 - 20,000,000) / 20,000,000 * 100 = -25.5%
+        when(creditPurchaseOrderRepository.sumPriceByStatusAndPaidAtBetween(eq(CreditPurchaseOrderStatus.SUCCESS), any(), any()))
+                .thenReturn(14900000L) // Tháng này
+                .thenReturn(20000000L); // Tháng trước
+
+        AdminDashboardStatsResponse response = adminDashboardService.getAdminDashboardStats(9, 2026);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getRevenueStats().getMonthlyRevenue()).isEqualTo(14900000L);
+        assertThat(response.getRevenueStats().getGrowthPercentage()).isEqualTo(-25.5);
+    }
+
+    @Test
+    @DisplayName("UT-ADMIN-DASH-06: Phòng vệ tham số đầu vào khi month = null, year = null (kỳ vọng tự fallback về hiện tại)")
+    void testParameterFallback_NullInputs() {
+        mockDefaultEmptyStats();
+
+        AdminDashboardStatsResponse response = adminDashboardService.getAdminDashboardStats(null, null);
+
+        java.time.LocalDate now = java.time.LocalDate.now();
+        assertThat(response).isNotNull();
+        assertThat(response.getSelectedMonth()).isEqualTo(now.getMonthValue());
+        assertThat(response.getSelectedYear()).isEqualTo(now.getYear());
+    }
+
+    @Test
+    @DisplayName("UT-ADMIN-DASH-07: Phòng vệ tham số đầu vào khi month = 15, year = 1990 (kỳ vọng tự đưa về tháng/năm hợp lệ)")
+    void testParameterFallback_InvalidInputs() {
+        mockDefaultEmptyStats();
+
+        AdminDashboardStatsResponse response = adminDashboardService.getAdminDashboardStats(15, 1990);
+
+        java.time.LocalDate now = java.time.LocalDate.now();
+        assertThat(response).isNotNull();
+        assertThat(response.getSelectedMonth()).isEqualTo(now.getMonthValue());
+        assertThat(response.getSelectedYear()).isEqualTo(now.getYear());
+    }
+
+    private void mockDefaultEmptyStats() {
+        when(userRepository.countByCreatedAtLessThan(any())).thenReturn(0L);
+        when(userRepository.countByRoleAndCreatedAtLessThan(any(), any())).thenReturn(0L);
+        when(userRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any())).thenReturn(0L);
+        when(classroomRepository.countByCreatedAtLessThan(any())).thenReturn(0L);
+        when(bugReportRepository.countByStatusAndCreatedAtLessThan(any(), any())).thenReturn(0L);
+        when(creditPurchaseOrderRepository.countByStatusAndPaidAtGreaterThanEqualAndPaidAtLessThan(any(), any(), any())).thenReturn(0L);
+        when(creditTransactionRepository.countAiCallsAndFailuresByTaskAndCreatedAtBetween(any(), any())).thenReturn(Collections.emptyList());
+        when(creditPackageRepository.findAll()).thenReturn(Collections.emptyList());
+        when(creditPurchaseOrderRepository.countPurchasesByPackageAndPaidAtBetween(any(), any(), any())).thenReturn(Collections.emptyList());
+        when(creditPurchaseOrderRepository.findByStatusAndPaidAtBetweenOrderByPaidAtDesc(any(), any(), any(), any())).thenReturn(Collections.emptyList());
+        when(userRepository.countNewUsersByMonthOfYear(any(), any())).thenReturn(Collections.emptyList());
+        when(creditPurchaseOrderRepository.sumRevenueByMonthOfYear(any(), any())).thenReturn(Collections.emptyList());
+        when(systemLogRepository.findTop5ByOrderByCreatedAtDesc()).thenReturn(Collections.emptyList());
+        when(bugReportRepository.findTop5ByOrderByCreatedAtDesc()).thenReturn(Collections.emptyList());
+    }
 }
