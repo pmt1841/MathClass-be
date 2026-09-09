@@ -1,11 +1,15 @@
 package com.codegym.mathclass.classroom.service;
 
+import com.codegym.mathclass.ai.strategy.parser.AiResponseParser;
+import com.codegym.mathclass.ai.strategy.parser.AiResponseParserFactory;
+import com.codegym.mathclass.ai.strategy.parser.AiResponseType;
 import com.codegym.mathclass.aiconfig.entity.SystemPrompt;
 import com.codegym.mathclass.aiconfig.repository.SystemPromptRepository;
 import com.codegym.mathclass.aiconfig.service.AiPromptExecutionService;
 import com.codegym.mathclass.aiconfig.strategy.AiExecutionResult;
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.repository.AssignmentRepository;
+import com.codegym.mathclass.classroom.dto.AiRemarkJsonResult;
 import com.codegym.mathclass.classroom.dto.AiStudentRemarkEvaluateRequest;
 import com.codegym.mathclass.classroom.dto.AiStudentRemarkEvaluationResponse;
 import com.codegym.mathclass.classroom.entity.Classroom;
@@ -19,10 +23,6 @@ import com.codegym.mathclass.submission.repository.SubmissionRepository;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.AiResponseUtils;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -50,7 +50,7 @@ public class StudentRemarkAiServiceImpl implements StudentRemarkAiService {
     private final SubmissionRepository submissionRepository;
     private final SystemPromptRepository systemPromptRepository;
     private final AiPromptExecutionService aiPromptExecutionService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final AiResponseParserFactory aiResponseParserFactory;
 
     @Override
     public AiStudentRemarkEvaluationResponse evaluateStudentProgress(
@@ -264,13 +264,25 @@ public class StudentRemarkAiServiceImpl implements StudentRemarkAiService {
             return fallbackResult(startDateStr, endDateStr, total, completed, "AI không trả về nội dung đánh giá.");
         }
         try {
-            String cleanJson = AiResponseUtils.extractCleanJson(rawOutput);
-            return objectMapper.readValue(cleanJson, AiRemarkJsonResult.class);
+            AiResponseParser<AiRemarkJsonResult> parser = aiResponseParserFactory.getParser(AiResponseType.REMARK);
+            AiRemarkJsonResult parsed = parser.parse(rawOutput);
+            if (parsed != null) {
+                if (parsed.getStrengths() == null || parsed.getStrengths().isBlank()) {
+                    parsed.setStrengths("Chưa có thông tin điểm mạnh cụ thể.");
+                }
+                if (parsed.getWeaknesses() == null || parsed.getWeaknesses().isBlank()) {
+                    parsed.setWeaknesses("Chưa có thông tin điểm yếu cụ thể.");
+                }
+                if (parsed.getGeneralAssessment() == null || parsed.getGeneralAssessment().isBlank()) {
+                    parsed.setGeneralAssessment(String.format("Trong khoảng thời gian từ %s đến %s, học sinh đã hoàn thành %d/%d bài tập được giao.", startDateStr, endDateStr, completed, total));
+                }
+                return parsed;
+            }
         } catch (Exception e) {
-            log.warn("Không parse được JSON từ AI response, sử dụng raw text làm fallback: {}", e.getMessage());
-            String cleanText = AiResponseUtils.stripMarkdownFences(rawOutput);
-            return fallbackResult(startDateStr, endDateStr, total, completed, cleanText);
+            log.warn("Không parse được JSON từ AI response qua Strategy, sử dụng raw text làm fallback: {}", e.getMessage());
         }
+        String cleanText = AiResponseUtils.stripMarkdownFences(rawOutput);
+        return fallbackResult(startDateStr, endDateStr, total, completed, cleanText);
     }
 
     private AiRemarkJsonResult fallbackResult(String startDateStr, String endDateStr, int total, int completed, String defaultText) {
@@ -282,18 +294,5 @@ public class StudentRemarkAiServiceImpl implements StudentRemarkAiService {
                 startDateStr, endDateStr, completed, total, defaultText
         ));
         return res;
-    }
-
-    @Data
-    @NoArgsConstructor
-    public static class AiRemarkJsonResult {
-        @JsonProperty("strengths")
-        private String strengths;
-
-        @JsonProperty("weaknesses")
-        private String weaknesses;
-
-        @JsonProperty("generalAssessment")
-        private String generalAssessment;
     }
 }

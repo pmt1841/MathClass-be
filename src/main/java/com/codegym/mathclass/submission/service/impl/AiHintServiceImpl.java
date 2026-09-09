@@ -1,5 +1,8 @@
 package com.codegym.mathclass.submission.service.impl;
 
+import com.codegym.mathclass.ai.strategy.parser.AiResponseParser;
+import com.codegym.mathclass.ai.strategy.parser.AiResponseParserFactory;
+import com.codegym.mathclass.ai.strategy.parser.AiResponseType;
 import com.codegym.mathclass.aiconfig.dto.request.RenderPromptRequest;
 import com.codegym.mathclass.aiconfig.dto.response.RenderPromptResponse;
 import com.codegym.mathclass.aiconfig.service.AiPromptExecutionService;
@@ -25,9 +28,6 @@ import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.AiResponseUtils;
 import com.codegym.mathclass.utils.LaTeXSanitizer;
-import com.fasterxml.jackson.core.json.JsonReadFeature;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -37,8 +37,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -52,10 +50,7 @@ public class AiHintServiceImpl implements AiHintService {
     private final UserRepository userRepository;
     private final AiPromptExecutionService aiPromptExecutionService;
     private final PromptRenderService promptRenderService;
-    private final ObjectMapper objectMapper = new ObjectMapper()
-            .configure(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS.mappedFeature(), true)
-            .configure(JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER.mappedFeature(), true)
-            .configure(JsonReadFeature.ALLOW_TRAILING_COMMA.mappedFeature(), true);
+    private final AiResponseParserFactory aiResponseParserFactory;
 
     private static final int MAX_HINTS = 3;
 
@@ -199,30 +194,15 @@ public class AiHintServiceImpl implements AiHintService {
         if (rawContent == null || rawContent.isBlank()) {
             return "";
         }
-        String extracted = rawContent;
         try {
-            String cleanJson = AiResponseUtils.extractCleanJson(rawContent);
-            JsonNode root = objectMapper.readTree(cleanJson);
-
-            if (root.hasNonNull("hintContent")) {
-                extracted = root.get("hintContent").asText();
-            } else if (root.hasNonNull("hint")) {
-                extracted = root.get("hint").asText();
+            AiResponseParser<StudentHintResponse> parser = aiResponseParserFactory.getParser(AiResponseType.HINT);
+            StudentHintResponse hintResponse = parser.parse(rawContent);
+            if (hintResponse != null && hintResponse.getHintContent() != null && !hintResponse.getHintContent().isBlank()) {
+                return LaTeXSanitizer.normalizeKatexDelimiters(hintResponse.getHintContent());
             }
         } catch (Exception e) {
-            log.warn("Không thể parse JSON phản hồi gợi ý AI, fallback sử dụng regex: {}", e.getMessage());
-            Matcher matcher = Pattern.compile("\"(?:hintContent|hint)\"\\s*:\\s*\"([\\s\\S]*?)(?:\"\\s*,|\"\\s*\\}|$)").matcher(rawContent);
-            if (matcher.find()) {
-                extracted = matcher.group(1).trim();
-                while (extracted.endsWith("\\")) {
-                    extracted = extracted.substring(0, extracted.length() - 1).trim();
-                }
-            }
+            log.warn("Không thể parse gợi ý AI qua AiResponseParserFactory: {}", e.getMessage());
         }
-        return normalizeKatexDelimiters(extracted);
-    }
-
-    private String normalizeKatexDelimiters(String content) {
-        return LaTeXSanitizer.normalizeKatexDelimiters(content);
+        return LaTeXSanitizer.normalizeKatexDelimiters(AiResponseUtils.stripMarkdownFences(rawContent));
     }
 }

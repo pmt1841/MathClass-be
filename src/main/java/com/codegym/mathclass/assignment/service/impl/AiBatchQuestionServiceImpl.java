@@ -1,5 +1,8 @@
 package com.codegym.mathclass.assignment.service.impl;
 
+import com.codegym.mathclass.ai.strategy.parser.AiResponseParser;
+import com.codegym.mathclass.ai.strategy.parser.AiResponseParserFactory;
+import com.codegym.mathclass.ai.strategy.parser.AiResponseType;
 import com.codegym.mathclass.aiconfig.credit.entity.AiCreditConfig;
 import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
 import com.codegym.mathclass.aiconfig.dto.request.RenderPromptRequest;
@@ -26,9 +29,6 @@ import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.AiResponseUtils;
 import com.codegym.mathclass.utils.LaTeXSanitizer;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.json.JsonReadFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -55,11 +55,7 @@ public class AiBatchQuestionServiceImpl implements AiBatchQuestionService {
     private final PromptRenderService promptRenderService;
     private final AiCreditService aiCreditService;
     private final UserRepository userRepository;
-
-    private final ObjectMapper objectMapper = new ObjectMapper()
-            .configure(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS.mappedFeature(), true)
-            .configure(JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER.mappedFeature(), true)
-            .configure(JsonReadFeature.ALLOW_TRAILING_COMMA.mappedFeature(), true);
+    private final AiResponseParserFactory aiResponseParserFactory;
 
     @Override
     public BatchGenerateQuestionsResponse batchGenerateQuestions(BatchGenerateQuestionsRequest request, Long userId) {
@@ -241,14 +237,11 @@ public class AiBatchQuestionServiceImpl implements AiBatchQuestionService {
             if (rawResponseBody == null || rawResponseBody.isBlank()) {
                 throw new AiGenerationException("Phản hồi từ AI bị rỗng.");
             }
-            String jsonText = AiResponseUtils.extractCleanJson(rawResponseBody);
-            jsonText = AiResponseUtils.escapeLatexBackslashesInJson(jsonText);
-            return objectMapper.readValue(jsonText, BatchGenerateQuestionsResponse.class);
-        } catch (JsonProcessingException e) {
-            log.error("Không thể parse JSON từ AI response: {}", e.getMessage());
-            throw new AiGenerationException("Dữ liệu phản hồi từ AI không đúng định dạng JSON chuẩn", e);
+            AiResponseParser<BatchGenerateQuestionsResponse> parser = aiResponseParserFactory.getParser(AiResponseType.QUESTION);
+            return parser.parse(rawResponseBody);
         } catch (Exception e) {
-            throw new AiGenerationException("Lỗi xử lý kết quả bóc tách bài tập từ AI: " + e.getMessage(), e);
+            log.error("Không thể parse JSON từ AI response qua Strategy Engine: {}", e.getMessage());
+            throw new AiGenerationException("Dữ liệu phản hồi từ AI không đúng định dạng JSON chuẩn", e);
         }
     }
 

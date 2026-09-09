@@ -1,5 +1,6 @@
 package com.codegym.mathclass.exception;
 
+import com.codegym.mathclass.ai.strategy.parser.exception.AiParsingException;
 import com.codegym.mathclass.assignment.exception.AiGenerationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -100,6 +101,14 @@ public class GlobalExceptionHandler {
             status = HttpStatus.BAD_REQUEST;
         }
         return ResponseEntity.status(status).body(response);
+    }
+
+    @ExceptionHandler(AiParsingException.class)
+    public ResponseEntity<Map<String, String>> handleAiParsingException(AiParsingException ex) {
+        Map<String, String> response = new HashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(response);
     }
 
     @ExceptionHandler(PropertyReferenceException.class)

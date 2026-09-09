@@ -19,17 +19,22 @@ import com.codegym.mathclass.assignment.exception.AiGenerationException;
 import com.codegym.mathclass.assignment.service.impl.AiBatchQuestionServiceImpl;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.user.repository.UserRepository;
+import com.codegym.mathclass.ai.strategy.parser.AiResponseParserFactory;
+import com.codegym.mathclass.ai.strategy.parser.impl.AiQuestionResponseParser;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.math.BigDecimal;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -63,6 +68,10 @@ class AiBatchQuestionServiceImplTest {
 
     @Mock
     private AiProviderStrategy aiProviderStrategy;
+
+    @Spy
+    private AiResponseParserFactory aiResponseParserFactory =
+            new AiResponseParserFactory(List.of(new AiQuestionResponseParser(new ObjectMapper())));
 
     @InjectMocks
     private AiBatchQuestionServiceImpl aiBatchQuestionService;
