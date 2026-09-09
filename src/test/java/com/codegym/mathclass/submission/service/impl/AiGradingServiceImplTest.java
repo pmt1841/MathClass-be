@@ -13,6 +13,9 @@ import com.codegym.mathclass.submission.entity.Submission;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
 import com.codegym.mathclass.user.entity.User;
+import com.codegym.mathclass.ai.strategy.parser.AiResponseParserFactory;
+import com.codegym.mathclass.ai.strategy.parser.impl.AiGradingResponseParser;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -20,8 +23,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -49,11 +54,9 @@ class AiGradingServiceImplTest {
     @Mock
     private PromptRenderService promptRenderService;
 
-    @org.mockito.Spy
-    private com.codegym.mathclass.ai.strategy.parser.AiResponseParserFactory aiResponseParserFactory =
-            new com.codegym.mathclass.ai.strategy.parser.AiResponseParserFactory(
-                    java.util.List.of(new com.codegym.mathclass.ai.strategy.parser.impl.AiGradingResponseParser(new com.fasterxml.jackson.databind.ObjectMapper()))
-            );
+    @Spy
+    private AiResponseParserFactory aiResponseParserFactory =
+            new AiResponseParserFactory(List.of(new AiGradingResponseParser(new ObjectMapper())));
 
     @InjectMocks
     private AiGradingServiceImpl aiGradingService;

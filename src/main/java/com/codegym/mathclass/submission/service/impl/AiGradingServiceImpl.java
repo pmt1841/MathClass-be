@@ -3,6 +3,7 @@ package com.codegym.mathclass.submission.service.impl;
 import com.codegym.mathclass.ai.strategy.parser.AiResponseParser;
 import com.codegym.mathclass.ai.strategy.parser.AiResponseParserFactory;
 import com.codegym.mathclass.ai.strategy.parser.AiResponseType;
+import com.codegym.mathclass.ai.strategy.parser.exception.AiParsingException;
 import com.codegym.mathclass.aiconfig.dto.request.RenderPromptRequest;
 import com.codegym.mathclass.aiconfig.dto.response.RenderPromptResponse;
 import com.codegym.mathclass.aiconfig.service.AiPromptExecutionService;
@@ -175,7 +176,7 @@ public class AiGradingServiceImpl implements AiGradingService {
             return response;
         } catch (BadRequestException e) {
             throw e;
-        } catch (com.codegym.mathclass.ai.strategy.parser.exception.AiParsingException e) {
+        } catch (AiParsingException e) {
             throw new BadRequestException("AI phản hồi không đúng định dạng. Vui lòng thử lại.");
         } catch (Exception e) {
             log.error("Không parse được phản hồi AI chấm bài (submissionId={}): {}", submission.getId(), raw);

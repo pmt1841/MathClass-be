@@ -2,6 +2,8 @@ package com.codegym.mathclass.ai.strategy.parser;
 
 import com.codegym.mathclass.ai.strategy.parser.exception.AiParsingException;
 import com.codegym.mathclass.utils.AiResponseUtils;
+import com.fasterxml.jackson.core.json.JsonReadFeature;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 
@@ -19,19 +21,12 @@ public abstract class AbstractAiResponseParser<T> implements AiResponseParser<T>
     protected final Class<T> targetClass;
 
     protected AbstractAiResponseParser(ObjectMapper objectMapper, Class<T> targetClass) {
-        if (objectMapper != null) {
-            this.objectMapper = objectMapper.copy()
-                    .configure(com.fasterxml.jackson.core.json.JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS.mappedFeature(), true)
-                    .configure(com.fasterxml.jackson.core.json.JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER.mappedFeature(), true)
-                    .configure(com.fasterxml.jackson.core.json.JsonReadFeature.ALLOW_TRAILING_COMMA.mappedFeature(), true)
-                    .configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        } else {
-            this.objectMapper = new ObjectMapper()
-                    .configure(com.fasterxml.jackson.core.json.JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS.mappedFeature(), true)
-                    .configure(com.fasterxml.jackson.core.json.JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER.mappedFeature(), true)
-                    .configure(com.fasterxml.jackson.core.json.JsonReadFeature.ALLOW_TRAILING_COMMA.mappedFeature(), true)
-                    .configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        }
+        ObjectMapper baseMapper = (objectMapper != null) ? objectMapper.copy() : new ObjectMapper();
+        this.objectMapper = baseMapper
+                .configure(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS.mappedFeature(), true)
+                .configure(JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER.mappedFeature(), true)
+                .configure(JsonReadFeature.ALLOW_TRAILING_COMMA.mappedFeature(), true)
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         this.targetClass = targetClass;
     }
 

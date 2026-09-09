@@ -63,15 +63,19 @@ public class AiSubmissionHandwritingServiceImpl implements AiSubmissionHandwriti
                 : aiPromptExecutionService.executePromptWithImage(TASK_CODE, prompt, request.getImageData(), request.getMimeType(), userId);
         Integer completionTokens = execResult != null ? execResult.completionTokens() : null;
 
-        AiResponseParser<HandwritingLatexResponse> parser = aiResponseParserFactory.getParser(AiResponseType.HANDWRITING);
-        HandwritingLatexResponse response = parser.parse(rawContent);
-        if (response != null) {
-            response.setCompletionTokens(completionTokens);
-            response.setRawAiOutput(rawContent);
-            if (response.getLatex() != null) {
-                response.setLatex(LaTeXSanitizer.extractCleanLatex(response.getLatex()));
+        try {
+            AiResponseParser<HandwritingLatexResponse> parser = aiResponseParserFactory.getParser(AiResponseType.HANDWRITING);
+            HandwritingLatexResponse response = parser.parse(rawContent);
+            if (response != null) {
+                response.setCompletionTokens(completionTokens);
+                response.setRawAiOutput(rawContent);
+                if (response.getLatex() != null) {
+                    response.setLatex(LaTeXSanitizer.extractCleanLatex(response.getLatex()));
+                }
+                return response;
             }
-            return response;
+        } catch (Exception e) {
+            log.warn("Không parse được response handwriting qua Strategy Engine, dùng raw text fallback: {}", e.getMessage());
         }
 
         String cleanLatex = LaTeXSanitizer.extractCleanLatex(rawContent);

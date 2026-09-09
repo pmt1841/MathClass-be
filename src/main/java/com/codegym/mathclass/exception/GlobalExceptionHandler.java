@@ -1,5 +1,6 @@
 package com.codegym.mathclass.exception;
 
+import com.codegym.mathclass.ai.strategy.parser.exception.AiParsingException;
 import com.codegym.mathclass.assignment.exception.AiGenerationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -102,8 +103,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(response);
     }
 
-    @ExceptionHandler(com.codegym.mathclass.ai.strategy.parser.exception.AiParsingException.class)
-    public ResponseEntity<Map<String, String>> handleAiParsingException(com.codegym.mathclass.ai.strategy.parser.exception.AiParsingException ex) {
+    @ExceptionHandler(AiParsingException.class)
+    public ResponseEntity<Map<String, String>> handleAiParsingException(AiParsingException ex) {
         Map<String, String> response = new HashMap<>();
         response.put("message", ex.getMessage());
         response.put("error", ex.getMessage());

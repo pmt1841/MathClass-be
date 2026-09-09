@@ -16,9 +16,9 @@ import java.util.regex.Pattern;
 public class AiGradingResponseParser extends AbstractAiResponseParser<AiGradingResponse> {
 
     private static final Pattern SCORE_PATTERN =
-            Pattern.compile("\"suggestedScore\"\\s*:\\s*([0-9]+(?:\\.[0-9]+)?)");
+            Pattern.compile("\"(?:suggestedScore|score|suggested_score|finalScore)\"\\s*:\\s*([0-9]+(?:\\.[0-9]+)?)");
     private static final Pattern FEEDBACK_PATTERN =
-            Pattern.compile("\"draftFeedback\"\\s*:\\s*\"([\\s\\S]*?)(?:\"\\s*,|\"\\s*\\}|$)");
+            Pattern.compile("\"(?:draftFeedback|feedback|comment|teacherFeedback)\"\\s*:\\s*\"([\\s\\S]*?)(?:\"\\s*,|\"\\s*\\}|$)");
 
     public AiGradingResponseParser(ObjectMapper objectMapper) {
         super(objectMapper, AiGradingResponse.class);

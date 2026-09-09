@@ -16,11 +16,9 @@ import java.util.regex.Pattern;
 public class AiHintResponseParser extends AbstractAiResponseParser<StudentHintResponse> {
 
     private static final Pattern HINT_TEXT_PATTERN =
-            Pattern.compile("\"hintText\"\\s*:\\s*\"([\\s\\S]*?)(?:\"\\s*,|\"\\s*\\}|$)");
-    private static final Pattern FINAL_STEP_PATTERN =
-            Pattern.compile("\"isFinalStep\"\\s*:\\s*(true|false)", Pattern.CASE_INSENSITIVE);
+            Pattern.compile("\"(?:hintContent|hintText|hint|content)\"\\s*:\\s*\"([\\s\\S]*?)(?:\"\\s*,|\"\\s*\\}|$)");
     private static final Pattern STEP_INDEX_PATTERN =
-            Pattern.compile("\"stepIndex\"\\s*:\\s*([0-9]+)");
+            Pattern.compile("\"(?:stepIndex|hintNumber|step)\"\\s*:\\s*([0-9]+)");
 
     public AiHintResponseParser(ObjectMapper objectMapper) {
         super(objectMapper, StudentHintResponse.class);
@@ -44,12 +42,6 @@ public class AiHintResponseParser extends AbstractAiResponseParser<StudentHintRe
             while (hintText.endsWith("\\")) {
                 hintText = hintText.substring(0, hintText.length() - 1).trim();
             }
-        }
-
-        boolean isFinalStep = false;
-        Matcher finalMatcher = FINAL_STEP_PATTERN.matcher(rawResponse);
-        if (finalMatcher.find()) {
-            isFinalStep = Boolean.parseBoolean(finalMatcher.group(1));
         }
 
         Integer stepIndex = null;

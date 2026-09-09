@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
 public class AiHandwritingResponseParser extends AbstractAiResponseParser<HandwritingLatexResponse> {
 
     private static final Pattern LATEX_PATTERN =
-            Pattern.compile("\"latex\"\\s*:\\s*\"([\\s\\S]*?)(?:\"\\s*,|\"\\s*\\}|$)");
+            Pattern.compile("\"(?:latex|code|expression|content)\"\\s*:\\s*\"([\\s\\S]*?)(?:\"\\s*,|\"\\s*\\}|$)");
 
     public AiHandwritingResponseParser(ObjectMapper objectMapper) {
         super(objectMapper, HandwritingLatexResponse.class);

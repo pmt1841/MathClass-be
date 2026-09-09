@@ -38,4 +38,23 @@ class AiQuestionResponseParserTest {
         assertThat(response.getQuestions()).hasSize(2);
         assertThat(response.getQuestions().get(0).getContent()).contains("x^2 - 4 = 0");
     }
+
+    @Test
+    @DisplayName("Parse Lớp 2 Regex khi AI trả về văn bản dẫn nhập kèm danh sách câu hỏi")
+    void parse_RawTextWithQuestions_FallbackRegexSucceeds() {
+        String rawText = """
+                Dưới đây là bộ câu hỏi sinh tự động:
+                "suggestedTitle": "Đề kiểm tra Hình học 9",
+                "suggestedDescription": "Chủ đề đường tròn",
+                "content": "Bài 1: Tính bán kính đường tròn ngoại tiếp tam giác đều cạnh a.",
+                "content": "Bài 2: Chứng minh tứ giác ABCD nội tiếp."
+                """;
+
+        BatchGenerateQuestionsResponse response = parser.parse(rawText);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getSuggestedTitle()).isEqualTo("Đề kiểm tra Hình học 9");
+        assertThat(response.getQuestions()).hasSize(2);
+        assertThat(response.getQuestions().get(0).getContent()).contains("bán kính đường tròn");
+    }
 }

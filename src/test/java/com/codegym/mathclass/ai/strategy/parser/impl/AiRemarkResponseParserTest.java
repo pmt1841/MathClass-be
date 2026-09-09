@@ -35,4 +35,22 @@ class AiRemarkResponseParserTest {
         assertThat(result.getWeaknesses()).isEqualTo("Cần tính toán cẩn thận hơn khi tính Delta");
         assertThat(result.getGeneralAssessment()).isEqualTo("Học sinh có nhiều tiến bộ trong tuần qua.");
     }
+
+    @Test
+    @DisplayName("Parse Lớp 2 Regex khi AI trả về văn bản dẫn nhập kèm nhận xét")
+    void parse_RawTextWithRemark_FallbackRegexSucceeds() {
+        String rawText = """
+                Đánh giá kết quả học tập từ AI:
+                "strengths": "Tự giác hoàn thành bài tập về nhà đúng hạn",
+                "weaknesses": "Cần trình bày các bước giải hình học chi tiết hơn",
+                "generalAssessment": "Học sinh giữ vững phong độ học tập tốt."
+                """;
+
+        AiRemarkJsonResult result = parser.parse(rawText);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getStrengths()).contains("Tự giác hoàn thành");
+        assertThat(result.getWeaknesses()).contains("hình học chi tiết hơn");
+        assertThat(result.getGeneralAssessment()).contains("phong độ học tập tốt");
+    }
 }

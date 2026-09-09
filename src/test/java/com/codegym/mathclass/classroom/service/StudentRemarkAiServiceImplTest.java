@@ -18,12 +18,16 @@ import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
+import com.codegym.mathclass.ai.strategy.parser.AiResponseParserFactory;
+import com.codegym.mathclass.ai.strategy.parser.impl.AiRemarkResponseParser;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
@@ -55,11 +59,9 @@ class StudentRemarkAiServiceImplTest {
     @Mock
     private AiPromptExecutionService aiPromptExecutionService;
 
-    @org.mockito.Spy
-    private com.codegym.mathclass.ai.strategy.parser.AiResponseParserFactory aiResponseParserFactory =
-            new com.codegym.mathclass.ai.strategy.parser.AiResponseParserFactory(
-                    java.util.List.of(new com.codegym.mathclass.ai.strategy.parser.impl.AiRemarkResponseParser(new com.fasterxml.jackson.databind.ObjectMapper()))
-            );
+    @Spy
+    private AiResponseParserFactory aiResponseParserFactory =
+            new AiResponseParserFactory(List.of(new AiRemarkResponseParser(new ObjectMapper())));
 
     @InjectMocks
     private StudentRemarkAiServiceImpl studentRemarkAiService;
