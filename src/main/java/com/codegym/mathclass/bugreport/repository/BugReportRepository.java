@@ -7,10 +7,19 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 @Repository
 public interface BugReportRepository extends JpaRepository<BugReport, Long> {
 
     Page<BugReport> findByStatus(BugReportStatus status, Pageable pageable);
 
     Page<BugReport> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
+    long countByStatus(BugReportStatus status);
+
+    long countByStatusAndCreatedAtLessThan(BugReportStatus status, LocalDateTime endDate);
+
+    List<BugReport> findTop5ByOrderByCreatedAtDesc();
 }

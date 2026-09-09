@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,4 +34,6 @@ public interface ClassroomRepository extends JpaRepository<Classroom, Long> {
         WHERE c.teacher.id = :userId OR s.id = :userId
         """)
     List<Long> findClassroomIdsByUserId(@Param("userId") long userId);
+
+    long countByCreatedAtLessThan(LocalDateTime endDate);
 }
