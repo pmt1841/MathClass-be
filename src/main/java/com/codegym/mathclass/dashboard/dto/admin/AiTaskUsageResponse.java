@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AiTaskUsageDto {
+public class AiTaskUsageResponse {
     private String taskCode;
     private String taskName;
     private long callCount;

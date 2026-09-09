@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class RecentSystemLogDto {
+public class RecentSystemLogResponse {
     private Long id;
     private String actor;
     private String resourceType;

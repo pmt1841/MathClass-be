@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class RecentTransactionDto {
+public class RecentTransactionResponse {
     private Long orderId;
     private Long userId;
     private String fullName;

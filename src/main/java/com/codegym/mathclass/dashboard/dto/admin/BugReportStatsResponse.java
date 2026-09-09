@@ -9,10 +9,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class PackageSalesDto {
-    private Long packageId;
-    private String packageName;
-    private Integer credits;
-    private Integer price;
-    private long salesCount;
+public class BugReportStatsResponse {
+    private long pendingCount;
 }

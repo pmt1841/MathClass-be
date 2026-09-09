@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 @ApiVersion(1)
 @RequestMapping("/admin/dashboard")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAuthority('dashboard:admin_view')")
 public class AdminDashboardController {
 
     private final AdminDashboardService adminDashboardService;

@@ -9,10 +9,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UserStatsDto {
+public class UserStatsResponse {
     private long totalUsers;
     private long teacherCount;
     private long studentCount;
-    private long newUsersThisWeek;
+    private long newUsersInMonth;
     private long activeUsersToday;
 }

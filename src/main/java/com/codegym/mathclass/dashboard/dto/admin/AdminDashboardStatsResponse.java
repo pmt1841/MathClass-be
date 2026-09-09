@@ -14,15 +14,15 @@ import java.util.List;
 public class AdminDashboardStatsResponse {
     private Integer selectedMonth;
     private Integer selectedYear;
-    private UserStatsDto userStats;
-    private ClassroomStatsDto classroomStats;
-    private RevenueStatsDto revenueStats;
-    private BugReportStatsDto bugReportStats;
-    private List<AiTaskUsageDto> aiTaskUsages;
-    private List<PackageSalesDto> packageSales;
-    private List<RecentTransactionDto> recentTransactions;
-    private List<MonthlyUserTrendDto> userTrends;
-    private List<MonthlyRevenueTrendDto> revenueTrends;
-    private List<RecentSystemLogDto> recentSystemLogs;
-    private List<RecentBugReportDto> recentBugReports;
+    private UserStatsResponse userStats;
+    private ClassroomStatsResponse classroomStats;
+    private RevenueStatsResponse revenueStats;
+    private BugReportStatsResponse bugReportStats;
+    private List<AiTaskUsageResponse> aiTaskUsages;
+    private List<PackageSalesResponse> packageSales;
+    private List<RecentTransactionResponse> recentTransactions;
+    private List<MonthlyUserTrendResponse> userTrends;
+    private List<MonthlyRevenueTrendResponse> revenueTrends;
+    private List<RecentSystemLogResponse> recentSystemLogs;
+    private List<RecentBugReportResponse> recentBugReports;
 }

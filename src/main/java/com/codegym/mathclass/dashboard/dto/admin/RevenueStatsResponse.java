@@ -9,7 +9,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class MonthlyRevenueTrendDto {
-    private int month;
-    private long revenue;
+public class RevenueStatsResponse {
+    private long monthlyRevenue;
+    private double growthPercentage;
+    private long successfulOrdersCount;
 }

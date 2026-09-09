@@ -3,7 +3,6 @@ package com.codegym.mathclass.dashboard.service;
 import com.codegym.mathclass.aiconfig.credit.entity.CreditPackage;
 import com.codegym.mathclass.aiconfig.credit.entity.CreditPurchaseOrder;
 import com.codegym.mathclass.aiconfig.credit.entity.CreditPurchaseOrderStatus;
-import com.codegym.mathclass.aiconfig.credit.entity.CreditTransactionType;
 import com.codegym.mathclass.aiconfig.credit.repository.CreditPackageRepository;
 import com.codegym.mathclass.aiconfig.credit.repository.CreditPurchaseOrderRepository;
 import com.codegym.mathclass.aiconfig.credit.repository.CreditTransactionRepository;
@@ -139,27 +138,26 @@ class AdminDashboardServiceImplTest {
         // Mock Bug reports
         when(bugReportRepository.countByStatusAndCreatedAtLessThan(eq(BugReportStatus.PENDING), any())).thenReturn(4L);
 
-        // Mock AI Task usage (cả CONSUME và REFUND)
+        // Mock AI Task usage: row[0]=task, row[1]=totalCalls (CONSUME), row[2]=failedCalls (REFUND do lỗi)
         List<Object[]> rawTaskTransactions = List.<Object[]>of(
-                new Object[]{"BATCH_QUESTION_GEN", CreditTransactionType.CONSUME, 58L},
-                new Object[]{"BATCH_QUESTION_GEN", CreditTransactionType.REFUND, 2L},
-                new Object[]{"QUESTION_GEN", CreditTransactionType.CONSUME, 40L}
+                new Object[]{"BATCH_QUESTION_GEN", 60L, 2L},
+                new Object[]{"QUESTION_GEN", 40L, 0L}
         );
-        when(creditTransactionRepository.countTaskTransactionsByTypesAndCreatedAtBetween(any(), any(), any()))
+        when(creditTransactionRepository.countAiCallsAndFailuresByTaskAndCreatedAtBetween(any(), any()))
                 .thenReturn(rawTaskTransactions);
 
-        // Mock Package sales
+        // Mock Package sales & Transactions (tái sử dụng creditPackageRepository.findAll)
         when(creditPackageRepository.findAll()).thenReturn(List.of(samplePackage));
         List<Object[]> rawPackagePurchases = List.<Object[]>of(
                 new Object[]{10L, 18L}
         );
-        when(creditPurchaseOrderRepository.countPurchasesByPackageAndPaidAtBetween(eq(CreditPurchaseOrderStatus.SUCCESS), any(), any())).thenReturn(rawPackagePurchases);
+        when(creditPurchaseOrderRepository.countPurchasesByPackageAndPaidAtBetween(eq(CreditPurchaseOrderStatus.SUCCESS), any(), any()))
+                .thenReturn(rawPackagePurchases);
 
-        // Mock Recent transactions
-        when(creditPurchaseOrderRepository.findByStatusAndPaidAtBetweenOrderByPaidAtDesc(eq(CreditPurchaseOrderStatus.SUCCESS), any(), any()))
+        // Mock Recent transactions (dùng PageRequest.of(0, 50))
+        when(creditPurchaseOrderRepository.findByStatusAndPaidAtBetweenOrderByPaidAtDesc(eq(CreditPurchaseOrderStatus.SUCCESS), any(), any(), any()))
                 .thenReturn(List.of(sampleOrder));
         when(userRepository.findAllById(any(Set.class))).thenReturn(List.of(sampleUser));
-        when(creditPackageRepository.findAllById(any(Set.class))).thenReturn(List.of(samplePackage));
 
         // Mock Annual Trends
         when(userRepository.countNewUsersByMonthOfYear(any(), any())).thenReturn(List.of(
@@ -186,6 +184,7 @@ class AdminDashboardServiceImplTest {
         assertThat(response.getUserStats().getTotalUsers()).isEqualTo(100L);
         assertThat(response.getUserStats().getTeacherCount()).isEqualTo(20L);
         assertThat(response.getUserStats().getStudentCount()).isEqualTo(80L);
+        assertThat(response.getUserStats().getNewUsersInMonth()).isEqualTo(15L);
         assertThat(response.getUserStats().getActiveUsersToday()).isEqualTo(30L);
         assertThat(response.getClassroomStats().getActiveClassesCount()).isEqualTo(12L);
         assertThat(response.getRevenueStats().getMonthlyRevenue()).isEqualTo(5000000L);
@@ -237,12 +236,12 @@ class AdminDashboardServiceImplTest {
                 .thenReturn(2000000L);
         when(creditPurchaseOrderRepository.countByStatusAndPaidAtBetween(eq(CreditPurchaseOrderStatus.SUCCESS), any(), any()))
                 .thenReturn(15L);
-        when(creditTransactionRepository.countTaskTransactionsByTypesAndCreatedAtBetween(any(), any(), any()))
+        when(creditTransactionRepository.countAiCallsAndFailuresByTaskAndCreatedAtBetween(any(), any()))
                 .thenReturn(Collections.emptyList());
         when(creditPackageRepository.findAll()).thenReturn(List.of(samplePackage));
         when(creditPurchaseOrderRepository.countPurchasesByPackageAndPaidAtBetween(eq(CreditPurchaseOrderStatus.SUCCESS), any(), any()))
                 .thenReturn(Collections.emptyList());
-        when(creditPurchaseOrderRepository.findByStatusAndPaidAtBetweenOrderByPaidAtDesc(eq(CreditPurchaseOrderStatus.SUCCESS), any(), any()))
+        when(creditPurchaseOrderRepository.findByStatusAndPaidAtBetweenOrderByPaidAtDesc(eq(CreditPurchaseOrderStatus.SUCCESS), any(), any(), any()))
                 .thenReturn(Collections.emptyList());
         when(userRepository.countNewUsersByMonthOfYear(any(), any())).thenReturn(Collections.emptyList());
         when(creditPurchaseOrderRepository.sumRevenueByMonthOfYear(any(), any())).thenReturn(Collections.emptyList());
@@ -259,6 +258,7 @@ class AdminDashboardServiceImplTest {
         assertThat(response.getUserStats().getTotalUsers()).isEqualTo(80L);
         assertThat(response.getUserStats().getTeacherCount()).isEqualTo(15L);
         assertThat(response.getUserStats().getStudentCount()).isEqualTo(65L);
+        assertThat(response.getUserStats().getNewUsersInMonth()).isEqualTo(10L);
         assertThat(response.getUserStats().getActiveUsersToday()).isEqualTo(0L); // Quá khứ không có DAU hôm nay
         assertThat(response.getClassroomStats().getActiveClassesCount()).isEqualTo(8L);
         assertThat(response.getRevenueStats().getMonthlyRevenue()).isEqualTo(3000000L);

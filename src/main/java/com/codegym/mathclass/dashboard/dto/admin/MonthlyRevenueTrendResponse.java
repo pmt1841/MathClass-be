@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class BugReportStatsDto {
-    private long pendingCount;
+public class MonthlyRevenueTrendResponse {
+    private int month;
+    private long revenue;
 }

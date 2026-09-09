@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import org.springframework.data.domain.Pageable;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -46,7 +48,8 @@ public interface CreditPurchaseOrderRepository extends JpaRepository<CreditPurch
     @Query("SELECT o FROM CreditPurchaseOrder o WHERE o.status = :status AND o.paidAt >= :startDate AND o.paidAt < :endDate ORDER BY o.paidAt DESC, o.createdAt DESC")
     List<CreditPurchaseOrder> findByStatusAndPaidAtBetweenOrderByPaidAtDesc(@Param("status") CreditPurchaseOrderStatus status,
                                                                            @Param("startDate") LocalDateTime startDate,
-                                                                           @Param("endDate") LocalDateTime endDate);
+                                                                           @Param("endDate") LocalDateTime endDate,
+                                                                           Pageable pageable);
 
     @Query(value = """
         SELECT EXTRACT(MONTH FROM paid_at)::int AS month_num, COALESCE(SUM(price), 0) AS total_rev

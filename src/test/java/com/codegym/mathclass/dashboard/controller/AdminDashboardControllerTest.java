@@ -2,7 +2,7 @@ package com.codegym.mathclass.dashboard.controller;
 
 import com.codegym.mathclass.common.dto.ApiResponse;
 import com.codegym.mathclass.dashboard.dto.admin.AdminDashboardStatsResponse;
-import com.codegym.mathclass.dashboard.dto.admin.UserStatsDto;
+import com.codegym.mathclass.dashboard.dto.admin.UserStatsResponse;
 import com.codegym.mathclass.dashboard.service.AdminDashboardService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,7 +29,7 @@ class AdminDashboardControllerTest {
     void testGetDashboardStats_Success() {
         // Given
         AdminDashboardStatsResponse mockResponse = AdminDashboardStatsResponse.builder()
-                .userStats(UserStatsDto.builder().totalUsers(150L).build())
+                .userStats(UserStatsResponse.builder().totalUsers(150L).build())
                 .build();
         when(adminDashboardService.getAdminDashboardStats(8, 2026)).thenReturn(mockResponse);
 

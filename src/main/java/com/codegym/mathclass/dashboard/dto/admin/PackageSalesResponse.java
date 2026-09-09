@@ -9,6 +9,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ClassroomStatsDto {
-    private long activeClassesCount;
+public class PackageSalesResponse {
+    private Long packageId;
+    private String packageName;
+    private Integer credits;
+    private Integer price;
+    private long salesCount;
 }

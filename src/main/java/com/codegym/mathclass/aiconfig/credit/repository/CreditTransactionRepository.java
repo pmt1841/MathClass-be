@@ -51,4 +51,20 @@ public interface CreditTransactionRepository extends JpaRepository<CreditTransac
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate
     );
+
+    @Query("""
+        SELECT t.task,
+               SUM(CASE WHEN t.type = com.codegym.mathclass.aiconfig.credit.entity.CreditTransactionType.CONSUME THEN 1L ELSE 0L END),
+               SUM(CASE WHEN t.type = com.codegym.mathclass.aiconfig.credit.entity.CreditTransactionType.REFUND
+                        AND (t.description LIKE '%lỗi%' OR t.description LIKE '%hủy%') THEN 1L ELSE 0L END)
+        FROM CreditTransaction t
+        WHERE t.task IS NOT NULL
+          AND t.createdAt >= :startDate
+          AND t.createdAt < :endDate
+        GROUP BY t.task
+    """)
+    List<Object[]> countAiCallsAndFailuresByTaskAndCreatedAtBetween(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
 }

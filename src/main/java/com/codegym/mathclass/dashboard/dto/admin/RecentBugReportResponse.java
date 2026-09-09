@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class RecentBugReportDto {
+public class RecentBugReportResponse {
     private Long id;
     private String reporterEmail;
     private String errorType;
