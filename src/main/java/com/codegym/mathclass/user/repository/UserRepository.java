@@ -52,4 +52,25 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("SELECT DISTINCT u.avatarUrl FROM User u WHERE u.avatarUrl IS NOT NULL")
     List<String> findAllDistinctAvatarUrls();
+
+    long countByRole(Role role);
+
+    long countByCreatedAtGreaterThanEqual(LocalDateTime date);
+
+    long countByCreatedAtLessThan(LocalDateTime endDate);
+
+    long countByRoleAndCreatedAtLessThan(Role role, LocalDateTime endDate);
+
+    long countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(LocalDateTime startDate, LocalDateTime endDate);
+
+    long countByLastActiveAtGreaterThanEqual(LocalDateTime date);
+
+    @Query(value = """
+        SELECT EXTRACT(MONTH FROM created_at)::int AS month_num, COUNT(id) AS cnt
+        FROM users
+        WHERE created_at >= :startOfYear AND created_at < :endOfYear
+        GROUP BY EXTRACT(MONTH FROM created_at)
+    """, nativeQuery = true)
+    List<Object[]> countNewUsersByMonthOfYear(@Param("startOfYear") LocalDateTime startOfYear,
+                                              @Param("endOfYear") LocalDateTime endOfYear);
 }

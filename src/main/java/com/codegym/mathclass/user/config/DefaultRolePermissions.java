@@ -28,6 +28,7 @@ public final class DefaultRolePermissions {
 
     public static final List<String> ADMIN_DEFAULT_PERMISSIONS = List.of(
             "user:manage",
+            "dashboard:admin_view",
             "library:read", "library:clone"
     );
 

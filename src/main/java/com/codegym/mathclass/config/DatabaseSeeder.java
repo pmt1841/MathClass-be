@@ -143,6 +143,7 @@ public class DatabaseSeeder implements CommandLineRunner {
 
                                 p("dashboard:teacher_view", "Xem thống kê giáo viên"),
                                 p("dashboard:student_view", "Xem thống kê học sinh"),
+                                p("dashboard:admin_view", "Xem thống kê quản trị viên"),
 
                                 p("library:read", "Xem thư viện bài tập dùng chung"),
                                 p("library:clone", "Clone bài tập từ thư viện"),

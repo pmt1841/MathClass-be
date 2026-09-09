@@ -7,10 +7,13 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public interface SystemLogRepository extends JpaRepository<SystemLog, Long>, JpaSpecificationExecutor<SystemLog> {
 
     @Modifying
     @Transactional
     void deleteByCreatedAtBefore(LocalDateTime cutoffDate);
+
+    List<SystemLog> findTop5ByOrderByCreatedAtDesc();
 }
