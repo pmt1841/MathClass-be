@@ -2,7 +2,7 @@ package com.codegym.mathclass.ai.strategy.parser.impl;
 
 import com.codegym.mathclass.ai.strategy.parser.AbstractAiResponseParser;
 import com.codegym.mathclass.ai.strategy.parser.AiResponseType;
-import com.codegym.mathclass.classroom.dto.response.AiRemarkJsonResult;
+import com.codegym.mathclass.classroom.dto.response.AiRemarkJsonResponse;
 import com.codegym.mathclass.utils.AiResponseUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
@@ -11,10 +11,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Strategy Parser bóc tách dữ liệu phản hồi AI cho tính năng Đánh giá / Nhận xét tiến độ học sinh (AiRemarkJsonResult).
+ * Strategy Parser bóc tách dữ liệu phản hồi AI cho tính năng Đánh giá / Nhận xét tiến độ học sinh (AiRemarkJsonResponse).
  */
 @Component
-public class AiRemarkResponseParser extends AbstractAiResponseParser<AiRemarkJsonResult> {
+public class AiRemarkResponseParser extends AbstractAiResponseParser<AiRemarkJsonResponse> {
 
     private static final Pattern STRENGTHS_PATTERN =
             Pattern.compile("\"strengths\"\\s*:\\s*\"([\\s\\S]*?)(?:\"\\s*,|\"\\s*\\}|$)");
@@ -24,7 +24,7 @@ public class AiRemarkResponseParser extends AbstractAiResponseParser<AiRemarkJso
             Pattern.compile("\"generalAssessment\"\\s*:\\s*\"([\\s\\S]*?)(?:\"\\s*,|\"\\s*\\}|$)");
 
     public AiRemarkResponseParser(ObjectMapper objectMapper) {
-        super(objectMapper, AiRemarkJsonResult.class);
+        super(objectMapper, AiRemarkJsonResponse.class);
     }
 
     @Override
@@ -33,7 +33,7 @@ public class AiRemarkResponseParser extends AbstractAiResponseParser<AiRemarkJso
     }
 
     @Override
-    protected AiRemarkJsonResult parseFallbackRegex(String rawResponse) {
+    protected AiRemarkJsonResponse parseFallbackRegex(String rawResponse) {
         if (rawResponse == null || rawResponse.isBlank()) {
             return null;
         }
@@ -42,7 +42,7 @@ public class AiRemarkResponseParser extends AbstractAiResponseParser<AiRemarkJso
         String weaknesses = extractField(WEAKNESSES_PATTERN, rawResponse, "Chưa có thông tin điểm yếu cụ thể.");
         String generalAssessment = extractField(GENERAL_PATTERN, rawResponse, AiResponseUtils.stripMarkdownFences(rawResponse));
 
-        AiRemarkJsonResult result = new AiRemarkJsonResult();
+        AiRemarkJsonResponse result = new AiRemarkJsonResponse();
         result.setStrengths(strengths);
         result.setWeaknesses(weaknesses);
         result.setGeneralAssessment(generalAssessment);

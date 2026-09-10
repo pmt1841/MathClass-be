@@ -1,8 +1,8 @@
 package com.codegym.mathclass.assignment.controller;
 
-import com.codegym.mathclass.aiqueue.dto.AiJobSubmitResponse;
-import com.codegym.mathclass.aiqueue.dto.payload.AiBatchQuestionJobPayload;
-import com.codegym.mathclass.aiqueue.dto.payload.AiQuestionJobPayload;
+import com.codegym.mathclass.aiqueue.dto.response.AiJobSubmitResponse;
+import com.codegym.mathclass.aiqueue.model.payload.AiBatchQuestionJobPayload;
+import com.codegym.mathclass.aiqueue.model.payload.AiQuestionJobPayload;
 import com.codegym.mathclass.aiqueue.service.AiJobService;
 import com.codegym.mathclass.assignment.dto.response.AiGeneratedQuestionResponse;
 import com.codegym.mathclass.assignment.dto.request.BatchGenerateQuestionsRequest;

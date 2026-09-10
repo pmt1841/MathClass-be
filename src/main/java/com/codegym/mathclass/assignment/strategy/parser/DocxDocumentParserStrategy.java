@@ -1,7 +1,7 @@
 package com.codegym.mathclass.assignment.strategy.parser;
 
 import com.codegym.mathclass.assignment.dto.response.AssignmentImageResponse;
-import com.codegym.mathclass.assignment.dto.response.DocumentParseResult;
+import com.codegym.mathclass.assignment.strategy.parser.DocumentParseResult;
 import com.codegym.mathclass.storage.dto.StoragePolicy;
 import com.codegym.mathclass.storage.service.StorageService;
 import lombok.RequiredArgsConstructor;

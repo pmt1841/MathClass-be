@@ -11,7 +11,7 @@ import com.codegym.mathclass.bugreport.entity.BugReport;
 import com.codegym.mathclass.bugreport.entity.BugReportStatus;
 import com.codegym.mathclass.bugreport.repository.BugReportRepository;
 import com.codegym.mathclass.classroom.repository.ClassroomRepository;
-import com.codegym.mathclass.dashboard.dto.admin.AdminDashboardStatsResponse;
+import com.codegym.mathclass.dashboard.dto.response.admin.AdminDashboardStatsResponse;
 import com.codegym.mathclass.dashboard.service.impl.AdminDashboardServiceImpl;
 import com.codegym.mathclass.systemlog.entity.SystemLogLevel;
 import com.codegym.mathclass.systemlog.entity.SystemLog;

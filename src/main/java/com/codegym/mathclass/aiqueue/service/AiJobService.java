@@ -1,8 +1,8 @@
 package com.codegym.mathclass.aiqueue.service;
 
-import com.codegym.mathclass.aiqueue.dto.AiJobResultResponse;
-import com.codegym.mathclass.aiqueue.dto.AiJobStatus;
-import com.codegym.mathclass.aiqueue.dto.AiJobSubmitResponse;
+import com.codegym.mathclass.aiqueue.dto.response.AiJobResultResponse;
+import com.codegym.mathclass.aiqueue.model.AiJobStatus;
+import com.codegym.mathclass.aiqueue.dto.response.AiJobSubmitResponse;
 
 public interface AiJobService {
 

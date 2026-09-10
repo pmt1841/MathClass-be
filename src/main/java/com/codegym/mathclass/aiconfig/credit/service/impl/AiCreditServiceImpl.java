@@ -4,7 +4,7 @@ import com.codegym.mathclass.aiconfig.credit.dto.request.CreditPackageCreateRequ
 import com.codegym.mathclass.aiconfig.credit.dto.request.CreditPackageUpdateRequest;
 import com.codegym.mathclass.aiconfig.credit.dto.response.AiCreditConfigResponse;
 import com.codegym.mathclass.aiconfig.credit.dto.response.CreditBalanceResponse;
-import com.codegym.mathclass.aiconfig.credit.dto.response.CreditCostItem;
+import com.codegym.mathclass.aiconfig.credit.dto.response.CreditBalanceResponse.CreditCostItemResponse;
 import com.codegym.mathclass.aiconfig.credit.dto.response.CreditPackageResponse;
 import com.codegym.mathclass.aiconfig.credit.dto.response.CreditTransactionResponse;
 import com.codegym.mathclass.aiconfig.credit.dto.response.DefaultCreditResponse;
@@ -357,9 +357,9 @@ public class AiCreditServiceImpl implements AiCreditService {
     @Transactional
     public CreditBalanceResponse getMyCreditInfo(Long userId) {
         UserAiAccount account = getOrCreateAccount(userId);
-        List<CreditCostItem> costs = aiCreditConfigRepository.findAllByOrderByTaskAsc().stream()
+        List<CreditCostItemResponse> costs = aiCreditConfigRepository.findAllByOrderByTaskAsc().stream()
                 .filter(config -> Boolean.TRUE.equals(config.getEnabled()))
-                .map(config -> CreditCostItem.builder()
+                .map(config -> CreditCostItemResponse.builder()
                         .task(config.getTask())
                         .costPerCall(config.getCostPerCall())
                         .tokensPerCredit(config.getTokensPerCredit())

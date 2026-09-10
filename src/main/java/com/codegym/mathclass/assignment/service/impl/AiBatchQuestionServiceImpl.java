@@ -16,11 +16,11 @@ import com.codegym.mathclass.aiconfig.service.PromptRenderService;
 import com.codegym.mathclass.aiconfig.strategy.AiExecutionResult;
 import com.codegym.mathclass.aiconfig.strategy.AiProviderStrategy;
 import com.codegym.mathclass.aiconfig.strategy.AiProviderStrategyFactory;
-import com.codegym.mathclass.aiqueue.dto.payload.AiBatchQuestionJobPayload;
+import com.codegym.mathclass.aiqueue.model.payload.AiBatchQuestionJobPayload;
 import com.codegym.mathclass.assignment.dto.response.AssignmentImageResponse;
 import com.codegym.mathclass.assignment.dto.request.BatchGenerateQuestionsRequest;
 import com.codegym.mathclass.assignment.dto.response.BatchGenerateQuestionsResponse;
-import com.codegym.mathclass.assignment.dto.response.BatchQuestionItem;
+import com.codegym.mathclass.assignment.dto.response.BatchQuestionItemResponse;
 import com.codegym.mathclass.assignment.exception.AiGenerationException;
 import com.codegym.mathclass.assignment.service.AiBatchQuestionService;
 import com.codegym.mathclass.assignment.service.AssignmentService;
@@ -158,7 +158,7 @@ public class AiBatchQuestionServiceImpl implements AiBatchQuestionService {
                     response.setCompletionTokens(result.completionTokens());
 
                     if (response.getQuestions() != null) {
-                        for (BatchQuestionItem q : response.getQuestions()) {
+                        for (BatchQuestionItemResponse q : response.getQuestions()) {
                             if (q.getContent() != null) {
                                 q.setContent(LaTeXSanitizer.normalizeKatexDelimiters(q.getContent()));
                             }

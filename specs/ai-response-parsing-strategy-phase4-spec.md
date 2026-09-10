@@ -71,7 +71,7 @@ Mục tiêu Phase 4 là triển khai **Strategy Pattern & Template Method Engine
   - `AiHintResponseParser` ➔ `AiHintResultDto`
   - `AiQuestionResponseParser` ➔ `AiBatchQuestionResponse`
   - `AiHandwritingResponseParser` ➔ `AiHandwritingResultDto`
-  - `AiRemarkResponseParser` ➔ `AiRemarkJsonResult`
+  - `AiRemarkResponseParser` ➔ `AiRemarkJsonResponse`
 - **FR-5 (Spring Factory Management):** `AiResponseParserFactory` tự động quét danh sách Bean `AiResponseParser<?>` và truy xuất qua `getParser(type)`.
 - **FR-6 (Service Layer Refactoring):** Chuyển đổi 5 AI Services (`AiGradingServiceImpl`, `AiHintServiceImpl`, `AiSubmissionHandwritingServiceImpl`, `StudentRemarkAiServiceImpl`, `AiBatchQuestionGeneratorService`) sang sử dụng `AiResponseParserFactory`.
 - **FR-7 (Global Exception Handling):** Đăng ký `@ExceptionHandler(AiParsingException.class)` trong `GlobalExceptionHandler` trả về HTTP 422.

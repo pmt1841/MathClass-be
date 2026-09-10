@@ -232,7 +232,7 @@ sequenceDiagram
 ```java
 package com.codegym.mathclass.auth.strategy;
 
-import com.codegym.mathclass.auth.dto.request.AuthType;
+import com.codegym.mathclass.auth.entity.AuthType;
 import com.codegym.mathclass.auth.dto.response.UserInfoResponse;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -247,7 +247,7 @@ public interface AuthStrategy<T> {
 ```java
 package com.codegym.mathclass.auth.strategy;
 
-import com.codegym.mathclass.auth.dto.request.AuthType;
+import com.codegym.mathclass.auth.entity.AuthType;
 import com.codegym.mathclass.common.exception.ResourceNotFoundException;
 import org.springframework.stereotype.Component;
 import java.util.List;

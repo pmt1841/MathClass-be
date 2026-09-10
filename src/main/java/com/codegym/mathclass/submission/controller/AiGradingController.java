@@ -1,7 +1,7 @@
 package com.codegym.mathclass.submission.controller;
 
-import com.codegym.mathclass.aiqueue.dto.AiJobSubmitResponse;
-import com.codegym.mathclass.aiqueue.dto.payload.AiGradingJobPayload;
+import com.codegym.mathclass.aiqueue.dto.response.AiJobSubmitResponse;
+import com.codegym.mathclass.aiqueue.model.payload.AiGradingJobPayload;
 import com.codegym.mathclass.aiqueue.service.AiJobService;
 import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.security.services.CustomUserDetails;

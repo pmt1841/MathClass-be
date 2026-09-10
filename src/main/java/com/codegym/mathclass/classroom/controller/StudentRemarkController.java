@@ -1,7 +1,7 @@
 package com.codegym.mathclass.classroom.controller;
 
-import com.codegym.mathclass.aiqueue.dto.AiJobSubmitResponse;
-import com.codegym.mathclass.aiqueue.dto.payload.StudentRemarkJobPayload;
+import com.codegym.mathclass.aiqueue.dto.response.AiJobSubmitResponse;
+import com.codegym.mathclass.aiqueue.model.payload.StudentRemarkJobPayload;
 import com.codegym.mathclass.aiqueue.service.AiJobService;
 import com.codegym.mathclass.classroom.dto.request.AiStudentRemarkEvaluateRequest;
 import com.codegym.mathclass.classroom.dto.response.AiStudentRemarkEvaluationResponse;

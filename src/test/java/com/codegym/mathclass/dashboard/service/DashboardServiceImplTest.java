@@ -1,5 +1,7 @@
 package com.codegym.mathclass.dashboard.service;
 
+import com.codegym.mathclass.dashboard.service.impl.DashboardServiceImpl;
+
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.entity.AssignmentStatus;
 import com.codegym.mathclass.assignment.repository.AssignmentRepository;

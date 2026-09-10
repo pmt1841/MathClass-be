@@ -2,9 +2,9 @@ package com.codegym.mathclass.aiqueue.handler.impl;
 
 import com.codegym.mathclass.aiconfig.credit.entity.AiCreditConfig;
 import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
-import com.codegym.mathclass.aiqueue.dto.AiJobExecutionResult;
-import com.codegym.mathclass.aiqueue.dto.AiJobMessage;
-import com.codegym.mathclass.aiqueue.dto.payload.AiGradingJobPayload;
+import com.codegym.mathclass.aiqueue.model.AiJobExecutionResult;
+import com.codegym.mathclass.aiqueue.model.AiJobMessage;
+import com.codegym.mathclass.aiqueue.model.payload.AiGradingJobPayload;
 import com.codegym.mathclass.aiqueue.handler.AiJobHandler;
 import com.codegym.mathclass.submission.dto.response.AiGradingResponse;
 import com.codegym.mathclass.submission.service.AiGradingService;

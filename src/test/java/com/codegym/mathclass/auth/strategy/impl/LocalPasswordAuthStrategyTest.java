@@ -1,6 +1,6 @@
 package com.codegym.mathclass.auth.strategy.impl;
 
-import com.codegym.mathclass.auth.dto.request.AuthType;
+import com.codegym.mathclass.auth.entity.AuthType;
 import com.codegym.mathclass.auth.dto.request.LoginRequest;
 import com.codegym.mathclass.auth.dto.response.UserInfoResponse;
 import com.codegym.mathclass.auth.entity.RefreshToken;

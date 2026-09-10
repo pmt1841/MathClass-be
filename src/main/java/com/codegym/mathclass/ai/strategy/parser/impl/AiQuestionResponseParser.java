@@ -3,7 +3,7 @@ package com.codegym.mathclass.ai.strategy.parser.impl;
 import com.codegym.mathclass.ai.strategy.parser.AbstractAiResponseParser;
 import com.codegym.mathclass.ai.strategy.parser.AiResponseType;
 import com.codegym.mathclass.assignment.dto.response.BatchGenerateQuestionsResponse;
-import com.codegym.mathclass.assignment.dto.response.BatchQuestionItem;
+import com.codegym.mathclass.assignment.dto.response.BatchQuestionItemResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
@@ -59,7 +59,7 @@ public class AiQuestionResponseParser extends AbstractAiResponseParser<BatchGene
             }
         }
 
-        List<BatchQuestionItem> questions = new ArrayList<>();
+        List<BatchQuestionItemResponse> questions = new ArrayList<>();
         Matcher contentMatcher = CONTENT_PATTERN.matcher(rawResponse);
         while (contentMatcher.find()) {
             String questionContent = contentMatcher.group(1).trim();
@@ -67,7 +67,7 @@ public class AiQuestionResponseParser extends AbstractAiResponseParser<BatchGene
                 questionContent = questionContent.substring(0, questionContent.length() - 1).trim();
             }
             if (!questionContent.isBlank()) {
-                BatchQuestionItem item = BatchQuestionItem.builder()
+                BatchQuestionItemResponse item = BatchQuestionItemResponse.builder()
                         .content(questionContent)
                         .suggestedScore(BigDecimal.valueOf(1.0))
                         .build();

@@ -1,5 +1,7 @@
 package com.codegym.mathclass.classroom.service;
 
+import com.codegym.mathclass.classroom.service.impl.StudentRemarkAiServiceImpl;
+
 import com.codegym.mathclass.aiconfig.entity.SystemPrompt;
 import com.codegym.mathclass.aiconfig.repository.SystemPromptRepository;
 import com.codegym.mathclass.aiconfig.service.AiPromptExecutionService;

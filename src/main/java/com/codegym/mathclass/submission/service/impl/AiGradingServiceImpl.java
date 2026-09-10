@@ -15,7 +15,7 @@ import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.ResourceNotFoundException;
 import com.codegym.mathclass.submission.dto.request.AiGradingRequest;
 import com.codegym.mathclass.submission.dto.response.AiGradingResponse;
-import com.codegym.mathclass.submission.dto.response.DrawingIssueItem;
+import com.codegym.mathclass.submission.dto.response.AiGradingResponse.DrawingIssueItemResponse;
 import com.codegym.mathclass.submission.entity.Submission;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;

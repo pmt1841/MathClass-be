@@ -1,6 +1,6 @@
 package com.codegym.mathclass.auth.strategy;
 
-import com.codegym.mathclass.auth.dto.request.AuthType;
+import com.codegym.mathclass.auth.entity.AuthType;
 import com.codegym.mathclass.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

@@ -14,7 +14,7 @@ import org.springframework.stereotype.Repository;
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
 
     @Query("""
-        SELECT new com.codegym.mathclass.chat.dto.ChatMessageResponse(
+        SELECT new com.codegym.mathclass.chat.dto.response.ChatMessageResponse(
             m.id, 
             m.classId, 
             m.studentId, 

@@ -1,6 +1,6 @@
 package com.codegym.mathclass.aiqueue.service.impl;
 
-import com.codegym.mathclass.aiqueue.dto.AiJobMessage;
+import com.codegym.mathclass.aiqueue.model.AiJobMessage;
 import com.codegym.mathclass.aiqueue.service.AiJobQueueProducer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

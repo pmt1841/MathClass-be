@@ -1,6 +1,6 @@
 package com.codegym.mathclass.aiqueue.controller;
 
-import com.codegym.mathclass.aiqueue.dto.AiJobResultResponse;
+import com.codegym.mathclass.aiqueue.dto.response.AiJobResultResponse;
 import com.codegym.mathclass.aiqueue.service.AiJobService;
 import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.security.services.CustomUserDetails;

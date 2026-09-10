@@ -18,7 +18,7 @@ public class BatchGenerateQuestionsResponse {
     private String suggestedTitle;
     private String suggestedDescription;
     @Builder.Default
-    private List<BatchQuestionItem> questions = new ArrayList<>();
+    private List<BatchQuestionItemResponse> questions = new ArrayList<>();
     private Integer totalQuestions;
     @Builder.Default
     private List<AssignmentImageResponse> extractedImages = new ArrayList<>();

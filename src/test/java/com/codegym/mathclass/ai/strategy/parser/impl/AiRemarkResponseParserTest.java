@@ -1,6 +1,6 @@
 package com.codegym.mathclass.ai.strategy.parser.impl;
 
-import com.codegym.mathclass.classroom.dto.response.AiRemarkJsonResult;
+import com.codegym.mathclass.classroom.dto.response.AiRemarkJsonResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -28,7 +28,7 @@ class AiRemarkResponseParserTest {
                 }
                 """;
 
-        AiRemarkJsonResult result = parser.parse(json);
+        AiRemarkJsonResponse result = parser.parse(json);
 
         assertThat(result).isNotNull();
         assertThat(result.getStrengths()).isEqualTo("Nắm vững lý thuyết phương trình bậc hai");
@@ -46,7 +46,7 @@ class AiRemarkResponseParserTest {
                 "generalAssessment": "Học sinh giữ vững phong độ học tập tốt."
                 """;
 
-        AiRemarkJsonResult result = parser.parse(rawText);
+        AiRemarkJsonResponse result = parser.parse(rawText);
 
         assertThat(result).isNotNull();
         assertThat(result.getStrengths()).contains("Tự giác hoàn thành");

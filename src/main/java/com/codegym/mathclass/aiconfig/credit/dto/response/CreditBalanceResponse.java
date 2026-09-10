@@ -16,5 +16,15 @@ public class CreditBalanceResponse {
     private Integer balance;
     private Integer totalEarned;
     private Integer totalSpent;
-    private List<CreditCostItem> costs;
+    private List<CreditCostItemResponse> costs;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CreditCostItemResponse {
+        private String task;
+        private Integer costPerCall;
+        private Integer tokensPerCredit;
+    }
 }
