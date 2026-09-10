@@ -145,8 +145,7 @@ public class AiJobServiceImpl implements AiJobService {
         return job;
     }
 
-    @Override
-    public AiJobResultResponse getJobInternal(String jobId) {
+    private AiJobResultResponse getJobInternal(String jobId) {
         RBucket<String> bucket = redissonClient.getBucket(AI_JOB_PREFIX + jobId, StringCodec.INSTANCE);
         if (!bucket.isExists()) {
             throw new ResourceNotFoundException("Không tìm thấy tác vụ AI hoặc tác vụ đã hết hạn lưu trữ");

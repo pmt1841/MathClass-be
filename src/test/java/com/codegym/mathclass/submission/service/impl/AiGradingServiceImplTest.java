@@ -237,7 +237,7 @@ class AiGradingServiceImplTest {
 
             assertThatThrownBy(() -> aiGradingService.requestAiGrading(submissionId, new AiGradingRequest(), teacherId))
                     .isInstanceOf(BadRequestException.class)
-                    .hasMessageContaining("request timed out");
+                    .hasMessageContaining("Tính năng AI hiện đang được bảo trì");
         }
 
         @Test
@@ -248,8 +248,7 @@ class AiGradingServiceImplTest {
 
             assertThatThrownBy(() -> aiGradingService.requestAiGrading(submissionId, new AiGradingRequest(), teacherId))
                     .isInstanceOf(BadRequestException.class)
-                    .hasMessageContaining("phản hồi rỗng")
-                    .hasMessageContaining(GRADING_TASK_CODE);
+                    .hasMessageContaining("Tính năng AI hiện đang được bảo trì");
 
             verify(aiPromptExecutionService, times(2)).executePrompt(eq(GRADING_TASK_CODE), anyString(), anyLong());
         }

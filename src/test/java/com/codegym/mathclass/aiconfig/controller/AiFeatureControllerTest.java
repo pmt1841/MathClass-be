@@ -1,8 +1,10 @@
 package com.codegym.mathclass.aiconfig.controller;
 
+import com.codegym.mathclass.aiconfig.entity.ApiKeyStatus;
 import com.codegym.mathclass.aiconfig.entity.Provider;
 import com.codegym.mathclass.aiconfig.entity.ProviderStatus;
 import com.codegym.mathclass.aiconfig.entity.TaskConfig;
+import com.codegym.mathclass.aiconfig.repository.ApiKeyRepository;
 import com.codegym.mathclass.aiconfig.repository.TaskConfigRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -17,6 +19,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.Optional;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -29,6 +33,9 @@ class AiFeatureControllerTest {
 
     @Mock
     private TaskConfigRepository taskConfigRepository;
+
+    @Mock
+    private ApiKeyRepository apiKeyRepository;
 
     @InjectMocks
     private AiFeatureController aiFeatureController;
@@ -58,6 +65,7 @@ class AiFeatureControllerTest {
         void getFeatures_enabledTask_returnsTrue() throws Exception {
             when(taskConfigRepository.findByTask("SUBMISSION_GRADING"))
                     .thenReturn(Optional.of(taskConfig(true, ProviderStatus.ACTIVE)));
+            when(apiKeyRepository.existsByProviderIdAndStatus(1L, ApiKeyStatus.ACTIVE)).thenReturn(true);
 
             mockMvc.perform(get("/ai/features"))
                     .andExpect(status().isOk())
@@ -102,6 +110,7 @@ class AiFeatureControllerTest {
         void getFeatures_returnsAllKnownTasks() throws Exception {
             when(taskConfigRepository.findByTask("SUBMISSION_GRADING"))
                     .thenReturn(Optional.of(taskConfig(true, ProviderStatus.ACTIVE)));
+            when(apiKeyRepository.existsByProviderIdAndStatus(1L, ApiKeyStatus.ACTIVE)).thenReturn(true);
 
             mockMvc.perform(get("/ai/features"))
                     .andExpect(status().isOk())

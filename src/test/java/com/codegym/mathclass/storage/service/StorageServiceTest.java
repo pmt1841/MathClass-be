@@ -2,6 +2,7 @@ package com.codegym.mathclass.storage.service;
 
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.storage.dto.StoragePolicy;
+import com.codegym.mathclass.storage.service.impl.StorageServiceImpl;
 import com.codegym.mathclass.storage.strategy.StorageStrategy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -36,7 +37,7 @@ class StorageServiceTest {
                 "supabaseStorageStrategy", supabaseStrategy,
                 "localStorageStrategy", localStrategy
         );
-        storageService = new StorageService(strategyMap);
+        storageService = new StorageServiceImpl(strategyMap);
         ReflectionTestUtils.setField(storageService, "activeProvider", "SUPABASE");
     }
 

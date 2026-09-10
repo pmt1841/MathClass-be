@@ -55,9 +55,8 @@ public class StorageCleanupServiceImpl implements StorageCleanupService {
 
     private static final List<String> MANAGED_BUCKETS = List.of("avatar", "assignment_image");
 
-    @Override
     @Transactional(readOnly = true)
-    public StorageCleanupConfig getOrCreateConfig() {
+    private StorageCleanupConfig getOrCreateConfig() {
         return configRepository.findById(StorageCleanupConfig.DEFAULT_CONFIG_ID)
                 .orElseGet(() -> {
                     StorageCleanupConfig config = StorageCleanupConfig.builder()

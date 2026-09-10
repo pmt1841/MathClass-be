@@ -45,6 +45,12 @@ public class ProviderController {
         return ResponseEntity.ok(Map.of("data", connectionTestService.fetchAvailableModels(id)));
     }
 
+    @Operation(summary = "Lấy chi tiết Provider", description = "Truy vấn thông tin chi tiết một Provider theo ID")
+    @GetMapping("/{id}")
+    public ResponseEntity<ProviderResponse> getProviderById(@PathVariable Long id) {
+        return ResponseEntity.ok(providerService.getProviderById(id));
+    }
+
     @Operation(summary = "Tạo mới Provider", description = "Tạo mới một Provider (code duy nhất, viết hoa)")
     @PostMapping
     @AuditLog(action = "CREATE_AI_PROVIDER", resourceType = "AI_CONFIG")

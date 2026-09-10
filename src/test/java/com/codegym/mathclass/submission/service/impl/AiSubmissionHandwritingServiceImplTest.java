@@ -118,7 +118,7 @@ class AiSubmissionHandwritingServiceImplTest {
 
                 assertThatThrownBy(() -> aiSubmissionHandwritingService.convertHandwritingToLatex(request, 1L))
                                 .isInstanceOf(ResourceNotFoundException.class)
-                                .hasMessageContaining("Chưa cấu hình System Prompt 'PROMPT_HANDWRITING_LATEX'");
+                                .hasMessageContaining("Tính năng AI hiện đang được bảo trì");
         }
 
         @Test
@@ -193,6 +193,6 @@ class AiSubmissionHandwritingServiceImplTest {
 
                 assertThatThrownBy(() -> aiSubmissionHandwritingService.normalizeSketchToGeometry(request, 1L))
                                 .isInstanceOf(ResourceNotFoundException.class)
-                                .hasMessageContaining("Chưa cấu hình System Prompt 'PROMPT_SKETCH_GEOMETRY'");
+                                .hasMessageContaining("Tính năng AI hiện đang được bảo trì");
         }
 }

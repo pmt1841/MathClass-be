@@ -7,10 +7,6 @@ import com.codegym.mathclass.aiqueue.model.AiJobStatus;
 import com.codegym.mathclass.aiqueue.handler.AiJobHandler;
 import com.codegym.mathclass.aiqueue.service.AiJobQueueConsumer;
 import com.codegym.mathclass.aiqueue.service.AiJobService;
-import com.codegym.mathclass.assignment.exception.AiGenerationException;
-import com.codegym.mathclass.exception.AccessDeniedException;
-import com.codegym.mathclass.exception.BadRequestException;
-import com.codegym.mathclass.exception.ResourceNotFoundException;
 import com.codegym.mathclass.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +30,6 @@ import java.util.concurrent.TimeUnit;
 public class AiJobQueueConsumerImpl implements AiJobQueueConsumer, SmartLifecycle {
 
     public static final String AI_JOB_QUEUE_NAME = "ai:job:queue";
-    public static final int MAX_RETRIES = 0;
 
     @Value("${mathclass.ai.queue.concurrency:4}")
     private int concurrency;
@@ -210,42 +205,5 @@ public class AiJobQueueConsumerImpl implements AiJobQueueConsumer, SmartLifecycl
         eventData.put("errorMessage", errorMessage);
 
         notificationService.sendAiJobEvent(message.getUserId(), "AI_JOB_FAILED", eventData);
-    }
-
-    private boolean isRetryable(Exception e) {
-        if (e instanceof AccessDeniedException
-                || e instanceof ResourceNotFoundException
-                || e instanceof IllegalArgumentException) {
-            return false;
-        }
-
-        if (e instanceof AiGenerationException aiEx) {
-            int code = aiEx.getStatusCode();
-            if (code == 429 || code == 502 || code == 503 || code == 504) {
-                return true;
-            }
-            if (code >= 400 && code < 500) {
-                return false;
-            }
-        }
-
-        String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
-        boolean hasTransientKeywords = msg.contains("429")
-                || msg.contains("too many requests")
-                || msg.contains("timeout")
-                || msg.contains("timed out")
-                || msg.contains("quota")
-                || msg.contains("resource_exhausted")
-                || msg.contains("503")
-                || msg.contains("502")
-                || msg.contains("504")
-                || msg.contains("tạm thời không khả dụng")
-                || msg.contains("phản hồi rỗng");
-
-        if (e instanceof BadRequestException) {
-            return hasTransientKeywords;
-        }
-
-        return hasTransientKeywords;
     }
 }

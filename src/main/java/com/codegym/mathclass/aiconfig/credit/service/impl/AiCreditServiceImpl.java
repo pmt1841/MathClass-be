@@ -82,9 +82,8 @@ public class AiCreditServiceImpl implements AiCreditService {
                 });
     }
 
-    @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public UserAiAccount getAccountForUpdate(Long userId) {
+    private UserAiAccount getAccountForUpdate(Long userId) {
         return userAiAccountRepository.findByUserIdForUpdate(userId)
                 .orElseGet(() -> getOrCreateAccount(userId));
     }

@@ -23,8 +23,6 @@ public interface AiCreditService {
     // ---------- Tài khoản ----------
     UserAiAccount getOrCreateAccount(Long userId);
 
-    UserAiAccount getAccountForUpdate(Long userId);
-
     void grantDefaultForNewUser(Long userId, Role role);
 
     void backfillExistingUsers();

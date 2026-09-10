@@ -4,7 +4,6 @@ import com.codegym.mathclass.storage.dto.request.StorageCleanupRequest;
 import com.codegym.mathclass.storage.dto.response.StorageCleanupResponse;
 import com.codegym.mathclass.storage.dto.response.StorageCleanupStatusResponse;
 import com.codegym.mathclass.storage.dto.request.UpdateStorageCleanupConfigRequest;
-import com.codegym.mathclass.storage.entity.StorageCleanupConfig;
 
 public interface StorageCleanupService {
 
@@ -15,6 +14,4 @@ public interface StorageCleanupService {
     StorageCleanupStatusResponse getCleanupStatus();
 
     StorageCleanupStatusResponse updateConfig(UpdateStorageCleanupConfigRequest request);
-
-    StorageCleanupConfig getOrCreateConfig();
 }
