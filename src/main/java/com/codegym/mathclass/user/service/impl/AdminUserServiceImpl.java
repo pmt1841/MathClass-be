@@ -1,6 +1,7 @@
 package com.codegym.mathclass.user.service.impl;
 
 import com.codegym.mathclass.auth.service.RefreshTokenService;
+import com.codegym.mathclass.chat.service.UserPresenceRegistry;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.ResourceNotFoundException;
 import com.codegym.mathclass.systemlog.service.SystemLogService;
@@ -36,6 +37,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final SystemLogService systemLogService;
     private final RefreshTokenService refreshTokenService;
     private final ApplicationEventPublisher eventPublisher;
+    private final UserPresenceRegistry userPresenceRegistry;
 
     @Override
     @Transactional(readOnly = true)
@@ -49,7 +51,10 @@ public class AdminUserServiceImpl implements AdminUserService {
             searchParam = "%" + sanitized.toLowerCase() + "%";
         }
         return userRepository.findAllForAdmin(role, isActive, searchParam, pageable)
-                .map(userMapper::toUserResponse);
+                .map(user -> {
+                    boolean isOnline = userPresenceRegistry.isUserOnline(user.getId());
+                    return userMapper.toUserResponse(user, isOnline);
+                });
     }
 
     @Override

@@ -20,6 +20,10 @@ public class UserMapper {
     private final PermissionCacheService permissionCacheService;
 
     public UserResponse toUserResponse(User user) {
+        return toUserResponse(user, false);
+    }
+
+    public UserResponse toUserResponse(User user, boolean isOnline) {
         if (user == null) {
             return null;
         }
@@ -41,6 +45,8 @@ public class UserMapper {
                 .lockReason(user.getLockReason())
                 .lockedAt(user.getLockedAt())
                 .lockedBy(user.getLockedBy())
+                .lastActiveAt(user.getLastActiveAt())
+                .isOnline(isOnline)
                 .permissions(permissionCacheService.getPermissionsByRole(user.getRole()))
                 .build();
     }

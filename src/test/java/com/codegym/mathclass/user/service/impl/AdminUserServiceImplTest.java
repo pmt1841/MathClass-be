@@ -1,6 +1,7 @@
 package com.codegym.mathclass.user.service.impl;
 
 import com.codegym.mathclass.auth.service.RefreshTokenService;
+import com.codegym.mathclass.chat.service.UserPresenceRegistry;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.ResourceNotFoundException;
 import com.codegym.mathclass.systemlog.service.SystemLogService;
@@ -34,6 +35,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
@@ -60,6 +62,9 @@ class AdminUserServiceImplTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private UserPresenceRegistry userPresenceRegistry;
 
     @InjectMocks
     private AdminUserServiceImpl adminUserService;
@@ -96,7 +101,7 @@ class AdminUserServiceImplTest {
         void getUsersForAdmin_NoFilters_ReturnsAllUsers() {
             Page<User> userPage = new PageImpl<>(List.of(mockUser));
             when(userRepository.findAllForAdmin(isNull(), isNull(), isNull(), eq(pageable))).thenReturn(userPage);
-            when(userMapper.toUserResponse(mockUser)).thenReturn(mockUserResponse);
+            when(userMapper.toUserResponse(eq(mockUser), anyBoolean())).thenReturn(mockUserResponse);
 
             Page<UserResponse> result = adminUserService.getUsersForAdmin(null, null, null, pageable);
 
@@ -110,7 +115,7 @@ class AdminUserServiceImplTest {
         void getUsersForAdmin_WithRole_PassesRoleToRepository() {
             Page<User> userPage = new PageImpl<>(List.of(mockUser));
             when(userRepository.findAllForAdmin(eq(Role.STUDENT), isNull(), isNull(), eq(pageable))).thenReturn(userPage);
-            when(userMapper.toUserResponse(any())).thenReturn(mockUserResponse);
+            when(userMapper.toUserResponse(any(), anyBoolean())).thenReturn(mockUserResponse);
 
             adminUserService.getUsersForAdmin(Role.STUDENT, null, null, pageable);
 

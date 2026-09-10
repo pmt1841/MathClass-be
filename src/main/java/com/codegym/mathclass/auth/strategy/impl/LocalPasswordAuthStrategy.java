@@ -107,7 +107,8 @@ public class LocalPasswordAuthStrategy implements AuthStrategy<LoginRequest> {
                     .build();
         }
 
-        user.setLastActiveAt(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        user.setLastActiveAt(now);
         userRepository.save(user);
 
         ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails, loginRequest.isRememberMe());

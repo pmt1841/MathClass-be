@@ -14,6 +14,7 @@ import com.codegym.mathclass.auth.strategy.AuthStrategy;
 import com.codegym.mathclass.auth.strategy.AuthStrategyFactory;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.TooManyRequestsException;
+import com.codegym.mathclass.chat.service.UserPresenceRegistry;
 import com.codegym.mathclass.notification.entity.NotificationSettings;
 import com.codegym.mathclass.notification.repository.NotificationSettingsRepository;
 import com.codegym.mathclass.security.jwt.JwtUtils;
@@ -87,6 +88,9 @@ class AuthServiceImplTest {
 
     @Mock
     private AiCreditService aiCreditService;
+
+    @Mock
+    private UserPresenceRegistry userPresenceRegistry;
 
     @Mock
     private AuthStrategy<LoginRequest> localAuthStrategy;

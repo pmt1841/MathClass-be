@@ -172,6 +172,10 @@ public class GoogleOAuth2AuthStrategy implements AuthStrategy<GoogleAuthRequest>
                 httpResponse.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
                 httpResponse.addHeader(HttpHeaders.SET_COOKIE, jwtRefreshCookie.toString());
 
+                java.time.LocalDateTime now = java.time.LocalDateTime.now();
+                user.setLastActiveAt(now);
+                userRepository.save(user);
+
                 String jwtToken = jwtUtils.generateJwtToken(authentication);
                 return userMapper.toUserInfoResponse(userDetails, jwtToken);
 

@@ -13,6 +13,7 @@ import com.codegym.mathclass.auth.service.AuthService;
 import com.codegym.mathclass.auth.service.RefreshTokenService;
 import com.codegym.mathclass.auth.strategy.AuthStrategy;
 import com.codegym.mathclass.auth.strategy.AuthStrategyFactory;
+import com.codegym.mathclass.chat.service.UserPresenceRegistry;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.TooManyRequestsException;
 import com.codegym.mathclass.notification.entity.NotificationSettings;
@@ -61,6 +62,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final RefreshTokenService refreshTokenService;
     private final AiCreditService aiCreditService;
+    private final UserPresenceRegistry userPresenceRegistry;
 
     private final ConcurrentHashMap<String, LocalDateTime> forgotPasswordRateLimitMap = new ConcurrentHashMap<>();
 
@@ -110,19 +112,52 @@ public class AuthServiceImpl implements AuthService {
 
 
     @Override
+    @Transactional
     public MessageResponse logoutUser(HttpServletRequest request, HttpServletResponse response) {
-        String refreshCookie = jwtUtils.getJwtRefreshFromCookies(request);
-        if (refreshCookie != null && !refreshCookie.isEmpty()) {
-            refreshTokenService.findByToken(refreshCookie).ifPresent(refreshTokenService::deleteToken);
+        try {
+            Long logoutUserId = null;
+            String refreshCookie = jwtUtils.getJwtRefreshFromCookies(request);
+            if (refreshCookie != null && !refreshCookie.isEmpty()) {
+                var tokenOpt = refreshTokenService.findByToken(refreshCookie);
+                if (tokenOpt.isPresent()) {
+                    var token = tokenOpt.get();
+                    if (token.getUser() != null) {
+                        logoutUserId = token.getUser().getId();
+                    }
+                    refreshTokenService.deleteToken(token);
+                }
+            }
+            if (logoutUserId == null) {
+                String jwtToken = jwtUtils.getJwtFromCookies(request);
+                if (jwtToken != null && jwtUtils.validateJwtToken(jwtToken)) {
+                    String username = jwtUtils.getUserNameFromJwtToken(jwtToken);
+                    var userOpt = userRepository.findByEmail(username);
+                    if (userOpt.isPresent()) {
+                        logoutUserId = userOpt.get().getId();
+                    }
+                }
+            }
+            if (logoutUserId != null) {
+                LocalDateTime now = LocalDateTime.now();
+                try {
+                    userRepository.updateLastActiveAt(logoutUserId, now);
+                } catch (Exception ex) {
+                    log.warn("Failed to update lastActiveAt on logout: {}", ex.getMessage());
+                }
+                userPresenceRegistry.markLoggedOut(logoutUserId);
+                userPresenceRegistry.broadcastPresence(logoutUserId, false, now);
+            }
+        } catch (Exception ex) {
+            log.error("Error during logout token cleanup: {}", ex.getMessage());
+        } finally {
+            ResponseCookie cleanJwtCookie = jwtUtils.getCleanJwtCookie();
+            ResponseCookie cleanJwtRefreshCookie = jwtUtils.getCleanJwtRefreshCookie();
+
+            response.addHeader(HttpHeaders.SET_COOKIE, cleanJwtCookie.toString());
+            response.addHeader(HttpHeaders.SET_COOKIE, cleanJwtRefreshCookie.toString());
+
+            SecurityContextHolder.getContext().setAuthentication(null);
         }
-
-        ResponseCookie cleanJwtCookie = jwtUtils.getCleanJwtCookie();
-        ResponseCookie cleanJwtRefreshCookie = jwtUtils.getCleanJwtRefreshCookie();
-
-        response.addHeader(HttpHeaders.SET_COOKIE, cleanJwtCookie.toString());
-        response.addHeader(HttpHeaders.SET_COOKIE, cleanJwtRefreshCookie.toString());
-
-        SecurityContextHolder.getContext().setAuthentication(null);
         return new MessageResponse("Đăng xuất thành công!");
     }
 
