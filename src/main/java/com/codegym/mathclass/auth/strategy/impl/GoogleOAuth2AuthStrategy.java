@@ -48,7 +48,6 @@ public class GoogleOAuth2AuthStrategy implements AuthStrategy<GoogleAuthRequest>
     private final UserMapper userMapper;
     private final AiCreditService aiCreditService;
     private final RestTemplate restTemplate;
-    private final com.codegym.mathclass.chat.service.UserPresenceRegistry userPresenceRegistry;
 
     public GoogleOAuth2AuthStrategy(
             UserRepository userRepository,
@@ -57,8 +56,7 @@ public class GoogleOAuth2AuthStrategy implements AuthStrategy<GoogleAuthRequest>
             JwtUtils jwtUtils,
             RefreshTokenService refreshTokenService,
             UserMapper userMapper,
-            AiCreditService aiCreditService,
-            com.codegym.mathclass.chat.service.UserPresenceRegistry userPresenceRegistry) {
+            AiCreditService aiCreditService) {
         this.userRepository = userRepository;
         this.notificationSettingsRepository = notificationSettingsRepository;
         this.permissionCacheService = permissionCacheService;
@@ -66,7 +64,6 @@ public class GoogleOAuth2AuthStrategy implements AuthStrategy<GoogleAuthRequest>
         this.refreshTokenService = refreshTokenService;
         this.userMapper = userMapper;
         this.aiCreditService = aiCreditService;
-        this.userPresenceRegistry = userPresenceRegistry;
 
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(5000);
@@ -178,7 +175,6 @@ public class GoogleOAuth2AuthStrategy implements AuthStrategy<GoogleAuthRequest>
                 java.time.LocalDateTime now = java.time.LocalDateTime.now();
                 user.setLastActiveAt(now);
                 userRepository.save(user);
-                userPresenceRegistry.broadcastPresence(user.getId(), true, now);
 
                 String jwtToken = jwtUtils.generateJwtToken(authentication);
                 return userMapper.toUserInfoResponse(userDetails, jwtToken);

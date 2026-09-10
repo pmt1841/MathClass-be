@@ -9,7 +9,6 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
@@ -34,7 +33,6 @@ public class UserPresenceRegistry {
     // Mapping userId -> Set các sessionId của người dùng đó (xử lý mở nhiều tab)
     private final Map<Long, Set<String>> userSessions = new ConcurrentHashMap<>();
 
-    @Transactional
     @EventListener
     public void handleWebSocketConnectListener(SessionConnectedEvent event) {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
@@ -59,7 +57,6 @@ public class UserPresenceRegistry {
         }
     }
 
-    @Transactional
     @EventListener
     public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
@@ -67,11 +64,18 @@ public class UserPresenceRegistry {
         if (headerAccessor.getUser() instanceof UsernamePasswordAuthenticationToken auth) {
             if (auth.getPrincipal() instanceof CustomUserDetails userDetails) {
                 Long userId = userDetails.getId();
-                if (sessionId != null && userSessions.containsKey(userId)) {
-                    Set<String> sessions = userSessions.get(userId);
-                    sessions.remove(sessionId);
-                    if (sessions.isEmpty()) {
-                        userSessions.remove(userId);
+                if (sessionId != null) {
+                    final boolean[] isCompletelyOffline = {false};
+                    userSessions.computeIfPresent(userId, (k, sessions) -> {
+                        sessions.remove(sessionId);
+                        if (sessions.isEmpty()) {
+                            isCompletelyOffline[0] = true;
+                            return null; // Xóa key khỏi map một cách nguyên tử
+                        }
+                        return sessions;
+                    });
+
+                    if (isCompletelyOffline[0]) {
                         log.info("User completely disconnected all WebSocket sessions: userId={}", userId);
                         LocalDateTime now = LocalDateTime.now();
                         try {
@@ -81,7 +85,8 @@ public class UserPresenceRegistry {
                         }
                         broadcastPresence(userId, false, now);
                     } else {
-                        log.info("User disconnected one session: userId={}, remainingSessions={}", userId, sessions.size());
+                        int remaining = userSessions.getOrDefault(userId, Collections.emptySet()).size();
+                        log.info("User disconnected one session: userId={}, remainingSessions={}", userId, remaining);
                     }
                 }
             }

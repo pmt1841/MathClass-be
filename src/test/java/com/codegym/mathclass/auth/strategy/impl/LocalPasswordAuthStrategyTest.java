@@ -63,9 +63,6 @@ class LocalPasswordAuthStrategyTest {
     @Mock
     private UserTwoFactorAuthRepository userTwoFactorAuthRepository;
 
-    @Mock
-    private com.codegym.mathclass.chat.service.UserPresenceRegistry userPresenceRegistry;
-
     @InjectMocks
     private LocalPasswordAuthStrategy strategy;
 

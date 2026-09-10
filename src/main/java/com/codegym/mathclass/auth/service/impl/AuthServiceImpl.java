@@ -13,6 +13,7 @@ import com.codegym.mathclass.auth.service.AuthService;
 import com.codegym.mathclass.auth.service.RefreshTokenService;
 import com.codegym.mathclass.auth.strategy.AuthStrategy;
 import com.codegym.mathclass.auth.strategy.AuthStrategyFactory;
+import com.codegym.mathclass.chat.service.UserPresenceRegistry;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.TooManyRequestsException;
 import com.codegym.mathclass.notification.entity.NotificationSettings;
@@ -61,7 +62,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final RefreshTokenService refreshTokenService;
     private final AiCreditService aiCreditService;
-    private final com.codegym.mathclass.chat.service.UserPresenceRegistry userPresenceRegistry;
+    private final UserPresenceRegistry userPresenceRegistry;
 
     private final ConcurrentHashMap<String, LocalDateTime> forgotPasswordRateLimitMap = new ConcurrentHashMap<>();
 

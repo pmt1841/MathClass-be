@@ -1,6 +1,7 @@
 package com.codegym.mathclass.user.service.impl;
 
 import com.codegym.mathclass.auth.service.RefreshTokenService;
+import com.codegym.mathclass.chat.service.UserPresenceRegistry;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.ResourceNotFoundException;
 import com.codegym.mathclass.systemlog.service.SystemLogService;
@@ -63,7 +64,7 @@ class AdminUserServiceImplTest {
     private ApplicationEventPublisher eventPublisher;
 
     @Mock
-    private com.codegym.mathclass.chat.service.UserPresenceRegistry userPresenceRegistry;
+    private UserPresenceRegistry userPresenceRegistry;
 
     @InjectMocks
     private AdminUserServiceImpl adminUserService;
