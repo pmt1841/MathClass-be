@@ -29,6 +29,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findByRole(Role role);
 
+    @Transactional
     @Modifying
     @Query("UPDATE User u SET u.lastActiveAt = :now WHERE u.id = :id")
     void updateLastActiveAt(@Param("id") Long id, @Param("now") LocalDateTime now);

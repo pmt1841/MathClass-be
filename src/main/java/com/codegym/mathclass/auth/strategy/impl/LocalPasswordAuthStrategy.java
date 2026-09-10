@@ -40,6 +40,7 @@ public class LocalPasswordAuthStrategy implements AuthStrategy<LoginRequest> {
     private final RefreshTokenService refreshTokenService;
     private final UserMapper userMapper;
     private final UserTwoFactorAuthRepository userTwoFactorAuthRepository;
+    private final com.codegym.mathclass.chat.service.UserPresenceRegistry userPresenceRegistry;
 
     @Override
     public boolean supports(AuthType authType) {
@@ -107,8 +108,10 @@ public class LocalPasswordAuthStrategy implements AuthStrategy<LoginRequest> {
                     .build();
         }
 
-        user.setLastActiveAt(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        user.setLastActiveAt(now);
         userRepository.save(user);
+        userPresenceRegistry.broadcastPresence(user.getId(), true, now);
 
         ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails, loginRequest.isRememberMe());
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(userDetails.getId());

@@ -89,6 +89,9 @@ class AuthServiceImplTest {
     private AiCreditService aiCreditService;
 
     @Mock
+    private com.codegym.mathclass.chat.service.UserPresenceRegistry userPresenceRegistry;
+
+    @Mock
     private AuthStrategy<LoginRequest> localAuthStrategy;
 
     @Mock
