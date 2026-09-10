@@ -1,12 +1,12 @@
 package com.codegym.mathclass.assignment.controller;
 
 import com.codegym.mathclass.common.annotation.ApiVersion;
-import com.codegym.mathclass.assignment.dto.AssignmentResponse;
-import com.codegym.mathclass.assignment.dto.CreateAssignmentRequest;
-import com.codegym.mathclass.assignment.dto.PublishAssignmentRequest;
-import com.codegym.mathclass.assignment.dto.UpdateAssignmentRequest;
-import com.codegym.mathclass.assignment.dto.AssignmentImageDto;
-import com.codegym.mathclass.assignment.dto.TextExtractionResponse;
+import com.codegym.mathclass.assignment.dto.response.AssignmentResponse;
+import com.codegym.mathclass.assignment.dto.request.CreateAssignmentRequest;
+import com.codegym.mathclass.assignment.dto.request.PublishAssignmentRequest;
+import com.codegym.mathclass.assignment.dto.request.UpdateAssignmentRequest;
+import com.codegym.mathclass.assignment.dto.response.AssignmentImageResponse;
+import com.codegym.mathclass.assignment.dto.response.TextExtractionResponse;
 import com.codegym.mathclass.assignment.service.AssignmentService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import org.springframework.web.multipart.MultipartFile;
@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import com.codegym.mathclass.assignment.dto.UpdateVisibilityRequest;
+import com.codegym.mathclass.assignment.dto.request.UpdateVisibilityRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -180,11 +180,11 @@ public class AssignmentController {
     @Operation(summary = "Tải lên hình ảnh bài tập", description = "Upload hình ảnh minh họa cho câu hỏi bài tập toán")
     @PostMapping("/images")
     @PreAuthorize("hasAuthority('assignment:create')")
-    public ResponseEntity<AssignmentImageDto> uploadImage(
+    public ResponseEntity<AssignmentImageResponse> uploadImage(
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal CustomUserDetails userDetails) throws Exception {
 
-        AssignmentImageDto imageDto = assignmentService.uploadImageForAssignment(file);
+        AssignmentImageResponse imageDto = assignmentService.uploadImageForAssignment(file);
         return ResponseEntity.ok(imageDto);
     }
 

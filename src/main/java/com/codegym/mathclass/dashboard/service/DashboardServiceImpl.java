@@ -3,17 +3,17 @@ package com.codegym.mathclass.dashboard.service;
 import com.codegym.mathclass.classroom.entity.JoinRequestStatus;
 import com.codegym.mathclass.classroom.repository.ClassroomJoinRequestRepository;
 import com.codegym.mathclass.classroom.repository.ClassroomRepository;
-import com.codegym.mathclass.dashboard.dto.TeacherDashboardStatsDto;
+import com.codegym.mathclass.dashboard.dto.response.TeacherDashboardStatsResponse;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.entity.AssignmentStatus;
 import com.codegym.mathclass.assignment.repository.AssignmentRepository;
 import com.codegym.mathclass.assignment.repository.AssignmentSheetRepository;
-import com.codegym.mathclass.dashboard.dto.PendingSubmissionDto;
-import com.codegym.mathclass.dashboard.dto.StudentDashboardStatsDto;
-import com.codegym.mathclass.dashboard.dto.StudentGradedTaskDto;
-import com.codegym.mathclass.dashboard.dto.StudentPendingTaskDto;
+import com.codegym.mathclass.dashboard.dto.response.PendingSubmissionResponse;
+import com.codegym.mathclass.dashboard.dto.response.StudentDashboardStatsResponse;
+import com.codegym.mathclass.dashboard.dto.response.StudentGradedTaskResponse;
+import com.codegym.mathclass.dashboard.dto.response.StudentPendingTaskResponse;
 import com.codegym.mathclass.submission.entity.Submission;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import com.codegym.mathclass.classroom.entity.Classroom;
-import com.codegym.mathclass.dashboard.dto.AtRiskStudentDto;
+import com.codegym.mathclass.dashboard.dto.response.AtRiskStudentResponse;
 import com.codegym.mathclass.user.entity.User;
 
 @Service
@@ -41,7 +41,7 @@ public class DashboardServiceImpl implements DashboardService {
     private final AssignmentSheetRepository assignmentSheetRepository;
 
     @Override
-    public TeacherDashboardStatsDto getTeacherDashboardStats(long teacherId) {
+    public TeacherDashboardStatsResponse getTeacherDashboardStats(long teacherId) {
         int teachingClasses = classroomRepository.countByTeacherId(teacherId);
         int managedStudents = classroomRepository.countDistinctStudentsByTeacherId(teacherId);
         int assignmentsToGrade = submissionRepository.countByTeacherAndStatus(teacherId, SubmissionStatus.SUBMITTED);
@@ -49,7 +49,7 @@ public class DashboardServiceImpl implements DashboardService {
         int openAssignments = assignmentRepository.countByTeacherIdAndStatus(teacherId, AssignmentStatus.ARCHIVED);
         int originalAssignmentSheets = assignmentSheetRepository.countByTeacherIdAndClassroomIsNull(teacherId);
 
-        return TeacherDashboardStatsDto.builder()
+        return TeacherDashboardStatsResponse.builder()
                 .teachingClasses(teachingClasses)
                 .managedStudents(managedStudents)
                 .assignmentsToGrade(assignmentsToGrade)
@@ -60,13 +60,13 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     @Override
-    public List<PendingSubmissionDto> getPendingSubmissions(long teacherId, int limit) {
+    public List<PendingSubmissionResponse> getPendingSubmissions(long teacherId, int limit) {
         Page<Submission> submissions = submissionRepository.findPendingSubmissionsByTeacher(
                 teacherId, 
                 PageRequest.of(0, limit)
         );
 
-        return submissions.stream().map(s -> PendingSubmissionDto.builder()
+        return submissions.stream().map(s -> PendingSubmissionResponse.builder()
                 .id(s.getId())
                 .assignmentId(s.getAssignment().getId())
                 .studentName(s.getStudent().getFullName())
@@ -77,12 +77,12 @@ public class DashboardServiceImpl implements DashboardService {
                 .build()).collect(Collectors.toList());
     }
     @Override
-    public StudentDashboardStatsDto getStudentDashboardStats(long studentId) {
+    public StudentDashboardStatsResponse getStudentDashboardStats(long studentId) {
         int joinedClasses = classroomRepository.countByStudentsId(studentId);
         int pendingTasks = assignmentRepository.countPendingAssignmentsForStudent(studentId);
         int completedTasks = submissionRepository.countByStudentAndStatus(studentId, SubmissionStatus.GRADED);
 
-        return StudentDashboardStatsDto.builder()
+        return StudentDashboardStatsResponse.builder()
                 .joinedClasses(joinedClasses)
                 .pendingTasks(pendingTasks)
                 .completedTasks(completedTasks)
@@ -90,13 +90,13 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     @Override
-    public List<StudentPendingTaskDto> getStudentPendingTasks(long studentId, int limit) {
+    public List<StudentPendingTaskResponse> getStudentPendingTasks(long studentId, int limit) {
         Page<Assignment> assignments = assignmentRepository.findPendingAssignmentsForStudent(
                 studentId, 
                 PageRequest.of(0, limit)
         );
 
-        return assignments.stream().map(a -> StudentPendingTaskDto.builder()
+        return assignments.stream().map(a -> StudentPendingTaskResponse.builder()
                 .id(a.getId())
                 .title(a.getTitle())
                 .classCode(a.getClassroom().getClassCode())
@@ -107,13 +107,13 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     @Override
-    public List<StudentGradedTaskDto> getStudentGradedTasks(long studentId, int limit) {
+    public List<StudentGradedTaskResponse> getStudentGradedTasks(long studentId, int limit) {
         Page<Submission> submissions = submissionRepository.findGradedSubmissionsByStudent(
                 studentId, 
                 PageRequest.of(0, limit)
         );
 
-        return submissions.stream().map(s -> StudentGradedTaskDto.builder()
+        return submissions.stream().map(s -> StudentGradedTaskResponse.builder()
                 .id(s.getAssignment().getId())
                 .title(s.getAssignment().getTitle())
                 .classCode(s.getAssignment().getClassroom().getClassCode())
@@ -126,8 +126,8 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     @Override
-    public List<AtRiskStudentDto> getAtRiskStudents(long teacherId) {
-        List<AtRiskStudentDto> atRiskStudents = new ArrayList<>();
+    public List<AtRiskStudentResponse> getAtRiskStudents(long teacherId) {
+        List<AtRiskStudentResponse> atRiskStudents = new ArrayList<>();
         
         // 1. Học sinh điểm trung bình < 5.0
         List<Object[]> lowAvgScores = submissionRepository.findStudentsWithLowAverageScore(teacherId);
@@ -137,7 +137,7 @@ public class DashboardServiceImpl implements DashboardService {
             
             String className = getStudentClassName(teacherId, student);
 
-            atRiskStudents.add(AtRiskStudentDto.builder()
+            atRiskStudents.add(AtRiskStudentResponse.builder()
                 .id(student.getId())
                 .name(student.getFullName())
                 .className(className)
@@ -165,7 +165,7 @@ public class DashboardServiceImpl implements DashboardService {
                 User student = entry.getKey();
                 String className = getStudentClassName(teacherId, student);
 
-                atRiskStudents.add(AtRiskStudentDto.builder()
+                atRiskStudents.add(AtRiskStudentResponse.builder()
                     .id(student.getId())
                     .name(student.getFullName())
                     .className(className)

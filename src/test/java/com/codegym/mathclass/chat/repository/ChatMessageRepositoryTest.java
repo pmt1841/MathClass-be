@@ -1,6 +1,6 @@
 package com.codegym.mathclass.chat.repository;
 
-import com.codegym.mathclass.chat.dto.ChatMessageResponse;
+import com.codegym.mathclass.chat.dto.response.ChatMessageResponse;
 import com.codegym.mathclass.chat.entity.ChatMessage;
 import com.codegym.mathclass.chat.entity.ChatType;
 import com.codegym.mathclass.user.entity.User;

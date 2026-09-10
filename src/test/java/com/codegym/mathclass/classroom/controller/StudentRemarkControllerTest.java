@@ -1,7 +1,7 @@
 package com.codegym.mathclass.classroom.controller;
 
-import com.codegym.mathclass.classroom.dto.CreateStudentRemarkRequest;
-import com.codegym.mathclass.classroom.dto.StudentRemarkResponse;
+import com.codegym.mathclass.classroom.dto.request.CreateStudentRemarkRequest;
+import com.codegym.mathclass.classroom.dto.response.StudentRemarkResponse;
 import com.codegym.mathclass.classroom.service.StudentRemarkService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,8 +27,8 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 
-import com.codegym.mathclass.classroom.dto.AiStudentRemarkEvaluateRequest;
-import com.codegym.mathclass.classroom.dto.AiStudentRemarkEvaluationResponse;
+import com.codegym.mathclass.classroom.dto.request.AiStudentRemarkEvaluateRequest;
+import com.codegym.mathclass.classroom.dto.response.AiStudentRemarkEvaluationResponse;
 import com.codegym.mathclass.classroom.service.StudentRemarkAiService;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;

@@ -6,7 +6,7 @@ import com.codegym.mathclass.aiqueue.dto.AiJobExecutionResult;
 import com.codegym.mathclass.aiqueue.dto.AiJobMessage;
 import com.codegym.mathclass.aiqueue.dto.payload.StudentRemarkJobPayload;
 import com.codegym.mathclass.aiqueue.handler.AiJobHandler;
-import com.codegym.mathclass.classroom.dto.AiStudentRemarkEvaluationResponse;
+import com.codegym.mathclass.classroom.dto.response.AiStudentRemarkEvaluationResponse;
 import com.codegym.mathclass.classroom.service.StudentRemarkAiService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;

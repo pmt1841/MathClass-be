@@ -1,9 +1,9 @@
 package com.codegym.mathclass.storage.controller;
 
 import com.codegym.mathclass.common.annotation.ApiVersion;
-import com.codegym.mathclass.storage.dto.StorageCleanupRequest;
-import com.codegym.mathclass.storage.dto.StorageCleanupResponse;
-import com.codegym.mathclass.storage.dto.StorageCleanupStatusResponse;
+import com.codegym.mathclass.storage.dto.request.StorageCleanupRequest;
+import com.codegym.mathclass.storage.dto.response.StorageCleanupResponse;
+import com.codegym.mathclass.storage.dto.response.StorageCleanupStatusResponse;
 import com.codegym.mathclass.storage.service.StorageCleanupService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -43,7 +43,7 @@ public class AdminStorageController {
     @PutMapping("/config")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<StorageCleanupStatusResponse> updateConfig(
-            @Valid @RequestBody com.codegym.mathclass.storage.dto.UpdateStorageCleanupConfigRequest request) {
+            @Valid @RequestBody com.codegym.mathclass.storage.dto.request.UpdateStorageCleanupConfigRequest request) {
         StorageCleanupStatusResponse updatedStatus = storageCleanupService.updateConfig(request);
         return ResponseEntity.ok(updatedStatus);
     }

@@ -1,6 +1,6 @@
 package com.codegym.mathclass.aiqueue.dto.payload;
 
-import com.codegym.mathclass.assignment.dto.GenerateQuestionRequest;
+import com.codegym.mathclass.assignment.dto.request.GenerateQuestionRequest;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

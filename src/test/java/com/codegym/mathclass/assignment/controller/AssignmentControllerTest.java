@@ -1,10 +1,10 @@
 package com.codegym.mathclass.assignment.controller;
 
-import com.codegym.mathclass.assignment.dto.AssignmentImageDto;
-import com.codegym.mathclass.assignment.dto.AssignmentResponse;
-import com.codegym.mathclass.assignment.dto.CreateAssignmentRequest;
-import com.codegym.mathclass.assignment.dto.PublishAssignmentRequest;
-import com.codegym.mathclass.assignment.dto.UpdateAssignmentRequest;
+import com.codegym.mathclass.assignment.dto.response.AssignmentImageResponse;
+import com.codegym.mathclass.assignment.dto.response.AssignmentResponse;
+import com.codegym.mathclass.assignment.dto.request.CreateAssignmentRequest;
+import com.codegym.mathclass.assignment.dto.request.PublishAssignmentRequest;
+import com.codegym.mathclass.assignment.dto.request.UpdateAssignmentRequest;
 import com.codegym.mathclass.assignment.service.AssignmentService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -233,7 +233,7 @@ class AssignmentControllerTest {
         @DisplayName("Should upload image successfully")
         void uploadImage_ValidFile_ReturnsOkAndDto() throws Exception {
             MockMultipartFile file = new MockMultipartFile("file", "image.png", "image/png", "content".getBytes());
-            AssignmentImageDto response = new AssignmentImageDto("code123", "url");
+            AssignmentImageResponse response = new AssignmentImageResponse("code123", "url");
 
             when(assignmentService.uploadImageForAssignment(any(MultipartFile.class))).thenReturn(response);
 

@@ -1,6 +1,6 @@
 package com.codegym.mathclass.ai.strategy.parser.impl;
 
-import com.codegym.mathclass.submission.dto.HandwritingLatexResponse;
+import com.codegym.mathclass.submission.dto.response.HandwritingLatexResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

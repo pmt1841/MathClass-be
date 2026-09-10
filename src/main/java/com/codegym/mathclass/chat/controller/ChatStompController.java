@@ -1,9 +1,9 @@
 package com.codegym.mathclass.chat.controller;
 
-import com.codegym.mathclass.chat.dto.ChatMessageRequest;
-import com.codegym.mathclass.chat.dto.ChatMessageResponse;
-import com.codegym.mathclass.chat.dto.DirectChatMessageRequest;
-import com.codegym.mathclass.chat.dto.GroupChatMessageRequest;
+import com.codegym.mathclass.chat.dto.request.ChatMessageRequest;
+import com.codegym.mathclass.chat.dto.response.ChatMessageResponse;
+import com.codegym.mathclass.chat.dto.request.DirectChatMessageRequest;
+import com.codegym.mathclass.chat.dto.request.GroupChatMessageRequest;
 import com.codegym.mathclass.chat.service.ChatService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import jakarta.validation.Valid;

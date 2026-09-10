@@ -1,6 +1,6 @@
 package com.codegym.mathclass.notification.service;
 
-import com.codegym.mathclass.notification.dto.NotificationResponse;
+import com.codegym.mathclass.notification.dto.response.NotificationResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;

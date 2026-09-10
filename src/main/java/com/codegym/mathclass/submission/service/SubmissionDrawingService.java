@@ -1,7 +1,7 @@
 package com.codegym.mathclass.submission.service;
 
-import com.codegym.mathclass.submission.dto.SubmissionDrawingRequest;
-import com.codegym.mathclass.submission.dto.SubmissionDrawingResponse;
+import com.codegym.mathclass.submission.dto.request.SubmissionDrawingRequest;
+import com.codegym.mathclass.submission.dto.response.SubmissionDrawingResponse;
 
 public interface SubmissionDrawingService {
     SubmissionDrawingResponse saveOrUpdateDrawing(long submissionId, SubmissionDrawingRequest request,

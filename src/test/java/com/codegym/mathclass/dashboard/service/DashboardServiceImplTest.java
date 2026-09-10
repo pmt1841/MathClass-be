@@ -8,12 +8,12 @@ import com.codegym.mathclass.classroom.entity.Classroom;
 import com.codegym.mathclass.classroom.entity.JoinRequestStatus;
 import com.codegym.mathclass.classroom.repository.ClassroomJoinRequestRepository;
 import com.codegym.mathclass.classroom.repository.ClassroomRepository;
-import com.codegym.mathclass.dashboard.dto.AtRiskStudentDto;
-import com.codegym.mathclass.dashboard.dto.PendingSubmissionDto;
-import com.codegym.mathclass.dashboard.dto.StudentDashboardStatsDto;
-import com.codegym.mathclass.dashboard.dto.StudentGradedTaskDto;
-import com.codegym.mathclass.dashboard.dto.StudentPendingTaskDto;
-import com.codegym.mathclass.dashboard.dto.TeacherDashboardStatsDto;
+import com.codegym.mathclass.dashboard.dto.response.AtRiskStudentResponse;
+import com.codegym.mathclass.dashboard.dto.response.PendingSubmissionResponse;
+import com.codegym.mathclass.dashboard.dto.response.StudentDashboardStatsResponse;
+import com.codegym.mathclass.dashboard.dto.response.StudentGradedTaskResponse;
+import com.codegym.mathclass.dashboard.dto.response.StudentPendingTaskResponse;
+import com.codegym.mathclass.dashboard.dto.response.TeacherDashboardStatsResponse;
 import com.codegym.mathclass.submission.entity.Submission;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
@@ -113,7 +113,7 @@ class DashboardServiceImplTest {
             when(assignmentRepository.countByTeacherIdAndStatus(1L, AssignmentStatus.ARCHIVED)).thenReturn(3);
             when(assignmentSheetRepository.countByTeacherIdAndClassroomIsNull(1L)).thenReturn(4);
 
-            TeacherDashboardStatsDto stats = dashboardService.getTeacherDashboardStats(1L);
+            TeacherDashboardStatsResponse stats = dashboardService.getTeacherDashboardStats(1L);
 
             assertThat(stats).isNotNull();
             assertThat(stats.getTeachingClasses()).isEqualTo(5);
@@ -134,7 +134,7 @@ class DashboardServiceImplTest {
             when(assignmentRepository.countByTeacherIdAndStatus(1L, AssignmentStatus.ARCHIVED)).thenReturn(0);
             when(assignmentSheetRepository.countByTeacherIdAndClassroomIsNull(1L)).thenReturn(0);
 
-            TeacherDashboardStatsDto stats = dashboardService.getTeacherDashboardStats(1L);
+            TeacherDashboardStatsResponse stats = dashboardService.getTeacherDashboardStats(1L);
 
             assertThat(stats).isNotNull();
             assertThat(stats.getTeachingClasses()).isZero();
@@ -156,7 +156,7 @@ class DashboardServiceImplTest {
             Page<Submission> page = new PageImpl<>(Collections.singletonList(submission));
             when(submissionRepository.findPendingSubmissionsByTeacher(eq(1L), any(Pageable.class))).thenReturn(page);
 
-            List<PendingSubmissionDto> list = dashboardService.getPendingSubmissions(1L, 10);
+            List<PendingSubmissionResponse> list = dashboardService.getPendingSubmissions(1L, 10);
 
             assertThat(list).hasSize(1);
             assertThat(list.get(0).getId()).isEqualTo(1000L);
@@ -178,7 +178,7 @@ class DashboardServiceImplTest {
             when(assignmentRepository.countPendingAssignmentsForStudent(2L)).thenReturn(5);
             when(submissionRepository.countByStudentAndStatus(2L, SubmissionStatus.GRADED)).thenReturn(15);
 
-            StudentDashboardStatsDto stats = dashboardService.getStudentDashboardStats(2L);
+            StudentDashboardStatsResponse stats = dashboardService.getStudentDashboardStats(2L);
 
             assertThat(stats).isNotNull();
             assertThat(stats.getJoinedClasses()).isEqualTo(3);
@@ -193,7 +193,7 @@ class DashboardServiceImplTest {
             when(assignmentRepository.countPendingAssignmentsForStudent(2L)).thenReturn(0);
             when(submissionRepository.countByStudentAndStatus(2L, SubmissionStatus.GRADED)).thenReturn(0);
 
-            StudentDashboardStatsDto stats = dashboardService.getStudentDashboardStats(2L);
+            StudentDashboardStatsResponse stats = dashboardService.getStudentDashboardStats(2L);
 
             assertThat(stats).isNotNull();
             assertThat(stats.getJoinedClasses()).isZero();
@@ -212,7 +212,7 @@ class DashboardServiceImplTest {
             Page<Assignment> page = new PageImpl<>(Collections.singletonList(assignment));
             when(assignmentRepository.findPendingAssignmentsForStudent(eq(2L), any(Pageable.class))).thenReturn(page);
 
-            List<StudentPendingTaskDto> list = dashboardService.getStudentPendingTasks(2L, 10);
+            List<StudentPendingTaskResponse> list = dashboardService.getStudentPendingTasks(2L, 10);
 
             assertThat(list).hasSize(1);
             assertThat(list.get(0).getId()).isEqualTo(100L);
@@ -233,7 +233,7 @@ class DashboardServiceImplTest {
             Page<Submission> page = new PageImpl<>(Collections.singletonList(submission));
             when(submissionRepository.findGradedSubmissionsByStudent(eq(2L), any(Pageable.class))).thenReturn(page);
 
-            List<StudentGradedTaskDto> list = dashboardService.getStudentGradedTasks(2L, 10);
+            List<StudentGradedTaskResponse> list = dashboardService.getStudentGradedTasks(2L, 10);
 
             assertThat(list).hasSize(1);
             assertThat(list.get(0).getId()).isEqualTo(100L);
@@ -250,7 +250,7 @@ class DashboardServiceImplTest {
             Page<Submission> page = new PageImpl<>(Collections.singletonList(submission));
             when(submissionRepository.findGradedSubmissionsByStudent(eq(2L), any(Pageable.class))).thenReturn(page);
 
-            List<StudentGradedTaskDto> list = dashboardService.getStudentGradedTasks(2L, 10);
+            List<StudentGradedTaskResponse> list = dashboardService.getStudentGradedTasks(2L, 10);
 
             assertThat(list).hasSize(1);
             assertThat(list.get(0).getScore()).isEqualTo(0f);
@@ -291,16 +291,16 @@ class DashboardServiceImplTest {
             when(submissionRepository.existsByAssignmentIdAndStudentIdAndStatusNot(eq(103L), eq(2L),
                     eq(SubmissionStatus.DRAFT))).thenReturn(false);
 
-            List<AtRiskStudentDto> list = dashboardService.getAtRiskStudents(1L);
+            List<AtRiskStudentResponse> list = dashboardService.getAtRiskStudents(1L);
 
             assertThat(list).hasSize(2);
 
-            AtRiskStudentDto lowScoreDto = list.get(0);
+            AtRiskStudentResponse lowScoreDto = list.get(0);
             assertThat(lowScoreDto.getId()).isEqualTo(2L);
             assertThat(lowScoreDto.getIssueType()).isEqualTo("low_score");
             assertThat(lowScoreDto.getDetail()).isEqualTo("Điểm TB: 4.5");
 
-            AtRiskStudentDto missingDto = list.get(1);
+            AtRiskStudentResponse missingDto = list.get(1);
             assertThat(missingDto.getId()).isEqualTo(2L);
             assertThat(missingDto.getIssueType()).isEqualTo("missing_assignments");
             assertThat(missingDto.getDetail()).isEqualTo("Thiếu 3 bài tập");
@@ -316,7 +316,7 @@ class DashboardServiceImplTest {
             when(assignmentRepository.findAssignmentsPastDeadline(eq(1L), any(LocalDateTime.class)))
                     .thenReturn(Collections.emptyList());
 
-            List<AtRiskStudentDto> list = dashboardService.getAtRiskStudents(1L);
+            List<AtRiskStudentResponse> list = dashboardService.getAtRiskStudents(1L);
 
             assertThat(list).hasSize(1);
             assertThat(list.get(0).getClassName()).isEqualTo("N/A");

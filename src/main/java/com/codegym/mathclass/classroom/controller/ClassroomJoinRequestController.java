@@ -1,9 +1,9 @@
 package com.codegym.mathclass.classroom.controller;
 
 import com.codegym.mathclass.common.annotation.ApiVersion;
-import com.codegym.mathclass.classroom.dto.JoinRequestRequest;
-import com.codegym.mathclass.classroom.dto.JoinRequestResponse;
-import com.codegym.mathclass.classroom.dto.ProcessJoinRequestDto;
+import com.codegym.mathclass.classroom.dto.request.JoinRequestRequest;
+import com.codegym.mathclass.classroom.dto.response.JoinRequestResponse;
+import com.codegym.mathclass.classroom.dto.request.ProcessJoinRequest;
 import com.codegym.mathclass.classroom.service.ClassroomJoinRequestService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import jakarta.validation.Valid;
@@ -61,7 +61,7 @@ public class ClassroomJoinRequestController {
     @PreAuthorize("hasAuthority('classroom:manage_requests')")
     public ResponseEntity<JoinRequestResponse> processRequest(
             @PathVariable Long requestId,
-            @Valid @RequestBody ProcessJoinRequestDto requestDto,
+            @Valid @RequestBody ProcessJoinRequest requestDto,
             @AuthenticationPrincipal CustomUserDetails currentUser) {
         JoinRequestResponse response = joinRequestService.processJoinRequest(requestId, requestDto, currentUser.getId());
         return new ResponseEntity<>(response, HttpStatus.OK);

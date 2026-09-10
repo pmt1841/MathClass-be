@@ -2,10 +2,10 @@ package com.codegym.mathclass.submission.controller;
 
 import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.security.services.CustomUserDetails;
-import com.codegym.mathclass.submission.dto.GradeRequest;
-import com.codegym.mathclass.submission.dto.SubmissionRequest;
-import com.codegym.mathclass.submission.dto.SubmissionResponse;
-import com.codegym.mathclass.submission.dto.SubmissionVersionResponse;
+import com.codegym.mathclass.submission.dto.request.GradeRequest;
+import com.codegym.mathclass.submission.dto.request.SubmissionRequest;
+import com.codegym.mathclass.submission.dto.response.SubmissionResponse;
+import com.codegym.mathclass.submission.dto.response.SubmissionVersionResponse;
 import com.codegym.mathclass.submission.service.SubmissionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

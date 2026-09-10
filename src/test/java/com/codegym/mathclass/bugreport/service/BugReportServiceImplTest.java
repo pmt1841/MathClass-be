@@ -1,8 +1,8 @@
 package com.codegym.mathclass.bugreport.service;
 
-import com.codegym.mathclass.bugreport.dto.BugReportResponse;
-import com.codegym.mathclass.bugreport.dto.CreateBugReportRequest;
-import com.codegym.mathclass.bugreport.dto.SendOtpRequest;
+import com.codegym.mathclass.bugreport.dto.response.BugReportResponse;
+import com.codegym.mathclass.bugreport.dto.request.CreateBugReportRequest;
+import com.codegym.mathclass.bugreport.dto.request.SendOtpRequest;
 import com.codegym.mathclass.bugreport.entity.BugErrorType;
 import com.codegym.mathclass.bugreport.entity.BugReport;
 import com.codegym.mathclass.bugreport.entity.BugReportStatus;

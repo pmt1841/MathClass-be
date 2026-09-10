@@ -1,7 +1,7 @@
 package com.codegym.mathclass.user.service;
 
 import com.codegym.mathclass.exception.BadRequestException;
-import com.codegym.mathclass.user.dto.response.PermissionDto;
+import com.codegym.mathclass.user.dto.response.PermissionResponse;
 import com.codegym.mathclass.user.entity.Permission;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.RolePermission;
@@ -73,7 +73,7 @@ class RolePermissionServiceTest {
         void getPermissionsByRole_ValidRole_ReturnsList() {
             when(rolePermissionRepository.findByRole(Role.TEACHER)).thenReturn(List.of(rolePermission1));
 
-            List<PermissionDto> result = rolePermissionService.getPermissionsByRole(Role.TEACHER);
+            List<PermissionResponse> result = rolePermissionService.getPermissionsByRole(Role.TEACHER);
 
             assertThat(result).isNotNull().hasSize(1);
             assertThat(result.get(0).getName()).isEqualTo("user:read");
@@ -90,7 +90,7 @@ class RolePermissionServiceTest {
         void getAllPermissions_ReturnsList() {
             when(permissionRepository.findAll()).thenReturn(List.of(permission1, permission2));
 
-            List<PermissionDto> result = rolePermissionService.getAllPermissions();
+            List<PermissionResponse> result = rolePermissionService.getAllPermissions();
 
             assertThat(result).isNotNull().hasSize(2);
             assertThat(result.get(0).getName()).isEqualTo("user:read");

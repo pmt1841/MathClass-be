@@ -4,10 +4,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.util.List;
 
-import com.codegym.mathclass.classroom.dto.ClassroomResponse;
-import com.codegym.mathclass.classroom.dto.CreateClassroomRequest;
-import com.codegym.mathclass.classroom.dto.StudentResponse;
-import com.codegym.mathclass.classroom.dto.UpdateClassroomRequest;
+import com.codegym.mathclass.classroom.dto.response.ClassroomResponse;
+import com.codegym.mathclass.classroom.dto.request.CreateClassroomRequest;
+import com.codegym.mathclass.classroom.dto.response.StudentResponse;
+import com.codegym.mathclass.classroom.dto.request.UpdateClassroomRequest;
 
 public interface ClassroomService {
     ClassroomResponse createClassroom(CreateClassroomRequest request, long currentUserId);

@@ -1,8 +1,8 @@
 package com.codegym.mathclass.bugreport.service.impl;
 
-import com.codegym.mathclass.bugreport.dto.CreateBugReportRequest;
-import com.codegym.mathclass.bugreport.dto.BugReportResponse;
-import com.codegym.mathclass.bugreport.dto.UpdateBugReportStatusRequest;
+import com.codegym.mathclass.bugreport.dto.request.CreateBugReportRequest;
+import com.codegym.mathclass.bugreport.dto.response.BugReportResponse;
+import com.codegym.mathclass.bugreport.dto.request.UpdateBugReportStatusRequest;
 import com.codegym.mathclass.bugreport.entity.BugErrorType;
 import com.codegym.mathclass.bugreport.entity.BugReport;
 import com.codegym.mathclass.bugreport.entity.BugReportImage;
@@ -28,7 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.codegym.mathclass.bugreport.dto.SendOtpRequest;
+import com.codegym.mathclass.bugreport.dto.request.SendOtpRequest;
 
 import com.codegym.mathclass.exception.TooManyRequestsException;
 

@@ -1,7 +1,7 @@
 package com.codegym.mathclass.chat.service.impl;
 
-import com.codegym.mathclass.chat.dto.ChatMessageRequest;
-import com.codegym.mathclass.chat.dto.ChatMessageResponse;
+import com.codegym.mathclass.chat.dto.request.ChatMessageRequest;
+import com.codegym.mathclass.chat.dto.response.ChatMessageResponse;
 import com.codegym.mathclass.chat.entity.ChatMessage;
 import com.codegym.mathclass.chat.repository.ChatMessageRepository;
 import com.codegym.mathclass.chat.service.ChatService;
@@ -11,7 +11,7 @@ import com.codegym.mathclass.classroom.repository.ClassroomRepository;
 import com.codegym.mathclass.exception.AccessDeniedException;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.notification.service.NotificationService;
-import com.codegym.mathclass.chat.dto.ClassroomChatUnreadSummaryResponse;
+import com.codegym.mathclass.chat.dto.response.ClassroomChatUnreadSummaryResponse;
 import com.codegym.mathclass.chat.entity.GroupChatReadState;
 import com.codegym.mathclass.chat.repository.GroupChatReadStateRepository;
 import com.codegym.mathclass.user.entity.User;
@@ -191,7 +191,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional
-    public ChatMessageResponse sendGroupMessage(com.codegym.mathclass.chat.dto.GroupChatMessageRequest request, Long currentUserId) {
+    public ChatMessageResponse sendGroupMessage(com.codegym.mathclass.chat.dto.request.GroupChatMessageRequest request, Long currentUserId) {
         Classroom classroom = classroomRepository.findById(request.getClassId())
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy lớp học với ID: " + request.getClassId()));
 
@@ -229,7 +229,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional
-    public ChatMessageResponse sendDirectMessage(com.codegym.mathclass.chat.dto.DirectChatMessageRequest request, Long currentUserId) {
+    public ChatMessageResponse sendDirectMessage(com.codegym.mathclass.chat.dto.request.DirectChatMessageRequest request, Long currentUserId) {
         Classroom classroom = classroomRepository.findById(request.getClassId())
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy lớp học với ID: " + request.getClassId()));
 

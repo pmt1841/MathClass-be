@@ -24,19 +24,31 @@ Chi tiết danh sách Tech Stack và thư viện được quản lý tập trung
 
 ---
 
-## 3. Skill Trigger Rules (Tự Động Kích Hoạt Skill)
+## 3. Skill Trigger Rules (Quy chuẩn kích hoạt Skill theo Vòng đời SDLC)
 
-AI cần tự động áp dụng các skill sau theo đúng loại tác vụ:
+AI **BẮT BUỘC** phải đối chiếu và kích hoạt skill theo đúng thứ tự các bước trong vòng đời phát triển tính năng:
 
-- **Khi thiết kế, tạo mới hoặc refactor REST API:** ➔ Sử dụng skill [api-design-principles](skills/api-design-principles/SKILL.md)
-- **Khi thảo luận, làm rõ ý tưởng, kiến trúc hoặc nghiệp vụ mới trước khi code:** ➔ Sử dụng skill [brainstorming](skills/brainstorming/SKILL.md)
-- **Khi Refactor, tối ưu hóa code, hoặc sửa code chưa sạch:** ➔ Sử dụng skill [clean-code](skills/clean-code/SKILL.md)
-- **Khi đánh giá, review code hoặc kiểm tra chất lượng Pull Request:** ➔ Sử dụng skill [code-reviewer](skills/code-reviewer/SKILL.md)
-- **Khi làm việc với Docker, Dockerfile, Docker Compose:** ➔ Sử dụng skill [docker-expert](skills/docker-expert/SKILL.md)
-- **Khi làm việc với Java 21, Spring Boot 4.x hoặc các tính năng Java hiện đại:** ➔ Sử dụng skill [java-pro](skills/java-pro/SKILL.md)
-- **Khi tạo/sửa JPA Entity, Repository, Query HQL/SQL:** ➔ Sử dụng skill [spring-data-jpa](skills/spring-data-jpa/SKILL.md)
-- **Khi áp dụng chuẩn kiến trúc, thiết kế hệ thống theo phong cách Uncle Bob (Clean Architecture, SOLID):** ➔ Sử dụng skill [uncle-bob-craft](skills/uncle-bob-craft/SKILL.md)
-- **Khi viết Unit Test / Integration Test:** ➔ Sử dụng skill [unit-testing-test-generate](skills/unit-testing-test-generate/SKILL.md) hoặc [java-pro](skills/java-pro/SKILL.md)
+1. 💡 **Lên ý tưởng & Giải pháp (Phân tích đầu vào):**
+   - Khi thảo luận tính năng mới, làm rõ nghiệp vụ chưa rõ ràng hoặc chia nhỏ task: ➔ Bắt buộc kích hoạt [brainstorming](skills/brainstorming/SKILL.md)
+
+2. 📐 **Thiết kế Giao diện API & Hợp đồng Dữ liệu (Design Phase):**
+   - Khi thiết kế, tạo mới hoặc sửa đổi REST API, Request/Response DTO: ➔ Bắt buộc kích hoạt [api-design-principles](skills/api-design-principles/SKILL.md)
+
+3. 🗄️ **Mô hình Dữ liệu & Persistence (Data Layer):**
+   - Khi tạo/sửa JPA Entity, Repository, viết query SQL/JPQL hoặc Flyway migration: ➔ Bắt buộc kích hoạt [spring-data-jpa](skills/spring-data-jpa/SKILL.md)
+
+4. ☕ **Lập trình Nghiệp vụ & Clean Code (Implementation Phase):**
+   - Khi viết hoặc sửa đổi Business Logic trong Service/ServiceImpl: ➔ Bắt buộc áp dụng [clean-code](skills/clean-code/SKILL.md)
+   - Khi cần tối ưu hiệu năng, xử lý bất đồng bộ, Stream, Record, Virtual Threads: ➔ Kích hoạt [java-pro](skills/java-pro/SKILL.md)
+
+5. 🧪 **Kiểm thử Tự động (Verification Phase):**
+   - Khi viết Unit Test / Integration Test cho Controller, Service: ➔ Bắt buộc kích hoạt [unit-testing-test-generate](skills/unit-testing-test-generate/SKILL.md)
+
+6. 🔍 **Đánh giá & Review (Quality Gate):**
+   - Khi hoàn thành tính năng, trước khi commit hoặc review Pull Request: ➔ Bắt buộc kích hoạt [code-reviewer](skills/code-reviewer/SKILL.md)
+
+7. 🐳 **Môi trường & Hạ tầng (Deployment & Ops):**
+   - Khi làm việc với Dockerfile, docker-compose, PostgreSQL/Redis container: ➔ Kích hoạt [docker-expert](skills/docker-expert/SKILL.md)
 
 ---
 
@@ -46,7 +58,7 @@ AI cần tự động áp dụng các skill sau theo đúng loại tác vụ:
   - `controller`: Chỉ nhận HTTP Request, validate DTO bằng `@Valid`, gọi Service, trả về `ResponseEntity<ApiResponse<T>>`. **Không viết logic tại Controller**.
   - `service` / `service/impl`: Chứa toàn bộ Business Logic. Sử dụng `@Transactional` cho các hàm tác động dữ liệu.
   - `repository`: Interfaces kế thừa `JpaRepository` / `JpaSpecificationExecutor`.
-  - `dto`: Phân tách `RequestDTO` và `ResponseDTO`. **Không trả về JPA Entity trực tiếp ra API Response**.
+  - `dto`: Phân tách rõ thành 2 package con: `dto/request` (chứa các class request có hậu tố `*Request`) và `dto/response` (chứa các class response có hậu tố `*Response`). **Không trả về JPA Entity trực tiếp ra API Response**.
   - `exception`: Bắt ngoại lệ tập trung qua `GlobalExceptionHandler`.
 - **Dependency Injection:** Sử dụng Constructor Injection thông qua `@RequiredArgsConstructor` từ Lombok (KHÔNG dùng `@Autowired` ở trường).
 - **Entities:** Tất cả JPA Entities phải kế thừa từ `BaseEntity` (chứa `id`, `createdAt`, `updatedAt`).

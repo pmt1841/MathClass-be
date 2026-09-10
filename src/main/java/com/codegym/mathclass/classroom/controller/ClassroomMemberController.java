@@ -13,8 +13,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.codegym.mathclass.classroom.dto.AddStudentRequest;
-import com.codegym.mathclass.classroom.dto.StudentResponse;
+import com.codegym.mathclass.classroom.dto.request.AddStudentRequest;
+import com.codegym.mathclass.classroom.dto.response.StudentResponse;
 import com.codegym.mathclass.classroom.service.ClassroomService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;

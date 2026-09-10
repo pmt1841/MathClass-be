@@ -1,8 +1,8 @@
 package com.codegym.mathclass.classroom.controller;
 
-import com.codegym.mathclass.classroom.dto.ClassroomResponse;
-import com.codegym.mathclass.classroom.dto.CreateClassroomRequest;
-import com.codegym.mathclass.classroom.dto.UpdateClassroomRequest;
+import com.codegym.mathclass.classroom.dto.response.ClassroomResponse;
+import com.codegym.mathclass.classroom.dto.request.CreateClassroomRequest;
+import com.codegym.mathclass.classroom.dto.request.UpdateClassroomRequest;
 import com.codegym.mathclass.classroom.service.ClassroomService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.fasterxml.jackson.databind.ObjectMapper;

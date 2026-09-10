@@ -1,7 +1,7 @@
 package com.codegym.mathclass.classroom.service;
 
-import com.codegym.mathclass.classroom.dto.AiStudentRemarkEvaluateRequest;
-import com.codegym.mathclass.classroom.dto.AiStudentRemarkEvaluationResponse;
+import com.codegym.mathclass.classroom.dto.request.AiStudentRemarkEvaluateRequest;
+import com.codegym.mathclass.classroom.dto.response.AiStudentRemarkEvaluationResponse;
 
 public interface StudentRemarkAiService {
 

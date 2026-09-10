@@ -2,7 +2,7 @@ package com.codegym.mathclass.ai.strategy.parser.impl;
 
 import com.codegym.mathclass.ai.strategy.parser.AbstractAiResponseParser;
 import com.codegym.mathclass.ai.strategy.parser.AiResponseType;
-import com.codegym.mathclass.classroom.dto.AiRemarkJsonResult;
+import com.codegym.mathclass.classroom.dto.response.AiRemarkJsonResult;
 import com.codegym.mathclass.utils.AiResponseUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;

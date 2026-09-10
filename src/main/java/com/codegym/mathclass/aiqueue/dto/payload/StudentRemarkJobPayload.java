@@ -1,6 +1,6 @@
 package com.codegym.mathclass.aiqueue.dto.payload;
 
-import com.codegym.mathclass.classroom.dto.AiStudentRemarkEvaluateRequest;
+import com.codegym.mathclass.classroom.dto.request.AiStudentRemarkEvaluateRequest;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

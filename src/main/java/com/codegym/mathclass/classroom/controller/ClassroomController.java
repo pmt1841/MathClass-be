@@ -1,8 +1,8 @@
 package com.codegym.mathclass.classroom.controller;
 
 import com.codegym.mathclass.common.annotation.ApiVersion;
-import com.codegym.mathclass.classroom.dto.ClassroomResponse;
-import com.codegym.mathclass.classroom.dto.CreateClassroomRequest;
+import com.codegym.mathclass.classroom.dto.response.ClassroomResponse;
+import com.codegym.mathclass.classroom.dto.request.CreateClassroomRequest;
 import com.codegym.mathclass.classroom.service.ClassroomService;
 import com.codegym.mathclass.chat.service.ChatService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.DeleteMapping;
-import com.codegym.mathclass.classroom.dto.UpdateClassroomRequest;
+import com.codegym.mathclass.classroom.dto.request.UpdateClassroomRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 

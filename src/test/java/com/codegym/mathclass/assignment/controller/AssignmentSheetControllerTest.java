@@ -1,8 +1,8 @@
 package com.codegym.mathclass.assignment.controller;
 
-import com.codegym.mathclass.assignment.dto.AssignmentSheetResponse;
-import com.codegym.mathclass.assignment.dto.PublishAssignmentSheetRequest;
-import com.codegym.mathclass.assignment.dto.UpdateAssignmentSheetRequest;
+import com.codegym.mathclass.assignment.dto.response.AssignmentSheetResponse;
+import com.codegym.mathclass.assignment.dto.request.PublishAssignmentSheetRequest;
+import com.codegym.mathclass.assignment.dto.request.UpdateAssignmentSheetRequest;
 import com.codegym.mathclass.assignment.service.AssignmentSheetService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.fasterxml.jackson.databind.ObjectMapper;

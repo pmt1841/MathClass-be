@@ -1,6 +1,6 @@
 package com.codegym.mathclass.chat.repository;
 
-import com.codegym.mathclass.chat.dto.ChatMessageResponse;
+import com.codegym.mathclass.chat.dto.response.ChatMessageResponse;
 import com.codegym.mathclass.chat.entity.ChatMessage;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

@@ -2,7 +2,7 @@ package com.codegym.mathclass.notification.service.impl;
 
 import com.codegym.mathclass.exception.ResourceNotFoundException;
 import com.codegym.mathclass.notification.dto.NotificationPayload;
-import com.codegym.mathclass.notification.dto.NotificationResponse;
+import com.codegym.mathclass.notification.dto.response.NotificationResponse;
 import com.codegym.mathclass.notification.entity.Notification;
 import com.codegym.mathclass.notification.repository.NotificationRepository;
 import com.codegym.mathclass.notification.service.NotificationService;

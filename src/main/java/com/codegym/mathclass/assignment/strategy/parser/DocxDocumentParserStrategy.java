@@ -1,7 +1,7 @@
 package com.codegym.mathclass.assignment.strategy.parser;
 
-import com.codegym.mathclass.assignment.dto.AssignmentImageDto;
-import com.codegym.mathclass.assignment.dto.DocumentParseResult;
+import com.codegym.mathclass.assignment.dto.response.AssignmentImageResponse;
+import com.codegym.mathclass.assignment.dto.response.DocumentParseResult;
 import com.codegym.mathclass.storage.dto.StoragePolicy;
 import com.codegym.mathclass.storage.service.StorageService;
 import lombok.RequiredArgsConstructor;
@@ -42,13 +42,13 @@ public class DocxDocumentParserStrategy implements DocumentParserStrategy {
     public DocumentParseResult parse(MultipartFile file) throws Exception {
         try (InputStream is = file.getInputStream();
              XWPFDocument document = new XWPFDocument(is)) {
-            List<AssignmentImageDto> extractedImages = new ArrayList<>();
+            List<AssignmentImageResponse> extractedImages = new ArrayList<>();
             String markdownContent = convertDocxToMarkdown(document, extractedImages);
             return new DocumentParseResult(markdownContent, extractedImages);
         }
     }
 
-    private String convertDocxToMarkdown(XWPFDocument document, List<AssignmentImageDto> extractedImages) {
+    private String convertDocxToMarkdown(XWPFDocument document, List<AssignmentImageResponse> extractedImages) {
         StringBuilder md = new StringBuilder();
         for (IBodyElement element : document.getBodyElements()) {
             if (element instanceof XWPFParagraph) {
@@ -60,7 +60,7 @@ public class DocxDocumentParserStrategy implements DocumentParserStrategy {
         return md.toString().trim();
     }
 
-    private String processParagraph(XWPFParagraph p, List<AssignmentImageDto> extractedImages) {
+    private String processParagraph(XWPFParagraph p, List<AssignmentImageResponse> extractedImages) {
         if (p.isEmpty() || (p.getText().trim().isEmpty()
                 && p.getRuns().stream().noneMatch(r -> !r.getEmbeddedPictures().isEmpty()))) {
             return "\n";
@@ -134,7 +134,7 @@ public class DocxDocumentParserStrategy implements DocumentParserStrategy {
                         String publicUrl = storageService.upload(byteData, originalName, contentType, StoragePolicy.ASSIGNMENT_IMAGE);
                         String imageCode = "[IMAGE_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase() + "]";
 
-                        extractedImages.add(new AssignmentImageDto(imageCode, publicUrl));
+                        extractedImages.add(new AssignmentImageResponse(imageCode, publicUrl));
                         paraMd.append(" ").append(imageCode).append(" ");
                     } catch (Exception e) {
                         log.warn("Failed to extract and upload image from DOCX: {}", e.getMessage(), e);
@@ -152,7 +152,7 @@ public class DocxDocumentParserStrategy implements DocumentParserStrategy {
         }
     }
 
-    private String processTable(XWPFTable table, List<AssignmentImageDto> extractedImages) {
+    private String processTable(XWPFTable table, List<AssignmentImageResponse> extractedImages) {
         StringBuilder tableMd = new StringBuilder("\n");
         int rowIndex = 0;
         for (XWPFTableRow row : table.getRows()) {

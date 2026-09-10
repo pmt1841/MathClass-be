@@ -1,8 +1,8 @@
 package com.codegym.mathclass.classroom.service;
 
-import com.codegym.mathclass.classroom.dto.JoinRequestRequest;
-import com.codegym.mathclass.classroom.dto.JoinRequestResponse;
-import com.codegym.mathclass.classroom.dto.ProcessJoinRequestDto;
+import com.codegym.mathclass.classroom.dto.request.JoinRequestRequest;
+import com.codegym.mathclass.classroom.dto.response.JoinRequestResponse;
+import com.codegym.mathclass.classroom.dto.request.ProcessJoinRequest;
 import com.codegym.mathclass.classroom.entity.Classroom;
 import com.codegym.mathclass.classroom.entity.ClassroomJoinRequest;
 import com.codegym.mathclass.classroom.entity.JoinRequestStatus;
@@ -225,7 +225,7 @@ class ClassroomJoinRequestServiceImplTest {
         @Test
         @DisplayName("Should approve join request and add student to classroom")
         void processJoinRequest_Approve_Success() {
-            ProcessJoinRequestDto processDto = new ProcessJoinRequestDto();
+            ProcessJoinRequest processDto = new ProcessJoinRequest();
             processDto.setStatus(JoinRequestStatus.APPROVED);
 
             when(joinRequestRepository.findById(requestId)).thenReturn(Optional.of(pendingRequest));
@@ -243,7 +243,7 @@ class ClassroomJoinRequestServiceImplTest {
         @Test
         @DisplayName("Should reject join request and send notification")
         void processJoinRequest_Reject_Success() {
-            ProcessJoinRequestDto processDto = new ProcessJoinRequestDto();
+            ProcessJoinRequest processDto = new ProcessJoinRequest();
             processDto.setStatus(JoinRequestStatus.REJECTED);
 
             when(joinRequestRepository.findById(requestId)).thenReturn(Optional.of(pendingRequest));
@@ -260,7 +260,7 @@ class ClassroomJoinRequestServiceImplTest {
         @Test
         @DisplayName("Should throw AccessDeniedException when non-owner teacher tries to process request")
         void processJoinRequest_NotOwner_ThrowsAccessDeniedException() {
-            ProcessJoinRequestDto processDto = new ProcessJoinRequestDto();
+            ProcessJoinRequest processDto = new ProcessJoinRequest();
             processDto.setStatus(JoinRequestStatus.APPROVED);
 
             when(joinRequestRepository.findById(requestId)).thenReturn(Optional.of(pendingRequest));
@@ -274,7 +274,7 @@ class ClassroomJoinRequestServiceImplTest {
         @DisplayName("Should throw BadRequestException when processing an already processed request")
         void processJoinRequest_AlreadyProcessed_ThrowsBadRequestException() {
             pendingRequest.setStatus(JoinRequestStatus.APPROVED);
-            ProcessJoinRequestDto processDto = new ProcessJoinRequestDto();
+            ProcessJoinRequest processDto = new ProcessJoinRequest();
             processDto.setStatus(JoinRequestStatus.REJECTED);
 
             when(joinRequestRepository.findById(requestId)).thenReturn(Optional.of(pendingRequest));
@@ -287,7 +287,7 @@ class ClassroomJoinRequestServiceImplTest {
         @Test
         @DisplayName("Should throw BadRequestException when updating status back to PENDING")
         void processJoinRequest_UpdateToPending_ThrowsBadRequestException() {
-            ProcessJoinRequestDto processDto = new ProcessJoinRequestDto();
+            ProcessJoinRequest processDto = new ProcessJoinRequest();
             processDto.setStatus(JoinRequestStatus.PENDING);
 
             when(joinRequestRepository.findById(requestId)).thenReturn(Optional.of(pendingRequest));
@@ -305,7 +305,7 @@ class ClassroomJoinRequestServiceImplTest {
             otherStudent.setId(99L);
             classroom.getStudents().add(otherStudent);
 
-            ProcessJoinRequestDto processDto = new ProcessJoinRequestDto();
+            ProcessJoinRequest processDto = new ProcessJoinRequest();
             processDto.setStatus(JoinRequestStatus.APPROVED);
 
             when(joinRequestRepository.findById(requestId)).thenReturn(Optional.of(pendingRequest));

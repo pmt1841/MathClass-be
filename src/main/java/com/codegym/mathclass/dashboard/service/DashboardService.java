@@ -1,20 +1,20 @@
 package com.codegym.mathclass.dashboard.service;
 
-import com.codegym.mathclass.dashboard.dto.TeacherDashboardStatsDto;
-import com.codegym.mathclass.dashboard.dto.PendingSubmissionDto;
-import com.codegym.mathclass.dashboard.dto.StudentDashboardStatsDto;
-import com.codegym.mathclass.dashboard.dto.StudentPendingTaskDto;
-import com.codegym.mathclass.dashboard.dto.StudentGradedTaskDto;
-import com.codegym.mathclass.dashboard.dto.AtRiskStudentDto;
+import com.codegym.mathclass.dashboard.dto.response.TeacherDashboardStatsResponse;
+import com.codegym.mathclass.dashboard.dto.response.PendingSubmissionResponse;
+import com.codegym.mathclass.dashboard.dto.response.StudentDashboardStatsResponse;
+import com.codegym.mathclass.dashboard.dto.response.StudentPendingTaskResponse;
+import com.codegym.mathclass.dashboard.dto.response.StudentGradedTaskResponse;
+import com.codegym.mathclass.dashboard.dto.response.AtRiskStudentResponse;
 import java.util.List;
 
 public interface DashboardService {
-    TeacherDashboardStatsDto getTeacherDashboardStats(long teacherId);
-    List<PendingSubmissionDto> getPendingSubmissions(long teacherId, int limit);
+    TeacherDashboardStatsResponse getTeacherDashboardStats(long teacherId);
+    List<PendingSubmissionResponse> getPendingSubmissions(long teacherId, int limit);
     
-    StudentDashboardStatsDto getStudentDashboardStats(long studentId);
-    List<StudentPendingTaskDto> getStudentPendingTasks(long studentId, int limit);
-    List<StudentGradedTaskDto> getStudentGradedTasks(long studentId, int limit);
+    StudentDashboardStatsResponse getStudentDashboardStats(long studentId);
+    List<StudentPendingTaskResponse> getStudentPendingTasks(long studentId, int limit);
+    List<StudentGradedTaskResponse> getStudentGradedTasks(long studentId, int limit);
 
-    List<AtRiskStudentDto> getAtRiskStudents(long teacherId);
+    List<AtRiskStudentResponse> getAtRiskStudents(long teacherId);
 }

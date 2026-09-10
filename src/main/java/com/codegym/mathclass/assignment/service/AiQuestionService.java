@@ -1,7 +1,7 @@
 package com.codegym.mathclass.assignment.service;
 
-import com.codegym.mathclass.assignment.dto.GenerateQuestionRequest;
-import com.codegym.mathclass.assignment.dto.AiGeneratedQuestionResponse;
+import com.codegym.mathclass.assignment.dto.request.GenerateQuestionRequest;
+import com.codegym.mathclass.assignment.dto.response.AiGeneratedQuestionResponse;
 
 public interface AiQuestionService {
     AiGeneratedQuestionResponse generateQuestion(GenerateQuestionRequest request, Long userId);

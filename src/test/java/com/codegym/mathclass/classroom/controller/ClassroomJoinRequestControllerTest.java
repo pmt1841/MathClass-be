@@ -1,8 +1,8 @@
 package com.codegym.mathclass.classroom.controller;
 
-import com.codegym.mathclass.classroom.dto.JoinRequestRequest;
-import com.codegym.mathclass.classroom.dto.JoinRequestResponse;
-import com.codegym.mathclass.classroom.dto.ProcessJoinRequestDto;
+import com.codegym.mathclass.classroom.dto.request.JoinRequestRequest;
+import com.codegym.mathclass.classroom.dto.response.JoinRequestResponse;
+import com.codegym.mathclass.classroom.dto.request.ProcessJoinRequest;
 import com.codegym.mathclass.classroom.entity.JoinRequestStatus;
 import com.codegym.mathclass.classroom.service.ClassroomJoinRequestService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
@@ -177,7 +177,7 @@ class ClassroomJoinRequestControllerTest {
         @Test
         @DisplayName("Should process join request successfully and return 200 OK")
         void processRequest_ValidRequest_ReturnsOk() throws Exception {
-            ProcessJoinRequestDto requestDto = new ProcessJoinRequestDto();
+            ProcessJoinRequest requestDto = new ProcessJoinRequest();
             requestDto.setStatus(JoinRequestStatus.APPROVED);
 
             JoinRequestResponse response = JoinRequestResponse.builder()
@@ -185,7 +185,7 @@ class ClassroomJoinRequestControllerTest {
                     .status(JoinRequestStatus.APPROVED)
                     .build();
 
-            when(joinRequestService.processJoinRequest(eq(100L), any(ProcessJoinRequestDto.class), eq(2L)))
+            when(joinRequestService.processJoinRequest(eq(100L), any(ProcessJoinRequest.class), eq(2L)))
                     .thenReturn(response);
 
             mockMvc.perform(put("/classrooms/join-requests/100")
@@ -195,13 +195,13 @@ class ClassroomJoinRequestControllerTest {
                     .andExpect(jsonPath("$.id").value(100L))
                     .andExpect(jsonPath("$.status").value("APPROVED"));
 
-            verify(joinRequestService, times(1)).processJoinRequest(eq(100L), any(ProcessJoinRequestDto.class), eq(2L));
+            verify(joinRequestService, times(1)).processJoinRequest(eq(100L), any(ProcessJoinRequest.class), eq(2L));
         }
 
         @Test
         @DisplayName("Should return 400 Bad Request when status is null")
         void processRequest_NullStatus_Returns400BadRequest() throws Exception {
-            ProcessJoinRequestDto requestDto = new ProcessJoinRequestDto();
+            ProcessJoinRequest requestDto = new ProcessJoinRequest();
             requestDto.setStatus(null);
 
             mockMvc.perform(put("/classrooms/join-requests/100")

@@ -1,7 +1,7 @@
 package com.codegym.mathclass.aiqueue.dto.payload;
 
-import com.codegym.mathclass.submission.dto.HandwritingLatexRequest;
-import com.codegym.mathclass.submission.dto.SketchGeometryRequest;
+import com.codegym.mathclass.submission.dto.request.HandwritingLatexRequest;
+import com.codegym.mathclass.submission.dto.request.SketchGeometryRequest;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

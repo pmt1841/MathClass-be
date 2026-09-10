@@ -1,6 +1,6 @@
 package com.codegym.mathclass.notification.controller;
 
-import com.codegym.mathclass.notification.dto.NotificationResponse;
+import com.codegym.mathclass.notification.dto.response.NotificationResponse;
 import com.codegym.mathclass.notification.service.NotificationService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import org.junit.jupiter.api.BeforeEach;

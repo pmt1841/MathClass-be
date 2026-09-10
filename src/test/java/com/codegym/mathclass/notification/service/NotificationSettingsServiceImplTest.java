@@ -1,6 +1,6 @@
 package com.codegym.mathclass.notification.service;
 
-import com.codegym.mathclass.notification.dto.NotificationSettingsDto;
+import com.codegym.mathclass.notification.dto.response.NotificationSettingsResponse;
 import com.codegym.mathclass.notification.entity.NotificationSettings;
 import com.codegym.mathclass.notification.repository.NotificationSettingsRepository;
 import com.codegym.mathclass.notification.service.impl.NotificationSettingsServiceImpl;
@@ -48,7 +48,7 @@ class NotificationSettingsServiceImplTest {
         void getNotificationSettings_SettingsExist_ReturnsDto() {
             when(notificationSettingsRepository.findByUserId(1L)).thenReturn(Optional.of(settings));
 
-            NotificationSettingsDto result = notificationSettingsService.getNotificationSettings(1L);
+            NotificationSettingsResponse result = notificationSettingsService.getNotificationSettings(1L);
 
             assertThat(result).isNotNull();
             assertThat(result.isMasterEmail()).isTrue();
@@ -62,7 +62,7 @@ class NotificationSettingsServiceImplTest {
             when(notificationSettingsRepository.findByUserId(1L)).thenReturn(Optional.empty());
             when(notificationSettingsRepository.save(any(NotificationSettings.class))).thenReturn(settings);
 
-            NotificationSettingsDto result = notificationSettingsService.getNotificationSettings(1L);
+            NotificationSettingsResponse result = notificationSettingsService.getNotificationSettings(1L);
 
             assertThat(result).isNotNull();
             verify(notificationSettingsRepository, times(1)).save(any(NotificationSettings.class));
@@ -76,7 +76,7 @@ class NotificationSettingsServiceImplTest {
         @Test
         @DisplayName("Should update existing notification settings successfully")
         void updateNotificationSettings_ValidData_ReturnsUpdatedDto() {
-            NotificationSettingsDto requestDto = NotificationSettingsDto.builder()
+            NotificationSettingsResponse requestDto = NotificationSettingsResponse.builder()
                     .masterEmail(false)
                     .teacherJoinRequest(false)
                     .build();
@@ -84,7 +84,7 @@ class NotificationSettingsServiceImplTest {
             when(notificationSettingsRepository.findByUserId(1L)).thenReturn(Optional.of(settings));
             when(notificationSettingsRepository.save(any(NotificationSettings.class))).thenAnswer(i -> i.getArgument(0));
 
-            NotificationSettingsDto result = notificationSettingsService.updateNotificationSettings(1L, requestDto);
+            NotificationSettingsResponse result = notificationSettingsService.updateNotificationSettings(1L, requestDto);
 
             assertThat(result).isNotNull();
             assertThat(result.isMasterEmail()).isFalse();

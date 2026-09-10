@@ -1,6 +1,6 @@
 package com.codegym.mathclass.notification.service.impl;
 
-import com.codegym.mathclass.notification.dto.NotificationSettingsDto;
+import com.codegym.mathclass.notification.dto.response.NotificationSettingsResponse;
 import com.codegym.mathclass.notification.entity.NotificationSettings;
 import com.codegym.mathclass.notification.repository.NotificationSettingsRepository;
 import com.codegym.mathclass.notification.service.NotificationSettingsService;
@@ -14,7 +14,7 @@ public class NotificationSettingsServiceImpl implements NotificationSettingsServ
     private final NotificationSettingsRepository notificationSettingsRepository;
 
     @Override
-    public NotificationSettingsDto getNotificationSettings(Long userId) {
+    public NotificationSettingsResponse getNotificationSettings(Long userId) {
         NotificationSettings settings = notificationSettingsRepository.findByUserId(userId)
                 .orElseGet(() -> {
                     NotificationSettings newSettings = NotificationSettings.builder()
@@ -26,7 +26,7 @@ public class NotificationSettingsServiceImpl implements NotificationSettingsServ
     }
 
     @Override
-    public NotificationSettingsDto updateNotificationSettings(Long userId, NotificationSettingsDto dto) {
+    public NotificationSettingsResponse updateNotificationSettings(Long userId, NotificationSettingsResponse dto) {
         NotificationSettings settings = notificationSettingsRepository.findByUserId(userId)
                 .orElseGet(() -> NotificationSettings.builder().userId(userId).build());
 
@@ -41,8 +41,8 @@ public class NotificationSettingsServiceImpl implements NotificationSettingsServ
         return mapToDto(saved);
     }
 
-    private NotificationSettingsDto mapToDto(NotificationSettings settings) {
-        return NotificationSettingsDto.builder()
+    private NotificationSettingsResponse mapToDto(NotificationSettings settings) {
+        return NotificationSettingsResponse.builder()
                 .masterEmail(settings.isMasterEmail())
                 .teacherJoinRequest(settings.isTeacherJoinRequest())
                 .teacherNewSubmission(settings.isTeacherNewSubmission())

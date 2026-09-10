@@ -1,9 +1,9 @@
 package com.codegym.mathclass.classroom.service;
 
-import com.codegym.mathclass.classroom.dto.ClassroomResponse;
-import com.codegym.mathclass.classroom.dto.CreateClassroomRequest;
-import com.codegym.mathclass.classroom.dto.StudentResponse;
-import com.codegym.mathclass.classroom.dto.UpdateClassroomRequest;
+import com.codegym.mathclass.classroom.dto.response.ClassroomResponse;
+import com.codegym.mathclass.classroom.dto.request.CreateClassroomRequest;
+import com.codegym.mathclass.classroom.dto.response.StudentResponse;
+import com.codegym.mathclass.classroom.dto.request.UpdateClassroomRequest;
 import com.codegym.mathclass.classroom.entity.Classroom;
 import com.codegym.mathclass.classroom.repository.ClassroomRepository;
 import com.codegym.mathclass.exception.AccessDeniedException;

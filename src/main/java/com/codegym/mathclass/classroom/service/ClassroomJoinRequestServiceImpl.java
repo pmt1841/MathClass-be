@@ -1,8 +1,8 @@
 package com.codegym.mathclass.classroom.service;
 
-import com.codegym.mathclass.classroom.dto.JoinRequestRequest;
-import com.codegym.mathclass.classroom.dto.JoinRequestResponse;
-import com.codegym.mathclass.classroom.dto.ProcessJoinRequestDto;
+import com.codegym.mathclass.classroom.dto.request.JoinRequestRequest;
+import com.codegym.mathclass.classroom.dto.response.JoinRequestResponse;
+import com.codegym.mathclass.classroom.dto.request.ProcessJoinRequest;
 import com.codegym.mathclass.classroom.entity.Classroom;
 import com.codegym.mathclass.classroom.entity.ClassroomJoinRequest;
 import com.codegym.mathclass.classroom.entity.JoinRequestStatus;
@@ -110,7 +110,7 @@ public class ClassroomJoinRequestServiceImpl implements ClassroomJoinRequestServ
 
     @Override
     @Transactional
-    public JoinRequestResponse processJoinRequest(Long requestId, ProcessJoinRequestDto requestDto, long teacherId) {
+    public JoinRequestResponse processJoinRequest(Long requestId, ProcessJoinRequest requestDto, long teacherId) {
         ClassroomJoinRequest joinRequest = joinRequestRepository.findById(requestId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy yêu cầu tham gia"));
 

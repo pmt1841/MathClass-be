@@ -1,8 +1,8 @@
 package com.codegym.mathclass.storage.controller;
 
-import com.codegym.mathclass.storage.dto.StorageCleanupRequest;
-import com.codegym.mathclass.storage.dto.StorageCleanupResponse;
-import com.codegym.mathclass.storage.dto.StorageCleanupStatusResponse;
+import com.codegym.mathclass.storage.dto.request.StorageCleanupRequest;
+import com.codegym.mathclass.storage.dto.response.StorageCleanupResponse;
+import com.codegym.mathclass.storage.dto.response.StorageCleanupStatusResponse;
 import com.codegym.mathclass.storage.service.StorageCleanupService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -97,8 +97,8 @@ class AdminStorageControllerTest {
     @Test
     @DisplayName("PUT /admin/storage/cleanup/config should update config and return 200 OK")
     void updateConfig_Success() throws Exception {
-        com.codegym.mathclass.storage.dto.UpdateStorageCleanupConfigRequest request =
-                com.codegym.mathclass.storage.dto.UpdateStorageCleanupConfigRequest.builder()
+        com.codegym.mathclass.storage.dto.request.UpdateStorageCleanupConfigRequest request =
+                com.codegym.mathclass.storage.dto.request.UpdateStorageCleanupConfigRequest.builder()
                         .enabled(false)
                         .cronExpression("0 0 2 * * *")
                         .gracePeriodHours(48)

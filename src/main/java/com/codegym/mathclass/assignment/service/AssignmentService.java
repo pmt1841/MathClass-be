@@ -1,14 +1,14 @@
 package com.codegym.mathclass.assignment.service;
 
-import com.codegym.mathclass.assignment.dto.AssignmentResponse;
-import com.codegym.mathclass.assignment.dto.CreateAssignmentRequest;
-import com.codegym.mathclass.assignment.dto.PublishAssignmentRequest;
-import com.codegym.mathclass.assignment.dto.UpdateAssignmentRequest;
-import com.codegym.mathclass.assignment.dto.UpdateVisibilityRequest;
+import com.codegym.mathclass.assignment.dto.response.AssignmentResponse;
+import com.codegym.mathclass.assignment.dto.request.CreateAssignmentRequest;
+import com.codegym.mathclass.assignment.dto.request.PublishAssignmentRequest;
+import com.codegym.mathclass.assignment.dto.request.UpdateAssignmentRequest;
+import com.codegym.mathclass.assignment.dto.request.UpdateVisibilityRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import com.codegym.mathclass.assignment.entity.AssignmentStatus;
-import com.codegym.mathclass.assignment.dto.AssignmentImageDto;
+import com.codegym.mathclass.assignment.dto.response.AssignmentImageResponse;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Map;
@@ -70,7 +70,7 @@ public interface AssignmentService {
      */
     AssignmentResponse toggleAllowResubmit(long assignmentId, boolean allowResubmit, long teacherId);
 
-    AssignmentImageDto uploadImageForAssignment(MultipartFile file) throws IOException;
+    AssignmentImageResponse uploadImageForAssignment(MultipartFile file) throws IOException;
 
     /**
      * Upload file (.txt, .docx, ...) và trích xuất nội dung văn bản

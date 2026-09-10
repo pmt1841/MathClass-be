@@ -1,7 +1,7 @@
 package com.codegym.mathclass.chat.controller;
 
-import com.codegym.mathclass.chat.dto.ChatMessageResponse;
-import com.codegym.mathclass.chat.dto.ClassroomChatUnreadSummaryResponse;
+import com.codegym.mathclass.chat.dto.response.ChatMessageResponse;
+import com.codegym.mathclass.chat.dto.response.ClassroomChatUnreadSummaryResponse;
 import com.codegym.mathclass.chat.service.ChatService;
 import com.codegym.mathclass.common.dto.ApiResponse;
 import com.codegym.mathclass.security.services.CustomUserDetails;

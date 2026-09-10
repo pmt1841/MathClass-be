@@ -2,8 +2,8 @@ package com.codegym.mathclass.ai.strategy.parser.impl;
 
 import com.codegym.mathclass.ai.strategy.parser.AbstractAiResponseParser;
 import com.codegym.mathclass.ai.strategy.parser.AiResponseType;
-import com.codegym.mathclass.assignment.dto.BatchGenerateQuestionsResponse;
-import com.codegym.mathclass.assignment.dto.BatchQuestionItem;
+import com.codegym.mathclass.assignment.dto.response.BatchGenerateQuestionsResponse;
+import com.codegym.mathclass.assignment.dto.response.BatchQuestionItem;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 

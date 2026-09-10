@@ -2,7 +2,7 @@ package com.codegym.mathclass.user.controller;
 
 import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.user.dto.request.UpdateRolePermissionsRequest;
-import com.codegym.mathclass.user.dto.response.PermissionDto;
+import com.codegym.mathclass.user.dto.response.PermissionResponse;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.service.RolePermissionService;
 import com.codegym.mathclass.systemlog.service.SystemLogService;
@@ -33,13 +33,13 @@ public class AdminPermissionController {
 
     @Operation(summary = "Lấy tất cả các Quyền hệ thống", description = "Danh sách tất cả các permission có sẵn")
     @GetMapping("/permissions")
-    public ResponseEntity<List<PermissionDto>> getAllPermissions() {
+    public ResponseEntity<List<PermissionResponse>> getAllPermissions() {
         return ResponseEntity.ok(rolePermissionService.getAllPermissions());
     }
 
     @Operation(summary = "Lấy danh sách Quyền theo Vai trò", description = "Truy vấn các quyền được gán cho vai trò cụ thể (VD: ADMIN, TEACHER, STUDENT)")
     @GetMapping("/{roleName}/permissions")
-    public ResponseEntity<List<PermissionDto>> getPermissionsByRole(@PathVariable String roleName) {
+    public ResponseEntity<List<PermissionResponse>> getPermissionsByRole(@PathVariable String roleName) {
         Role role = parseRole(roleName);
         return ResponseEntity.ok(rolePermissionService.getPermissionsByRole(role));
     }

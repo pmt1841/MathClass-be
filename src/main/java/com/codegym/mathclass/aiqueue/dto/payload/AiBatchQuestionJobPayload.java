@@ -1,6 +1,6 @@
 package com.codegym.mathclass.aiqueue.dto.payload;
 
-import com.codegym.mathclass.assignment.dto.AssignmentImageDto;
+import com.codegym.mathclass.assignment.dto.response.AssignmentImageResponse;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,7 +15,7 @@ import java.util.List;
 public class AiBatchQuestionJobPayload {
 
     private String textContent;
-    private List<AssignmentImageDto> extractedImages;
+    private List<AssignmentImageResponse> extractedImages;
     private Integer grade;
     private String topic;
     private String questionType;

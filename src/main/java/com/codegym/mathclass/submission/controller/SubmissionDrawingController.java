@@ -1,8 +1,8 @@
 package com.codegym.mathclass.submission.controller;
 
 import com.codegym.mathclass.common.annotation.ApiVersion;
-import com.codegym.mathclass.submission.dto.SubmissionDrawingRequest;
-import com.codegym.mathclass.submission.dto.SubmissionDrawingResponse;
+import com.codegym.mathclass.submission.dto.request.SubmissionDrawingRequest;
+import com.codegym.mathclass.submission.dto.response.SubmissionDrawingResponse;
 import com.codegym.mathclass.submission.service.SubmissionDrawingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

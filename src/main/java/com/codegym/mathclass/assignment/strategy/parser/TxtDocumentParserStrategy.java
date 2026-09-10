@@ -1,6 +1,6 @@
 package com.codegym.mathclass.assignment.strategy.parser;
 
-import com.codegym.mathclass.assignment.dto.DocumentParseResult;
+import com.codegym.mathclass.assignment.dto.response.DocumentParseResult;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 

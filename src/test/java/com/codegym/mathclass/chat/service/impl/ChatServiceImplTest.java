@@ -1,7 +1,7 @@
 package com.codegym.mathclass.chat.service.impl;
 
-import com.codegym.mathclass.chat.dto.ChatMessageRequest;
-import com.codegym.mathclass.chat.dto.ChatMessageResponse;
+import com.codegym.mathclass.chat.dto.request.ChatMessageRequest;
+import com.codegym.mathclass.chat.dto.response.ChatMessageResponse;
 import com.codegym.mathclass.chat.entity.ChatMessage;
 import com.codegym.mathclass.chat.repository.ChatMessageRepository;
 import com.codegym.mathclass.chat.service.UserPresenceRegistry;
@@ -166,7 +166,7 @@ class ChatServiceImplTest {
         List<Object[]> rawCountsList = java.util.Collections.singletonList(rawCountRow);
         when(chatMessageRepository.findUnreadStudentCountsRaw(100L, 20L)).thenReturn(rawCountsList);
 
-        com.codegym.mathclass.chat.dto.ClassroomChatUnreadSummaryResponse response =
+        com.codegym.mathclass.chat.dto.response.ClassroomChatUnreadSummaryResponse response =
                 chatService.getUnreadSummary("MATH101", 20L);
 
         assertNotNull(response);
@@ -180,8 +180,8 @@ class ChatServiceImplTest {
     @Test
     @DisplayName("Thành viên lớp gửi tin nhắn nhóm thành công -> sendGroupMessage_success")
     void sendGroupMessage_success() {
-        com.codegym.mathclass.chat.dto.GroupChatMessageRequest req =
-                new com.codegym.mathclass.chat.dto.GroupChatMessageRequest(100L, "Chào cả lớp!");
+        com.codegym.mathclass.chat.dto.request.GroupChatMessageRequest req =
+                new com.codegym.mathclass.chat.dto.request.GroupChatMessageRequest(100L, "Chào cả lớp!");
         when(classroomRepository.findById(100L)).thenReturn(Optional.of(classroom));
         when(classroomRepository.existsByIdAndStudentsId(100L, 20L)).thenReturn(true);
         when(userRepository.findById(20L)).thenReturn(Optional.of(student));
@@ -207,8 +207,8 @@ class ChatServiceImplTest {
     @Test
     @DisplayName("Người ngoài lớp cố gửi tin nhắn nhóm -> Ném AccessDeniedException (sendGroupMessage_fail_nonMember)")
     void sendGroupMessage_fail_nonMember() {
-        com.codegym.mathclass.chat.dto.GroupChatMessageRequest req =
-                new com.codegym.mathclass.chat.dto.GroupChatMessageRequest(100L, "Xin chào");
+        com.codegym.mathclass.chat.dto.request.GroupChatMessageRequest req =
+                new com.codegym.mathclass.chat.dto.request.GroupChatMessageRequest(100L, "Xin chào");
         when(classroomRepository.findById(100L)).thenReturn(Optional.of(classroom));
         when(classroomRepository.existsByIdAndStudentsId(100L, 99L)).thenReturn(false);
 
@@ -222,8 +222,8 @@ class ChatServiceImplTest {
         studentB.setId(30L);
         studentB.setFullName("Nguyễn Văn C");
 
-        com.codegym.mathclass.chat.dto.DirectChatMessageRequest req =
-                new com.codegym.mathclass.chat.dto.DirectChatMessageRequest(100L, 30L, "Chào B nhé");
+        com.codegym.mathclass.chat.dto.request.DirectChatMessageRequest req =
+                new com.codegym.mathclass.chat.dto.request.DirectChatMessageRequest(100L, 30L, "Chào B nhé");
         when(classroomRepository.findById(100L)).thenReturn(Optional.of(classroom));
         when(classroomRepository.existsByIdAndStudentsId(100L, 20L)).thenReturn(true);
         when(classroomRepository.existsByIdAndStudentsId(100L, 30L)).thenReturn(true);
@@ -250,8 +250,8 @@ class ChatServiceImplTest {
     @Test
     @DisplayName("Học sinh cố tự gửi tin nhắn 1-1 cho chính mình -> Ném BadRequestException (sendDirectMessage_fail_selfMessage)")
     void sendDirectMessage_fail_selfMessage() {
-        com.codegym.mathclass.chat.dto.DirectChatMessageRequest req =
-                new com.codegym.mathclass.chat.dto.DirectChatMessageRequest(100L, 20L, "Tự gửi mình");
+        com.codegym.mathclass.chat.dto.request.DirectChatMessageRequest req =
+                new com.codegym.mathclass.chat.dto.request.DirectChatMessageRequest(100L, 20L, "Tự gửi mình");
         when(classroomRepository.findById(100L)).thenReturn(Optional.of(classroom));
         when(classroomRepository.existsByIdAndStudentsId(100L, 20L)).thenReturn(true);
 
@@ -261,8 +261,8 @@ class ChatServiceImplTest {
     @Test
     @DisplayName("Gửi tin nhắn 1-1 cho người nhận không thuộc lớp -> Ném BadRequestException (sendDirectMessage_fail_recipientNotMember)")
     void sendDirectMessage_fail_recipientNotMember() {
-        com.codegym.mathclass.chat.dto.DirectChatMessageRequest req =
-                new com.codegym.mathclass.chat.dto.DirectChatMessageRequest(100L, 99L, "Chào người ngoài");
+        com.codegym.mathclass.chat.dto.request.DirectChatMessageRequest req =
+                new com.codegym.mathclass.chat.dto.request.DirectChatMessageRequest(100L, 99L, "Chào người ngoài");
         when(classroomRepository.findById(100L)).thenReturn(Optional.of(classroom));
         when(classroomRepository.existsByIdAndStudentsId(100L, 20L)).thenReturn(true);
         when(classroomRepository.existsByIdAndStudentsId(100L, 99L)).thenReturn(false);
