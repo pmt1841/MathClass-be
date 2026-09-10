@@ -1,0 +1,182 @@
+package com.codegym.mathclass.aiconfig.service.impl;
+
+import com.codegym.mathclass.aiconfig.credit.entity.AiCreditConfig;
+import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
+import com.codegym.mathclass.aiconfig.entity.ApiKey;
+import com.codegym.mathclass.aiconfig.entity.Provider;
+import com.codegym.mathclass.aiconfig.entity.TaskConfig;
+import com.codegym.mathclass.aiconfig.repository.TaskConfigRepository;
+import com.codegym.mathclass.aiconfig.service.AiPromptExecutionService;
+import com.codegym.mathclass.aiconfig.service.KeySelectionService;
+import com.codegym.mathclass.aiconfig.strategy.AiExecutionResult;
+import com.codegym.mathclass.aiconfig.strategy.AiProviderStrategy;
+import com.codegym.mathclass.aiconfig.strategy.AiProviderStrategyFactory;
+import com.codegym.mathclass.user.entity.Role;
+import com.codegym.mathclass.user.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import java.util.Optional;
+
+/**
+ * Cổng thực thi prompt AI tập trung.
+ *
+ * <p>Từ MAT-255: khi truyền {@code userId}, hệ thống kiểm tra & trừ credit theo
+ * cấu hình {@link AiCreditConfig}. Mô hình Reserve-then-Refund: trừ credit trước
+ * khi gọi AI, hoàn lại (refund) nếu AI lỗi để không phạt người dùng.</p>
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class AiPromptExecutionServiceImpl implements AiPromptExecutionService {
+
+    private final TaskConfigRepository taskConfigRepository;
+    private final KeySelectionService keySelectionService;
+    private final AiProviderStrategyFactory aiProviderStrategyFactory;
+    private final AiCreditService aiCreditService;
+    private final UserRepository userRepository;
+
+    @Override
+    public String executePrompt(String taskCode, String prompt, Long userId) {
+        return executePromptWithResult(taskCode, prompt, userId, true).content();
+    }
+
+    @Override
+    public AiExecutionResult executePromptWithResult(String taskCode, String prompt, Long userId, boolean chargeCredits) {
+        Optional<TaskConfig> configOpt = taskConfigRepository.findByTask(taskCode);
+        if (configOpt.isEmpty()) {
+            log.warn("TaskConfig '{}' chưa được cấu hình.", taskCode);
+            throw new RuntimeException("Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau.");
+        }
+
+        TaskConfig config = configOpt.get();
+        if (!Boolean.TRUE.equals(config.getEnabled())) {
+            log.warn("Tác vụ AI '{}' hiện đang bị vô hiệu hóa.", taskCode);
+            throw new RuntimeException("Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau.");
+        }
+
+        Provider provider = config.getProvider();
+        if (provider == null || provider.getStatus() != com.codegym.mathclass.aiconfig.entity.ProviderStatus.ACTIVE) {
+            log.warn("Provider AI cho tác vụ '{}' không khả dụng.", taskCode);
+            throw new RuntimeException("Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau.");
+        }
+
+        Optional<AiCreditConfig> creditCfg = aiCreditService.getCreditConfig(taskCode);
+        boolean charge = chargeCredits
+                && creditCfg.isPresent()
+                && Boolean.TRUE.equals(creditCfg.get().getEnabled())
+                && userId != null
+                && !isAdmin(userId);
+
+        int costPerCall = 0;
+        Integer tokensPerCredit = null;
+        int reserved = 0;
+        if (charge) {
+            costPerCall = creditCfg.get().getCostPerCall() != null ? creditCfg.get().getCostPerCall() : 0;
+            tokensPerCredit = creditCfg.get().getTokensPerCredit();
+            int maxToken = config.getMaxToken() != null ? config.getMaxToken() : 2048;
+            // Đặt chỗ ước lượng theo trần maxToken; sau khi AI trả kết quả sẽ settle theo token thực tế.
+            reserved = AiCreditService.estimateCredits(maxToken, costPerCall, tokensPerCredit);
+            if (reserved > 0) {
+                aiCreditService.reserve(userId, taskCode, reserved);
+            }
+        }
+
+        try {
+            ApiKey apiKeyObj = keySelectionService.selectKeyForProvider(provider);
+            String apiKey = apiKeyObj.getEncryptedKey();
+
+            AiProviderStrategy strategy = aiProviderStrategyFactory.getStrategy(provider.getProtocol());
+            AiExecutionResult result = strategy.executePrompt(provider, config, apiKey, prompt);
+
+            if (reserved > 0) {
+                int actual = AiCreditService.computeCredits(result.completionTokens(), costPerCall, tokensPerCredit);
+                aiCreditService.settle(userId, taskCode, reserved, actual);
+            }
+            return result;
+        } catch (Exception e) {
+            if (reserved > 0) {
+                aiCreditService.refund(userId, taskCode, reserved);
+            }
+            log.error("Lỗi khi thực thi prompt AI cho task '{}': {}", taskCode, e.getMessage());
+            throw new RuntimeException(e.getMessage() != null ? e.getMessage() : "Dịch vụ AI phản hồi lỗi hoặc gặp sự cố kết nối.", e);
+        }
+    }
+
+    @Override
+    public String executePromptWithImage(String taskCode, String prompt, String base64Image, String mimeType, Long userId) {
+        return executePromptWithImageWithResult(taskCode, prompt, base64Image, mimeType, userId, true).content();
+    }
+
+    @Override
+    public AiExecutionResult executePromptWithImageWithResult(String taskCode, String prompt, String base64Image, String mimeType, Long userId, boolean chargeCredits) {
+        Optional<TaskConfig> configOpt = taskConfigRepository.findByTask(taskCode);
+        if (configOpt.isEmpty()) {
+            log.warn("TaskConfig '{}' chưa được cấu hình.", taskCode);
+            throw new RuntimeException("Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau.");
+        }
+
+        TaskConfig config = configOpt.get();
+        if (!Boolean.TRUE.equals(config.getEnabled())) {
+            log.warn("Tác vụ AI '{}' hiện đang bị vô hiệu hóa.", taskCode);
+            throw new RuntimeException("Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau.");
+        }
+
+        Provider provider = config.getProvider();
+        if (provider == null || provider.getStatus() != com.codegym.mathclass.aiconfig.entity.ProviderStatus.ACTIVE) {
+            log.warn("Provider AI cho tác vụ '{}' không khả dụng.", taskCode);
+            throw new RuntimeException("Tính năng AI hiện đang được bảo trì, vui lòng quay lại sau.");
+        }
+
+        Optional<AiCreditConfig> creditCfg = aiCreditService.getCreditConfig(taskCode);
+        boolean charge = chargeCredits
+                && creditCfg.isPresent()
+                && Boolean.TRUE.equals(creditCfg.get().getEnabled())
+                && userId != null
+                && !isAdmin(userId);
+
+        int costPerCall = 0;
+        Integer tokensPerCredit = null;
+        int reserved = 0;
+        if (charge) {
+            costPerCall = creditCfg.get().getCostPerCall() != null ? creditCfg.get().getCostPerCall() : 0;
+            tokensPerCredit = creditCfg.get().getTokensPerCredit();
+            int maxToken = config.getMaxToken() != null ? config.getMaxToken() : 2048;
+            reserved = AiCreditService.estimateCredits(maxToken, costPerCall, tokensPerCredit);
+            if (reserved > 0) {
+                aiCreditService.reserve(userId, taskCode, reserved);
+            }
+        }
+
+        try {
+            ApiKey apiKeyObj = keySelectionService.selectKeyForProvider(provider);
+            String apiKey = apiKeyObj.getEncryptedKey();
+
+            AiProviderStrategy strategy = aiProviderStrategyFactory.getStrategy(provider.getProtocol());
+            AiExecutionResult result = strategy.executePromptWithImage(provider, config, apiKey, prompt, base64Image, mimeType);
+
+            if (reserved > 0) {
+                int actual = AiCreditService.computeCredits(result.completionTokens(), costPerCall, tokensPerCredit);
+                aiCreditService.settle(userId, taskCode, reserved, actual);
+            }
+            return result;
+        } catch (Exception e) {
+            if (reserved > 0) {
+                aiCreditService.refund(userId, taskCode, reserved);
+            }
+            log.error("Lỗi khi thực thi prompt AI Vision cho task '{}': {}", taskCode, e.getMessage());
+            throw new RuntimeException(e.getMessage() != null ? e.getMessage() : "Dịch vụ AI phản hồi lỗi hoặc gặp sự cố kết nối.", e);
+        }
+    }
+
+    /** ADMIN không bị trừ credit khi gọi AI (BR-4 / AC-9). */
+    private boolean isAdmin(Long userId) {
+        if (userId == null) {
+            return false;
+        }
+        return userRepository.findById(userId)
+                .map(user -> user.getRole() == Role.ADMIN)
+                .orElse(false);
+    }
+}

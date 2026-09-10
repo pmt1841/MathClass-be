@@ -165,29 +165,6 @@ public class SupabaseStorageService {
         return totalDeleted;
     }
 
-    public int deleteImagesByUrls(List<String> publicUrls) {
-        if (publicUrls == null || publicUrls.isEmpty()) {
-            return 0;
-        }
-
-        Map<String, List<String>> bucketPathsMap = new HashMap<>();
-        for (String url : publicUrls) {
-            if (isSupabaseStorageUrl(url)) {
-                String bucket = extractBucketName(url);
-                String path = extractObjectPath(url);
-                if (bucket != null && path != null && !path.isBlank()) {
-                    bucketPathsMap.computeIfAbsent(bucket, k -> new ArrayList<>()).add(path);
-                }
-            }
-        }
-
-        int totalDeleted = 0;
-        for (Map.Entry<String, List<String>> entry : bucketPathsMap.entrySet()) {
-            totalDeleted += deleteImages(entry.getKey(), entry.getValue());
-        }
-
-        return totalDeleted;
-    }
 
     public List<SupabaseFileObject> listObjects(String bucketName, String prefix, int limit, int offset) {
         if (bucketName == null) {

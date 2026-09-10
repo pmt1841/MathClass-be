@@ -7,6 +7,7 @@ import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.RolePermission;
 import com.codegym.mathclass.user.repository.PermissionRepository;
 import com.codegym.mathclass.user.repository.RolePermissionRepository;
+import com.codegym.mathclass.user.service.impl.RolePermissionServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -37,7 +38,7 @@ class RolePermissionServiceTest {
     private PermissionCacheService permissionCacheService;
 
     @InjectMocks
-    private RolePermissionService rolePermissionService;
+    private RolePermissionServiceImpl rolePermissionService;
 
     private Permission permission1;
     private Permission permission2;

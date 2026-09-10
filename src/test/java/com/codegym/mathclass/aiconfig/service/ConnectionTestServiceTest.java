@@ -8,6 +8,7 @@ import com.codegym.mathclass.aiconfig.entity.Provider;
 import com.codegym.mathclass.aiconfig.entity.ProviderProtocol;
 import com.codegym.mathclass.aiconfig.repository.ApiKeyRepository;
 import com.codegym.mathclass.aiconfig.repository.ProviderRepository;
+import com.codegym.mathclass.aiconfig.service.impl.ConnectionTestServiceImpl;
 import com.codegym.mathclass.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -34,7 +35,7 @@ class ConnectionTestServiceTest {
     private ProviderRepository providerRepository;
 
     @InjectMocks
-    private ConnectionTestService connectionTestService;
+    private ConnectionTestServiceImpl connectionTestService;
 
     private Provider mockProvider;
     private ApiKey mockApiKey;

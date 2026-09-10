@@ -345,7 +345,7 @@ class AiHintServiceImplTest {
 
             assertThatThrownBy(() -> aiHintService.requestHint(assignmentId, request, studentEmail))
                     .isInstanceOf(ResourceNotFoundException.class)
-                    .hasMessageContaining("Chưa cấu hình System Prompt 'PROMPT_STUDENT_HINT'");
+                    .hasMessageContaining("Tính năng gợi ý AI hiện đang được bảo trì");
         }
     }
 
