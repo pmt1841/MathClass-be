@@ -16,11 +16,11 @@ import com.codegym.mathclass.aiconfig.service.PromptRenderService;
 import com.codegym.mathclass.aiconfig.strategy.AiExecutionResult;
 import com.codegym.mathclass.aiconfig.strategy.AiProviderStrategy;
 import com.codegym.mathclass.aiconfig.strategy.AiProviderStrategyFactory;
-import com.codegym.mathclass.aiqueue.dto.payload.AiBatchQuestionJobPayload;
-import com.codegym.mathclass.assignment.dto.AssignmentImageDto;
-import com.codegym.mathclass.assignment.dto.BatchGenerateQuestionsRequest;
-import com.codegym.mathclass.assignment.dto.BatchGenerateQuestionsResponse;
-import com.codegym.mathclass.assignment.dto.BatchQuestionItem;
+import com.codegym.mathclass.aiqueue.model.payload.AiBatchQuestionJobPayload;
+import com.codegym.mathclass.assignment.dto.response.AssignmentImageResponse;
+import com.codegym.mathclass.assignment.dto.request.BatchGenerateQuestionsRequest;
+import com.codegym.mathclass.assignment.dto.response.BatchGenerateQuestionsResponse;
+import com.codegym.mathclass.assignment.dto.response.BatchQuestionItemResponse;
 import com.codegym.mathclass.assignment.exception.AiGenerationException;
 import com.codegym.mathclass.assignment.service.AiBatchQuestionService;
 import com.codegym.mathclass.assignment.service.AssignmentService;
@@ -66,7 +66,7 @@ public class AiBatchQuestionServiceImpl implements AiBatchQuestionService {
     @SuppressWarnings("unchecked")
     public BatchGenerateQuestionsResponse batchGenerateQuestions(BatchGenerateQuestionsRequest request, Long userId, boolean chargeCredits) {
         String documentContent = "";
-        List<AssignmentImageDto> extractedImages = new ArrayList<>();
+        List<AssignmentImageResponse> extractedImages = new ArrayList<>();
 
         if (request.getFile() != null && !request.getFile().isEmpty()) {
             try {
@@ -74,7 +74,7 @@ public class AiBatchQuestionServiceImpl implements AiBatchQuestionService {
                 documentContent = (String) extracted.getOrDefault("content", "");
                 Object imagesObj = extracted.get("images");
                 if (imagesObj instanceof List<?>) {
-                    extractedImages = (List<AssignmentImageDto>) imagesObj;
+                    extractedImages = (List<AssignmentImageResponse>) imagesObj;
                 }
             } catch (Exception e) {
                 log.error("Lỗi khi đọc file tài liệu: {}", e.getMessage(), e);
@@ -158,7 +158,7 @@ public class AiBatchQuestionServiceImpl implements AiBatchQuestionService {
                     response.setCompletionTokens(result.completionTokens());
 
                     if (response.getQuestions() != null) {
-                        for (BatchQuestionItem q : response.getQuestions()) {
+                        for (BatchQuestionItemResponse q : response.getQuestions()) {
                             if (q.getContent() != null) {
                                 q.setContent(LaTeXSanitizer.normalizeKatexDelimiters(q.getContent()));
                             }
@@ -280,7 +280,7 @@ public class AiBatchQuestionServiceImpl implements AiBatchQuestionService {
     @SuppressWarnings("unchecked")
     public AiBatchQuestionJobPayload prepareBatchJobPayload(BatchGenerateQuestionsRequest request, Long userId) {
         String textContent = "";
-        List<AssignmentImageDto> extractedImages = new ArrayList<>();
+        List<AssignmentImageResponse> extractedImages = new ArrayList<>();
 
         if (request.getFile() != null && !request.getFile().isEmpty()) {
             try {
@@ -288,7 +288,7 @@ public class AiBatchQuestionServiceImpl implements AiBatchQuestionService {
                 textContent = (String) extracted.getOrDefault("content", "");
                 Object imagesObj = extracted.get("images");
                 if (imagesObj instanceof List<?>) {
-                    extractedImages = (List<AssignmentImageDto>) imagesObj;
+                    extractedImages = (List<AssignmentImageResponse>) imagesObj;
                 }
             } catch (Exception e) {
                 throw new BadRequestException("Không thể đọc nội dung file tài liệu: " + e.getMessage());

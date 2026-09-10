@@ -1,11 +1,11 @@
 package com.codegym.mathclass.assignment.mapper;
 
-import com.codegym.mathclass.assignment.dto.AssignmentDrawingResponse;
-import com.codegym.mathclass.assignment.dto.AssignmentImageDto;
-import com.codegym.mathclass.assignment.dto.AssignmentResponse;
+import com.codegym.mathclass.assignment.dto.response.AssignmentDrawingResponse;
+import com.codegym.mathclass.assignment.dto.response.AssignmentImageResponse;
+import com.codegym.mathclass.assignment.dto.response.AssignmentResponse;
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.entity.AssignmentStatus;
-import com.codegym.mathclass.assignment.dto.TagResponse;
+import com.codegym.mathclass.assignment.dto.response.TagResponse;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -78,8 +78,8 @@ public class AssignmentMapper {
         }
 
         if (assignment.getImages() != null && !assignment.getImages().isEmpty()) {
-            List<AssignmentImageDto> imageResponses = assignment.getImages().stream().map(image -> {
-                AssignmentImageDto img = new AssignmentImageDto();
+            List<AssignmentImageResponse> imageResponses = assignment.getImages().stream().map(image -> {
+                AssignmentImageResponse img = new AssignmentImageResponse();
                 img.setImageCode(image.getImageCode());
                 img.setImageUrl(image.getImageUrl());
                 return img;

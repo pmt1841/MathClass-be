@@ -1,9 +1,9 @@
 package com.codegym.mathclass.storage.service;
 
-import com.codegym.mathclass.storage.dto.StorageCleanupRequest;
-import com.codegym.mathclass.storage.dto.StorageCleanupResponse;
-import com.codegym.mathclass.storage.dto.StorageCleanupStatusResponse;
-import com.codegym.mathclass.storage.dto.UpdateStorageCleanupConfigRequest;
+import com.codegym.mathclass.storage.dto.request.StorageCleanupRequest;
+import com.codegym.mathclass.storage.dto.response.StorageCleanupResponse;
+import com.codegym.mathclass.storage.dto.response.StorageCleanupStatusResponse;
+import com.codegym.mathclass.storage.dto.request.UpdateStorageCleanupConfigRequest;
 import com.codegym.mathclass.storage.entity.StorageCleanupConfig;
 
 public interface StorageCleanupService {

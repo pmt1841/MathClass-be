@@ -1,6 +1,6 @@
 package com.codegym.mathclass.auth.entity;
 
-import com.codegym.mathclass.auth.dto.request.AuthType;
+import com.codegym.mathclass.auth.entity.AuthType;
 import com.codegym.mathclass.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;

@@ -1,8 +1,8 @@
 package com.codegym.mathclass.bugreport.controller;
 
-import com.codegym.mathclass.bugreport.dto.BugReportResponse;
-import com.codegym.mathclass.bugreport.dto.CreateBugReportRequest;
-import com.codegym.mathclass.bugreport.dto.UpdateBugReportStatusRequest;
+import com.codegym.mathclass.bugreport.dto.response.BugReportResponse;
+import com.codegym.mathclass.bugreport.dto.request.CreateBugReportRequest;
+import com.codegym.mathclass.bugreport.dto.request.UpdateBugReportStatusRequest;
 import com.codegym.mathclass.bugreport.entity.BugErrorType;
 import com.codegym.mathclass.bugreport.entity.BugReportStatus;
 import com.codegym.mathclass.bugreport.service.BugReportService;
@@ -94,7 +94,7 @@ class BugReportControllerTest {
     @Test
     @DisplayName("Should send public report OTP successfully")
     void sendPublicReportOtp_Success() throws Exception {
-        com.codegym.mathclass.bugreport.dto.SendOtpRequest request = new com.codegym.mathclass.bugreport.dto.SendOtpRequest("guest@gmail.com");
+        com.codegym.mathclass.bugreport.dto.request.SendOtpRequest request = new com.codegym.mathclass.bugreport.dto.request.SendOtpRequest("guest@gmail.com");
 
         mockMvc.perform(post("/bug-reports/public/send-otp")
                         .contentType(MediaType.APPLICATION_JSON)

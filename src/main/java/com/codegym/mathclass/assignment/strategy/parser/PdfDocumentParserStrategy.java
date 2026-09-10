@@ -1,6 +1,6 @@
 package com.codegym.mathclass.assignment.strategy.parser;
 
-import com.codegym.mathclass.assignment.dto.DocumentParseResult;
+import com.codegym.mathclass.assignment.strategy.parser.DocumentParseResult;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.stereotype.Component;

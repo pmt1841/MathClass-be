@@ -1,14 +1,14 @@
 package com.codegym.mathclass.submission.controller;
 
-import com.codegym.mathclass.aiqueue.dto.AiJobSubmitResponse;
-import com.codegym.mathclass.aiqueue.dto.payload.AiHandwritingJobPayload;
+import com.codegym.mathclass.aiqueue.dto.response.AiJobSubmitResponse;
+import com.codegym.mathclass.aiqueue.model.payload.AiHandwritingJobPayload;
 import com.codegym.mathclass.aiqueue.service.AiJobService;
 import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.security.services.CustomUserDetails;
-import com.codegym.mathclass.submission.dto.HandwritingLatexRequest;
-import com.codegym.mathclass.submission.dto.HandwritingLatexResponse;
-import com.codegym.mathclass.submission.dto.SketchGeometryRequest;
-import com.codegym.mathclass.submission.dto.SketchGeometryResponse;
+import com.codegym.mathclass.submission.dto.request.HandwritingLatexRequest;
+import com.codegym.mathclass.submission.dto.response.HandwritingLatexResponse;
+import com.codegym.mathclass.submission.dto.request.SketchGeometryRequest;
+import com.codegym.mathclass.submission.dto.response.SketchGeometryResponse;
 import com.codegym.mathclass.submission.service.AiSubmissionHandwritingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

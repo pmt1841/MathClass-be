@@ -1,8 +1,8 @@
 package com.codegym.mathclass.dashboard.controller;
 
 import com.codegym.mathclass.common.dto.ApiResponse;
-import com.codegym.mathclass.dashboard.dto.admin.AdminDashboardStatsResponse;
-import com.codegym.mathclass.dashboard.dto.admin.UserStatsResponse;
+import com.codegym.mathclass.dashboard.dto.response.admin.AdminDashboardStatsResponse;
+import com.codegym.mathclass.dashboard.dto.response.admin.UserStatsResponse;
 import com.codegym.mathclass.dashboard.service.AdminDashboardService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

@@ -1,12 +1,12 @@
 package com.codegym.mathclass.classroom.controller;
 
-import com.codegym.mathclass.aiqueue.dto.AiJobSubmitResponse;
-import com.codegym.mathclass.aiqueue.dto.payload.StudentRemarkJobPayload;
+import com.codegym.mathclass.aiqueue.dto.response.AiJobSubmitResponse;
+import com.codegym.mathclass.aiqueue.model.payload.StudentRemarkJobPayload;
 import com.codegym.mathclass.aiqueue.service.AiJobService;
-import com.codegym.mathclass.classroom.dto.AiStudentRemarkEvaluateRequest;
-import com.codegym.mathclass.classroom.dto.AiStudentRemarkEvaluationResponse;
-import com.codegym.mathclass.classroom.dto.CreateStudentRemarkRequest;
-import com.codegym.mathclass.classroom.dto.StudentRemarkResponse;
+import com.codegym.mathclass.classroom.dto.request.AiStudentRemarkEvaluateRequest;
+import com.codegym.mathclass.classroom.dto.response.AiStudentRemarkEvaluationResponse;
+import com.codegym.mathclass.classroom.dto.request.CreateStudentRemarkRequest;
+import com.codegym.mathclass.classroom.dto.response.StudentRemarkResponse;
 import com.codegym.mathclass.classroom.service.StudentRemarkAiService;
 import com.codegym.mathclass.classroom.service.StudentRemarkService;
 import com.codegym.mathclass.common.annotation.ApiVersion;

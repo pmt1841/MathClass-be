@@ -1,8 +1,8 @@
 package com.codegym.mathclass.submission.controller;
 
 import com.codegym.mathclass.security.services.CustomUserDetails;
-import com.codegym.mathclass.submission.dto.SubmissionCommentRequest;
-import com.codegym.mathclass.submission.dto.SubmissionCommentResponse;
+import com.codegym.mathclass.submission.dto.request.SubmissionCommentRequest;
+import com.codegym.mathclass.submission.dto.response.SubmissionCommentResponse;
 import com.codegym.mathclass.submission.service.SubmissionCommentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;

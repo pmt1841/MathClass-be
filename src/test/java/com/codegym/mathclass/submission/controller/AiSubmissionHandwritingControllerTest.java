@@ -1,10 +1,10 @@
 package com.codegym.mathclass.submission.controller;
 
 import com.codegym.mathclass.security.services.CustomUserDetails;
-import com.codegym.mathclass.submission.dto.HandwritingLatexRequest;
-import com.codegym.mathclass.submission.dto.HandwritingLatexResponse;
-import com.codegym.mathclass.submission.dto.SketchGeometryRequest;
-import com.codegym.mathclass.submission.dto.SketchGeometryResponse;
+import com.codegym.mathclass.submission.dto.request.HandwritingLatexRequest;
+import com.codegym.mathclass.submission.dto.response.HandwritingLatexResponse;
+import com.codegym.mathclass.submission.dto.request.SketchGeometryRequest;
+import com.codegym.mathclass.submission.dto.response.SketchGeometryResponse;
 import com.codegym.mathclass.submission.service.AiSubmissionHandwritingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;

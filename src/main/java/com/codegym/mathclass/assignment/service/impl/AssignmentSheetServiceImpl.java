@@ -1,10 +1,10 @@
 package com.codegym.mathclass.assignment.service.impl;
 
-import com.codegym.mathclass.assignment.dto.AssignmentResponse;
-import com.codegym.mathclass.assignment.dto.AssignmentSheetResponse;
-import com.codegym.mathclass.assignment.dto.PublishAssignmentSheetRequest;
-import com.codegym.mathclass.assignment.dto.UpdateAssignmentSheetRequest;
-import com.codegym.mathclass.assignment.dto.UpdateVisibilityRequest;
+import com.codegym.mathclass.assignment.dto.response.AssignmentResponse;
+import com.codegym.mathclass.assignment.dto.response.AssignmentSheetResponse;
+import com.codegym.mathclass.assignment.dto.request.PublishAssignmentSheetRequest;
+import com.codegym.mathclass.assignment.dto.request.UpdateAssignmentSheetRequest;
+import com.codegym.mathclass.assignment.dto.request.UpdateVisibilityRequest;
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.entity.AssignmentDrawing;
 import com.codegym.mathclass.assignment.entity.AssignmentImage;
@@ -24,7 +24,7 @@ import com.codegym.mathclass.submission.entity.Submission;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import com.codegym.mathclass.submission.repository.CompletedStudentProjection;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
-import com.codegym.mathclass.assignment.dto.SheetCompletedStudentResponse;
+import com.codegym.mathclass.assignment.dto.response.SheetCompletedStudentResponse;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;

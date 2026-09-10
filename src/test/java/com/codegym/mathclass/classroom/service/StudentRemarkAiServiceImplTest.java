@@ -1,13 +1,15 @@
 package com.codegym.mathclass.classroom.service;
 
+import com.codegym.mathclass.classroom.service.impl.StudentRemarkAiServiceImpl;
+
 import com.codegym.mathclass.aiconfig.entity.SystemPrompt;
 import com.codegym.mathclass.aiconfig.repository.SystemPromptRepository;
 import com.codegym.mathclass.aiconfig.service.AiPromptExecutionService;
 import com.codegym.mathclass.aiconfig.strategy.AiExecutionResult;
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.repository.AssignmentRepository;
-import com.codegym.mathclass.classroom.dto.AiStudentRemarkEvaluateRequest;
-import com.codegym.mathclass.classroom.dto.AiStudentRemarkEvaluationResponse;
+import com.codegym.mathclass.classroom.dto.request.AiStudentRemarkEvaluateRequest;
+import com.codegym.mathclass.classroom.dto.response.AiStudentRemarkEvaluationResponse;
 import com.codegym.mathclass.classroom.entity.Classroom;
 import com.codegym.mathclass.classroom.repository.ClassroomRepository;
 import com.codegym.mathclass.exception.AccessDeniedException;

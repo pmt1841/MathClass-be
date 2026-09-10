@@ -1,7 +1,7 @@
 package com.codegym.mathclass.aiqueue.handler;
 
-import com.codegym.mathclass.aiqueue.dto.AiJobExecutionResult;
-import com.codegym.mathclass.aiqueue.dto.AiJobMessage;
+import com.codegym.mathclass.aiqueue.model.AiJobExecutionResult;
+import com.codegym.mathclass.aiqueue.model.AiJobMessage;
 
 public interface AiJobHandler {
 

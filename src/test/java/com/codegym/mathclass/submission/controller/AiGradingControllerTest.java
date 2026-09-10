@@ -3,7 +3,7 @@ package com.codegym.mathclass.submission.controller;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.codegym.mathclass.submission.dto.request.AiGradingRequest;
 import com.codegym.mathclass.submission.dto.response.AiGradingResponse;
-import com.codegym.mathclass.submission.dto.response.DrawingIssueItem;
+import com.codegym.mathclass.submission.dto.response.AiGradingResponse.DrawingIssueItemResponse;
 import com.codegym.mathclass.submission.service.AiGradingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -86,7 +86,7 @@ class AiGradingControllerTest {
                     .draftFeedback("Lời giải đúng hướng.")
                     .hasCanvasComparison(true)
                     .drawingIssues(List.of(
-                            DrawingIssueItem.builder().issue("Thiếu đường cao AH").detail("Cần kẻ AH").build()
+                            DrawingIssueItemResponse.builder().issue("Thiếu đường cao AH").detail("Cần kẻ AH").build()
                     ))
                     .build();
 

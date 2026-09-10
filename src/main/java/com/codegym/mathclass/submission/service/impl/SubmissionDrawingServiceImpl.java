@@ -2,8 +2,8 @@ package com.codegym.mathclass.submission.service.impl;
 
 import com.codegym.mathclass.exception.AccessDeniedException;
 import com.codegym.mathclass.exception.ResourceNotFoundException;
-import com.codegym.mathclass.submission.dto.SubmissionDrawingRequest;
-import com.codegym.mathclass.submission.dto.SubmissionDrawingResponse;
+import com.codegym.mathclass.submission.dto.request.SubmissionDrawingRequest;
+import com.codegym.mathclass.submission.dto.response.SubmissionDrawingResponse;
 import com.codegym.mathclass.submission.entity.Submission;
 import com.codegym.mathclass.submission.entity.SubmissionDrawing;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;

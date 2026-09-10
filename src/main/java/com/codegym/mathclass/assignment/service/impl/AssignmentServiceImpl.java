@@ -2,10 +2,10 @@ package com.codegym.mathclass.assignment.service.impl;
 
 import com.codegym.mathclass.assignment.service.AssignmentService;
 import com.codegym.mathclass.assignment.service.TagService;
-import com.codegym.mathclass.assignment.dto.AssignmentResponse;
-import com.codegym.mathclass.assignment.dto.CreateAssignmentRequest;
-import com.codegym.mathclass.assignment.dto.PublishAssignmentRequest;
-import com.codegym.mathclass.assignment.dto.UpdateAssignmentRequest;
+import com.codegym.mathclass.assignment.dto.response.AssignmentResponse;
+import com.codegym.mathclass.assignment.dto.request.CreateAssignmentRequest;
+import com.codegym.mathclass.assignment.dto.request.PublishAssignmentRequest;
+import com.codegym.mathclass.assignment.dto.request.UpdateAssignmentRequest;
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.entity.AssignmentDrawing;
 import com.codegym.mathclass.assignment.entity.AssignmentStatus;
@@ -39,8 +39,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import com.codegym.mathclass.assignment.repository.AssignmentImageRepository;
 import com.codegym.mathclass.assignment.entity.AssignmentVisibility;
-import com.codegym.mathclass.assignment.dto.SheetSiblingDto;
-import com.codegym.mathclass.assignment.dto.UpdateVisibilityRequest;
+import com.codegym.mathclass.assignment.dto.response.SheetSiblingResponse;
+import com.codegym.mathclass.assignment.dto.request.UpdateVisibilityRequest;
 
 import com.codegym.mathclass.assignment.mapper.AssignmentMapper;
 import com.codegym.mathclass.assignment.entity.AssignmentImage;
@@ -48,16 +48,16 @@ import com.codegym.mathclass.storage.service.StorageService;
 import com.codegym.mathclass.storage.dto.StoragePolicy;
 import com.codegym.mathclass.assignment.strategy.parser.DocumentParserFactory;
 import com.codegym.mathclass.assignment.strategy.parser.DocumentParserStrategy;
-import com.codegym.mathclass.assignment.dto.DocumentParseResult;
-import com.codegym.mathclass.assignment.dto.AssignmentImageDto;
+import com.codegym.mathclass.assignment.strategy.parser.DocumentParseResult;
+import com.codegym.mathclass.assignment.dto.response.AssignmentImageResponse;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
-import com.codegym.mathclass.assignment.dto.DocumentParseResult;
-import com.codegym.mathclass.assignment.dto.AssignmentImageDto;
-import com.codegym.mathclass.assignment.dto.AssignmentDrawingRequest;
-import com.codegym.mathclass.assignment.dto.AssignmentImageRequest;
+import com.codegym.mathclass.assignment.strategy.parser.DocumentParseResult;
+import com.codegym.mathclass.assignment.dto.response.AssignmentImageResponse;
+import com.codegym.mathclass.assignment.dto.request.AssignmentDrawingRequest;
+import com.codegym.mathclass.assignment.dto.request.AssignmentImageRequest;
 import com.codegym.mathclass.utils.EmailService;
 import org.thymeleaf.context.Context;
 import org.springframework.beans.factory.annotation.Value;
@@ -514,10 +514,10 @@ public class AssignmentServiceImpl implements AssignmentService {
     }
 
     @Override
-    public AssignmentImageDto uploadImageForAssignment(MultipartFile file) throws IOException {
+    public AssignmentImageResponse uploadImageForAssignment(MultipartFile file) throws IOException {
         String publicUrl = storageService.upload(file, StoragePolicy.ASSIGNMENT_IMAGE);
         String imageCode = "[IMAGE_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase() + "]";
-        return new AssignmentImageDto(imageCode, publicUrl);
+        return new AssignmentImageResponse(imageCode, publicUrl);
     }
 
     @Override
@@ -557,9 +557,9 @@ public class AssignmentServiceImpl implements AssignmentService {
         AssignmentResponse response = assignmentMapper.toAssignmentResponse(assignment);
 
         if (assignment.getAssignmentSheet() != null) {
-            List<SheetSiblingDto> siblings = assignment.getAssignmentSheet().getItems().stream()
+            List<SheetSiblingResponse> siblings = assignment.getAssignmentSheet().getItems().stream()
                     .map(item -> {
-                        SheetSiblingDto dto = new SheetSiblingDto(item.getId(), item.getTitle());
+                        SheetSiblingResponse dto = new SheetSiblingResponse(item.getId(), item.getTitle());
                         if (Role.STUDENT.name().equals(role)) {
                             submissionRepository.findFirstByAssignmentIdAndStudentId(item.getId(), userId)
                                     .ifPresent(sub -> dto.setSubmissionStatus(sub.getStatus().name()));

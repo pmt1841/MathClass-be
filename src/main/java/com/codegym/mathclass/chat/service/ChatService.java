@@ -1,16 +1,16 @@
 package com.codegym.mathclass.chat.service;
 
-import com.codegym.mathclass.chat.dto.ChatMessageRequest;
-import com.codegym.mathclass.chat.dto.ChatMessageResponse;
+import com.codegym.mathclass.chat.dto.request.ChatMessageRequest;
+import com.codegym.mathclass.chat.dto.response.ChatMessageResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Set;
 
-import com.codegym.mathclass.chat.dto.ClassroomChatUnreadSummaryResponse;
-import com.codegym.mathclass.chat.dto.DirectChatMessageRequest;
-import com.codegym.mathclass.chat.dto.GroupChatMessageRequest;
+import com.codegym.mathclass.chat.dto.response.ClassroomChatUnreadSummaryResponse;
+import com.codegym.mathclass.chat.dto.request.DirectChatMessageRequest;
+import com.codegym.mathclass.chat.dto.request.GroupChatMessageRequest;
 
 public interface ChatService {
     ChatMessageResponse sendMessage(ChatMessageRequest request, Long currentUserId);

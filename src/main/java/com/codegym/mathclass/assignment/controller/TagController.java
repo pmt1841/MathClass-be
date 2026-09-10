@@ -1,6 +1,6 @@
 package com.codegym.mathclass.assignment.controller;
 
-import com.codegym.mathclass.assignment.dto.TagResponse;
+import com.codegym.mathclass.assignment.dto.response.TagResponse;
 import com.codegym.mathclass.assignment.entity.TagType;
 import com.codegym.mathclass.assignment.service.TagService;
 import lombok.RequiredArgsConstructor;

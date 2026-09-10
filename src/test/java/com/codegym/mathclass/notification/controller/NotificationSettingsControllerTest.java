@@ -1,6 +1,6 @@
 package com.codegym.mathclass.notification.controller;
 
-import com.codegym.mathclass.notification.dto.NotificationSettingsDto;
+import com.codegym.mathclass.notification.dto.response.NotificationSettingsResponse;
 import com.codegym.mathclass.notification.service.NotificationSettingsService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -80,7 +80,7 @@ class NotificationSettingsControllerTest {
         @Test
         @DisplayName("Should return notification settings for user and 200 OK")
         void getNotificationSettings_ValidUser_ReturnsOk() throws Exception {
-            NotificationSettingsDto dto = new NotificationSettingsDto();
+            NotificationSettingsResponse dto = new NotificationSettingsResponse();
             dto.setMasterEmail(true);
 
             when(notificationSettingsService.getNotificationSettings(1L)).thenReturn(dto);
@@ -100,13 +100,13 @@ class NotificationSettingsControllerTest {
         @Test
         @DisplayName("Should update notification settings for user and return 200 OK")
         void updateNotificationSettings_ValidRequest_ReturnsOk() throws Exception {
-            NotificationSettingsDto request = new NotificationSettingsDto();
+            NotificationSettingsResponse request = new NotificationSettingsResponse();
             request.setMasterEmail(false);
 
-            NotificationSettingsDto response = new NotificationSettingsDto();
+            NotificationSettingsResponse response = new NotificationSettingsResponse();
             response.setMasterEmail(false);
 
-            when(notificationSettingsService.updateNotificationSettings(eq(1L), any(NotificationSettingsDto.class)))
+            when(notificationSettingsService.updateNotificationSettings(eq(1L), any(NotificationSettingsResponse.class)))
                     .thenReturn(response);
 
             mockMvc.perform(put("/settings/notifications")
@@ -115,7 +115,7 @@ class NotificationSettingsControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.masterEmail").value(false));
 
-            verify(notificationSettingsService, times(1)).updateNotificationSettings(eq(1L), any(NotificationSettingsDto.class));
+            verify(notificationSettingsService, times(1)).updateNotificationSettings(eq(1L), any(NotificationSettingsResponse.class));
         }
     }
 }

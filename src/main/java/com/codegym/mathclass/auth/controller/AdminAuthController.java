@@ -1,7 +1,7 @@
 package com.codegym.mathclass.auth.controller;
 
 import com.codegym.mathclass.auth.dto.request.Admin2FaLoginRequest;
-import com.codegym.mathclass.auth.dto.request.AuthType;
+import com.codegym.mathclass.auth.entity.AuthType;
 import com.codegym.mathclass.auth.dto.response.UserInfoResponse;
 import com.codegym.mathclass.auth.service.AuthService;
 import com.codegym.mathclass.common.annotation.ApiVersion;

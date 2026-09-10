@@ -1,8 +1,8 @@
 package com.codegym.mathclass.aiqueue;
 
 import com.codegym.mathclass.aiqueue.controller.AiJobController;
-import com.codegym.mathclass.aiqueue.dto.AiJobResultResponse;
-import com.codegym.mathclass.aiqueue.dto.AiJobStatus;
+import com.codegym.mathclass.aiqueue.dto.response.AiJobResultResponse;
+import com.codegym.mathclass.aiqueue.model.AiJobStatus;
 import com.codegym.mathclass.aiqueue.service.AiJobService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import org.junit.jupiter.api.DisplayName;

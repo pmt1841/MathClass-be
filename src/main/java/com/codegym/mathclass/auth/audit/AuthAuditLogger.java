@@ -1,6 +1,6 @@
 package com.codegym.mathclass.auth.audit;
 
-import com.codegym.mathclass.auth.dto.request.AuthType;
+import com.codegym.mathclass.auth.entity.AuthType;
 import com.codegym.mathclass.auth.entity.AuthAuditLog;
 import com.codegym.mathclass.auth.repository.AuthAuditLogRepository;
 import jakarta.servlet.http.HttpServletRequest;

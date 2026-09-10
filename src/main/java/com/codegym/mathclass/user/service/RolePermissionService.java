@@ -2,7 +2,7 @@ package com.codegym.mathclass.user.service;
 
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.user.config.DefaultRolePermissions;
-import com.codegym.mathclass.user.dto.response.PermissionDto;
+import com.codegym.mathclass.user.dto.response.PermissionResponse;
 import com.codegym.mathclass.user.entity.Permission;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.RolePermission;
@@ -25,10 +25,10 @@ public class RolePermissionService {
     private final PermissionRepository permissionRepository;
     private final PermissionCacheService permissionCacheService;
 
-    public List<PermissionDto> getPermissionsByRole(Role role) {
+    public List<PermissionResponse> getPermissionsByRole(Role role) {
         List<RolePermission> rolePermissions = rolePermissionRepository.findByRole(role);
         return rolePermissions.stream()
-                .map(rp -> PermissionDto.builder()
+                .map(rp -> PermissionResponse.builder()
                         .id(rp.getPermission().getId())
                         .name(rp.getPermission().getName())
                         .description(rp.getPermission().getDescription())
@@ -36,9 +36,9 @@ public class RolePermissionService {
                 .collect(Collectors.toList());
     }
 
-    public List<PermissionDto> getAllPermissions() {
+    public List<PermissionResponse> getAllPermissions() {
         return permissionRepository.findAll().stream()
-                .map(p -> PermissionDto.builder()
+                .map(p -> PermissionResponse.builder()
                         .id(p.getId())
                         .name(p.getName())
                         .description(p.getDescription())

@@ -2,7 +2,7 @@ package com.codegym.mathclass.dashboard.controller;
 
 import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.common.dto.ApiResponse;
-import com.codegym.mathclass.dashboard.dto.admin.AdminDashboardStatsResponse;
+import com.codegym.mathclass.dashboard.dto.response.admin.AdminDashboardStatsResponse;
 import com.codegym.mathclass.dashboard.service.AdminDashboardService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

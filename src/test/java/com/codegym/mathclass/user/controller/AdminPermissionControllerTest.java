@@ -3,7 +3,7 @@ package com.codegym.mathclass.user.controller;
 import com.codegym.mathclass.exception.GlobalExceptionHandler;
 import com.codegym.mathclass.systemlog.service.SystemLogService;
 import com.codegym.mathclass.user.dto.request.UpdateRolePermissionsRequest;
-import com.codegym.mathclass.user.dto.response.PermissionDto;
+import com.codegym.mathclass.user.dto.response.PermissionResponse;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.service.RolePermissionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -59,7 +59,7 @@ class AdminPermissionControllerTest {
 
     private ObjectMapper objectMapper;
     private UserDetails mockAdminDetails;
-    private PermissionDto mockPermissionDto;
+    private PermissionResponse mockPermissionResponse;
 
     @BeforeEach
     void setUp() {
@@ -70,7 +70,7 @@ class AdminPermissionControllerTest {
                 .roles("ADMIN")
                 .build();
 
-        mockPermissionDto = PermissionDto.builder()
+        mockPermissionResponse = PermissionResponse.builder()
                 .id(1L)
                 .name("user:read")
                 .description("Read user info")
@@ -100,7 +100,7 @@ class AdminPermissionControllerTest {
         @Test
         @DisplayName("Should return all permissions list and 200 OK")
         void getAllPermissions_ReturnsOk() throws Exception {
-            when(rolePermissionService.getAllPermissions()).thenReturn(List.of(mockPermissionDto));
+            when(rolePermissionService.getAllPermissions()).thenReturn(List.of(mockPermissionResponse));
 
             mockMvc.perform(get("/admin/roles/permissions"))
                     .andExpect(status().isOk())
@@ -118,7 +118,7 @@ class AdminPermissionControllerTest {
         @Test
         @DisplayName("Should return permissions for valid roleName and 200 OK")
         void getPermissionsByRole_ValidRole_ReturnsOk() throws Exception {
-            when(rolePermissionService.getPermissionsByRole(Role.TEACHER)).thenReturn(List.of(mockPermissionDto));
+            when(rolePermissionService.getPermissionsByRole(Role.TEACHER)).thenReturn(List.of(mockPermissionResponse));
 
             mockMvc.perform(get("/admin/roles/teacher/permissions"))
                     .andExpect(status().isOk())

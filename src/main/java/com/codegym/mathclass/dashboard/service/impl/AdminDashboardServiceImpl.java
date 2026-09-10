@@ -9,7 +9,7 @@ import com.codegym.mathclass.aiconfig.credit.repository.CreditTransactionReposit
 import com.codegym.mathclass.bugreport.entity.BugReportStatus;
 import com.codegym.mathclass.bugreport.repository.BugReportRepository;
 import com.codegym.mathclass.classroom.repository.ClassroomRepository;
-import com.codegym.mathclass.dashboard.dto.admin.*;
+import com.codegym.mathclass.dashboard.dto.response.admin.*;
 import com.codegym.mathclass.dashboard.service.AdminDashboardService;
 import com.codegym.mathclass.systemlog.repository.SystemLogRepository;
 import com.codegym.mathclass.user.entity.Role;

@@ -14,7 +14,7 @@
   - `<feature>/repository/` → Spring Data JPA repositories
   - `<feature>/service/` + `service/impl/` → Interface và implementation business logic
   - `<feature>/controller/` → REST API endpoints
-  - `<feature>/dto/` → Request/Response DTOs
+  - `<feature>/dto/` → Request/Response DTOs (phân tách rõ thành 2 package con `dto/request/` cho các class `*Request` và `dto/response/` cho các class `*Response`)
 - Thư mục dùng chung:
   - `common/entity/` → Chứa `BaseEntity` (id, createdAt, updatedAt)
   - `exception/` → Chứa `GlobalExceptionHandler` và các custom exceptions (`ResourceNotFoundException`, `BadRequestException`, `AccessDeniedException`)

@@ -1,13 +1,13 @@
 package com.codegym.mathclass.assignment.service;
 
-import com.codegym.mathclass.assignment.dto.PublishAssignmentSheetRequest;
-import com.codegym.mathclass.assignment.dto.AssignmentSheetResponse;
-import com.codegym.mathclass.assignment.dto.UpdateVisibilityRequest;
+import com.codegym.mathclass.assignment.dto.request.PublishAssignmentSheetRequest;
+import com.codegym.mathclass.assignment.dto.response.AssignmentSheetResponse;
+import com.codegym.mathclass.assignment.dto.request.UpdateVisibilityRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import com.codegym.mathclass.assignment.dto.SheetCompletedStudentResponse;
+import com.codegym.mathclass.assignment.dto.response.SheetCompletedStudentResponse;
 
-import com.codegym.mathclass.assignment.dto.UpdateAssignmentSheetRequest;
+import com.codegym.mathclass.assignment.dto.request.UpdateAssignmentSheetRequest;
 
 public interface AssignmentSheetService {
     void publishAssignmentSheet(PublishAssignmentSheetRequest request, long teacherId);

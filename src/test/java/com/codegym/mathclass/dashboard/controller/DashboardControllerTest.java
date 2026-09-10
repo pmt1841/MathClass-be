@@ -1,11 +1,11 @@
 package com.codegym.mathclass.dashboard.controller;
 
-import com.codegym.mathclass.dashboard.dto.AtRiskStudentDto;
-import com.codegym.mathclass.dashboard.dto.PendingSubmissionDto;
-import com.codegym.mathclass.dashboard.dto.StudentDashboardStatsDto;
-import com.codegym.mathclass.dashboard.dto.StudentGradedTaskDto;
-import com.codegym.mathclass.dashboard.dto.StudentPendingTaskDto;
-import com.codegym.mathclass.dashboard.dto.TeacherDashboardStatsDto;
+import com.codegym.mathclass.dashboard.dto.response.AtRiskStudentResponse;
+import com.codegym.mathclass.dashboard.dto.response.PendingSubmissionResponse;
+import com.codegym.mathclass.dashboard.dto.response.StudentDashboardStatsResponse;
+import com.codegym.mathclass.dashboard.dto.response.StudentGradedTaskResponse;
+import com.codegym.mathclass.dashboard.dto.response.StudentPendingTaskResponse;
+import com.codegym.mathclass.dashboard.dto.response.TeacherDashboardStatsResponse;
 import com.codegym.mathclass.dashboard.service.DashboardService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import org.junit.jupiter.api.BeforeEach;
@@ -73,7 +73,7 @@ class DashboardControllerTest {
     @DisplayName("Should return teacher stats")
     void getTeacherStats_ValidRequest_ReturnsOk() throws Exception {
         // Given
-        TeacherDashboardStatsDto stats = new TeacherDashboardStatsDto();
+        TeacherDashboardStatsResponse stats = new TeacherDashboardStatsResponse();
         stats.setTeachingClasses(5);
         stats.setManagedStudents(100);
         stats.setOpenAssignments(2);
@@ -96,7 +96,7 @@ class DashboardControllerTest {
     @DisplayName("Should return pending submissions for teacher")
     void getPendingSubmissions_ValidRequest_ReturnsOk() throws Exception {
         // Given
-        PendingSubmissionDto dto = new PendingSubmissionDto();
+        PendingSubmissionResponse dto = new PendingSubmissionResponse();
         dto.setId(100L);
         dto.setStudentName("John Doe");
 
@@ -115,7 +115,7 @@ class DashboardControllerTest {
     @DisplayName("Should return at-risk students for teacher")
     void getAtRiskStudents_ValidRequest_ReturnsOk() throws Exception {
         // Given
-        AtRiskStudentDto dto = new AtRiskStudentDto();
+        AtRiskStudentResponse dto = new AtRiskStudentResponse();
         dto.setId(2L);
         dto.setName("Jane Doe");
 
@@ -134,7 +134,7 @@ class DashboardControllerTest {
     @DisplayName("Should return student stats")
     void getStudentStats_ValidRequest_ReturnsOk() throws Exception {
         // Given
-        StudentDashboardStatsDto stats = new StudentDashboardStatsDto();
+        StudentDashboardStatsResponse stats = new StudentDashboardStatsResponse();
         stats.setJoinedClasses(3);
         stats.setPendingTasks(5);
         stats.setCompletedTasks(15);
@@ -155,7 +155,7 @@ class DashboardControllerTest {
     @DisplayName("Should return student pending tasks")
     void getStudentPendingTasks_ValidRequest_ReturnsOk() throws Exception {
         // Given
-        StudentPendingTaskDto dto = new StudentPendingTaskDto();
+        StudentPendingTaskResponse dto = new StudentPendingTaskResponse();
         dto.setId(10L);
         dto.setTitle("Math Homework");
 
@@ -174,7 +174,7 @@ class DashboardControllerTest {
     @DisplayName("Should return student graded tasks")
     void getStudentGradedTasks_ValidRequest_ReturnsOk() throws Exception {
         // Given
-        StudentGradedTaskDto dto = new StudentGradedTaskDto();
+        StudentGradedTaskResponse dto = new StudentGradedTaskResponse();
         dto.setId(100L);
         dto.setScore(9.5f);
 

@@ -1,13 +1,13 @@
 package com.codegym.mathclass.bugreport.service;
 
-import com.codegym.mathclass.bugreport.dto.CreateBugReportRequest;
-import com.codegym.mathclass.bugreport.dto.BugReportResponse;
-import com.codegym.mathclass.bugreport.dto.UpdateBugReportStatusRequest;
+import com.codegym.mathclass.bugreport.dto.request.CreateBugReportRequest;
+import com.codegym.mathclass.bugreport.dto.response.BugReportResponse;
+import com.codegym.mathclass.bugreport.dto.request.UpdateBugReportStatusRequest;
 import com.codegym.mathclass.bugreport.entity.BugReportStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-import com.codegym.mathclass.bugreport.dto.SendOtpRequest;
+import com.codegym.mathclass.bugreport.dto.request.SendOtpRequest;
 
 public interface BugReportService {
 

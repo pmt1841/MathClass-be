@@ -1,9 +1,9 @@
 package com.codegym.mathclass.aiqueue;
 
 import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
-import com.codegym.mathclass.aiqueue.dto.AiJobExecutionResult;
-import com.codegym.mathclass.aiqueue.dto.AiJobMessage;
-import com.codegym.mathclass.aiqueue.dto.AiJobStatus;
+import com.codegym.mathclass.aiqueue.model.AiJobExecutionResult;
+import com.codegym.mathclass.aiqueue.model.AiJobMessage;
+import com.codegym.mathclass.aiqueue.model.AiJobStatus;
 import com.codegym.mathclass.aiqueue.handler.AiJobHandler;
 import com.codegym.mathclass.aiqueue.service.AiJobService;
 import com.codegym.mathclass.aiqueue.service.impl.AiJobQueueConsumerImpl;

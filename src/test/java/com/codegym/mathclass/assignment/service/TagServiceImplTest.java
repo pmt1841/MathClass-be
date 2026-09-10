@@ -1,6 +1,6 @@
 package com.codegym.mathclass.assignment.service;
 
-import com.codegym.mathclass.assignment.dto.TagResponse;
+import com.codegym.mathclass.assignment.dto.response.TagResponse;
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.entity.AssignmentTag;
 import com.codegym.mathclass.assignment.entity.Tag;

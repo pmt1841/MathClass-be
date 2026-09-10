@@ -2,7 +2,7 @@ package com.codegym.mathclass.notification.controller;
 
 import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.security.services.CustomUserDetails;
-import com.codegym.mathclass.notification.dto.NotificationSettingsDto;
+import com.codegym.mathclass.notification.dto.response.NotificationSettingsResponse;
 import com.codegym.mathclass.notification.service.NotificationSettingsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -22,16 +22,16 @@ public class NotificationSettingsController {
 
     @Operation(summary = "Lấy cấu hình cài đặt thông báo", description = "Truy vấn các tùy chọn thông báo của người dùng")
     @GetMapping("/notifications")
-    public ResponseEntity<NotificationSettingsDto> getNotificationSettings(
+    public ResponseEntity<NotificationSettingsResponse> getNotificationSettings(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(notificationSettingsService.getNotificationSettings(userDetails.getId()));
     }
 
     @Operation(summary = "Cập nhật cài đặt thông báo", description = "Bật hoặc tắt các loại thông báo (Email, In-App)")
     @PutMapping("/notifications")
-    public ResponseEntity<NotificationSettingsDto> updateNotificationSettings(
+    public ResponseEntity<NotificationSettingsResponse> updateNotificationSettings(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody NotificationSettingsDto request) {
+            @RequestBody NotificationSettingsResponse request) {
         return ResponseEntity.ok(notificationSettingsService.updateNotificationSettings(userDetails.getId(), request));
     }
 }

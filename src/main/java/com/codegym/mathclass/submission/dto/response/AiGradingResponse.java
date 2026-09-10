@@ -30,7 +30,7 @@ public class AiGradingResponse {
 
     /** Danh sách lỗi hình vẽ Canvas (rỗng nếu không có lỗi hoặc bài tập không có hình mẫu) */
     @Builder.Default
-    private List<DrawingIssueItem> drawingIssues = new ArrayList<>();
+    private List<DrawingIssueItemResponse> drawingIssues = new ArrayList<>();
 
     /**
      * Bài tập có hình vẽ Canvas mẫu để đối chiếu hay không.
@@ -40,4 +40,14 @@ public class AiGradingResponse {
 
     /** Số token đầu ra hoàn tất từ AI */
     private Integer completionTokens;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class DrawingIssueItemResponse {
+        private String issue;
+        private String detail;
+    }
 }

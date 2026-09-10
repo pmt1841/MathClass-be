@@ -1,8 +1,8 @@
 package com.codegym.mathclass.assignment.service;
 
-import com.codegym.mathclass.assignment.dto.AssignmentSheetResponse;
-import com.codegym.mathclass.assignment.dto.PublishAssignmentSheetRequest;
-import com.codegym.mathclass.assignment.dto.UpdateAssignmentSheetRequest;
+import com.codegym.mathclass.assignment.dto.response.AssignmentSheetResponse;
+import com.codegym.mathclass.assignment.dto.request.PublishAssignmentSheetRequest;
+import com.codegym.mathclass.assignment.dto.request.UpdateAssignmentSheetRequest;
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.entity.AssignmentSheet;
 import com.codegym.mathclass.assignment.entity.AssignmentStatus;

@@ -5,6 +5,7 @@ import com.codegym.mathclass.auth.audit.AuthAuditLogger;
 import com.codegym.mathclass.auth.dto.request.*;
 import com.codegym.mathclass.auth.dto.response.MessageResponse;
 import com.codegym.mathclass.auth.dto.response.UserInfoResponse;
+import com.codegym.mathclass.auth.entity.AuthType;
 import com.codegym.mathclass.auth.entity.PasswordResetToken;
 import com.codegym.mathclass.auth.entity.RefreshToken;
 import com.codegym.mathclass.auth.repository.PasswordResetTokenRepository;

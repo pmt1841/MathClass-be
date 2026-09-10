@@ -56,7 +56,7 @@ com.codegym.mathclass/
 │   ├── dto/
 │   │   ├── BatchGenerateQuestionsRequest.java   # Request DTO (Multipart / ModelAttribute)
 │   │   ├── BatchGenerateQuestionsResponse.java  # Response DTO tổng thể
-│   │   └── BatchQuestionItem.java               # DTO đại diện cho từng câu hỏi lẻ
+│   │   └── BatchQuestionItemResponse.java               # DTO đại diện cho từng câu hỏi lẻ
 │   ├── service/
 │   │   ├── AiBatchQuestionService.java          # Interface nghiệp vụ AI Tách đề
 │   │   ├── AssignmentService.java               # Interface bổ sung createBatchAssignments()
@@ -116,14 +116,14 @@ import java.util.List;
 public class BatchGenerateQuestionsResponse {
     private String suggestedTitle;
     private String suggestedDescription;
-    private List<BatchQuestionItem> questions;
+    private List<BatchQuestionItemResponse> questions;
     private int totalQuestions;
     private List<AssignmentImageDto> extractedImages;
     private String model;
 }
 ```
 
-### 6.3. `BatchQuestionItem`
+### 6.3. `BatchQuestionItemResponse`
 ```java
 package com.codegym.mathclass.assignment.dto;
 
@@ -136,7 +136,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class BatchQuestionItem {
+public class BatchQuestionItemResponse {
     private String id;
     private String title;
     private String description;

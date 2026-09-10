@@ -100,7 +100,7 @@ public class ChatMessageResponse {
 ```java
 package com.codegym.mathclass.chat.repository;
 
-import com.codegym.mathclass.chat.dto.ChatMessageResponse;
+import com.codegym.mathclass.chat.dto.response.ChatMessageResponse;
 import com.codegym.mathclass.chat.entity.ChatMessage;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -116,7 +116,7 @@ import java.util.List;
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
 
     @Query("""
-        SELECT new com.codegym.mathclass.chat.dto.ChatMessageResponse(
+        SELECT new com.codegym.mathclass.chat.dto.response.ChatMessageResponse(
             m.id, 
             m.classId, 
             m.studentId, 

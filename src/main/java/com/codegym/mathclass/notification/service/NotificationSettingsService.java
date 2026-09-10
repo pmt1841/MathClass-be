@@ -1,8 +1,8 @@
 package com.codegym.mathclass.notification.service;
 
-import com.codegym.mathclass.notification.dto.NotificationSettingsDto;
+import com.codegym.mathclass.notification.dto.response.NotificationSettingsResponse;
 
 public interface NotificationSettingsService {
-    NotificationSettingsDto getNotificationSettings(Long userId);
-    NotificationSettingsDto updateNotificationSettings(Long userId, NotificationSettingsDto dto);
+    NotificationSettingsResponse getNotificationSettings(Long userId);
+    NotificationSettingsResponse updateNotificationSettings(Long userId, NotificationSettingsResponse dto);
 }

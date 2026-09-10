@@ -1,8 +1,8 @@
 package com.codegym.mathclass.assignment.controller;
 
 import com.codegym.mathclass.common.annotation.ApiVersion;
-import com.codegym.mathclass.assignment.dto.AssignmentResponse;
-import com.codegym.mathclass.assignment.dto.AssignmentSheetResponse;
+import com.codegym.mathclass.assignment.dto.response.AssignmentResponse;
+import com.codegym.mathclass.assignment.dto.response.AssignmentSheetResponse;
 import com.codegym.mathclass.assignment.service.AssignmentService;
 import com.codegym.mathclass.assignment.service.AssignmentSheetService;
 import com.codegym.mathclass.security.services.CustomUserDetails;

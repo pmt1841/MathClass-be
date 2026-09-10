@@ -1,7 +1,7 @@
 package com.codegym.mathclass.assignment.service.impl;
 
-import com.codegym.mathclass.assignment.dto.GenerateQuestionRequest;
-import com.codegym.mathclass.assignment.dto.AiGeneratedQuestionResponse;
+import com.codegym.mathclass.assignment.dto.request.GenerateQuestionRequest;
+import com.codegym.mathclass.assignment.dto.response.AiGeneratedQuestionResponse;
 import com.codegym.mathclass.assignment.exception.AiGenerationException;
 import com.codegym.mathclass.assignment.service.AiQuestionService;
 import com.codegym.mathclass.aiconfig.credit.entity.AiCreditConfig;
