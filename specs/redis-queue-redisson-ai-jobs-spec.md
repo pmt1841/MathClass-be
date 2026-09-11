@@ -3,17 +3,20 @@
 ---
 
 ## 1. Feature Info
+
 - **Feature Name:** Redis Queue & Redisson Async Job Processing for Distributed AI Tasks
 - **Jira Ticket:** [MAT-346](https://phanvanluan611996.atlassian.net/browse/MAT-346)
-- **Target Subsystem:** `MathClass-service` (Backend Microservice - Java 21 / Spring Boot 3.4+)
+- **Target Subsystem:** `MathClass-service` (Backend Microservice - Java 21 / Spring Boot 4.1+)
 - **Target Users:** Teachers (Giáo viên), Students (Học sinh), System Administrators
 
 ---
 
 ## 2. Business Goal (Mục Tiêu Nghiệp Vụ)
+
 Chuyển đổi toàn bộ các tác vụ AI nặng (Chấm điểm tự luận `SUBMISSION_GRADING`, OCR chữ viết tay `CANVAS_LATEX`, Sinh câu hỏi Toán đơn lẻ `QUESTION_GEN`, Tách đề hàng loạt từ file `BATCH_QUESTION_GEN`, Đánh giá tiến độ học sinh `STUDENT_REMARK`) từ mô hình Đồng bộ (Synchronous HTTP) sang mô hình Hàng đợi Bất đồng bộ Phân tán (Distributed Asynchronous Job Queue với Redis & Redisson).
 
 Hệ thống giải quyết triệt để 5 vấn đề cốt lõi:
+
 1. **Chống nghẽn Thread Tomcat (Thread Starvation):** Endpoint tiếp nhận phản hồi `202 Accepted` kèm `jobId` trong **< 100ms**, giải phóng worker thread ngay lập tức.
 2. **Ngăn chặn Database Connection Leak & Lock Contention:** Không còn giữ kết nối HikariCP và `PESSIMISTIC_WRITE` lock trên tài khoản credit trong thời gian dài gọi LLM (15s – 60s).
 3. **Kiểm soát Concurrency & Chống Quá Tải Quota (Throttling):** Worker pool giới hạn số tác vụ AI chạy song song (mặc định 3–5 concurrency), tránh bị lỗi HTTP 429 Too Many Requests từ các Provider (Gemini, OpenAI).
@@ -192,10 +195,12 @@ com.codegym.mathclass/
 ## 8. API Specification
 
 ### 8.1. API Tra cứu trạng thái Job (Polling Fallback)
+
 - **Method:** `GET`
 - **Path:** `/api/v1/ai/jobs/{jobId}`
 - **Security:** `@PreAuthorize("isAuthenticated()")`
 - **Response `200 OK` (Đang xử lý):**
+
   ```json
   {
     "jobId": "f78d91b4-18c2-4e89-a21b-8e123456789a",
@@ -208,7 +213,9 @@ com.codegym.mathclass/
     "completedAt": null
   }
   ```
+
 - **Response `200 OK` (Hoàn tất thành công):**
+
   ```json
   {
     "jobId": "f78d91b4-18c2-4e89-a21b-8e123456789a",
@@ -224,5 +231,6 @@ com.codegym.mathclass/
     "completedAt": "2026-09-04T08:50:28.000Z"
   }
   ```
+
 - **Response `404 Not Found`:** Job không tồn tại hoặc đã hết hạn TTL (24h).
 - **Response `403 Forbidden`:** Người dùng không sở hữu job và không phải là ADMIN.
