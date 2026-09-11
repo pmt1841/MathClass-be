@@ -8,7 +8,7 @@ import org.springframework.data.domain.Pageable;
 import com.codegym.mathclass.user.dto.request.UpdateUserStatusRequest;
 
 public interface AdminUserService {
-    Page<UserResponse> getUsersForAdmin(Role role, Boolean isActive, String search, Pageable pageable);
+    Page<UserResponse> getUsersForAdmin(Role role, Role excludeRole, Boolean isActive, String search, Pageable pageable);
     void updateUserStatus(Long userId, Boolean isActive, String currentAdminEmail);
     void updateUserStatus(Long userId, UpdateUserStatusRequest request, String currentAdminEmail);
 }

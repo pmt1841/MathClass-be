@@ -100,26 +100,38 @@ class AdminUserServiceImplTest {
         @DisplayName("Should return all users when no filters are provided")
         void getUsersForAdmin_NoFilters_ReturnsAllUsers() {
             Page<User> userPage = new PageImpl<>(List.of(mockUser));
-            when(userRepository.findAllForAdmin(isNull(), isNull(), isNull(), eq(pageable))).thenReturn(userPage);
+            when(userRepository.findAllForAdmin(isNull(), isNull(), isNull(), isNull(), eq(pageable))).thenReturn(userPage);
             when(userMapper.toUserResponse(eq(mockUser), anyBoolean())).thenReturn(mockUserResponse);
 
-            Page<UserResponse> result = adminUserService.getUsersForAdmin(null, null, null, pageable);
+            Page<UserResponse> result = adminUserService.getUsersForAdmin(null, null, null, null, pageable);
 
             assertThat(result.getTotalElements()).isEqualTo(1);
             assertThat(result.getContent().get(0).getEmail()).isEqualTo("student@test.com");
-            verify(userRepository).findAllForAdmin(null, null, null, pageable);
+            verify(userRepository).findAllForAdmin(null, null, null, null, pageable);
         }
 
         @Test
         @DisplayName("Should filter by role when role is provided")
         void getUsersForAdmin_WithRole_PassesRoleToRepository() {
             Page<User> userPage = new PageImpl<>(List.of(mockUser));
-            when(userRepository.findAllForAdmin(eq(Role.STUDENT), isNull(), isNull(), eq(pageable))).thenReturn(userPage);
+            when(userRepository.findAllForAdmin(eq(Role.STUDENT), isNull(), isNull(), isNull(), eq(pageable))).thenReturn(userPage);
             when(userMapper.toUserResponse(any(), anyBoolean())).thenReturn(mockUserResponse);
 
-            adminUserService.getUsersForAdmin(Role.STUDENT, null, null, pageable);
+            adminUserService.getUsersForAdmin(Role.STUDENT, null, null, null, pageable);
 
-            verify(userRepository).findAllForAdmin(Role.STUDENT, null, null, pageable);
+            verify(userRepository).findAllForAdmin(Role.STUDENT, null, null, null, pageable);
+        }
+
+        @Test
+        @DisplayName("Should filter by excludeRole when excludeRole is provided")
+        void getUsersForAdmin_WithExcludeRole_PassesExcludeRoleToRepository() {
+            Page<User> userPage = new PageImpl<>(List.of(mockUser));
+            when(userRepository.findAllForAdmin(isNull(), eq(Role.ADMIN), isNull(), isNull(), eq(pageable))).thenReturn(userPage);
+            when(userMapper.toUserResponse(any(), anyBoolean())).thenReturn(mockUserResponse);
+
+            adminUserService.getUsersForAdmin(null, Role.ADMIN, null, null, pageable);
+
+            verify(userRepository).findAllForAdmin(null, Role.ADMIN, null, null, pageable);
         }
     }
 

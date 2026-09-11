@@ -41,7 +41,7 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<UserResponse> getUsersForAdmin(Role role, Boolean isActive, String search, Pageable pageable) {
+    public Page<UserResponse> getUsersForAdmin(Role role, Role excludeRole, Boolean isActive, String search, Pageable pageable) {
         String searchParam = null;
         if (search != null && !search.trim().isEmpty()) {
             String sanitized = search.trim()
@@ -50,7 +50,7 @@ public class AdminUserServiceImpl implements AdminUserService {
                     .replace("_", "\\_");
             searchParam = "%" + sanitized.toLowerCase() + "%";
         }
-        return userRepository.findAllForAdmin(role, isActive, searchParam, pageable)
+        return userRepository.findAllForAdmin(role, excludeRole, isActive, searchParam, pageable)
                 .map(user -> {
                     boolean isOnline = userPresenceRegistry.isUserOnline(user.getId());
                     return userMapper.toUserResponse(user, isOnline);

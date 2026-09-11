@@ -134,7 +134,7 @@ class AdminUserControllerTest {
         void getUsers_NoFilters_ReturnsOkWithPage() throws Exception {
             // Given
             Page<UserResponse> page = new PageImpl<>(List.of(mockUserResponse));
-            when(adminUserService.getUsersForAdmin(eq(null), eq(null), eq(null), any(Pageable.class)))
+            when(adminUserService.getUsersForAdmin(eq(null), eq(null), eq(null), eq(null), any(Pageable.class)))
                     .thenReturn(page);
 
             // When & Then
@@ -145,7 +145,7 @@ class AdminUserControllerTest {
                     .andExpect(jsonPath("$.totalElements").value(1));
 
             verify(adminUserService, times(1))
-                    .getUsersForAdmin(isNull(), isNull(), isNull(), any(Pageable.class));
+                    .getUsersForAdmin(isNull(), isNull(), isNull(), isNull(), any(Pageable.class));
         }
 
         @Test
@@ -153,7 +153,7 @@ class AdminUserControllerTest {
         void getUsers_WithRoleFilter_PassesRoleToService() throws Exception {
             // Given
             Page<UserResponse> page = new PageImpl<>(List.of(mockUserResponse));
-            when(adminUserService.getUsersForAdmin(eq(Role.STUDENT), eq(null), eq(null), any(Pageable.class)))
+            when(adminUserService.getUsersForAdmin(eq(Role.STUDENT), eq(null), eq(null), eq(null), any(Pageable.class)))
                     .thenReturn(page);
 
             // When & Then
@@ -161,7 +161,23 @@ class AdminUserControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.totalElements").value(1));
 
-            verify(adminUserService).getUsersForAdmin(eq(Role.STUDENT), eq(null), eq(null), any(Pageable.class));
+            verify(adminUserService).getUsersForAdmin(eq(Role.STUDENT), isNull(), isNull(), isNull(), any(Pageable.class));
+        }
+
+        @Test
+        @DisplayName("Should forward excludeRole filter to service")
+        void getUsers_WithExcludeRoleFilter_PassesExcludeRoleToService() throws Exception {
+            // Given
+            Page<UserResponse> page = new PageImpl<>(List.of(mockUserResponse));
+            when(adminUserService.getUsersForAdmin(eq(null), eq(Role.ADMIN), eq(null), eq(null), any(Pageable.class)))
+                    .thenReturn(page);
+
+            // When & Then
+            mockMvc.perform(get("/admin/users").param("excludeRole", "ADMIN"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totalElements").value(1));
+
+            verify(adminUserService).getUsersForAdmin(isNull(), eq(Role.ADMIN), isNull(), isNull(), any(Pageable.class));
         }
 
         @Test
@@ -169,14 +185,14 @@ class AdminUserControllerTest {
         void getUsers_WithIsActiveFilter_PassesIsActiveToService() throws Exception {
             // Given
             Page<UserResponse> page = new PageImpl<>(List.of(mockUserResponse));
-            when(adminUserService.getUsersForAdmin(eq(null), eq(true), eq(null), any(Pageable.class)))
+            when(adminUserService.getUsersForAdmin(eq(null), eq(null), eq(true), eq(null), any(Pageable.class)))
                     .thenReturn(page);
 
             // When & Then
             mockMvc.perform(get("/admin/users").param("isActive", "true"))
                     .andExpect(status().isOk());
 
-            verify(adminUserService).getUsersForAdmin(isNull(), eq(true), isNull(), any(Pageable.class));
+            verify(adminUserService).getUsersForAdmin(isNull(), isNull(), eq(true), isNull(), any(Pageable.class));
         }
 
         @Test
@@ -184,14 +200,14 @@ class AdminUserControllerTest {
         void getUsers_WithSearchParam_PassesSearchToService() throws Exception {
             // Given
             Page<UserResponse> page = new PageImpl<>(List.of(mockUserResponse));
-            when(adminUserService.getUsersForAdmin(eq(null), eq(null), eq("admin"), any(Pageable.class)))
+            when(adminUserService.getUsersForAdmin(eq(null), eq(null), eq(null), eq("admin"), any(Pageable.class)))
                     .thenReturn(page);
 
             // When & Then
             mockMvc.perform(get("/admin/users").param("search", "admin"))
                     .andExpect(status().isOk());
 
-            verify(adminUserService).getUsersForAdmin(isNull(), isNull(), eq("admin"), any(Pageable.class));
+            verify(adminUserService).getUsersForAdmin(isNull(), isNull(), isNull(), eq("admin"), any(Pageable.class));
         }
 
         @Test
@@ -199,7 +215,7 @@ class AdminUserControllerTest {
         void getUsers_AllFilters_PassesAllToService() throws Exception {
             // Given
             Page<UserResponse> page = new PageImpl<>(List.of(mockUserResponse));
-            when(adminUserService.getUsersForAdmin(eq(Role.STUDENT), eq(true), eq("student"), any(Pageable.class)))
+            when(adminUserService.getUsersForAdmin(eq(Role.STUDENT), eq(null), eq(true), eq("student"), any(Pageable.class)))
                     .thenReturn(page);
 
             // When & Then
@@ -209,7 +225,7 @@ class AdminUserControllerTest {
                             .param("search", "student"))
                     .andExpect(status().isOk());
 
-            verify(adminUserService).getUsersForAdmin(eq(Role.STUDENT), eq(true), eq("student"), any(Pageable.class));
+            verify(adminUserService).getUsersForAdmin(eq(Role.STUDENT), isNull(), eq(true), eq("student"), any(Pageable.class));
         }
 
         @Test
@@ -217,7 +233,7 @@ class AdminUserControllerTest {
         void getUsers_NoUsersMatch_ReturnsEmptyPage() throws Exception {
             // Given
             Page<UserResponse> emptyPage = new PageImpl<>(Collections.emptyList());
-            when(adminUserService.getUsersForAdmin(any(), any(), any(), any(Pageable.class)))
+            when(adminUserService.getUsersForAdmin(any(), any(), any(), any(), any(Pageable.class)))
                     .thenReturn(emptyPage);
 
             // When & Then
@@ -232,7 +248,7 @@ class AdminUserControllerTest {
         void getUsers_DefaultPageable_UsesSizeOf10() throws Exception {
             // Given
             Page<UserResponse> page = new PageImpl<>(Collections.emptyList());
-            when(adminUserService.getUsersForAdmin(any(), any(), any(), any(Pageable.class)))
+            when(adminUserService.getUsersForAdmin(any(), any(), any(), any(), any(Pageable.class)))
                     .thenReturn(page);
 
             // When & Then
@@ -241,7 +257,7 @@ class AdminUserControllerTest {
 
             // Verify default page size = 10 (page=0, size=10)
             verify(adminUserService).getUsersForAdmin(
-                    eq(null), eq(null), eq(null),
+                    eq(null), eq(null), eq(null), eq(null),
                     eq(org.springframework.data.domain.PageRequest.of(0, 10))
             );
         }
