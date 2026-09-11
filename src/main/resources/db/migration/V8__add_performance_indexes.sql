@@ -130,6 +130,10 @@ ON system_logs (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_system_logs_level_created 
 ON system_logs (level, created_at DESC);
 
+-- Tối ưu xem tất cả báo cáo sự cố sắp xếp mới nhất và Dashboard widget (findAllByOrderByCreatedAtDesc, findTop5ByOrderByCreatedAtDesc)
+CREATE INDEX IF NOT EXISTS idx_bug_reports_created_at 
+ON bug_reports (created_at DESC);
+
 -- Tối ưu lọc báo cáo sự cố theo trạng thái và thời gian (findByStatus, findAllByOrderByCreatedAtDesc)
 CREATE INDEX IF NOT EXISTS idx_bug_reports_status_created 
 ON bug_reports (status, created_at DESC);
