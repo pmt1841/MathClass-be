@@ -44,9 +44,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("SELECT u FROM User u WHERE " +
         "(:role IS NULL OR u.role = :role) AND " +
+        "(:excludeRole IS NULL OR u.role != :excludeRole) AND " +
         "(:isActive IS NULL OR u.isActive = :isActive) AND " +
         "(:search IS NULL OR LOWER(u.email) LIKE :search ESCAPE '\\' OR LOWER(u.fullName) LIKE :search ESCAPE '\\')")
-     Page<User> findAllForAdmin(@Param("role") Role role,
+    Page<User> findAllForAdmin(@Param("role") Role role,
+                               @Param("excludeRole") Role excludeRole,
                                @Param("isActive") Boolean isActive,
                                @Param("search") String search,
                                Pageable pageable);

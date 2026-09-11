@@ -35,15 +35,16 @@ public class AdminUserController {
 
     private final AdminUserService adminUserService;
 
-    @Operation(summary = "Danh sách tài khoản (Quản trị)", description = "Lấy danh sách tài khoản người dùng theo vai trò, trạng thái kích hoạt và từ khóa tìm kiếm")
+    @Operation(summary = "Danh sách tài khoản (Quản trị)", description = "Lấy danh sách tài khoản người dùng theo vai trò, loại trừ vai trò, trạng thái kích hoạt và từ khóa tìm kiếm")
     @GetMapping
     public ResponseEntity<Page<UserResponse>> getUsers(
             @RequestParam(required = false) Role role,
+            @RequestParam(required = false) Role excludeRole,
             @RequestParam(required = false) Boolean isActive,
             @RequestParam(required = false) String search,
             @PageableDefault(size = 10) Pageable pageable) {
         
-        Page<UserResponse> users = adminUserService.getUsersForAdmin(role, isActive, search, pageable);
+        Page<UserResponse> users = adminUserService.getUsersForAdmin(role, excludeRole, isActive, search, pageable);
         return ResponseEntity.ok(users);
     }
 
