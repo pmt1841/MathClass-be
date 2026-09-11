@@ -20,8 +20,8 @@ CREATE INDEX IF NOT EXISTS idx_submissions_student_status_updated
 ON submissions (student_id, status, updated_at DESC);
 
 -- Tối ưu giáo viên lấy bài chờ chấm sắp xếp theo thời gian nộp (findPendingSubmissionsByTeacher)
-CREATE INDEX IF NOT EXISTS idx_submissions_student_status_submitted 
-ON submissions (student_id, status, submitted_at DESC);
+CREATE INDEX IF NOT EXISTS idx_submissions_status_submitted 
+ON submissions (status, submitted_at DESC);
 
 -- ------------------------------------------------------------------------------
 -- 2. ASSIGNMENT DOMAIN (Bảng nghiệp vụ giao bài & phiếu bài tập)
