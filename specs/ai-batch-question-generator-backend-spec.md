@@ -3,14 +3,16 @@
 ---
 
 ## 1. Feature Info
+
 - **Feature Name:** AI Batch Question Generator from Files & Text Backend (AI Tách Đề Thi Hàng Loạt)
 - **Jira Ticket:** [MAT-332](https://phanvanluan611996.atlassian.net/browse/MAT-332)
-- **Target Subsystem:** `MathClass-service` (Backend Microservice - Java 21 / Spring Boot 3.4+)
+- **Target Subsystem:** `MathClass-service` (Backend Microservice - Java 21 / Spring Boot 4.1+)
 - **Target Users:** Teachers (Giáo viên), System Administrators
 
 ---
 
 ## 2. Business Goal
+
 Cung cấp RESTful API và Service cho phép Giáo viên tải lên tài liệu đề thi dạng file (Microsoft Word `.docx`, PDF `.pdf`, Text `.txt`) hoặc dán trực tiếp nội dung đề bài thô. Hệ thống Backend tự động trích xuất nội dung văn bản và ảnh nhúng, tích hợp với AI LLM (Gemini 2.0 / OpenAI) thông qua Prompt Engine để bóc tách từng bài toán/câu hỏi thành các bài tập bản nháp (`DRAFT`) độc lập. Ngoài ra, Backend cung cấp API Batch Creation để lưu đồng loạt các bài tập này vào Kho bài tập cá nhân của giáo viên một cách an toàn và tối ưu giao dịch (`@Transactional`).
 
 ---
@@ -74,6 +76,7 @@ com.codegym.mathclass/
 ## 6. Data Transfer Objects (DTO Schemas)
 
 ### 6.1. `BatchGenerateQuestionsRequest`
+
 ```java
 package com.codegym.mathclass.assignment.dto;
 
@@ -99,6 +102,7 @@ public class BatchGenerateQuestionsRequest {
 ```
 
 ### 6.2. `BatchGenerateQuestionsResponse`
+
 ```java
 package com.codegym.mathclass.assignment.dto;
 
@@ -124,6 +128,7 @@ public class BatchGenerateQuestionsResponse {
 ```
 
 ### 6.3. `BatchQuestionItemResponse`
+
 ```java
 package com.codegym.mathclass.assignment.dto;
 
@@ -152,11 +157,13 @@ public class BatchQuestionItemResponse {
 ## 7. REST API Endpoints Specification
 
 ### 7.1. `POST /api/v1/ai/batch-generate-questions`
+
 - **Mục đích:** Tải file tài liệu hoặc gửi văn bản đề thi thô để AI bóc tách thành danh sách bài tập.
 - **Security:** `@PreAuthorize("hasAnyRole('TEACHER', 'ADMIN') or hasAuthority('assignment:create')")`
 - **Content-Type:** `multipart/form-data`
 
-#### Request Parameters:
+#### Request Parameters
+
 | Tên tham số | Kiểu dữ liệu | Bắt buộc | Ghi chú |
 | :--- | :--- | :--- | :--- |
 | `file` | `MultipartFile` | Không | File Word (`.docx`), PDF (`.pdf`), Text (`.txt`) tối đa 15MB |
@@ -166,7 +173,8 @@ public class BatchQuestionItemResponse {
 | `includeExplanation` | `Boolean` | Không | Yêu cầu sinh lời giải (mặc định `false`) |
 | `includeCanvasDiagram` | `Boolean` | Không | Yêu cầu sinh dữ liệu Canvas (mặc định `false`) |
 
-#### Response (`200 OK`):
+#### Response (`200 OK`)
+
 ```json
 {
   "suggestedTitle": "Đề thi thử vào lớp 10 môn Toán",
@@ -198,11 +206,13 @@ public class BatchQuestionItemResponse {
 ---
 
 ### 7.2. `POST /api/v1/assignments/batch`
+
 - **Mục đích:** Tạo đồng loạt nhiều bài tập độc lập (bản nháp `DRAFT`) vào Kho bài tập của giáo viên.
 - **Security:** `@PreAuthorize("hasAuthority('assignment:create')")`
 - **Content-Type:** `application/json`
 
-#### Request Body (`List<CreateAssignmentRequest>`):
+#### Request Body (`List<CreateAssignmentRequest>`)
+
 ```json
 [
   {
@@ -220,7 +230,8 @@ public class BatchQuestionItemResponse {
 ]
 ```
 
-#### Response (`201 Created`):
+#### Response (`201 Created`)
+
 ```json
 [
   {

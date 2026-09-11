@@ -47,7 +47,7 @@ Khi Admin gửi yêu cầu `POST /api/v1/auth/login` với email và mật khẩ
 sequenceDiagram
     autonumber
     actor Admin
-    participant Client as Frontend (MathClass-ui)
+    participant Client as Frontend (MathClass-fe)
     participant Auth as AuthController
     participant Service as TwoFactorAuthService
     participant DB as PostgreSQL
