@@ -91,7 +91,7 @@ Hệ thống phân tách rõ ràng cấu hình cho từng tác vụ AI trong b�
 | `SUBMISSION_GRADING` | Chấm điểm tự động | 5 Credits | `gpt-4o` / `claude-3-5-sonnet` | Chấm bài tự luận và nhận xét |
 | `STUDENT_REMARK` | AI Đánh giá & Nhận xét học sinh | 5 Credits | `gemini-1.5-flash` / `gpt-4o` | Quét dữ liệu bài tập và sinh nhận xét tổng quan |
 
-> ⚡ **Caffeine Caching:** Cấu hình Task Routing được cache trong bộ nhớ với Caffeine (TTL 10 phút). Khi Admin cập nhật cấu hình trên UI, hệ thống kích hoạt `@CacheEvict` để xóa cache tức thì.
+> ⚡ **Redis Distributed Caching:** Cấu hình Task Routing được cache phân tán với Redis / Redisson (TTL 1 giờ). Khi Admin cập nhật cấu hình trên UI, hệ thống kích hoạt `@CacheEvict` để xóa cache tức thì.
 
 ---
 

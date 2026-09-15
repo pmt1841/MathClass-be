@@ -15,6 +15,8 @@ import com.codegym.mathclass.exception.InsufficientCreditException;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
+import com.codegym.mathclass.common.lock.DistributedLockService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -26,11 +28,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -60,10 +65,23 @@ class AiCreditServiceImplTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private DistributedLockService distributedLockService;
+
     @InjectMocks
     private AiCreditServiceImpl aiCreditService;
 
     private final long userId = 42L;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(distributedLockService.executeWithLock(anyString(), anyLong(), anyLong(), any()))
+                .thenAnswer(inv -> ((Supplier<?>) inv.getArgument(3)).get());
+        lenient().doAnswer(inv -> {
+            ((Runnable) inv.getArgument(3)).run();
+            return null;
+        }).when(distributedLockService).runWithLock(anyString(), anyLong(), anyLong(), any());
+    }
 
     private UserAiAccount account(int balance, int totalEarned, int totalSpent) {
         UserAiAccount acc = UserAiAccount.builder()

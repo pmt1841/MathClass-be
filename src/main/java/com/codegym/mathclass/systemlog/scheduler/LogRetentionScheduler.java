@@ -1,5 +1,6 @@
 package com.codegym.mathclass.systemlog.scheduler;
 
+import com.codegym.mathclass.common.lock.DistributedLockService;
 import com.codegym.mathclass.systemlog.repository.SystemLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,14 +16,19 @@ import java.time.LocalDateTime;
 public class LogRetentionScheduler {
 
     private final SystemLogRepository systemLogRepository;
+    private final DistributedLockService distributedLockService;
+
+    private static final String LOG_RETENTION_LOCK = "lock:cron:log-retention";
 
     @Value("${app.audit-log.retention-days:90}")
     private int retentionDays;
 
     @Scheduled(cron = "0 0 2 * * ?")
     public void cleanupOldLogs() {
-        LocalDateTime cutoffDate = LocalDateTime.now().minusDays(retentionDays);
-        log.info("Chạy dọn dẹp nhật ký hệ thống cũ trước ngày: {}", cutoffDate);
-        systemLogRepository.deleteByCreatedAtBefore(cutoffDate);
+        distributedLockService.tryRunWithLock(LOG_RETENTION_LOCK, 0, 600, () -> {
+            LocalDateTime cutoffDate = LocalDateTime.now().minusDays(retentionDays);
+            log.info("Chạy dọn dẹp nhật ký hệ thống cũ trước ngày: {}", cutoffDate);
+            systemLogRepository.deleteByCreatedAtBefore(cutoffDate);
+        });
     }
 }

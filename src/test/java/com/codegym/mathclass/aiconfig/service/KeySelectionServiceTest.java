@@ -5,6 +5,7 @@ import com.codegym.mathclass.aiconfig.entity.ApiKeyStatus;
 import com.codegym.mathclass.aiconfig.entity.Provider;
 import com.codegym.mathclass.aiconfig.entity.ProviderStrategy;
 import com.codegym.mathclass.aiconfig.repository.ApiKeyRepository;
+import com.codegym.mathclass.common.ratelimit.RateLimiterService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,19 +13,31 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.redisson.api.RBucket;
+import org.redisson.api.RedissonClient;
 
+import java.time.Duration;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class KeySelectionServiceTest {
 
     @Mock
     private ApiKeyRepository apiKeyRepository;
+
+    @Mock
+    private RateLimiterService rateLimiterService;
+
+    @Mock
+    private RedissonClient redissonClient;
+
+    @Mock
+    private RBucket<String> cooldownBucket;
 
     @InjectMocks
     private KeySelectionService keySelectionService;
@@ -57,7 +70,7 @@ class KeySelectionServiceTest {
     }
 
     @Test
-    @DisplayName("TC-KEY-01: PRIORITY Strategy chọn Key có priority cao nhất")
+    @DisplayName("TC-KEY-01: PRIORITY Strategy chọn Key có priority cao nhất khi không bị cooldown")
     void testPriorityStrategy_SelectsHighestPriorityKey() {
         when(apiKeyRepository.findByProviderIdAndStatusOrderByPriorityDesc(eq(1L), eq(ApiKeyStatus.ACTIVE)))
                 .thenReturn(List.of(key1, key2));
@@ -66,6 +79,22 @@ class KeySelectionServiceTest {
         ApiKey selected = keySelectionService.selectKeyForProvider(priorityProvider);
         assertNotNull(selected);
         assertEquals(101L, selected.getId());
+    }
+
+    @Test
+    @DisplayName("TC-KEY-02: Bỏ qua key đang trong thời gian cooldown 429")
+    void testSelectKey_FiltersOutKeysInCooldown() {
+        when(apiKeyRepository.findByProviderIdAndStatusOrderByPriorityDesc(eq(1L), eq(ApiKeyStatus.ACTIVE)))
+                .thenReturn(List.of(key1, key2));
+        // Key 101 đang bị cooldown 120s
+        when(rateLimiterService.getRemainingCooldownSeconds("ai:key:cooldown:101")).thenReturn(120L);
+        // Key 102 không bị cooldown
+        when(rateLimiterService.getRemainingCooldownSeconds("ai:key:cooldown:102")).thenReturn(0L);
+        when(apiKeyRepository.save(any(ApiKey.class))).thenAnswer(i -> i.getArgument(0));
+
+        ApiKey selected = keySelectionService.selectKeyForProvider(priorityProvider);
+        assertNotNull(selected);
+        assertEquals(102L, selected.getId()); // Key 102 được chọn dù có priority thấp hơn vì Key 101 bị cooldown
     }
 
     @Test
@@ -93,23 +122,25 @@ class KeySelectionServiceTest {
     }
 
     @Test
-    @DisplayName("TC-KEY-05: Cooldown key và kiểm tra thời gian còn lại")
+    @DisplayName("TC-KEY-05: Cooldown key và kiểm tra thời gian còn lại qua RateLimiterService")
     void testCooldownKey_TracksRemainingSecondsAndExpiresAt() {
         keySelectionService.cooldownKey(101L, 300);
+        verify(rateLimiterService, times(1)).setCooldown(eq("ai:key:cooldown:101"), eq(Duration.ofSeconds(300)));
 
+        when(rateLimiterService.getRemainingCooldownSeconds("ai:key:cooldown:101")).thenReturn(295L);
         Long remaining = keySelectionService.getCooldownRemainingSeconds(101L);
         assertNotNull(remaining);
-        assertTrue(remaining > 280 && remaining <= 300);
-
+        assertEquals(295L, remaining);
         assertNotNull(keySelectionService.getCooldownExpiresAt(101L));
 
         // Key 102 không có cooldown
+        when(rateLimiterService.getRemainingCooldownSeconds("ai:key:cooldown:102")).thenReturn(0L);
         assertNull(keySelectionService.getCooldownRemainingSeconds(102L));
         assertNull(keySelectionService.getCooldownExpiresAt(102L));
 
         // Xóa cooldown
+        doReturn(cooldownBucket).when(redissonClient).getBucket("ratelimit:ai:key:cooldown:101");
         keySelectionService.clearCooldown(101L);
-        assertNull(keySelectionService.getCooldownRemainingSeconds(101L));
-        assertNull(keySelectionService.getCooldownExpiresAt(101L));
+        verify(cooldownBucket, times(1)).delete();
     }
 }

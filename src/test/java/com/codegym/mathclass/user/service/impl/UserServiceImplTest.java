@@ -39,8 +39,17 @@ import com.codegym.mathclass.user.repository.PasswordHistoryRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.codegym.mathclass.auth.service.RefreshTokenService;
+import com.codegym.mathclass.common.ratelimit.RateLimiterService;
+import com.codegym.mathclass.exception.TooManyRequestsException;
 import com.codegym.mathclass.user.dto.request.SetPasswordRequest;
 import com.codegym.mathclass.utils.EmailService;
+import org.redisson.api.RAtomicLong;
+import org.redisson.api.RBucket;
+import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.StringCodec;
+
+import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceImplTest {
@@ -68,6 +77,18 @@ class UserServiceImplTest {
 
     @Mock
     private RefreshTokenService refreshTokenService;
+
+    @Mock
+    private RateLimiterService rateLimiterService;
+
+    @Mock
+    private RedissonClient redissonClient;
+
+    @Mock
+    private RBucket<String> otpBucket;
+
+    @Mock
+    private RAtomicLong attempts;
 
     @InjectMocks
     private UserServiceImpl userService;
@@ -394,14 +415,34 @@ class UserServiceImplTest {
     class SetPasswordOtpTests {
 
         @Test
-        @DisplayName("UT-BE-02: Should send OTP email successfully when user exists")
+        @DisplayName("UT-BE-02: Should send OTP email successfully when rate limit allows")
         void sendSetPasswordOtp_success() {
             Long userId = 1L;
             when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+            when(rateLimiterService.tryAcquire(eq("auth:set-password:cooldown:" + userId), any(Duration.class))).thenReturn(true);
+            doReturn(otpBucket).when(redissonClient).getBucket(eq("auth:set-password:otp:" + userId), any(StringCodec.class));
+            when(redissonClient.getAtomicLong(eq("auth:set-password:attempts:" + userId))).thenReturn(attempts);
 
             userService.sendSetPasswordOtp(userId);
 
+            verify(otpBucket, times(1)).set(anyString(), eq(5L), eq(TimeUnit.MINUTES));
+            verify(attempts, times(1)).delete();
             verify(emailService, times(1)).sendSetPasswordOtpEmail(eq(mockUser.getEmail()), eq(mockUser.getFullName()), anyString());
+        }
+
+        @Test
+        @DisplayName("UT-BE-02-B: Should throw TooManyRequestsException when rate limit cooldown active")
+        void sendSetPasswordOtp_fail_cooldownActive() {
+            Long userId = 1L;
+            when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+            when(rateLimiterService.tryAcquire(eq("auth:set-password:cooldown:" + userId), any(Duration.class))).thenReturn(false);
+            when(rateLimiterService.getRemainingCooldownSeconds("auth:set-password:cooldown:" + userId)).thenReturn(45L);
+
+            assertThatThrownBy(() -> userService.sendSetPasswordOtp(userId))
+                    .isInstanceOf(TooManyRequestsException.class)
+                    .hasMessageContaining("Bạn đã gửi yêu cầu quá nhanh. Vui lòng thử lại sau 45 giây.");
+
+            verify(emailService, never()).sendSetPasswordOtpEmail(any(), any(), any());
         }
 
         @Test
@@ -410,28 +451,47 @@ class UserServiceImplTest {
             Long userId = 1L;
             mockUser.setPassword(null);
             when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+            doReturn(otpBucket).when(redissonClient).getBucket(eq("auth:set-password:otp:" + userId), any(StringCodec.class));
+            when(otpBucket.get()).thenReturn("123456");
+            when(redissonClient.getAtomicLong(eq("auth:set-password:attempts:" + userId))).thenReturn(attempts);
+            when(attempts.get()).thenReturn(0L);
             when(passwordEncoder.encode("newPassword123")).thenReturn("encodedNewPassword");
 
-            // Step 1: Send OTP to populate internal cache
-            userService.sendSetPasswordOtp(userId);
-
-            // Capture OTP sent
-            org.mockito.ArgumentCaptor<String> otpCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
-            verify(emailService).sendSetPasswordOtpEmail(eq(mockUser.getEmail()), eq(mockUser.getFullName()), otpCaptor.capture());
-            String capturedOtp = otpCaptor.getValue();
-
             SetPasswordRequest request = SetPasswordRequest.builder()
-                    .otpCode(capturedOtp)
+                    .otpCode("123456")
                     .newPassword("newPassword123")
                     .confirmPassword("newPassword123")
                     .build();
 
-            // Step 2: Set password
             userService.setPassword(userId, request);
 
             assertThat(mockUser.getPassword()).isEqualTo("encodedNewPassword");
             verify(userRepository, times(1)).save(mockUser);
+            verify(otpBucket, times(1)).delete();
+            verify(attempts, times(1)).delete();
+            verify(refreshTokenService, times(1)).deleteByUserId(userId);
             verify(emailService, times(1)).sendSecurityAlertEmail(eq(mockUser.getEmail()), eq(mockUser.getFullName()), any(LocalDateTime.class));
+        }
+
+        @Test
+        @DisplayName("UT-BE-03-B: Should throw BadRequestException when OTP expired or not sent")
+        void setPassword_fail_otpExpired() {
+            Long userId = 1L;
+            when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+            doReturn(otpBucket).when(redissonClient).getBucket(eq("auth:set-password:otp:" + userId), any(StringCodec.class));
+            when(otpBucket.get()).thenReturn(null);
+
+            SetPasswordRequest request = SetPasswordRequest.builder()
+                    .otpCode("123456")
+                    .newPassword("newPassword123")
+                    .confirmPassword("newPassword123")
+                    .build();
+
+            assertThatThrownBy(() -> userService.setPassword(userId, request))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("Mã OTP chưa được gửi hoặc đã hết hạn");
+
+            verify(userRepository, never()).save(any());
         }
 
         @Test
@@ -440,9 +500,11 @@ class UserServiceImplTest {
             Long userId = 1L;
             mockUser.setPassword(null);
             when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
-
-            // Send OTP
-            userService.sendSetPasswordOtp(userId);
+            doReturn(otpBucket).when(redissonClient).getBucket(eq("auth:set-password:otp:" + userId), any(StringCodec.class));
+            when(otpBucket.get()).thenReturn("123456");
+            when(redissonClient.getAtomicLong(eq("auth:set-password:attempts:" + userId))).thenReturn(attempts);
+            when(attempts.get()).thenReturn(0L);
+            when(attempts.incrementAndGet()).thenReturn(1L);
 
             SetPasswordRequest request = SetPasswordRequest.builder()
                     .otpCode("999999") // Invalid OTP
@@ -452,9 +514,63 @@ class UserServiceImplTest {
 
             assertThatThrownBy(() -> userService.setPassword(userId, request))
                     .isInstanceOf(BadRequestException.class)
-                    .hasMessageContaining("Mã OTP nhập vào không chính xác");
+                    .hasMessageContaining("Mã OTP nhập vào không chính xác (Còn lại 4 lần thử)");
 
+            verify(attempts, times(1)).expire(eq(5L), eq(TimeUnit.MINUTES));
             verify(userRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("UT-BE-04-B: Should lock OTP when failed attempts reaches 5")
+        void setPassword_fail_maxAttempts() {
+            Long userId = 1L;
+            mockUser.setPassword(null);
+            when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+            doReturn(otpBucket).when(redissonClient).getBucket(eq("auth:set-password:otp:" + userId), any(StringCodec.class));
+            when(otpBucket.get()).thenReturn("123456");
+            when(redissonClient.getAtomicLong(eq("auth:set-password:attempts:" + userId))).thenReturn(attempts);
+            when(attempts.get()).thenReturn(5L);
+
+            SetPasswordRequest request = SetPasswordRequest.builder()
+                    .otpCode("123456")
+                    .newPassword("newPassword123")
+                    .confirmPassword("newPassword123")
+                    .build();
+
+            assertThatThrownBy(() -> userService.setPassword(userId, request))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("Bạn đã nhập sai mã OTP quá 5 lần");
+
+            verify(otpBucket, times(1)).delete();
+            verify(attempts, times(1)).delete();
+            verify(userRepository, never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("updateLastActiveAt Tests")
+    class UpdateLastActiveAtTests {
+
+        @Test
+        @DisplayName("Should throttle updateLastActiveAt when rate limit denies")
+        void updateLastActiveAt_throttled() {
+            Long userId = 1L;
+            when(rateLimiterService.tryAcquire(eq("user:last-active:" + userId), any(Duration.class))).thenReturn(false);
+
+            userService.updateLastActiveAt(userId);
+
+            verify(userRepository, never()).updateLastActiveAt(any(), any());
+        }
+
+        @Test
+        @DisplayName("Should updateLastActiveAt in DB when rate limit permits")
+        void updateLastActiveAt_permitted() {
+            Long userId = 1L;
+            when(rateLimiterService.tryAcquire(eq("user:last-active:" + userId), any(Duration.class))).thenReturn(true);
+
+            userService.updateLastActiveAt(userId);
+
+            verify(userRepository, times(1)).updateLastActiveAt(eq(userId), any(LocalDateTime.class));
         }
     }
 }

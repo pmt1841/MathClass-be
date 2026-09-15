@@ -32,9 +32,10 @@ public class InfisicalClient {
         if (this.restClient == null) {
             synchronized (this) {
                 if (this.restClient == null) {
-                    String baseUrl = (properties != null && properties.getHost() != null && !properties.getHost().isBlank())
-                            ? properties.getHost().replaceAll("/+$", "")
-                            : "https://app.infisical.com";
+                    String baseUrl = (properties != null && properties.getHost() != null
+                            && !properties.getHost().isBlank())
+                                    ? properties.getHost().replaceAll("/+$", "")
+                                    : "https://app.infisical.com";
 
                     SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
                     requestFactory.setConnectTimeout(Duration.ofSeconds(5));
@@ -95,14 +96,15 @@ public class InfisicalClient {
     /**
      * Lấy giá trị chuỗi raw của Secret từ Infisical API.
      *
-     * @param accessToken  Bearer Access Token từ bước login
-     * @param projectId    Project ID (Workspace ID)
-     * @param environment  Môi trường (dev, staging, prod)
-     * @param secretPath   Đường dẫn thư mục secret (mặc định /)
-     * @param secretName   Tên secret cần lấy (ví dụ AI_ENCRYPTION_MASTER_KEY)
+     * @param accessToken Bearer Access Token từ bước login
+     * @param projectId   Project ID (Workspace ID)
+     * @param environment Môi trường (dev, staging, prod)
+     * @param secretPath  Đường dẫn thư mục secret (mặc định /)
+     * @param secretName  Tên secret cần lấy (ví dụ AI_ENCRYPTION_MASTER_KEY)
      * @return Chuỗi secret value plaintext
      */
-    public String getRawSecret(String accessToken, String projectId, String environment, String secretPath, String secretName) {
+    public String getRawSecret(String accessToken, String projectId, String environment, String secretPath,
+            String secretName) {
         if (accessToken == null || accessToken.isBlank()) {
             throw new IllegalArgumentException("Access Token không được để trống khi truy vấn Secret");
         }
@@ -145,24 +147,26 @@ public class InfisicalClient {
                 throw new IllegalStateException("Không tìm thấy giá trị của secret '" + secretName + "' từ Infisical");
             }
 
-            log.info("[Infisical] Nạp Secret Key '{}' thành công (length: {} ký tự).", secretName, secretValue.length());
+            log.info("[Infisical] Nạp Secret Key thành công.");
             return secretValue;
         } catch (Exception e) {
             log.error("[Infisical] Lỗi khi truy vấn Secret '{}' từ Infisical: {}", secretName, e.getMessage());
-            throw new IllegalStateException("Không thể lấy Secret '" + secretName + "' từ Infisical: " + e.getMessage(), e);
+            throw new IllegalStateException("Không thể lấy Secret '" + secretName + "' từ Infisical: " + e.getMessage(),
+                    e);
         }
     }
 
     /**
      * Lấy toàn bộ danh sách Secret raw từ Infisical API dưới dạng Map<Key, Value>.
      *
-     * @param accessToken  Bearer Access Token từ bước login
-     * @param projectId    Project ID (Workspace ID)
-     * @param environment  Môi trường (dev, staging, prod)
-     * @param secretPath   Đường dẫn thư mục secret (mặc định /)
+     * @param accessToken Bearer Access Token từ bước login
+     * @param projectId   Project ID (Workspace ID)
+     * @param environment Môi trường (dev, staging, prod)
+     * @param secretPath  Đường dẫn thư mục secret (mặc định /)
      * @return Map chứa toàn bộ key-value secrets
      */
-    public Map<String, String> getAllRawSecrets(String accessToken, String projectId, String environment, String secretPath) {
+    public Map<String, String> getAllRawSecrets(String accessToken, String projectId, String environment,
+            String secretPath) {
         if (accessToken == null || accessToken.isBlank()) {
             throw new IllegalArgumentException("Access Token không được để trống khi truy vấn Secrets");
         }
@@ -192,7 +196,8 @@ public class InfisicalClient {
             JsonNode rootNode = objectMapper.readTree(responseBody);
             Map<String, String> secretsMap = new HashMap<>();
 
-            JsonNode secretsArray = rootNode.has("secrets") ? rootNode.get("secrets") : (rootNode.isArray() ? rootNode : null);
+            JsonNode secretsArray = rootNode.has("secrets") ? rootNode.get("secrets")
+                    : (rootNode.isArray() ? rootNode : null);
 
             if (secretsArray != null && secretsArray.isArray()) {
                 for (JsonNode secretNode : secretsArray) {
@@ -222,35 +227,37 @@ public class InfisicalClient {
     }
 
     /**
-     * Phương thức tiện ích lấy secret key đơn lẻ dựa trên cấu hình InfisicalConfigProperties.
+     * Phương thức tiện ích lấy secret key đơn lẻ dựa trên cấu hình
+     * InfisicalConfigProperties.
      *
      * @return Chuỗi Master Key plaintext
      */
     public String fetchMasterKey() {
-        log.info("[Infisical] Đang kết nối tới Infisical (host: {}, env: {})...", properties.getHost(), properties.getEnvironment());
+        log.info("[Infisical] Đang kết nối tới Infisical (host: {}, env: {})...", properties.getHost(),
+                properties.getEnvironment());
         String token = login(properties.getClientId(), properties.getClientSecret());
         return getRawSecret(
                 token,
                 properties.getProjectId(),
                 properties.getEnvironment(),
                 properties.getSecretPath(),
-                properties.getSecretName()
-        );
+                properties.getSecretName());
     }
 
     /**
-     * Phương thức tiện ích lấy toàn bộ secrets dựa trên cấu hình InfisicalConfigProperties.
+     * Phương thức tiện ích lấy toàn bộ secrets dựa trên cấu hình
+     * InfisicalConfigProperties.
      *
      * @return Map chứa toàn bộ secrets
      */
     public Map<String, String> fetchAllSecrets() {
-        log.info("[Infisical] Đang kết nối tới Infisical nạp toàn bộ cấu hình (host: {}, env: {})...", properties.getHost(), properties.getEnvironment());
+        log.info("[Infisical] Đang kết nối tới Infisical nạp toàn bộ cấu hình (host: {}, env: {})...",
+                properties.getHost(), properties.getEnvironment());
         String token = login(properties.getClientId(), properties.getClientSecret());
         return getAllRawSecrets(
                 token,
                 properties.getProjectId(),
                 properties.getEnvironment(),
-                properties.getSecretPath()
-        );
+                properties.getSecretPath());
     }
 }

@@ -1,10 +1,10 @@
 package com.codegym.mathclass.chat.controller;
 
+import com.codegym.mathclass.chat.dto.event.ChatBroadcastEvent;
 import com.codegym.mathclass.chat.dto.request.ChatMessageRequest;
 import com.codegym.mathclass.chat.dto.request.DirectChatMessageRequest;
 import com.codegym.mathclass.chat.dto.request.GroupChatMessageRequest;
 import com.codegym.mathclass.chat.dto.response.ChatMessageResponse;
-import com.codegym.mathclass.chat.entity.ChatType;
 import com.codegym.mathclass.chat.service.ChatService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,21 +12,27 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.redisson.api.RTopic;
+import org.redisson.api.RedissonClient;
+import org.redisson.api.listener.MessageListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
-import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.Collections;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("unchecked")
 class ChatStompControllerTest {
 
     @Mock
@@ -34,6 +40,12 @@ class ChatStompControllerTest {
 
     @Mock
     private SimpMessagingTemplate messagingTemplate;
+
+    @Mock
+    private RedissonClient redissonClient;
+
+    @Mock
+    private RTopic chatTopic;
 
     @Mock
     private Authentication authentication;
@@ -45,6 +57,8 @@ class ChatStompControllerTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(redissonClient.getTopic(ChatStompController.CHAT_TOPIC_NAME)).thenReturn(chatTopic);
+
         mockUserDetails = new CustomUserDetails(
                 1L, "Teacher", "teacher@mathclass.edu.vn", "password", true, null,
                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_TEACHER"))
@@ -67,7 +81,7 @@ class ChatStompControllerTest {
     class ProcessMessageTests {
 
         @Test
-        @DisplayName("Should send and broadcast message to student and teacher topics")
+        @DisplayName("Should send and broadcast message to student and teacher topics locally and publish to Redis cluster")
         void processMessage_Success() {
             ChatMessageRequest request = ChatMessageRequest.builder()
                     .classId(10L)
@@ -85,6 +99,9 @@ class ChatStompControllerTest {
             verify(chatService).sendMessage(request, 1L);
             verify(messagingTemplate).convertAndSend("/topic/classroom/10/student/2", response);
             verify(messagingTemplate).convertAndSend("/topic/classroom/10/teacher", response);
+
+            // Verify published to Redis cluster
+            verify(chatTopic, times(2)).publish(any(ChatBroadcastEvent.class));
         }
 
         @Test
@@ -100,6 +117,7 @@ class ChatStompControllerTest {
 
             verifyNoInteractions(chatService);
             verifyNoInteractions(messagingTemplate);
+            verifyNoInteractions(chatTopic);
         }
     }
 
@@ -108,7 +126,7 @@ class ChatStompControllerTest {
     class ProcessGroupMessageTests {
 
         @Test
-        @DisplayName("Should broadcast message to classroom group topic")
+        @DisplayName("Should broadcast message to classroom group topic locally and publish to Redis cluster")
         void processGroupMessage_Success() {
             GroupChatMessageRequest request = GroupChatMessageRequest.builder()
                     .classId(10L)
@@ -124,6 +142,7 @@ class ChatStompControllerTest {
 
             verify(chatService).sendGroupMessage(request, 1L);
             verify(messagingTemplate).convertAndSend("/topic/classroom/10/group", response);
+            verify(chatTopic, times(1)).publish(any(ChatBroadcastEvent.class));
         }
 
         @Test
@@ -138,6 +157,7 @@ class ChatStompControllerTest {
 
             verifyNoInteractions(chatService);
             verifyNoInteractions(messagingTemplate);
+            verifyNoInteractions(chatTopic);
         }
     }
 
@@ -146,7 +166,7 @@ class ChatStompControllerTest {
     class ProcessDirectMessageTests {
 
         @Test
-        @DisplayName("Should broadcast message to recipient and sender topics")
+        @DisplayName("Should broadcast message to recipient and sender topics locally and publish to Redis cluster")
         void processDirectMessage_Success() {
             DirectChatMessageRequest request = DirectChatMessageRequest.builder()
                     .classId(10L)
@@ -164,6 +184,7 @@ class ChatStompControllerTest {
             verify(chatService).sendDirectMessage(request, 1L);
             verify(messagingTemplate).convertAndSend("/topic/classroom/10/direct/5", response);
             verify(messagingTemplate).convertAndSend("/topic/classroom/10/direct/1", response);
+            verify(chatTopic, times(2)).publish(any(ChatBroadcastEvent.class));
         }
 
         @Test
@@ -179,6 +200,50 @@ class ChatStompControllerTest {
 
             verifyNoInteractions(chatService);
             verifyNoInteractions(messagingTemplate);
+            verifyNoInteractions(chatTopic);
+        }
+    }
+
+    @Nested
+    @DisplayName("Redis Cluster Subscriber Tests")
+    class ClusterSubscriberTests {
+
+        @Test
+        @DisplayName("Should forward remote chat message to local STOMP subscribers")
+        void subscriber_ForwardRemoteMessage() {
+            ArgumentCaptor<MessageListener<ChatBroadcastEvent>> listenerCaptor = ArgumentCaptor.forClass(MessageListener.class);
+            when(chatTopic.addListener(eq(ChatBroadcastEvent.class), listenerCaptor.capture())).thenReturn(1);
+
+            chatStompController.initSubscriber();
+
+            MessageListener<ChatBroadcastEvent> listener = listenerCaptor.getValue();
+            assertThat(listener).isNotNull();
+
+            ChatMessageResponse response = buildResponse(103L, 10L, "Tin nhắn từ node khác");
+            ChatBroadcastEvent event = new ChatBroadcastEvent("other-instance-id", "/topic/classroom/10/group", response);
+
+            listener.onMessage("chat:events", event);
+
+            verify(messagingTemplate).convertAndSend("/topic/classroom/10/group", response);
+        }
+
+        @Test
+        @DisplayName("Should ignore chat message originated from current instance to avoid double send")
+        void subscriber_IgnoreSelfOriginatedMessage() {
+            ArgumentCaptor<MessageListener<ChatBroadcastEvent>> listenerCaptor = ArgumentCaptor.forClass(MessageListener.class);
+            when(chatTopic.addListener(eq(ChatBroadcastEvent.class), listenerCaptor.capture())).thenReturn(1);
+
+            chatStompController.initSubscriber();
+
+            MessageListener<ChatBroadcastEvent> listener = listenerCaptor.getValue();
+            assertThat(listener).isNotNull();
+
+            ChatMessageResponse response = buildResponse(104L, 10L, "Tin nhắn từ chính node này");
+            ChatBroadcastEvent event = new ChatBroadcastEvent(chatStompController.getInstanceId(), "/topic/classroom/10/group", response);
+
+            listener.onMessage("chat:events", event);
+
+            verify(messagingTemplate, never()).convertAndSend(anyString(), any(Object.class));
         }
     }
 }

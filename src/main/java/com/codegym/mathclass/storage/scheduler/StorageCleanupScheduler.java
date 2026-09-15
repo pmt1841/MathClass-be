@@ -15,6 +15,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.concurrent.ScheduledFuture;
 
+import com.codegym.mathclass.common.lock.DistributedLockService;
+
 @Component
 @Slf4j
 public class StorageCleanupScheduler {
@@ -22,15 +24,20 @@ public class StorageCleanupScheduler {
     private final TaskScheduler taskScheduler;
     private final ObjectProvider<StorageCleanupService> storageCleanupServiceProvider;
     private final StorageCleanupConfigRepository configRepository;
+    private final DistributedLockService distributedLockService;
+
+    private static final String STORAGE_CLEANUP_LOCK = "lock:cron:storage-cleanup";
 
     public StorageCleanupScheduler(
             @Qualifier("storageTaskScheduler") TaskScheduler taskScheduler,
             ObjectProvider<StorageCleanupService> storageCleanupServiceProvider,
-            StorageCleanupConfigRepository configRepository
+            StorageCleanupConfigRepository configRepository,
+            DistributedLockService distributedLockService
     ) {
         this.taskScheduler = taskScheduler;
         this.storageCleanupServiceProvider = storageCleanupServiceProvider;
         this.configRepository = configRepository;
+        this.distributedLockService = distributedLockService;
     }
 
     @Value("${app.storage.cleanup.enabled:true}")
@@ -91,16 +98,18 @@ public class StorageCleanupScheduler {
     }
 
     public void executeScheduledCleanup() {
-        log.info("[Storage Scheduler] Triggering automatic scheduled storage cleanup task...");
-        try {
-            StorageCleanupService service = storageCleanupServiceProvider.getIfAvailable();
-            if (service != null) {
-                StorageCleanupConfig config = configRepository.findById(StorageCleanupConfig.DEFAULT_CONFIG_ID).orElse(null);
-                int gracePeriod = config != null ? config.getGracePeriodHours() : defaultGracePeriod;
-                service.runCleanup(gracePeriod, false);
+        distributedLockService.tryRunWithLock(STORAGE_CLEANUP_LOCK, 0, 1800, () -> {
+            log.info("[Storage Scheduler] Triggering automatic scheduled storage cleanup task...");
+            try {
+                StorageCleanupService service = storageCleanupServiceProvider.getIfAvailable();
+                if (service != null) {
+                    StorageCleanupConfig config = configRepository.findById(StorageCleanupConfig.DEFAULT_CONFIG_ID).orElse(null);
+                    int gracePeriod = config != null ? config.getGracePeriodHours() : defaultGracePeriod;
+                    service.runCleanup(gracePeriod, false);
+                }
+            } catch (Exception e) {
+                log.error("[Storage Scheduler] Error executing scheduled storage cleanup: {}", e.getMessage(), e);
             }
-        } catch (Exception e) {
-            log.error("[Storage Scheduler] Error executing scheduled storage cleanup: {}", e.getMessage(), e);
-        }
+        });
     }
 }

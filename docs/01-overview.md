@@ -29,7 +29,7 @@ Dự án được xây dựng theo kiến trúc phân tầng (Layered Architectu
 - **Document Parsing:** Apache POI (DOCX) & Apache PDFBox (PDF).
 - **File Storage:** Supabase Cloud Storage API.
 - **Email Service:** Spring Mail (SMTP Gmail) kết hợp Thymeleaf HTML templates.
-- **Caching:** Spring Cache & Caffeine Cache (in-memory cache cho Task Routing & Prompts).
+- **Caching & Trạng thái phân tán:** Spring Cache, Redis & Redisson (Distributed cache cho Task Routing, Prompts, Role Permissions, AI Configs, Rate Limiting & Locking).
 
 ## 3. Các Tài Liệu Chi Tiết
 

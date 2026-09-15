@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.thymeleaf.context.Context;
 
 import java.time.LocalDateTime;
+import com.codegym.mathclass.common.lock.DistributedLockService;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,14 +31,21 @@ public class NotificationJobService {
     private final SubmissionRepository submissionRepository;
     private final NotificationSettingsRepository notificationSettingsRepository;
     private final EmailService emailService;
+    private final DistributedLockService distributedLockService;
+
+    private static final String DEADLINE_REMINDER_LOCK = "lock:cron:deadline-reminders";
 
     @Value("${FRONTEND_URL}")
     private String frontendUrl;
 
     // Chạy mỗi giờ
     @Scheduled(cron = "0 0 * * * *")
-    @Transactional
     public void sendDeadlineReminders() {
+        distributedLockService.tryRunWithLock(DEADLINE_REMINDER_LOCK, 0, 300, this::processDeadlineReminders);
+    }
+
+    @Transactional
+    public void processDeadlineReminders() {
         LocalDateTime now = LocalDateTime.now();
         // Lấy khoảng thời gian từ 23h đến 24h tới
         LocalDateTime startWindow = now.plusHours(23);

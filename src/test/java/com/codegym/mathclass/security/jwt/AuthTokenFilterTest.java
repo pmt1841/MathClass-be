@@ -33,13 +33,16 @@ class AuthTokenFilterTest {
     private CustomUserDetailsService userDetailsService;
 
     @Mock
+    private TokenBlacklistService tokenBlacklistService;
+
+    @Mock
     private FilterChain filterChain;
 
     private AuthTokenFilter authTokenFilter;
 
     @BeforeEach
     void setUp() {
-        authTokenFilter = new AuthTokenFilter(jwtUtils, userDetailsService);
+        authTokenFilter = new AuthTokenFilter(jwtUtils, userDetailsService, tokenBlacklistService);
         SecurityContextHolder.clearContext();
     }
 
@@ -174,5 +177,25 @@ class AuthTokenFilterTest {
         assertTrue(response.getContentAsString().contains("Vi phạm quy chế"));
         assertNull(SecurityContextHolder.getContext().getAuthentication());
         verify(filterChain, never()).doFilter(request, response);
+    }
+
+    @Test
+    @DisplayName("doFilterInternal từ chối authentication và xóa cookie khi token nằm trong Blacklist")
+    void testDoFilterInternalWithBlacklistedToken() throws ServletException, IOException {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        request.addHeader("Authorization", "Bearer blacklisted.jwt.token");
+
+        when(jwtUtils.getJwtFromCookies(request)).thenReturn(null);
+        when(jwtUtils.validateJwtToken("blacklisted.jwt.token")).thenReturn(true);
+        when(tokenBlacklistService.isBlacklisted("blacklisted.jwt.token")).thenReturn(true);
+        when(jwtUtils.getCleanJwtCookie()).thenReturn(ResponseCookie.from("mathclass_jwt", "").build());
+        when(jwtUtils.getCleanJwtRefreshCookie()).thenReturn(ResponseCookie.from("mathclass_refresh", "").build());
+
+        authTokenFilter.doFilter(request, response, filterChain);
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        verify(filterChain).doFilter(request, response);
+        verifyNoInteractions(userDetailsService);
     }
 }

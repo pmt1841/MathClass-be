@@ -20,7 +20,7 @@ Tài liệu này quy định việc lưu trữ, quản lý, kiểm tra, mã hóa
 
 - Hệ thống đã có cơ chế xác thực (Authentication - JWT) và phân quyền (Authorization - Role `ADMIN`).
 - Các tác vụ AI (Task) đã được định nghĩa trong hệ thống (như `QUESTION_GEN`, `SUBMISSION_GRADING`, `HINT_EXPLANATION`, `LATEX_CANVAS_FORMAT`).
-- Số lượng System Prompt không quá lớn (dưới 500 prompts), do đó có thể cache toàn bộ prompt active vào bộ nhớ (Caffeine Cache).
+- Số lượng System Prompt không quá lớn (dưới 500 prompts), do đó có thể cache toàn bộ prompt active phân tán qua Redis (Redisson Cache).
 - Các biến môi trường khả dụng cho từng Task được định nghĩa cố định bởi đội ngũ phát triển và lưu trong cấu hình hệ thống.
 
 ---
@@ -89,7 +89,7 @@ Khi module AI Task gọi Service lấy System Prompt để gửi tới Provider 
 | Yêu cầu | Mô tả |
 | :--- | :--- |
 | **Bảo mật** | - Kiểm tra quyền Admin nghiêm ngặt cho tất cả các API quản lý.<br>- Strict Validation biến môi trường ngăn chặn Prompt Injection và rò rỉ thông tin nội bộ.<br>- Phân quạt dữ liệu đầu vào (Sanitize input) trước khi lưu vào DB. |
-| **Hiệu năng** | - API lấy System Prompt dành cho AI Service execution < 10ms nhờ Cache.<br>- API quản lý Admin < 300ms.<br>- Cache in-memory với Caffeine. |
+| **Hiệu năng** | - API lấy System Prompt dành cho AI Service execution < 10ms nhờ Cache.<br>- API quản lý Admin < 300ms.<br>- Cache phân tán với Redis (Redisson). |
 | **Độ tin cậy** | - Đảm bảo tính nhất quán dữ liệu lịch sử (Transactional khi update prompt và tạo history).<br>- Tự động fallback về `default_content` nếu `current_content` bị rỗng hoặc hỏng. |
 | **Audit Log Hệ thống** | Ghi nhật ký đầy đủ tất cả tương tác của Admin (tạo, sửa, đổi trạng thái, reset, rollback, xóa) bao gồm: `username`, `timestamp`, `action`, `target` (promptCode), `oldValue`, `newValue`, `ipAddress` và `changeReason`. |
 | **Khả năng mở rộng** | Dễ dàng bổ sung các biến môi trường mới hoặc Task mới mà không cần làm lại cấu trúc cơ sở dữ liệu. |
@@ -311,7 +311,7 @@ Tất cả các endpoint dưới đây đều yêu cầu Authentication Header `
 
 # 6. Chiến lược caching
 
-- Cache thông tin System Prompt (`code`, `current_content`, `allowed_variables`, `status`) bằng Caffeine Cache (in-memory).
+- Cache thông tin System Prompt (`code`, `current_content`, `allowed_variables`, `status`) bằng Redis Cache (Redisson).
 - Cache Key: `system_prompt:{promptCode}`.
 - TTL (Time To Live): 10 phút.
 - **Cache Invalidation:** Tự động xóa cache khi thực hiện các thao tác:
@@ -344,7 +344,7 @@ Tất cả các endpoint dưới đây đều yêu cầu Authentication Header `
 
 - **Backend:** Java 21 với Spring Boot 4.x.
 - **Database:** PostgreSQL (Hỗ trợ kiểu JSONB lưu `allowed_variables`).
-- **Cache:** Caffeine Cache.
+- **Cache:** Redis Cache (Redisson).
 - **Template Engine:** Regex Interpolation đơn giản hoặc StringSubstitutor (Apache Commons Text).
 
 ## 8.2. Các lớp cần xây dựng
@@ -386,7 +386,7 @@ Tạo sẵn script Liquibase/Flyway hoặc Migration SQL nạp các System Promp
 # 10. Phụ lục – Biểu đồ tuần tự (Luồng Render Prompt khi gọi AI)
 
 ```
-[AI Service Task] ------------> [PromptRenderService] ------------> [Caffeine Cache]
+[AI Service Task] ------------> [PromptRenderService] ------------> [Redis Cache]
        |                                |                                   |
        |-- 1. Render(code, vars) ------>|                                   |
        |                                |-- 2. Get prompt by code --------->|

@@ -2,23 +2,28 @@ package com.codegym.mathclass.auth.service.impl;
 
 import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
 import com.codegym.mathclass.auth.audit.AuthAuditLogger;
-import com.codegym.mathclass.auth.dto.request.*;
+import com.codegym.mathclass.auth.dto.request.Admin2FaLoginRequest;
+import com.codegym.mathclass.auth.dto.request.ForgotPasswordRequest;
+import com.codegym.mathclass.auth.dto.request.GoogleAuthRequest;
+import com.codegym.mathclass.auth.dto.request.LoginRequest;
+import com.codegym.mathclass.auth.dto.request.ResetPasswordRequest;
+import com.codegym.mathclass.auth.dto.request.SignupRequest;
 import com.codegym.mathclass.auth.dto.response.MessageResponse;
 import com.codegym.mathclass.auth.dto.response.UserInfoResponse;
 import com.codegym.mathclass.auth.entity.AuthType;
-import com.codegym.mathclass.auth.entity.PasswordResetToken;
 import com.codegym.mathclass.auth.entity.RefreshToken;
-import com.codegym.mathclass.auth.repository.PasswordResetTokenRepository;
 import com.codegym.mathclass.auth.service.AuthService;
 import com.codegym.mathclass.auth.service.RefreshTokenService;
 import com.codegym.mathclass.auth.strategy.AuthStrategy;
 import com.codegym.mathclass.auth.strategy.AuthStrategyFactory;
 import com.codegym.mathclass.chat.service.UserPresenceRegistry;
+import com.codegym.mathclass.common.ratelimit.RateLimiterService;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.TooManyRequestsException;
 import com.codegym.mathclass.notification.entity.NotificationSettings;
 import com.codegym.mathclass.notification.repository.NotificationSettingsRepository;
 import com.codegym.mathclass.security.jwt.JwtUtils;
+import com.codegym.mathclass.security.jwt.TokenBlacklistService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
@@ -29,6 +34,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RBucket;
+import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.StringCodec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
@@ -36,20 +44,23 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.thymeleaf.context.Context;
 
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class AuthServiceImpl implements AuthService {
+
+    public static final String PASSWORD_RESET_KEY_PREFIX = "auth:reset:";
 
     private final AuthStrategyFactory authStrategyFactory;
     private final AuthAuditLogger authAuditLogger;
@@ -59,12 +70,12 @@ public class AuthServiceImpl implements AuthService {
     private final JwtUtils jwtUtils;
     private final PasswordEncoder encoder;
     private final EmailService emailService;
-    private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final RefreshTokenService refreshTokenService;
     private final AiCreditService aiCreditService;
     private final UserPresenceRegistry userPresenceRegistry;
-
-    private final ConcurrentHashMap<String, LocalDateTime> forgotPasswordRateLimitMap = new ConcurrentHashMap<>();
+    private final RateLimiterService rateLimiterService;
+    private final TokenBlacklistService tokenBlacklistService;
+    private final RedissonClient redissonClient;
 
     @Value("${FRONTEND_URL}")
     private String frontendUrl;
@@ -74,10 +85,12 @@ public class AuthServiceImpl implements AuthService {
         try {
             AuthStrategy<LoginRequest> strategy = authStrategyFactory.getStrategy(AuthType.LOCAL);
             UserInfoResponse userInfo = strategy.authenticate(loginRequest, response);
-            authAuditLogger.logSuccess(userInfo.getId(), userInfo.getEmail(), AuthType.LOCAL, "LOCAL_CLIENT", "HTTP_LOCAL");
+            authAuditLogger.logSuccess(userInfo.getId(), userInfo.getEmail(), AuthType.LOCAL, "LOCAL_CLIENT",
+                    "HTTP_LOCAL");
             return userInfo;
         } catch (Exception e) {
-            authAuditLogger.logFailure(loginRequest != null ? loginRequest.getEmail() : null, AuthType.LOCAL, e.getMessage(), "LOCAL_CLIENT", "HTTP_LOCAL");
+            authAuditLogger.logFailure(loginRequest != null ? loginRequest.getEmail() : null, AuthType.LOCAL,
+                    e.getMessage(), "LOCAL_CLIENT", "HTTP_LOCAL");
             throw e;
         }
     }
@@ -87,7 +100,8 @@ public class AuthServiceImpl implements AuthService {
         try {
             AuthStrategy<GoogleAuthRequest> strategy = authStrategyFactory.getStrategy(AuthType.GOOGLE);
             UserInfoResponse userInfo = strategy.authenticate(request, response);
-            authAuditLogger.logSuccess(userInfo.getId(), userInfo.getEmail(), AuthType.GOOGLE, "GOOGLE_SSO", "HTTP_GOOGLE");
+            authAuditLogger.logSuccess(userInfo.getId(), userInfo.getEmail(), AuthType.GOOGLE, "GOOGLE_SSO",
+                    "HTTP_GOOGLE");
             return userInfo;
         } catch (Exception e) {
             authAuditLogger.logFailure(null, AuthType.GOOGLE, e.getMessage(), "GOOGLE_SSO", "HTTP_GOOGLE");
@@ -96,7 +110,8 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public UserInfoResponse authenticateAdmin2Fa(Admin2FaLoginRequest request, HttpServletRequest httpRequest, HttpServletResponse response) {
+    public UserInfoResponse authenticateAdmin2Fa(Admin2FaLoginRequest request, HttpServletRequest httpRequest,
+            HttpServletResponse response) {
         String clientIp = authAuditLogger.extractClientIp(httpRequest);
         String userAgent = authAuditLogger.extractUserAgent(httpRequest);
         try {
@@ -105,16 +120,28 @@ public class AuthServiceImpl implements AuthService {
             authAuditLogger.logSuccess(userInfo.getId(), userInfo.getEmail(), AuthType.ADMIN_2FA, clientIp, userAgent);
             return userInfo;
         } catch (Exception e) {
-            authAuditLogger.logFailure(request != null ? request.email() : null, AuthType.ADMIN_2FA, e.getMessage(), clientIp, userAgent);
+            authAuditLogger.logFailure(request != null ? request.email() : null, AuthType.ADMIN_2FA, e.getMessage(),
+                    clientIp, userAgent);
             throw e;
         }
     }
-
 
     @Override
     @Transactional
     public MessageResponse logoutUser(HttpServletRequest request, HttpServletResponse response) {
         try {
+            // 1. Đưa Access Token vào Redis Blacklist nếu còn hiệu lực
+            String jwtToken = jwtUtils.getJwtFromCookies(request);
+            if (jwtToken == null || jwtToken.isEmpty()) {
+                String headerAuth = request.getHeader("Authorization");
+                if (StringUtils.hasText(headerAuth) && headerAuth.startsWith("Bearer ")) {
+                    jwtToken = headerAuth.substring(7);
+                }
+            }
+            if (jwtToken != null && jwtUtils.validateJwtToken(jwtToken)) {
+                tokenBlacklistService.blacklistToken(jwtToken);
+            }
+
             Long logoutUserId = null;
             String refreshCookie = jwtUtils.getJwtRefreshFromCookies(request);
             if (refreshCookie != null && !refreshCookie.isEmpty()) {
@@ -127,14 +154,11 @@ public class AuthServiceImpl implements AuthService {
                     refreshTokenService.deleteToken(token);
                 }
             }
-            if (logoutUserId == null) {
-                String jwtToken = jwtUtils.getJwtFromCookies(request);
-                if (jwtToken != null && jwtUtils.validateJwtToken(jwtToken)) {
-                    String username = jwtUtils.getUserNameFromJwtToken(jwtToken);
-                    var userOpt = userRepository.findByEmail(username);
-                    if (userOpt.isPresent()) {
-                        logoutUserId = userOpt.get().getId();
-                    }
+            if (logoutUserId == null && jwtToken != null && jwtUtils.validateJwtToken(jwtToken)) {
+                String username = jwtUtils.getUserNameFromJwtToken(jwtToken);
+                var userOpt = userRepository.findByEmail(username);
+                if (userOpt.isPresent()) {
+                    logoutUserId = userOpt.get().getId();
                 }
             }
             if (logoutUserId != null) {
@@ -291,12 +315,10 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public MessageResponse forgotPassword(ForgotPasswordRequest request) {
         String email = request.getEmail().toLowerCase().trim();
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime lastRequest = forgotPasswordRateLimitMap.get(email);
-        if (lastRequest != null && lastRequest.plusSeconds(60).isAfter(now)) {
+        String rateLimitKey = "auth:forgot:" + email;
+        if (!rateLimiterService.tryAcquire(rateLimitKey, Duration.ofSeconds(60))) {
             throw new TooManyRequestsException("Bạn đã gửi yêu cầu quá nhanh. Vui lòng thử lại sau 1 phút.");
         }
-        forgotPasswordRateLimitMap.put(email, now);
 
         Optional<User> userOptional = userRepository.findByEmail(email);
 
@@ -310,9 +332,8 @@ public class AuthServiceImpl implements AuthService {
 
             String tokenHash = hashToken(rawToken);
 
-            Optional<PasswordResetToken> existingTokenOpt = passwordResetTokenRepository.findByUserAndIsUsedFalse(user);
-            PasswordResetToken resetToken = getResetToken(user, tokenHash, existingTokenOpt);
-            passwordResetTokenRepository.save(resetToken);
+            RBucket<String> resetBucket = redissonClient.getBucket(PASSWORD_RESET_KEY_PREFIX + tokenHash, StringCodec.INSTANCE);
+            resetBucket.set(String.valueOf(user.getId()), Duration.ofMinutes(15));
 
             String resetLink = frontendUrl + "/reset-password?token=" + rawToken;
 
@@ -330,49 +351,27 @@ public class AuthServiceImpl implements AuthService {
                 context);
     }
 
-    private PasswordResetToken getResetToken(User user, String tokenHash,
-            Optional<PasswordResetToken> existingTokenOpt) {
-        PasswordResetToken resetToken;
-        if (existingTokenOpt.isPresent()) {
-            resetToken = existingTokenOpt.get();
-            resetToken.setTokenHash(tokenHash);
-            resetToken.setExpiryDate(LocalDateTime.now().plusMinutes(15));
-        } else {
-            resetToken = PasswordResetToken.builder()
-                    .user(user)
-                    .tokenHash(tokenHash)
-                    .expiryDate(LocalDateTime.now().plusMinutes(15))
-                    .isUsed(false)
-                    .build();
-        }
-        return resetToken;
-    }
-
     @Override
     @Transactional
     public MessageResponse resetPassword(ResetPasswordRequest request) {
         String rawToken = request.getToken();
         String tokenHash = hashToken(rawToken);
 
-        Optional<PasswordResetToken> resetTokenOptional = passwordResetTokenRepository
-                .findByTokenHashAndIsUsedFalse(tokenHash);
+        RBucket<String> resetBucket = redissonClient.getBucket(PASSWORD_RESET_KEY_PREFIX + tokenHash, StringCodec.INSTANCE);
+        String userIdStr = resetBucket.get();
 
-        if (resetTokenOptional.isEmpty()) {
-            throw new BadRequestException("Token không hợp lệ hoặc đã qua sử dụng.");
+        if (userIdStr == null) {
+            throw new BadRequestException("Đường dẫn đặt lại mật khẩu không hợp lệ hoặc đã hết hạn (hiệu lực 15 phút).");
         }
 
-        PasswordResetToken resetToken = resetTokenOptional.get();
+        Long userId = Long.valueOf(userIdStr);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BadRequestException("Không tìm thấy thông tin tài khoản người dùng."));
 
-        if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
-            throw new BadRequestException("Đường dẫn đặt lại mật khẩu đã hết hạn.");
-        }
-
-        User user = resetToken.getUser();
         user.setPassword(encoder.encode(request.getNewPassword()));
         userRepository.save(user);
 
-        resetToken.setUsed(true);
-        passwordResetTokenRepository.save(resetToken);
+        resetBucket.delete();
 
         return new MessageResponse(
                 "Mật khẩu của bạn đã được cập nhật thành công. Vui lòng đăng nhập bằng mật khẩu mới.",

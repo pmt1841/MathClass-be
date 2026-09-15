@@ -386,7 +386,7 @@ Tất cả các endpoint yêu cầu xác thực và phân quyền Admin.
 # 6. Chiến lược caching
 
 - Cache cấu hình Provider và danh sách Key active theo từng Provider.
-- Cache được lưu trong bộ nhớ (Caffeine) với TTL = 5 phút.
+- Cache được lưu phân tán (Redis qua Redisson) với TTL = 5 phút.
 - Khi có thay đổi (tạo/sửa/xóa Provider, Key, Task), tự động invalidate cache tương ứng.
 - Khi gọi AI, module AI sẽ lấy cấu hình từ cache (nếu có), nếu không thì truy vấn DB và cập nhật cache.
 
@@ -406,7 +406,7 @@ Tất cả các endpoint yêu cầu xác thực và phân quyền Admin.
 
 - **Backend:** Java 21 với Spring Boot 4.x.
 - **Database:** PostgreSQL (hỗ trợ JSONB nếu cần mở rộng).
-- **Cache:** Caffeine (in-memory).
+- **Cache:** Redis (Redisson phân tán).
 - **Mã hóa:** Spring Security Crypto hoặc JCA với AES-GCM.
 - **Logging:** SLF4J + Logback, tích hợp với ELK nếu có.
 

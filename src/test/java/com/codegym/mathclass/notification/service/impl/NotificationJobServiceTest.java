@@ -27,6 +27,8 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.mockito.ArgumentMatchers.*;
+import com.codegym.mathclass.common.lock.DistributedLockService;
+
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,6 +46,9 @@ class NotificationJobServiceTest {
     @Mock
     private EmailService emailService;
 
+    @Mock
+    private DistributedLockService distributedLockService;
+
     @InjectMocks
     private NotificationJobService notificationJobService;
 
@@ -54,6 +59,13 @@ class NotificationJobServiceTest {
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(notificationJobService, "frontendUrl", "http://localhost:3000");
+
+        lenient().when(distributedLockService.tryRunWithLock(anyString(), anyLong(), anyLong(), any(Runnable.class)))
+                .thenAnswer(inv -> {
+                    Runnable r = inv.getArgument(3);
+                    r.run();
+                    return true;
+                });
 
         student = new User();
         student.setId(1L);
@@ -156,6 +168,18 @@ class NotificationJobServiceTest {
             notificationJobService.sendDeadlineReminders();
 
             verify(submissionRepository, never()).existsByAssignmentIdAndStudentIdAndStatusNot(anyLong(), anyLong(), any());
+            verify(emailService, never()).sendHtmlMailAsync(any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("Should skip deadline reminders when distributed lock is not acquired")
+        void sendDeadlineReminders_lockNotAcquired_skips() {
+            when(distributedLockService.tryRunWithLock(eq("lock:cron:deadline-reminders"), eq(0L), eq(300L), any(Runnable.class)))
+                    .thenReturn(false);
+
+            notificationJobService.sendDeadlineReminders();
+
+            verify(assignmentRepository, never()).findByDeadlineBetweenAndIsReminderSentFalseAndStatus(any(), any(), any());
             verify(emailService, never()).sendHtmlMailAsync(any(), any(), any(), any());
         }
     }

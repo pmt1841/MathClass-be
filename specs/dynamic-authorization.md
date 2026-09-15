@@ -8,7 +8,7 @@
 
 * **Framework:** Java 21 & Spring Boot 4 (Spring Web, Spring Security, Spring Data JPA, Spring Cache).
 * **Database:** PostgreSQL 16.
-* **Caching:** `Caffeine Cache` (In-Memory Local Cache).
+* **Caching:** `Redis Cache` (Redisson Distributed Cache).
 * **Dependencies bảo mật & bổ sung:** `Lombok`.
 
 ### Cấu trúc file dự kiến
@@ -45,8 +45,8 @@
 ### Luồng 1: Khởi tạo và Nạp cấu hình quyền (Caching)
 
 1. **Truy vấn DB:** Khi một user thực hiện API call và cần kiểm tra quyền, hệ thống (thông qua `PermissionCacheService`) sẽ truy vấn bảng `role_permissions` ghép với `permissions` để lấy danh sách tên các quyền dựa theo tên Role của user đó.
-2. **Caffeine Cache:** Kết quả truy vấn sẽ được lưu đệm trực tiếp trên thanh RAM của server (Caffeine Cache) với khóa (key) là tên Role (VD: key=`TEACHER` -> value=`["assignment:create", "submission:grade", ...]`).
-3. Lần truy vấn sau của bất kỳ user nào có cùng Role đó sẽ lấy thẳng từ RAM, trả về kết quả gần như tức thời (0 network call, 0 DB query).
+2. **Redis Cache:** Kết quả truy vấn sẽ được lưu đệm phân tán trên Redis (Redisson Cache) với khóa (key) là tên Role (VD: key=`TEACHER` -> value=`["assignment:create", "submission:grade", ...]`).
+3. Lần truy vấn sau của bất kỳ user nào có cùng Role đó sẽ lấy từ Redis cache nhanh chóng, tránh query DB lặp lại.
 
 ### Luồng 2: Xác thực & Đóng gói quyền qua JWT (Authentication)
 

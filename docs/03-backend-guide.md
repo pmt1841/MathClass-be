@@ -74,7 +74,7 @@ src/main/java/com/codegym/mathclass/
   - Bắt buộc dùng `@Lock(LockModeType.PESSIMISTIC_WRITE)` trên `user_ai_accounts` khi đặt chỗ trừ credit.
   - Khi AI lỗi hoặc token thực tế nhỏ hơn mức ước lượng, bắt buộc gọi `refund()` trong transaction để hoàn lại credit cho người dùng.
 - **Bất biến Sổ Cái Giao Dịch:** Tuyệt đối không cập nhật (`UPDATE`) hay xóa (`DELETE`) các bản ghi trong `credit_transactions`.
-- **Cache Task Routing & Prompts:** Sử dụng Spring Cache với Caffeine in-memory. Mọi thao tác cập nhật cấu hình phải có `@CacheEvict`.
+- **Cache Task Routing & Prompts:** Sử dụng Spring Cache với Redis (Redisson). Mọi thao tác cập nhật cấu hình phải có `@CacheEvict`.
 - **Xử lý Hết Credit:** Ném `InsufficientCreditException` để GlobalExceptionHandler định dạng thành HTTP Status `402 Payment Required` kèm `errorCode = "INSUFFICIENT_CREDITS"`.
 - 📖 Tham khảo chi tiết tại [Hướng dẫn Hệ thống AI & Credit Quota (07-ai-subsystem.md)](07-ai-subsystem.md).
 

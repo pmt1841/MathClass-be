@@ -1,36 +1,40 @@
 package com.codegym.mathclass.user.service.impl;
 
+import com.codegym.mathclass.auth.service.RefreshTokenService;
+import com.codegym.mathclass.common.ratelimit.RateLimiterService;
 import com.codegym.mathclass.exception.BadRequestException;
+import com.codegym.mathclass.exception.TooManyRequestsException;
+import com.codegym.mathclass.storage.dto.StoragePolicy;
+import com.codegym.mathclass.storage.service.StorageService;
+import com.codegym.mathclass.user.dto.request.ChangePasswordRequest;
+import com.codegym.mathclass.user.dto.request.SetPasswordRequest;
+import com.codegym.mathclass.user.dto.request.UpdateProfileRequest;
 import com.codegym.mathclass.user.dto.response.UserResponse;
+import com.codegym.mathclass.user.entity.PasswordHistory;
+import com.codegym.mathclass.user.entity.Provider;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.mapper.UserMapper;
+import com.codegym.mathclass.user.repository.PasswordHistoryRepository;
+import com.codegym.mathclass.user.repository.RolePermissionRepository;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.user.service.UserService;
-import com.codegym.mathclass.storage.service.StorageService;
-import com.codegym.mathclass.storage.dto.StoragePolicy;
-import com.codegym.mathclass.user.dto.request.UpdateProfileRequest;
-import com.codegym.mathclass.user.repository.RolePermissionRepository;
+import com.codegym.mathclass.utils.EmailService;
 import lombok.RequiredArgsConstructor;
+import org.redisson.api.RAtomicLong;
+import org.redisson.api.RBucket;
+import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.StringCodec;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import com.codegym.mathclass.user.entity.Provider;
-import com.codegym.mathclass.user.dto.request.ChangePasswordRequest;
-import com.codegym.mathclass.user.entity.PasswordHistory;
-import com.codegym.mathclass.user.repository.PasswordHistoryRepository;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import java.util.List;
-import com.codegym.mathclass.user.dto.request.SetPasswordRequest;
-import com.codegym.mathclass.utils.EmailService;
-import java.time.LocalDateTime;
-import java.util.Map;
-import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
+
 import java.io.IOException;
-import com.codegym.mathclass.auth.service.RefreshTokenService;
-import com.codegym.mathclass.exception.TooManyRequestsException;
-import org.springframework.scheduling.annotation.Scheduled;
 import java.security.SecureRandom;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -44,38 +48,15 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final RefreshTokenService refreshTokenService;
+    private final RateLimiterService rateLimiterService;
+    private final RedissonClient redissonClient;
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
-    private static class SetPasswordOtpEntry {
-        final String otpCode;
-        final LocalDateTime expiryTime;
-        final LocalDateTime createdAt;
-        int failedAttempts;
-
-        SetPasswordOtpEntry(String otpCode, LocalDateTime expiryTime) {
-            this.otpCode = otpCode;
-            this.expiryTime = expiryTime;
-            this.createdAt = LocalDateTime.now();
-            this.failedAttempts = 0;
-        }
-    }
-
-    private final Map<Long, SetPasswordOtpEntry> setPasswordOtpCache = new ConcurrentHashMap<>();
-
-    @Scheduled(fixedRate = 600000)
-    public void cleanupExpiredSetPasswordOtps() {
-        LocalDateTime now = LocalDateTime.now();
-        setPasswordOtpCache.entrySet().removeIf(entry -> entry.getValue().expiryTime.isBefore(now));
-    }
-
-    private final ConcurrentHashMap<Long, LocalDateTime> userLastActiveCache = new ConcurrentHashMap<>();
-
-    @Scheduled(fixedRate = 600000)
-    public void cleanUserLastActiveCache() {
-        LocalDateTime threshold = LocalDateTime.now().minusMinutes(10);
-        userLastActiveCache.entrySet().removeIf(e -> e.getValue().isBefore(threshold));
-    }
+    private static final String USER_LAST_ACTIVE_PREFIX = "user:last-active:";
+    private static final String SET_PASSWORD_COOLDOWN_PREFIX = "auth:set-password:cooldown:";
+    private static final String SET_PASSWORD_OTP_PREFIX = "auth:set-password:otp:";
+    private static final String SET_PASSWORD_ATTEMPTS_PREFIX = "auth:set-password:attempts:";
 
     @Override
     public UserResponse getUserProfile(Long id) {
@@ -137,13 +118,9 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void updateLastActiveAt(Long userId) {
         if (userId == null) return;
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime lastUpdated = userLastActiveCache.get(userId);
-
-        // Throttle DB updates: Only write to PostgreSQL if updated > 1 minute ago
-        if (lastUpdated == null || lastUpdated.isBefore(now.minusMinutes(1))) {
-            userLastActiveCache.put(userId, now);
-            userRepository.updateLastActiveAt(userId, now);
+        // Throttle DB updates: Chỉ ghi PostgreSQL nếu đã qua hơn 1 phút trên toàn cụm phân tán
+        if (rateLimiterService.tryAcquire(USER_LAST_ACTIVE_PREFIX + userId, Duration.ofSeconds(60))) {
+            userRepository.updateLastActiveAt(userId, LocalDateTime.now());
         }
     }
 
@@ -199,13 +176,14 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy người dùng với ID: " + userId));
 
-        SetPasswordOtpEntry existingEntry = setPasswordOtpCache.get(userId);
-        if (existingEntry != null && existingEntry.createdAt.plusSeconds(60).isAfter(LocalDateTime.now())) {
-            throw new TooManyRequestsException("Bạn đã gửi yêu cầu quá nhanh. Vui lòng thử lại sau 60 giây.");
+        if (!rateLimiterService.tryAcquire(SET_PASSWORD_COOLDOWN_PREFIX + userId, Duration.ofSeconds(60))) {
+            long remaining = rateLimiterService.getRemainingCooldownSeconds(SET_PASSWORD_COOLDOWN_PREFIX + userId);
+            throw new TooManyRequestsException("Bạn đã gửi yêu cầu quá nhanh. Vui lòng thử lại sau " + remaining + " giây.");
         }
 
         String otpCode = String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
-        setPasswordOtpCache.put(userId, new SetPasswordOtpEntry(otpCode, LocalDateTime.now().plusMinutes(5)));
+        redissonClient.getBucket(SET_PASSWORD_OTP_PREFIX + userId, StringCodec.INSTANCE).set(otpCode, 5, TimeUnit.MINUTES);
+        redissonClient.getAtomicLong(SET_PASSWORD_ATTEMPTS_PREFIX + userId).delete();
 
         emailService.sendSetPasswordOtpEmail(user.getEmail(), user.getFullName(), otpCode);
     }
@@ -220,23 +198,28 @@ public class UserServiceImpl implements UserService {
             throw new BadRequestException("Mật khẩu xác nhận không trùng khớp với mật khẩu mới");
         }
 
-        SetPasswordOtpEntry otpEntry = setPasswordOtpCache.get(userId);
-        if (otpEntry == null || otpEntry.expiryTime.isBefore(LocalDateTime.now())) {
+        RBucket<String> otpBucket = redissonClient.getBucket(SET_PASSWORD_OTP_PREFIX + userId, StringCodec.INSTANCE);
+        String savedOtp = otpBucket.get();
+        if (savedOtp == null || savedOtp.isBlank()) {
             throw new BadRequestException("Mã OTP chưa được gửi hoặc đã hết hạn (hiệu lực 5 phút). Vui lòng bấm 'Gửi mã xác thực' để nhận mã mới.");
         }
 
-        if (otpEntry.failedAttempts >= 5) {
-            setPasswordOtpCache.remove(userId);
+        RAtomicLong attempts = redissonClient.getAtomicLong(SET_PASSWORD_ATTEMPTS_PREFIX + userId);
+        if (attempts.get() >= 5) {
+            otpBucket.delete();
+            attempts.delete();
             throw new BadRequestException("Bạn đã nhập sai mã OTP quá 5 lần. Mã OTP đã bị hủy, vui lòng yêu cầu mã mới.");
         }
 
-        if (!otpEntry.otpCode.equals(request.getOtpCode().trim())) {
-            otpEntry.failedAttempts++;
-            if (otpEntry.failedAttempts >= 5) {
-                setPasswordOtpCache.remove(userId);
+        if (!savedOtp.equals(request.getOtpCode().trim())) {
+            long failedCount = attempts.incrementAndGet();
+            attempts.expire(5, TimeUnit.MINUTES);
+            if (failedCount >= 5) {
+                otpBucket.delete();
+                attempts.delete();
                 throw new BadRequestException("Bạn đã nhập sai mã OTP quá 5 lần. Mã OTP đã bị hủy, vui lòng yêu cầu mã mới.");
             }
-            int remaining = 5 - otpEntry.failedAttempts;
+            long remaining = 5 - failedCount;
             throw new BadRequestException("Mã OTP nhập vào không chính xác (Còn lại " + remaining + " lần thử). Vui lòng kiểm tra lại hòm thư.");
         }
 
@@ -262,7 +245,8 @@ public class UserServiceImpl implements UserService {
                 .build();
         passwordHistoryRepository.save(passwordHistory);
 
-        setPasswordOtpCache.remove(userId);
+        otpBucket.delete();
+        attempts.delete();
 
         // Revoke all existing refresh tokens across devices
         refreshTokenService.deleteByUserId(userId);

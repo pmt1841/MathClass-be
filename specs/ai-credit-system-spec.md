@@ -337,7 +337,7 @@ public interface PaymentGateway {
 
 - **Framework:** Java 21 LTS, Spring Boot 4.x, Spring Data JPA (giữ nguyên).
 - **Database:** PostgreSQL 16 (`ddl-auto=update`); `CHECK (balance >= 0)` ở DB như lớp phòng vệ cuối.
-- **Caching:** Caffeine — cache `ai_credit_configs_cache`, `ai_credit_defaults_cache`, `credit_packages_cache`; **không** cache balance (phải nhất quán).
+- **Caching:** Redis (Redisson) — cache `ai_credit_configs_cache`, `ai_credit_defaults_cache`, `credit_packages_cache`; **không** cache balance (phải nhất quán).
 - **Concurrency:** `@Lock(LockModeType.PESSIMISTIC_WRITE)` cho balance & purchase order; tất cả trong `@Transactional`.
 - **Security:** API admin yêu cầu `ROLE_ADMIN`; API user chỉ truy cập dữ liệu của chính mình (IDOR check bằng `@AuthenticationPrincipal`).
 - **Audit:** Điều chỉnh credit/admin ghi `system_logs` (module có sẵn).

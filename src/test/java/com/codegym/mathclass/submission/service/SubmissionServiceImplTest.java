@@ -17,6 +17,7 @@ import com.codegym.mathclass.submission.service.impl.SubmissionServiceImpl;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.EmailService;
+import com.codegym.mathclass.common.lock.DistributedLockService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -34,6 +35,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -61,6 +63,9 @@ class SubmissionServiceImplTest {
     @Mock
     private NotificationService notificationService;
 
+    @Mock
+    private DistributedLockService distributedLockService;
+
     @InjectMocks
     private SubmissionServiceImpl submissionService;
 
@@ -76,6 +81,13 @@ class SubmissionServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(distributedLockService.executeWithLock(anyString(), anyLong(), anyLong(), any()))
+                .thenAnswer(inv -> ((Supplier<?>) inv.getArgument(3)).get());
+        lenient().doAnswer(inv -> {
+            ((Runnable) inv.getArgument(3)).run();
+            return null;
+        }).when(distributedLockService).runWithLock(anyString(), anyLong(), anyLong(), any());
+
         ReflectionTestUtils.setField(submissionService, "frontendUrl", "http://localhost:3000");
 
         teacher = new User();

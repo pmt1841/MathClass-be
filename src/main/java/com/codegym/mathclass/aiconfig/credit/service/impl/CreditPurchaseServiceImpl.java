@@ -23,6 +23,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.codegym.mathclass.common.lock.DistributedLockService;
+
 import java.time.LocalDateTime;
 import java.util.Objects;
 
@@ -36,6 +38,7 @@ public class CreditPurchaseServiceImpl implements CreditPurchaseService {
     private final UserAiAccountRepository userAiAccountRepository;
     private final AiCreditService aiCreditService;
     private final PaymentGatewayFactory paymentGatewayFactory;
+    private final DistributedLockService distributedLockService;
 
     @Override
     @Transactional
@@ -66,6 +69,11 @@ public class CreditPurchaseServiceImpl implements CreditPurchaseService {
     @Override
     @Transactional
     public CreditPurchaseResponse completePurchase(Long userId, Long orderId) {
+        String lockKey = "lock:ai:credit:" + userId;
+        return distributedLockService.executeWithLock(lockKey, 5, 10, () -> doCompletePurchase(userId, orderId));
+    }
+
+    private CreditPurchaseResponse doCompletePurchase(Long userId, Long orderId) {
         CreditPurchaseOrder order = creditPurchaseOrderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn mua credit với ID: " + orderId));
 

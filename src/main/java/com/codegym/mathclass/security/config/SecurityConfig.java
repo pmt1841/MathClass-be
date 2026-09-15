@@ -16,6 +16,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import com.codegym.mathclass.security.jwt.AuthEntryPointJwt;
 import com.codegym.mathclass.security.jwt.AuthTokenFilter;
 import com.codegym.mathclass.security.jwt.JwtUtils;
+import com.codegym.mathclass.security.jwt.TokenBlacklistService;
 import com.codegym.mathclass.security.services.CustomUserDetailsService;
 
 import java.util.List;
@@ -40,6 +41,7 @@ public class SecurityConfig {
     private final CustomUserDetailsService userDetailsService;
     private final AuthEntryPointJwt unauthorizedHandler;
     private final JwtUtils jwtUtils;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Value("${mathclass.app.cors.allowedOrigins:http://localhost:3000,http://localhost:5173}")
     private String[] allowedOrigins;
@@ -49,7 +51,7 @@ public class SecurityConfig {
 
     @Bean
     public AuthTokenFilter authenticationJwtTokenFilter() {
-        return new AuthTokenFilter(jwtUtils, userDetailsService);
+        return new AuthTokenFilter(jwtUtils, userDetailsService, tokenBlacklistService);
     }
 
     @Bean

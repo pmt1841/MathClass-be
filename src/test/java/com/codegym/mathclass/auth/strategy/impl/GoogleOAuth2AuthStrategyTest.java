@@ -133,7 +133,7 @@ class GoogleOAuth2AuthStrategyTest {
         UserInfoResponse actual = strategy.authenticate(request, response);
 
         assertNotNull(actual);
-        verify(userRepository, never()).save(any(User.class));
+        verify(userRepository, times(1)).save(any(User.class));
     }
 
     @Test
@@ -175,7 +175,7 @@ class GoogleOAuth2AuthStrategyTest {
         UserInfoResponse actual = strategy.authenticate(request, response);
 
         assertNotNull(actual);
-        verify(userRepository).save(any(User.class));
+        verify(userRepository, times(2)).save(any(User.class));
         verify(aiCreditService).grantDefaultForNewUser(eq(99L), eq(Role.TEACHER));
         verify(notificationSettingsRepository).save(any());
     }

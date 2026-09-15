@@ -21,6 +21,7 @@ import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.EmailService;
 import com.codegym.mathclass.utils.LaTeXSanitizer;
 import com.codegym.mathclass.notification.service.NotificationService;
+import com.codegym.mathclass.common.lock.DistributedLockService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -49,6 +50,7 @@ public class SubmissionServiceImpl implements SubmissionService {
     private final UserRepository userRepository;
     private final EmailService emailService;
     private final NotificationService notificationService;
+    private final DistributedLockService distributedLockService;
 
     @Value("${FRONTEND_URL}")
     private String frontendUrl;
@@ -59,7 +61,11 @@ public class SubmissionServiceImpl implements SubmissionService {
         if (requestDto.getAssignmentId() == null) {
             throw new BadRequestException("Thiếu assignmentId");
         }
+        String lockKey = String.format("lock:submission:assignment:%d:student:%d", requestDto.getAssignmentId(), studentId);
+        return distributedLockService.executeWithLock(lockKey, 5, 10, () -> doCreateSubmission(studentId, requestDto));
+    }
 
+    private SubmissionResponse doCreateSubmission(long studentId, SubmissionRequest requestDto) {
         Assignment assignment = assignmentRepository.findById(requestDto.getAssignmentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập"));
 
@@ -121,6 +127,11 @@ public class SubmissionServiceImpl implements SubmissionService {
     @Override
     @Transactional
     public SubmissionResponse updateSubmission(long submissionId, long studentId, SubmissionRequest requestDto) {
+        String lockKey = "lock:submission:" + submissionId;
+        return distributedLockService.executeWithLock(lockKey, 5, 10, () -> doUpdateSubmission(submissionId, studentId, requestDto));
+    }
+
+    private SubmissionResponse doUpdateSubmission(long submissionId, long studentId, SubmissionRequest requestDto) {
         Submission submission = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài nộp"));
 
@@ -184,6 +195,11 @@ public class SubmissionServiceImpl implements SubmissionService {
     @Override
     @Transactional
     public SubmissionResponse unsubmitSubmission(long submissionId, long studentId) {
+        String lockKey = "lock:submission:" + submissionId;
+        return distributedLockService.executeWithLock(lockKey, 5, 10, () -> doUnsubmitSubmission(submissionId, studentId));
+    }
+
+    private SubmissionResponse doUnsubmitSubmission(long submissionId, long studentId) {
         Submission submission = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài nộp"));
 
@@ -215,6 +231,11 @@ public class SubmissionServiceImpl implements SubmissionService {
     @Override
     @Transactional
     public SubmissionResponse gradeSubmission(long submissionId, long teacherId, GradeRequest requestDto) {
+        String lockKey = "lock:submission:" + submissionId;
+        return distributedLockService.executeWithLock(lockKey, 5, 10, () -> doGradeSubmission(submissionId, teacherId, requestDto));
+    }
+
+    private SubmissionResponse doGradeSubmission(long submissionId, long teacherId, GradeRequest requestDto) {
         Submission submission = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài nộp"));
 
@@ -273,6 +294,11 @@ public class SubmissionServiceImpl implements SubmissionService {
     @Override
     @Transactional
     public SubmissionResponse resubmitSubmission(long submissionId, long studentId, SubmissionRequest requestDto) {
+        String lockKey = "lock:submission:" + submissionId;
+        return distributedLockService.executeWithLock(lockKey, 5, 10, () -> doResubmitSubmission(submissionId, studentId, requestDto));
+    }
+
+    private SubmissionResponse doResubmitSubmission(long submissionId, long studentId, SubmissionRequest requestDto) {
         Submission submission = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài nộp"));
 

@@ -16,6 +16,8 @@ import com.codegym.mathclass.aiconfig.credit.repository.CreditPurchaseOrderRepos
 import com.codegym.mathclass.aiconfig.credit.repository.UserAiAccountRepository;
 import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
 import com.codegym.mathclass.exception.AccessDeniedException;
+import com.codegym.mathclass.common.lock.DistributedLockService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -25,13 +27,16 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -57,8 +62,21 @@ class CreditPurchaseServiceImplTest {
     @Mock
     private PaymentGateway paymentGateway;
 
+    @Mock
+    private DistributedLockService distributedLockService;
+
     @InjectMocks
     private CreditPurchaseServiceImpl creditPurchaseService;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(distributedLockService.executeWithLock(anyString(), anyLong(), anyLong(), any()))
+                .thenAnswer(inv -> ((Supplier<?>) inv.getArgument(3)).get());
+        lenient().doAnswer(inv -> {
+            ((Runnable) inv.getArgument(3)).run();
+            return null;
+        }).when(distributedLockService).runWithLock(anyString(), anyLong(), anyLong(), any());
+    }
 
     private CreditPackage package_() {
         CreditPackage pkg = CreditPackage.builder()

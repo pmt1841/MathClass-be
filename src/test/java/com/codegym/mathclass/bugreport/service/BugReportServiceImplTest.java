@@ -15,6 +15,7 @@ import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.EmailService;
+import com.codegym.mathclass.common.ratelimit.RateLimiterService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -23,6 +24,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.redisson.api.RBucket;
+import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.Codec;
 
 import java.util.List;
 import java.util.Optional;
@@ -30,6 +34,9 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -47,6 +54,15 @@ class BugReportServiceImplTest {
     @Mock
     private NotificationService notificationService;
 
+    @Mock
+    private RateLimiterService rateLimiterService;
+
+    @Mock
+    private RedissonClient redissonClient;
+
+    @Mock
+    private RBucket<String> otpBucket;
+
     @InjectMocks
     private BugReportServiceImpl bugReportService;
 
@@ -56,6 +72,10 @@ class BugReportServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        lenient().doReturn(otpBucket).when(redissonClient).getBucket(anyString(), any(Codec.class));
+        lenient().when(rateLimiterService.getRemainingCooldownSeconds(anyString())).thenReturn(0L);
+        lenient().when(rateLimiterService.isWindowLimitExceeded(anyString(), anyInt())).thenReturn(false);
+
         studentUser = new User();
         studentUser.setId(10L);
         studentUser.setEmail("student@gmail.com");

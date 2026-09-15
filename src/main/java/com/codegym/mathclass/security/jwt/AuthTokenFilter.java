@@ -33,11 +33,13 @@ public class AuthTokenFilter extends OncePerRequestFilter {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final JwtUtils jwtUtils;
     private final CustomUserDetailsService userDetailsService;
+    private final TokenBlacklistService tokenBlacklistService;
     private volatile UserService userService;
 
-    public AuthTokenFilter(JwtUtils jwtUtils, CustomUserDetailsService userDetailsService) {
+    public AuthTokenFilter(JwtUtils jwtUtils, CustomUserDetailsService userDetailsService, TokenBlacklistService tokenBlacklistService) {
         this.jwtUtils = jwtUtils;
         this.userDetailsService = userDetailsService;
+        this.tokenBlacklistService = tokenBlacklistService;
     }
 
     private UserService getUserService(HttpServletRequest request) {
@@ -62,6 +64,16 @@ public class AuthTokenFilter extends OncePerRequestFilter {
         try {
             String jwt = parseJwt(request);
             if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
+                if (tokenBlacklistService != null && tokenBlacklistService.isBlacklisted(jwt)) {
+                    log.warn("Truy cập bị từ chối do JWT token đã bị thu hồi (Blacklist).");
+                    ResponseCookie cleanJwtCookie = jwtUtils.getCleanJwtCookie();
+                    ResponseCookie cleanRefreshCookie = jwtUtils.getCleanJwtRefreshCookie();
+                    response.addHeader(HttpHeaders.SET_COOKIE, cleanJwtCookie.toString());
+                    response.addHeader(HttpHeaders.SET_COOKIE, cleanRefreshCookie.toString());
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
                 String scope = jwtUtils.getScopeFromJwtToken(jwt);
                 if (JwtUtils.PRE_AUTH_SCOPE.equals(scope)) {
                     // Pre-auth token is only valid for 2FA endpoints and should never authenticate general requests

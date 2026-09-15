@@ -42,7 +42,7 @@ Cung cấp cho Quản trị viên công cụ quản lý tập trung các nhà cu
 * **BR-6 (Task Fallback Rule):** Khi Provider chính của Task X hết key:
   * Nếu `fallback_provider_id != NULL`: Tự động chuyển sang sử dụng Provider dự phòng.
   * Nếu `fallback_provider_id == NULL`: Ném ngoại lệ `NoAvailableApiKeyException` (HTTP 503).
-* **BR-7 (High Performance Caching):** Sử dụng Spring Cache với Caffeine In-Memory Provider cho `ai_task_configs` (TTL 10 phút). Mọi thao tác cập nhật cấu hình của Admin phải kích hoạt `@CacheEvict` để dọn dẹp cache tức thì.
+* **BR-7 (High Performance Caching):** Sử dụng Spring Cache với Redis Redisson Provider cho `ai_task_configs` (TTL 1 giờ). Mọi thao tác cập nhật cấu hình của Admin phải kích hoạt `@CacheEvict` để dọn dẹp cache tức thì.
 
 ---
 
@@ -252,7 +252,7 @@ public class ApiKeyRequestDTO {
 
 * **Programming Language & Framework:** Java 21 LTS, Spring Boot 4.x, Spring Data JPA.
 * **Database:** PostgreSQL (dùng `gen_random_uuid()` cho UUID Primary Keys).
-* **Caching:** Spring Cache với Caffeine In-Memory Cache.
+* **Caching:** Spring Cache với Redis (Redisson Distributed Cache).
 * **Architecture Pattern:** Package by Feature (`com.codegym.mathclass.aiconfig`), Constructor Injection thông qua `@RequiredArgsConstructor`.
 * **Security Constraints:** Không lưu băm 1 chiều, mã hóa 2 chiều AES-256-GCM với IV 96-bit ngẫu nhiên cho từng bản ghi.
 
@@ -288,6 +288,6 @@ public class ApiKeyRequestDTO {
 - [ ] **[MAT-272] AES-256-GCM Crypto Service:** Hiện thực `AesGcmEncryptionService`, `EnvVarMasterKeyProvider` & `ApiKeyCryptoConverter`.
 - [ ] **[MAT-273] Dynamic Key Selection Service:** Hiện thực `AiKeySelectionService` hỗ trợ `PRIORITY_FAILOVER` & `ROUND_ROBIN`.
 - [ ] **[MAT-274] Two-Step Connection Test Service:** Hiện thực `AiConnectionTestService` kiểm tra List Models & Lightweight Prompt.
-- [ ] **[MAT-275] Caffeine Spring Cache:** Cấu hình Cache Caffeine cho `ai_task_configs` & cài đặt `@CacheEvict`.
+- [ ] **[MAT-275] Spring Cache (Redis Redisson):** Cấu hình Cache Redis phân tán cho `ai_task_configs` & cài đặt `@CacheEvict` (đã nâng cấp tại MAT-388).
 - [ ] **[MAT-276] REST API Admin Controller:** Xây dựng `AdminAiConfigController`, phân quyền `@PreAuthorize("hasRole('ADMIN')")` & Masking DTO.
 - [ ] **[MAT-277] Unit & Integration Tests:** Viết test suites cho Security, Key Selection, Test Connection & Controller APIs.

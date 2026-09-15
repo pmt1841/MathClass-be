@@ -52,7 +52,7 @@
 - **Document Processing:** Apache POI (DOCX) & Apache PDFBox (PDF)
 - **Real-time:** Spring SSE (Server-Sent Events)
 - **File Storage:** Supabase Cloud Storage (Lưu trữ avatar và ảnh đính kèm bài tập)
-- **Caching:** Spring Cache & Caffeine Cache (in-memory cache)
+- **Caching & Phân Tán:** Spring Cache, Redis & Redisson (Distributed Cache, Rate Limiter, Blacklist, Pub/Sub, Distributed Lock)
 - **Quản lý Môi trường:** `dotenv-java` nạp cấu hình từ `.env`
 - **Containerization:** Docker & Docker Compose
 

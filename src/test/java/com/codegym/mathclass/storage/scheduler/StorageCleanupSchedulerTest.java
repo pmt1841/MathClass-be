@@ -39,6 +39,9 @@ class StorageCleanupSchedulerTest {
     @Mock
     private ScheduledFuture scheduledFuture;
 
+    @Mock
+    private com.codegym.mathclass.common.lock.DistributedLockService distributedLockService;
+
     @InjectMocks
     private StorageCleanupScheduler storageCleanupScheduler;
 
@@ -47,6 +50,13 @@ class StorageCleanupSchedulerTest {
         ReflectionTestUtils.setField(storageCleanupScheduler, "defaultEnabled", true);
         ReflectionTestUtils.setField(storageCleanupScheduler, "defaultCron", "0 0 3 * * SUN");
         ReflectionTestUtils.setField(storageCleanupScheduler, "defaultGracePeriod", 24);
+
+        lenient().when(distributedLockService.tryRunWithLock(anyString(), anyLong(), anyLong(), any(Runnable.class)))
+                .thenAnswer(inv -> {
+                    Runnable r = inv.getArgument(3);
+                    r.run();
+                    return true;
+                });
     }
 
     @Test

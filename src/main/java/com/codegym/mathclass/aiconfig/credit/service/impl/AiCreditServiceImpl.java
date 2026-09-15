@@ -27,6 +27,7 @@ import com.codegym.mathclass.exception.ResourceNotFoundException;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
+import com.codegym.mathclass.common.lock.DistributedLockService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -64,6 +65,7 @@ public class AiCreditServiceImpl implements AiCreditService {
     private final CreditTransactionRepository creditTransactionRepository;
     private final CreditPackageRepository creditPackageRepository;
     private final UserRepository userRepository;
+    private final DistributedLockService distributedLockService;
 
     // ---------- Tài khoản ----------
 
@@ -147,6 +149,10 @@ public class AiCreditServiceImpl implements AiCreditService {
         if (cost <= 0) {
             return;
         }
+        distributedLockService.runWithLock("lock:ai:credit:" + userId, 5, 10, () -> doReserve(userId, task, cost));
+    }
+
+    private void doReserve(Long userId, String task, int cost) {
         UserAiAccount account = getAccountForUpdate(userId);
         if (account.getBalance() < cost) {
             throw new InsufficientCreditException("Bạn đã hết credit AI. Vui lòng mua thêm.");
@@ -164,6 +170,10 @@ public class AiCreditServiceImpl implements AiCreditService {
         if (cost <= 0) {
             return;
         }
+        distributedLockService.runWithLock("lock:ai:credit:" + userId, 5, 10, () -> doRefund(userId, task, cost));
+    }
+
+    private void doRefund(Long userId, String task, int cost) {
         userAiAccountRepository.findByUserIdForUpdate(userId).ifPresent(account -> {
             account.setBalance(account.getBalance() + cost);
             account.setTotalSpent(Math.max(0, account.getTotalSpent() - cost));
@@ -206,6 +216,10 @@ public class AiCreditServiceImpl implements AiCreditService {
         if (excess <= 0) {
             return;
         }
+        distributedLockService.runWithLock("lock:ai:credit:" + userId, 5, 10, () -> doSettle(userId, task, excess));
+    }
+
+    private void doSettle(Long userId, String task, int excess) {
         userAiAccountRepository.findByUserIdForUpdate(userId).ifPresent(account -> {
             account.setBalance(account.getBalance() + excess);
             account.setTotalSpent(Math.max(0, account.getTotalSpent() - excess));
@@ -218,6 +232,10 @@ public class AiCreditServiceImpl implements AiCreditService {
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void adjustByAdmin(Long userId, int amount, String reason) {
+        distributedLockService.runWithLock("lock:ai:credit:" + userId, 5, 10, () -> doAdjustByAdmin(userId, amount, reason));
+    }
+
+    private void doAdjustByAdmin(Long userId, int amount, String reason) {
         UserAiAccount account = getAccountForUpdate(userId);
         int newBalance = account.getBalance() + amount;
         if (newBalance < 0) {

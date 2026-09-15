@@ -225,4 +225,19 @@ public class JwtUtils {
 
         return false;
     }
+
+    public long getRemainingExpirationMs(String token) {
+        try {
+            Date expiration = Jwts.parser()
+                    .verifyWith(key())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload()
+                    .getExpiration();
+            long remaining = expiration.getTime() - System.currentTimeMillis();
+            return Math.max(0, remaining);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
 }
