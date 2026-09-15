@@ -1,6 +1,7 @@
 package com.codegym.mathclass.aiqueue.service.impl;
 
 import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
+import com.codegym.mathclass.aiqueue.dto.response.AiJobResultResponse;
 import com.codegym.mathclass.aiqueue.model.AiJobExecutionResult;
 import com.codegym.mathclass.aiqueue.model.AiJobMessage;
 import com.codegym.mathclass.aiqueue.model.AiJobStatus;
@@ -12,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RBlockingQueue;
 import org.redisson.api.RDelayedQueue;
+import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.SmartLifecycle;
@@ -114,7 +116,32 @@ public class AiJobQueueConsumerImpl implements AiJobQueueConsumer, SmartLifecycl
         String jobId = message.getJobId();
         log.info("AI Worker bắt đầu xử lý jobId: {} (task: {})", jobId, message.getTaskCode());
 
-        aiJobService.updateJobStatus(jobId, AiJobStatus.PROCESSING, null, null, message.getRetryCount());
+        RLock lock = redissonClient.getLock("ai:job:lock:" + jobId);
+        try {
+            lock.lock(10, TimeUnit.SECONDS);
+            AiJobResultResponse currentStatus =
+                    aiJobService.getJobStatus(jobId, message.getUserId(), true);
+            if (currentStatus != null && currentStatus.getStatus() == AiJobStatus.CANCELLED) {
+                log.info("Job {} đã bị người dùng hủy khi còn trong hàng đợi. Bỏ qua xử lý.", jobId);
+                return;
+            }
+            aiJobService.updateJobStatus(jobId, AiJobStatus.PROCESSING, null, null, message.getRetryCount());
+
+            if (message.getUserId() != null) {
+                Map<String, Object> processingEvent = new HashMap<>();
+                processingEvent.put("eventType", "AI_JOB_PROCESSING");
+                processingEvent.put("jobId", jobId);
+                processingEvent.put("taskCode", message.getTaskCode());
+                processingEvent.put("status", AiJobStatus.PROCESSING.name());
+                notificationService.sendAiJobEvent(message.getUserId(), "AI_JOB_PROCESSING", processingEvent);
+            }
+        } catch (Exception e) {
+            log.warn("Không thể kiểm tra/cập nhật lock cho jobId {}: {}", jobId, e.getMessage());
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
 
         AiJobHandler handler = handlers.stream()
                 .filter(h -> h.canHandle(message.getTaskCode()))
@@ -129,6 +156,13 @@ public class AiJobQueueConsumerImpl implements AiJobQueueConsumer, SmartLifecycl
 
         try {
             AiJobExecutionResult result = handler.execute(message);
+
+            AiJobResultResponse latestStatus =
+                    aiJobService.getJobStatus(jobId, message.getUserId(), true);
+            if (latestStatus != null && latestStatus.getStatus() == AiJobStatus.CANCELLED) {
+                log.info("Job {} đã bị hủy trong quá trình xử lý AI. Bỏ qua hoàn tất.", jobId);
+                return;
+            }
 
             if (message.getReservedCredits() > 0 && message.getUserId() != null) {
                 int actual = result.getActualCredits() != null
@@ -152,6 +186,16 @@ public class AiJobQueueConsumerImpl implements AiJobQueueConsumer, SmartLifecycl
             log.info("Hoàn tất thành công tác vụ AI jobId: {}", jobId);
 
         } catch (Exception e) {
+            try {
+                AiJobResultResponse latestStatus =
+                        aiJobService.getJobStatus(jobId, message.getUserId(), true);
+                if (latestStatus != null && latestStatus.getStatus() == AiJobStatus.CANCELLED) {
+                    log.info("Job {} đã bị hủy trước đó. Bỏ qua xử lý thất bại.", jobId);
+                    return;
+                }
+            } catch (Exception ignored) {
+            }
+
             log.error("Lỗi khi xử lý tác vụ AI jobId {}: {}", jobId, e.getMessage(), e);
             // Không retry ngầm gây treo người dùng: hoàn credit và thông báo dừng ngay
             String userErrorMessage = sanitizeErrorMessage(e.getMessage());

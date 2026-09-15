@@ -17,13 +17,16 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.redisson.api.RBlockingQueue;
 import org.redisson.api.RDelayedQueue;
+import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import com.codegym.mathclass.aiqueue.dto.response.AiJobResultResponse;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -55,6 +58,9 @@ class AiJobQueueConsumerTest {
     @Mock
     private RDelayedQueue<AiJobMessage> delayedQueue;
 
+    @Mock
+    private RLock lock;
+
     private AiJobQueueConsumerImpl consumer;
 
     @BeforeEach
@@ -66,6 +72,11 @@ class AiJobQueueConsumerTest {
                 notificationService,
                 List.of(jobHandler)
         );
+        doReturn(lock).when(redissonClient).getLock(anyString());
+        when(aiJobService.getJobStatus(anyString(), any(), anyBoolean()))
+                .thenReturn(AiJobResultResponse.builder()
+                        .status(AiJobStatus.QUEUED)
+                        .build());
     }
 
     @Test

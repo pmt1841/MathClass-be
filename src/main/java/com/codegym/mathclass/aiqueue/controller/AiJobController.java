@@ -1,5 +1,6 @@
 package com.codegym.mathclass.aiqueue.controller;
 
+import com.codegym.mathclass.aiqueue.dto.response.AiJobCancelResponse;
 import com.codegym.mathclass.aiqueue.dto.response.AiJobResultResponse;
 import com.codegym.mathclass.aiqueue.service.AiJobService;
 import com.codegym.mathclass.common.annotation.ApiVersion;
@@ -12,7 +13,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "AI Job Queue", description = "APIs quản lý và tra cứu trạng thái tác vụ AI chạy bất đồng bộ trong hàng đợi Redis")
@@ -36,6 +39,22 @@ public class AiJobController {
                 .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
 
         AiJobResultResponse result = aiJobService.getJobStatus(jobId, userDetails.getId(), isAdmin);
+        return ResponseEntity.ok(result);
+    }
+
+    @Operation(summary = "Hủy tác vụ AI",
+            description = "Cho phép người dùng dừng tác vụ AI. Nếu tác vụ còn trong hàng đợi (QUEUED) sẽ hoàn lại 100% credit đã cọc. Nếu đang xử lý sẽ không hoàn credit.")
+    @PostMapping("/{jobId}/cancel")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<AiJobCancelResponse> cancelJob(
+            @PathVariable String jobId,
+            @RequestParam(name = "force", defaultValue = "false") boolean force,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        boolean isAdmin = userDetails.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+
+        AiJobCancelResponse result = aiJobService.cancelJob(jobId, userDetails.getId(), isAdmin, force);
         return ResponseEntity.ok(result);
     }
 }

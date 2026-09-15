@@ -109,10 +109,11 @@ public class AiBatchQuestionServiceImpl implements AiBatchQuestionService {
         int costPerCall = 0;
         Integer tokensPerCredit = null;
         int reserved = 0;
+        int userPromptTokens = AiCreditService.estimatePromptTokens(documentContent);
         if (charge) {
             costPerCall = creditCfg.get().getCostPerCall() != null ? creditCfg.get().getCostPerCall() : 2;
             tokensPerCredit = creditCfg.get().getTokensPerCredit() != null ? creditCfg.get().getTokensPerCredit() : 1000;
-            reserved = costPerCall;
+            reserved = AiCreditService.estimateCredits(userPromptTokens, 2000, costPerCall, tokensPerCredit);
             if (reserved > 0) {
                 aiCreditService.reserve(userId, TASK_BATCH_QUESTION_GEN, reserved);
             }
@@ -173,7 +174,7 @@ public class AiBatchQuestionServiceImpl implements AiBatchQuestionService {
                     }
 
                     if (reserved > 0) {
-                        int actual = AiCreditService.computeCredits(result.completionTokens(), costPerCall, tokensPerCredit);
+                        int actual = AiCreditService.computeCredits(userPromptTokens, result.completionTokens(), costPerCall, tokensPerCredit);
                         aiCreditService.settle(userId, TASK_BATCH_QUESTION_GEN, reserved, actual);
                         reserved = 0;
                     }

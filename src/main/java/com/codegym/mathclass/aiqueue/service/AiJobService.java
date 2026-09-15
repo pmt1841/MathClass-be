@@ -1,5 +1,6 @@
 package com.codegym.mathclass.aiqueue.service;
 
+import com.codegym.mathclass.aiqueue.dto.response.AiJobCancelResponse;
 import com.codegym.mathclass.aiqueue.dto.response.AiJobResultResponse;
 import com.codegym.mathclass.aiqueue.model.AiJobStatus;
 import com.codegym.mathclass.aiqueue.dto.response.AiJobSubmitResponse;
@@ -13,4 +14,10 @@ public interface AiJobService {
     void updateJobStatus(String jobId, AiJobStatus status, Object result, String errorMessage);
 
     void updateJobStatus(String jobId, AiJobStatus status, Object result, String errorMessage, Integer retryCount);
+
+    default AiJobCancelResponse cancelJob(String jobId, Long requestingUserId, boolean isAdmin) {
+        return cancelJob(jobId, requestingUserId, isAdmin, false);
+    }
+
+    AiJobCancelResponse cancelJob(String jobId, Long requestingUserId, boolean isAdmin, boolean force);
 }

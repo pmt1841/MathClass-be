@@ -5,5 +5,6 @@ public enum AiJobStatus {
     PROCESSING,
     RETRYING,
     COMPLETED,
-    FAILED
+    FAILED,
+    CANCELLED
 }

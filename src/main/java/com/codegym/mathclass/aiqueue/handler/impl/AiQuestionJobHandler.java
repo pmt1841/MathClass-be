@@ -43,7 +43,9 @@ public class AiQuestionJobHandler implements AiJobHandler {
                 false
         );
 
-        int actual = calculateActualCredits(response.getCompletionTokens(), message.getReservedCredits());
+        int userPromptTokens = AiCreditService.estimatePromptTokens(
+                payload.getRequest() != null ? payload.getRequest().getPrompt() : null);
+        int actual = calculateActualCredits(userPromptTokens, response.getCompletionTokens(), message.getReservedCredits());
 
         return AiJobExecutionResult.builder()
                 .resultData(response)
@@ -51,11 +53,11 @@ public class AiQuestionJobHandler implements AiJobHandler {
                 .build();
     }
 
-    private int calculateActualCredits(Integer completionTokens, int reservedCredits) {
+    private int calculateActualCredits(Integer userPromptTokens, Integer completionTokens, int reservedCredits) {
         Optional<AiCreditConfig> creditCfg = aiCreditService.getCreditConfig(TASK_CODE);
         int costPerCall = creditCfg.map(AiCreditConfig::getCostPerCall).filter(Objects::nonNull).orElse(0);
         Integer tokensPerCredit = creditCfg.map(AiCreditConfig::getTokensPerCredit).orElse(null);
-        int computed = AiCreditService.computeCredits(completionTokens, costPerCall, tokensPerCredit);
+        int computed = AiCreditService.computeCredits(userPromptTokens, completionTokens, costPerCall, tokensPerCredit);
         return reservedCredits > 0 ? Math.min(computed, reservedCredits) : computed;
     }
 }

@@ -75,7 +75,19 @@ public interface AiCreditService {
     void recordTransaction(Long userId, int amount, CreditTransactionType type, String task,
                            Long referenceId, String description);
 
-    // ---------- Công thức tính phí theo token (MAT-255) ----------
+    // ---------- Công thức tính phí theo token (MAT-255 & MAT-354) ----------
+
+    /**
+     * Ước lượng số token của nội dung do chính người dùng nhập (user prompt).
+     * <p>Loại trừ System Prompt, JSON schema và các chỉ thị hệ thống bổ sung.</p>
+     * <p>Tỷ lệ chuẩn hóa ~3.5 ký tự / token cho tiếng Việt và công thức toán.</p>
+     */
+    static int estimatePromptTokens(String userPrompt) {
+        if (userPrompt == null || userPrompt.isBlank()) {
+            return 0;
+        }
+        return Math.max(1, (int) Math.ceil((double) userPrompt.trim().length() / 3.5));
+    }
 
     /**
      * Số credit đặt chỗ (ước lượng) trước khi gọi AI, dựa trên maxToken của task:
@@ -83,11 +95,21 @@ public interface AiCreditService {
      * Nếu tokensPerCredit null/0 -> fallback phí cố định costPerCall.
      */
     static int estimateCredits(int maxToken, int costPerCall, Integer tokensPerCredit) {
+        return estimateCredits(0, maxToken, costPerCall, tokensPerCredit);
+    }
+
+    /**
+     * Số credit đặt chỗ (ước lượng) trước khi gọi AI, bao gồm cả token người dùng nhập:
+     * {@code max(costPerCall, ceil((userPromptTokens + maxToken) / tokensPerCredit))}.
+     */
+    static int estimateCredits(Integer userPromptTokens, int maxToken, int costPerCall, Integer tokensPerCredit) {
         int floor = Math.max(0, costPerCall);
         if (tokensPerCredit == null || tokensPerCredit <= 0) {
             return floor;
         }
-        int byTokens = (int) Math.ceil((double) Math.max(0, maxToken) / tokensPerCredit);
+        int inTokens = (userPromptTokens != null && userPromptTokens > 0) ? userPromptTokens : 0;
+        int totalEst = inTokens + Math.max(0, maxToken);
+        int byTokens = (int) Math.ceil((double) totalEst / tokensPerCredit);
         return Math.max(floor, byTokens);
     }
 
@@ -97,14 +119,23 @@ public interface AiCreditService {
      * Nếu thiếu token hoặc tokensPerCredit null/0 -> fallback phí tối thiểu costPerCall.
      */
     static int computeCredits(Integer completionTokens, int costPerCall, Integer tokensPerCredit) {
+        return computeCredits(0, completionTokens, costPerCall, tokensPerCredit);
+    }
+
+    /**
+     * Số credit thực tế theo tổng token (bao gồm token người dùng nhập + token đầu ra):
+     * {@code max(costPerCall, ceil((userPromptTokens + completionTokens) / tokensPerCredit))}.
+     * Nếu thiếu token hoặc tokensPerCredit null/0 -> fallback phí tối thiểu costPerCall.
+     */
+    static int computeCredits(Integer userPromptTokens, Integer completionTokens, int costPerCall, Integer tokensPerCredit) {
         int floor = Math.max(0, costPerCall);
-        if (completionTokens == null || completionTokens <= 0) {
+        int inTokens = (userPromptTokens != null && userPromptTokens > 0) ? userPromptTokens : 0;
+        int outTokens = (completionTokens != null && completionTokens > 0) ? completionTokens : 0;
+        int totalTokens = inTokens + outTokens;
+        if (totalTokens <= 0 || tokensPerCredit == null || tokensPerCredit <= 0) {
             return floor;
         }
-        if (tokensPerCredit == null || tokensPerCredit <= 0) {
-            return floor;
-        }
-        int byTokens = (int) Math.ceil((double) completionTokens / tokensPerCredit);
+        int byTokens = (int) Math.ceil((double) totalTokens / tokensPerCredit);
         return Math.max(floor, byTokens);
     }
 }

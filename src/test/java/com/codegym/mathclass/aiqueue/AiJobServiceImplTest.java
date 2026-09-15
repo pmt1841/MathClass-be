@@ -4,6 +4,7 @@ import com.codegym.mathclass.aiconfig.credit.entity.AiCreditConfig;
 import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
 import com.codegym.mathclass.aiconfig.entity.TaskConfig;
 import com.codegym.mathclass.aiconfig.repository.TaskConfigRepository;
+import com.codegym.mathclass.aiqueue.dto.response.AiJobCancelResponse;
 import com.codegym.mathclass.aiqueue.model.AiJobMessage;
 import com.codegym.mathclass.aiqueue.dto.response.AiJobResultResponse;
 import com.codegym.mathclass.aiqueue.model.AiJobStatus;
@@ -26,6 +27,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.redisson.api.RBucket;
+import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.Codec;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -39,6 +41,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
@@ -66,6 +70,9 @@ class AiJobServiceImplTest {
 
     @Mock
     private RBucket<String> bucket;
+
+    @Mock
+    private RLock lock;
 
     private ObjectMapper objectMapper;
 
@@ -259,5 +266,154 @@ class AiJobServiceImplTest {
         aiJobService.updateJobStatus(jobId, AiJobStatus.RETRYING, null, "Lỗi quota", 2);
 
         verify(bucket).set(anyString(), any(Duration.class));
+    }
+
+    @Test
+    @DisplayName("cancelJob - Thành công khi tác vụ ở QUEUED: Hoàn lại 100% credit đã cọc")
+    void cancelJob_Queued_CancelsAndRefundsCredits() throws Exception {
+        String jobId = "job-queued-1";
+        Long userId = 10L;
+
+        AiJobResultResponse mockJob = AiJobResultResponse.builder()
+                .jobId(jobId)
+                .userId(userId)
+                .taskCode("BATCH_QUESTION_GEN")
+                .status(AiJobStatus.QUEUED)
+                .reservedCredits(5)
+                .build();
+
+        doReturn(lock).when(redissonClient).getLock("ai:job:lock:" + jobId);
+        when(lock.tryLock(anyLong(), anyLong(), any())).thenReturn(true);
+        when(lock.isHeldByCurrentThread()).thenReturn(true);
+
+        doReturn(bucket).when(redissonClient).getBucket(anyString(), any(Codec.class));
+        when(bucket.isExists()).thenReturn(true);
+        when(bucket.get()).thenReturn(objectMapper.writeValueAsString(mockJob));
+
+        AiJobCancelResponse response =
+                aiJobService.cancelJob(jobId, userId, false);
+
+        assertNotNull(response);
+        assertEquals(true, response.isCancelled());
+        assertEquals(true, response.isRefunded());
+        assertEquals(5, response.getRefundedCredits());
+        assertEquals(AiJobStatus.CANCELLED, response.getStatus());
+        assertEquals("SUCCESS", response.getCode());
+
+        verify(aiCreditService).refund(userId, "BATCH_QUESTION_GEN", 5);
+        verify(bucket).set(anyString(), any(Duration.class));
+        verify(lock).unlock();
+    }
+
+    @Test
+    @DisplayName("cancelJob - Atomic CAS: Khi tác vụ ở PROCESSING và không force -> Trả về ALREADY_PROCESSING, không hủy và không mất credit")
+    void cancelJob_Processing_WithoutForce_ReturnsAlreadyProcessing() throws Exception {
+        String jobId = "job-proc-1";
+        Long userId = 10L;
+
+        AiJobResultResponse mockJob = AiJobResultResponse.builder()
+                .jobId(jobId)
+                .userId(userId)
+                .taskCode("QUESTION_GEN")
+                .status(AiJobStatus.PROCESSING)
+                .reservedCredits(3)
+                .build();
+
+        doReturn(lock).when(redissonClient).getLock("ai:job:lock:" + jobId);
+        when(lock.tryLock(anyLong(), anyLong(), any())).thenReturn(true);
+        when(lock.isHeldByCurrentThread()).thenReturn(true);
+
+        doReturn(bucket).when(redissonClient).getBucket(anyString(), any(Codec.class));
+        when(bucket.isExists()).thenReturn(true);
+        when(bucket.get()).thenReturn(objectMapper.writeValueAsString(mockJob));
+
+        // Gọi cancel mặc định (force = false)
+        AiJobCancelResponse response =
+                aiJobService.cancelJob(jobId, userId, false, false);
+
+        assertNotNull(response);
+        assertEquals(false, response.isCancelled());
+        assertEquals(false, response.isRefunded());
+        assertEquals(0, response.getRefundedCredits());
+        assertEquals(AiJobStatus.PROCESSING, response.getStatus());
+        assertEquals("ALREADY_PROCESSING", response.getCode());
+
+        verify(aiCreditService, never()).refund(any(), any(), anyInt());
+        verify(bucket, never()).set(anyString(), any(Duration.class));
+        verify(lock).unlock();
+    }
+
+    @Test
+    @DisplayName("cancelJob - Khi tác vụ ở PROCESSING và force = true -> Hủy không hoàn credit")
+    void cancelJob_Processing_WithForce_CancelsWithoutRefund() throws Exception {
+        String jobId = "job-proc-2";
+        Long userId = 10L;
+
+        AiJobResultResponse mockJob = AiJobResultResponse.builder()
+                .jobId(jobId)
+                .userId(userId)
+                .taskCode("QUESTION_GEN")
+                .status(AiJobStatus.PROCESSING)
+                .reservedCredits(3)
+                .build();
+
+        doReturn(lock).when(redissonClient).getLock("ai:job:lock:" + jobId);
+        when(lock.tryLock(anyLong(), anyLong(), any())).thenReturn(true);
+        when(lock.isHeldByCurrentThread()).thenReturn(true);
+
+        doReturn(bucket).when(redissonClient).getBucket(anyString(), any(Codec.class));
+        when(bucket.isExists()).thenReturn(true);
+        when(bucket.get()).thenReturn(objectMapper.writeValueAsString(mockJob));
+
+        // Người dùng đã xác nhận chấp nhận hủy dù mất credit (force = true)
+        AiJobCancelResponse response =
+                aiJobService.cancelJob(jobId, userId, false, true);
+
+        assertNotNull(response);
+        assertEquals(true, response.isCancelled());
+        assertEquals(false, response.isRefunded());
+        assertEquals(0, response.getRefundedCredits());
+        assertEquals(AiJobStatus.CANCELLED, response.getStatus());
+        assertEquals("CANCELLED_WITHOUT_REFUND", response.getCode());
+
+        verify(aiCreditService, never()).refund(any(), any(), anyInt());
+        verify(bucket).set(anyString(), any(Duration.class));
+        verify(lock).unlock();
+    }
+
+    @Test
+    @DisplayName("cancelJob - Từ chối khi tác vụ đã COMPLETED: Không cho phép hủy")
+    void cancelJob_Completed_CannotCancel() throws Exception {
+        String jobId = "job-done-1";
+        Long userId = 10L;
+
+        AiJobResultResponse mockJob = AiJobResultResponse.builder()
+                .jobId(jobId)
+                .userId(userId)
+                .taskCode("QUESTION_GEN")
+                .status(AiJobStatus.COMPLETED)
+                .reservedCredits(2)
+                .build();
+
+        doReturn(lock).when(redissonClient).getLock("ai:job:lock:" + jobId);
+        when(lock.tryLock(anyLong(), anyLong(), any())).thenReturn(true);
+        when(lock.isHeldByCurrentThread()).thenReturn(true);
+
+        doReturn(bucket).when(redissonClient).getBucket(anyString(), any(Codec.class));
+        when(bucket.isExists()).thenReturn(true);
+        when(bucket.get()).thenReturn(objectMapper.writeValueAsString(mockJob));
+
+        AiJobCancelResponse response =
+                aiJobService.cancelJob(jobId, userId, false);
+
+        assertNotNull(response);
+        assertEquals(false, response.isCancelled());
+        assertEquals(false, response.isRefunded());
+        assertEquals(0, response.getRefundedCredits());
+        assertEquals(AiJobStatus.COMPLETED, response.getStatus());
+        assertEquals("COMPLETED", response.getCode());
+
+        verify(aiCreditService, never()).refund(any(), any(), anyInt());
+        verify(lock).unlock();
     }
 }

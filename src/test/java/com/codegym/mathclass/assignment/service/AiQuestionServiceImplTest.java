@@ -29,10 +29,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
+import com.codegym.mathclass.aiconfig.credit.entity.AiCreditConfig;
 import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
+import com.codegym.mathclass.user.entity.Role;
+import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -308,5 +311,61 @@ public class AiQuestionServiceImplTest {
 
                 assertNotNull(response);
                 assertEquals("", response.getExplanation());
+        }
+
+        @Test
+        @DisplayName("generateQuestion - Trừ credit và quyết toán dựa trên prompt tokens và completion tokens")
+        void testGenerateQuestion_WithCredit_ReservesAndSettlesCorrectly() throws Exception {
+                GenerateQuestionRequest req = GenerateQuestionRequest.builder()
+                                .prompt("Cho hình chữ nhật ABCD có AB = 4, BC = 3. Tính độ dài đường chéo BD.")
+                                .grade(8)
+                                .difficulty("THONG_HIEU")
+                                .topic("Hình học 8")
+                                .includeCanvasDiagram(false)
+                                .includeExplanation(true)
+                                .build();
+
+                User teacher = User.builder().role(Role.TEACHER).build();
+                teacher.setId(10L);
+                when(userRepository.findById(10L))
+                                .thenReturn(Optional.of(teacher));
+
+                AiCreditConfig creditConfig = AiCreditConfig.builder()
+                                .enabled(true)
+                                .costPerCall(3)
+                                .tokensPerCredit(1000)
+                                .build();
+                when(aiCreditService.getCreditConfig("QUESTION_GEN"))
+                                .thenReturn(Optional.of(creditConfig));
+
+                TaskConfig config = TaskConfig.builder()
+                                .task("QUESTION_GEN")
+                                .enabled(true)
+                                .provider(provider)
+                                .maxToken(2048)
+                                .build();
+
+                when(taskConfigRepository.findByTask("QUESTION_GEN")).thenReturn(Optional.of(config));
+                when(keySelectionService.selectKeyForProvider(provider)).thenReturn(apiKey);
+                when(promptRenderService.renderPrompt(any())).thenReturn(RenderPromptResponse.builder().renderedPrompt("Rendered System Prompt").build());
+                when(aiProviderStrategyFactory.getStrategy(any())).thenReturn(aiProviderStrategy);
+
+                String mockAiJson = """
+                        {
+                            "title": "Độ dài đường chéo",
+                            "content": "Cho hình chữ nhật ABCD...",
+                            "explanation": "BD = sqrt(3^2 + 4^2) = 5",
+                            "canvasData": null
+                        }
+                        """;
+                when(aiProviderStrategy.executePrompt(any(), any(), any(), any()))
+                                .thenReturn(new AiExecutionResult(mockAiJson, 120));
+
+                AiGeneratedQuestionResponse response = aiQuestionService.generateQuestion(req, 10L);
+
+                assertNotNull(response);
+                assertEquals("BD = sqrt(3^2 + 4^2) = 5", response.getExplanation());
+                verify(aiCreditService).reserve(eq(10L), eq("QUESTION_GEN"), anyInt());
+                verify(aiCreditService).settle(eq(10L), eq("QUESTION_GEN"), anyInt(), anyInt());
         }
 }

@@ -10,6 +10,8 @@ import com.codegym.mathclass.aiqueue.model.AiJobStatus;
 import com.codegym.mathclass.aiqueue.dto.response.AiJobSubmitResponse;
 import com.codegym.mathclass.aiqueue.service.AiJobQueueProducer;
 import com.codegym.mathclass.aiqueue.service.AiJobService;
+import com.codegym.mathclass.aiqueue.model.payload.AiBatchQuestionJobPayload;
+import com.codegym.mathclass.aiqueue.model.payload.AiQuestionJobPayload;
 import com.codegym.mathclass.exception.AccessDeniedException;
 import com.codegym.mathclass.exception.ResourceNotFoundException;
 import com.codegym.mathclass.user.entity.Role;
@@ -18,10 +20,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.codegym.mathclass.aiqueue.dto.response.AiJobCancelResponse;
 import org.redisson.api.RBucket;
+import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
+import java.util.concurrent.TimeUnit;
 
 import org.redisson.client.codec.StringCodec;
 
@@ -64,16 +70,22 @@ public class AiJobServiceImpl implements AiJobService {
             int costPerCall = creditCfg.get().getCostPerCall() != null ? creditCfg.get().getCostPerCall() : 0;
             Integer tokensPerCredit = creditCfg.get().getTokensPerCredit();
 
+            int userPromptTokens = 0;
+            if (payloadDto instanceof AiQuestionJobPayload questionPayload && questionPayload.getRequest() != null) {
+                userPromptTokens = AiCreditService.estimatePromptTokens(questionPayload.getRequest().getPrompt());
+            } else if (payloadDto instanceof AiBatchQuestionJobPayload batchPayload) {
+                userPromptTokens = AiCreditService.estimatePromptTokens(batchPayload.getTextContent());
+            }
+
             if ("BATCH_QUESTION_GEN".equalsIgnoreCase(taskCode)) {
-                // Tác vụ AI tách đề có maxToken của config là trần input tài liệu (100k tokens),
-                // chi phí chuẩn của tác vụ này là costPerCall (mặc định 2 credits).
-                reservedCredits = costPerCall > 0 ? costPerCall : 2;
+                // Tác vụ AI tách đề: dự trù maxToken = 2000 output khi reserve để tránh lệch pha với settle
+                reservedCredits = AiCreditService.estimateCredits(userPromptTokens, 2000, costPerCall, tokensPerCredit);
             } else {
                 int maxToken = taskConfigRepository.findByTask(taskCode)
                         .map(TaskConfig::getMaxToken)
                         .filter(Objects::nonNull)
                         .orElse(2048);
-                reservedCredits = Math.min(10, AiCreditService.estimateCredits(maxToken, costPerCall, tokensPerCredit));
+                reservedCredits = Math.min(10, AiCreditService.estimateCredits(userPromptTokens, maxToken, costPerCall, tokensPerCredit));
             }
 
             if (reservedCredits > 0) {
@@ -99,6 +111,7 @@ public class AiJobServiceImpl implements AiJobService {
                 .userId(userId)
                 .taskCode(taskCode)
                 .status(AiJobStatus.QUEUED)
+                .reservedCredits(reservedCredits)
                 .retryCount(0)
                 .createdAt(now)
                 .build();
@@ -194,6 +207,122 @@ public class AiJobServiceImpl implements AiJobService {
             bucket.set(json, Duration.ofSeconds(jobTtlSeconds));
         } catch (JsonProcessingException e) {
             log.error("Lỗi tuần tự hóa trạng thái job {}: {}", jobState.getJobId(), e.getMessage());
+        }
+    }
+
+    @Override
+    public AiJobCancelResponse cancelJob(String jobId, Long requestingUserId, boolean isAdmin) {
+        return cancelJob(jobId, requestingUserId, isAdmin, false);
+    }
+
+    @Override
+    public AiJobCancelResponse cancelJob(String jobId, Long requestingUserId, boolean isAdmin, boolean force) {
+        RLock lock = redissonClient.getLock("ai:job:lock:" + jobId);
+        try {
+            if (!lock.tryLock(5, 5, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("Hệ thống đang bận xử lý tác vụ, vui lòng thử lại sau giây lát");
+            }
+            AiJobResultResponse job = getJobInternal(jobId);
+            if (!isAdmin && (job.getUserId() == null || !Objects.equals(job.getUserId(), requestingUserId))) {
+                throw new AccessDeniedException("Bạn không có quyền hủy tác vụ AI này");
+            }
+
+            if (job.getStatus() == AiJobStatus.COMPLETED) {
+                return AiJobCancelResponse.builder()
+                        .jobId(jobId)
+                        .status(AiJobStatus.COMPLETED)
+                        .cancelled(false)
+                        .refunded(false)
+                        .refundedCredits(0)
+                        .code("COMPLETED")
+                        .message("Tác vụ đã hoàn thành, không thể hủy.")
+                        .build();
+            }
+
+            if (job.getStatus() == AiJobStatus.CANCELLED) {
+                return AiJobCancelResponse.builder()
+                        .jobId(jobId)
+                        .status(AiJobStatus.CANCELLED)
+                        .cancelled(true)
+                        .refunded(false)
+                        .refundedCredits(0)
+                        .code("ALREADY_CANCELLED")
+                        .message("Tác vụ đã được hủy trước đó.")
+                        .build();
+            }
+
+            int reserved = job.getReservedCredits() != null ? job.getReservedCredits() : 0;
+
+            // Atomic CAS: Chỉ hoàn tiền nếu trạng thái thực sự còn là QUEUED
+            if (job.getStatus() == AiJobStatus.QUEUED) {
+                job.setStatus(AiJobStatus.CANCELLED);
+                job.setErrorMessage("Người dùng đã hủy tác vụ khi đang trong hàng chờ");
+                job.setCompletedAt(Instant.now());
+                saveJobState(job);
+
+                if (reserved > 0 && job.getUserId() != null) {
+                    aiCreditService.refund(job.getUserId(), job.getTaskCode(), reserved);
+                }
+
+                log.info("Đã hủy job {} trong hàng đợi và hoàn lại {} credit cho user {}", jobId, reserved, job.getUserId());
+                return AiJobCancelResponse.builder()
+                        .jobId(jobId)
+                        .status(AiJobStatus.CANCELLED)
+                        .cancelled(true)
+                        .refunded(true)
+                        .refundedCredits(reserved)
+                        .code("SUCCESS")
+                        .message("Đã hủy tác vụ trong hàng chờ và hoàn lại " + reserved + " credit.")
+                        .build();
+            } else if (job.getStatus() == AiJobStatus.PROCESSING || job.getStatus() == AiJobStatus.RETRYING) {
+                // Nếu Worker đã bốc job sang PROCESSING và user không truyền force=true: Từ chối hủy, không hoàn credit
+                if (!force) {
+                    log.info("Từ chối hủy job {} vì Worker đã bắt đầu PROCESSING (force=false)", jobId);
+                    return AiJobCancelResponse.builder()
+                            .jobId(jobId)
+                            .status(job.getStatus())
+                            .cancelled(false)
+                            .refunded(false)
+                            .refundedCredits(0)
+                            .code("ALREADY_PROCESSING")
+                            .message("Tác vụ AI đã bắt đầu xử lý. Hệ thống tiếp tục thực hiện để tránh lãng phí credit.")
+                            .build();
+                }
+
+                // Trường hợp người dùng đã thấy cảnh báo và chủ động chọn force=true (vẫn hủy dù mất credit)
+                job.setStatus(AiJobStatus.CANCELLED);
+                job.setErrorMessage("Người dùng đã dừng tác vụ khi đang xử lý (không hoàn credit)");
+                job.setCompletedAt(Instant.now());
+                saveJobState(job);
+
+                log.info("Đã dừng job {} khi đang xử lý cho user {} theo yêu cầu force (không hoàn credit)", jobId, job.getUserId());
+                return AiJobCancelResponse.builder()
+                        .jobId(jobId)
+                        .status(AiJobStatus.CANCELLED)
+                        .cancelled(true)
+                        .refunded(false)
+                        .refundedCredits(0)
+                        .code("CANCELLED_WITHOUT_REFUND")
+                        .message("Đã hủy tác vụ đang xử lý (không hoàn credit).")
+                        .build();
+            } else {
+                return AiJobCancelResponse.builder()
+                        .jobId(jobId)
+                        .status(job.getStatus())
+                        .cancelled(false)
+                        .refunded(false)
+                        .refundedCredits(0)
+                        .code("FAILED")
+                        .message("Tác vụ đã kết thúc với trạng thái " + job.getStatus() + ", không thể hủy.")
+                        .build();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Yêu cầu hủy bị gián đoạn", e);
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
         }
     }
 

@@ -295,6 +295,38 @@ class AiCreditServiceImplTest {
             assertThat(AiCreditService.estimateCredits(2500, 1, 1000)).isEqualTo(3);
             assertThat(AiCreditService.estimateCredits(100, 5, 1000)).isEqualTo(5);
         }
+
+        @Test
+        @DisplayName("MAT-354: estimatePromptTokens should return 0 for blank/null and estimate ~3.5 chars/token")
+        void estimatePromptTokens_tests() {
+            assertThat(AiCreditService.estimatePromptTokens(null)).isZero();
+            assertThat(AiCreditService.estimatePromptTokens("")).isZero();
+            assertThat(AiCreditService.estimatePromptTokens("   ")).isZero();
+            // 7 chars -> ceil(7 / 3.5) = 2 tokens
+            assertThat(AiCreditService.estimatePromptTokens("1234567")).isEqualTo(2);
+            // 1 char -> Math.max(1, ceil(1 / 3.5)) = 1 token
+            assertThat(AiCreditService.estimatePromptTokens("a")).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("MAT-354: computeCredits with userPromptTokens should add input and output tokens")
+        void computeCredits_withUserPromptTokens_shouldAddBoth() {
+            // input: 500, output: 600 -> total: 1100 -> ceil(1100/1000) = 2
+            assertThat(AiCreditService.computeCredits(500, 600, 1, 1000)).isEqualTo(2);
+            // input: 200, output: 700 -> total: 900 -> floor 1
+            assertThat(AiCreditService.computeCredits(200, 700, 1, 1000)).isEqualTo(1);
+            // input: 500, output: null -> total: 500 -> floor 2 (costPerCall=2)
+            assertThat(AiCreditService.computeCredits(500, null, 2, 1000)).isEqualTo(2);
+        }
+
+        @Test
+        @DisplayName("MAT-354: estimateCredits with userPromptTokens should add user prompt to maxToken")
+        void estimateCredits_withUserPromptTokens_shouldAddBoth() {
+            // userPromptTokens: 200, maxToken: 2000 -> total: 2200 -> ceil(2200/1000) = 3
+            assertThat(AiCreditService.estimateCredits(200, 2000, 1, 1000)).isEqualTo(3);
+            // userPromptTokens: 0, maxToken: 1000 -> ceil(1000/1000) = 1
+            assertThat(AiCreditService.estimateCredits(0, 1000, 1, 1000)).isEqualTo(1);
+        }
     }
 
     @Nested

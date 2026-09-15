@@ -81,10 +81,12 @@ public class AiQuestionServiceImpl implements AiQuestionService {
         int costPerCall = 0;
         Integer tokensPerCredit = null;
         int reserved = 0;
+        int userPromptTokens = AiCreditService.estimatePromptTokens(request.getPrompt());
         if (charge) {
             costPerCall = creditCfg.get().getCostPerCall() != null ? creditCfg.get().getCostPerCall() : 0;
             tokensPerCredit = creditCfg.get().getTokensPerCredit() != null ? creditCfg.get().getTokensPerCredit() : 1000;
-            reserved = Math.max(costPerCall, 3);
+            int maxToken = taskConfig.getMaxToken() != null ? taskConfig.getMaxToken() : 2048;
+            reserved = AiCreditService.estimateCredits(userPromptTokens, maxToken, costPerCall, tokensPerCredit);
             if (reserved > 0) {
                 aiCreditService.reserve(userId, TASK_QUESTION_GEN, reserved);
             }
@@ -166,7 +168,7 @@ public class AiQuestionServiceImpl implements AiQuestionService {
                     }
 
                     if (reserved > 0) {
-                        int actual = AiCreditService.computeCredits(result.completionTokens(), costPerCall, tokensPerCredit);
+                        int actual = AiCreditService.computeCredits(userPromptTokens, result.completionTokens(), costPerCall, tokensPerCredit);
                         aiCreditService.settle(userId, TASK_QUESTION_GEN, reserved, actual);
                         reserved = 0;
                     }

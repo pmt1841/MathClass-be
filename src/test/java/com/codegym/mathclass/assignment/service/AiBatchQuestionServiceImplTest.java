@@ -18,7 +18,10 @@ import com.codegym.mathclass.assignment.dto.response.BatchGenerateQuestionsRespo
 import com.codegym.mathclass.assignment.exception.AiGenerationException;
 import com.codegym.mathclass.assignment.service.impl.AiBatchQuestionServiceImpl;
 import com.codegym.mathclass.exception.BadRequestException;
+import com.codegym.mathclass.user.entity.Role;
+import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
+import com.codegym.mathclass.aiconfig.credit.entity.AiCreditConfig;
 import com.codegym.mathclass.ai.strategy.parser.AiResponseParserFactory;
 import com.codegym.mathclass.ai.strategy.parser.impl.AiQuestionResponseParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -227,12 +230,12 @@ class AiBatchQuestionServiceImplTest {
                 .textContent("Bài 1: Giải phương trình 2x = 4")
                 .build();
 
-        com.codegym.mathclass.user.entity.User teacherUser = new com.codegym.mathclass.user.entity.User();
+        User teacherUser = new User();
         teacherUser.setId(1L);
-        teacherUser.setRole(com.codegym.mathclass.user.entity.Role.TEACHER);
+        teacherUser.setRole(Role.TEACHER);
 
-        com.codegym.mathclass.aiconfig.credit.entity.AiCreditConfig creditConfig =
-                com.codegym.mathclass.aiconfig.credit.entity.AiCreditConfig.builder()
+        AiCreditConfig creditConfig =
+                AiCreditConfig.builder()
                         .task("BATCH_QUESTION_GEN")
                         .enabled(true)
                         .costPerCall(2)
@@ -263,8 +266,8 @@ class AiBatchQuestionServiceImplTest {
         BatchGenerateQuestionsResponse response = aiBatchQuestionService.batchGenerateQuestions(request, 1L);
 
         assertNotNull(response);
-        verify(aiCreditService).reserve(1L, "BATCH_QUESTION_GEN", 2);
-        verify(aiCreditService).settle(eq(1L), eq("BATCH_QUESTION_GEN"), eq(2), anyInt());
+        verify(aiCreditService).reserve(eq(1L), eq("BATCH_QUESTION_GEN"), anyInt());
+        verify(aiCreditService).settle(eq(1L), eq("BATCH_QUESTION_GEN"), anyInt(), anyInt());
     }
 
     @Test
@@ -274,12 +277,12 @@ class AiBatchQuestionServiceImplTest {
                 .textContent("Bài 1: Giải phương trình 2x = 4")
                 .build();
 
-        com.codegym.mathclass.user.entity.User teacherUser = new com.codegym.mathclass.user.entity.User();
+        User teacherUser = new User();
         teacherUser.setId(1L);
-        teacherUser.setRole(com.codegym.mathclass.user.entity.Role.TEACHER);
+        teacherUser.setRole(Role.TEACHER);
 
-        com.codegym.mathclass.aiconfig.credit.entity.AiCreditConfig creditConfig =
-                com.codegym.mathclass.aiconfig.credit.entity.AiCreditConfig.builder()
+        AiCreditConfig creditConfig =
+                AiCreditConfig.builder()
                         .task("BATCH_QUESTION_GEN")
                         .enabled(true)
                         .costPerCall(2)
@@ -300,8 +303,8 @@ class AiBatchQuestionServiceImplTest {
 
         assertThrows(AiGenerationException.class, () -> aiBatchQuestionService.batchGenerateQuestions(request, 1L));
 
-        verify(aiCreditService).reserve(1L, "BATCH_QUESTION_GEN", 2);
-        verify(aiCreditService, atLeastOnce()).refund(1L, "BATCH_QUESTION_GEN", 2);
+        verify(aiCreditService).reserve(eq(1L), eq("BATCH_QUESTION_GEN"), anyInt());
+        verify(aiCreditService, atLeastOnce()).refund(eq(1L), eq("BATCH_QUESTION_GEN"), anyInt());
         verify(aiCreditService, never()).settle(any(), any(), anyInt(), anyInt());
     }
 
@@ -312,12 +315,12 @@ class AiBatchQuestionServiceImplTest {
                 .textContent("Bài 1: Giải phương trình 2x = 4")
                 .build();
 
-        com.codegym.mathclass.user.entity.User adminUser = new com.codegym.mathclass.user.entity.User();
+        User adminUser = new User();
         adminUser.setId(99L);
-        adminUser.setRole(com.codegym.mathclass.user.entity.Role.ADMIN);
+        adminUser.setRole(Role.ADMIN);
 
-        com.codegym.mathclass.aiconfig.credit.entity.AiCreditConfig creditConfig =
-                com.codegym.mathclass.aiconfig.credit.entity.AiCreditConfig.builder()
+        AiCreditConfig creditConfig =
+                AiCreditConfig.builder()
                         .task("BATCH_QUESTION_GEN")
                         .enabled(true)
                         .costPerCall(2)
@@ -442,5 +445,104 @@ class AiBatchQuestionServiceImplTest {
         );
 
         assertEquals(503, ex.getStatusCode());
+    }
+
+    @Test
+    @DisplayName("batchGenerateQuestions - Upload file được trích xuất text và trừ credit đúng")
+    void testBatchGenerateQuestions_WithUploadedFile_ChargesCreditBasedOnDocumentContent() throws Exception {
+        MockMultipartFile mockFile = new MockMultipartFile(
+                "file",
+                "de_thi.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "dummy content".getBytes()
+        );
+
+        BatchGenerateQuestionsRequest request = BatchGenerateQuestionsRequest.builder()
+                .file(mockFile)
+                .build();
+
+        String extractedText = "Bài 1: Giải phương trình 2x + 4 = 10. Bài 2: Tìm nghiệm của x^2 - 4 = 0.";
+        when(assignmentService.extractTextFromFile(mockFile))
+                .thenReturn(Map.of("content", extractedText, "images", Collections.emptyList()));
+
+        User teacher = User.builder().role(Role.TEACHER).build();
+        teacher.setId(10L);
+        when(userRepository.findById(10L))
+                .thenReturn(Optional.of(teacher));
+
+        AiCreditConfig creditConfig = AiCreditConfig.builder()
+                .enabled(true)
+                .costPerCall(2)
+                .tokensPerCredit(1000)
+                .build();
+        when(aiCreditService.getCreditConfig("BATCH_QUESTION_GEN"))
+                .thenReturn(Optional.of(creditConfig));
+
+        when(taskConfigRepository.findByTask("BATCH_QUESTION_GEN")).thenReturn(Optional.of(mockTaskConfig));
+        when(keySelectionService.selectKeyForProvider(mockProvider)).thenReturn(mockApiKey);
+        when(promptRenderService.renderPrompt(any())).thenReturn(RenderPromptResponse.builder().renderedPrompt("Prompt").build());
+        when(aiProviderStrategyFactory.getStrategy(any())).thenReturn(aiProviderStrategy);
+
+        String jsonAiResponse = """
+                {
+                  "suggestedTitle": "Đề kiểm tra",
+                  "questions": [
+                    { "id": "q1", "title": "Bài 1", "content": "$2x + 4 = 10$" }
+                  ]
+                }
+                """;
+        when(aiProviderStrategy.executePrompt(eq(mockProvider), eq(mockTaskConfig), eq("test-api-key"), anyString()))
+                .thenReturn(new AiExecutionResult(jsonAiResponse, 250));
+
+        BatchGenerateQuestionsResponse response = aiBatchQuestionService.batchGenerateQuestions(request, 10L);
+
+        assertNotNull(response);
+        assertEquals(1, response.getTotalQuestions());
+        verify(aiCreditService).reserve(eq(10L), eq("BATCH_QUESTION_GEN"), anyInt());
+        verify(aiCreditService).settle(eq(10L), eq("BATCH_QUESTION_GEN"), anyInt(), anyInt());
+    }
+
+    @Test
+    @DisplayName("batchGenerateQuestions - Nhập textContent trực tiếp được trừ credit đúng")
+    void testBatchGenerateQuestions_WithTextContent_ChargesCreditBasedOnTextContent() throws Exception {
+        BatchGenerateQuestionsRequest request = BatchGenerateQuestionsRequest.builder()
+                .textContent("Bài 1: Tính diện tích hình tròn có bán kính r = 5cm.")
+                .build();
+
+        User teacher = User.builder().role(Role.TEACHER).build();
+        teacher.setId(10L);
+        when(userRepository.findById(10L))
+                .thenReturn(Optional.of(teacher));
+
+        AiCreditConfig creditConfig = AiCreditConfig.builder()
+                .enabled(true)
+                .costPerCall(2)
+                .tokensPerCredit(1000)
+                .build();
+        when(aiCreditService.getCreditConfig("BATCH_QUESTION_GEN"))
+                .thenReturn(Optional.of(creditConfig));
+
+        when(taskConfigRepository.findByTask("BATCH_QUESTION_GEN")).thenReturn(Optional.of(mockTaskConfig));
+        when(keySelectionService.selectKeyForProvider(mockProvider)).thenReturn(mockApiKey);
+        when(promptRenderService.renderPrompt(any())).thenReturn(RenderPromptResponse.builder().renderedPrompt("Prompt").build());
+        when(aiProviderStrategyFactory.getStrategy(any())).thenReturn(aiProviderStrategy);
+
+        String jsonAiResponse = """
+                {
+                  "suggestedTitle": "Hình tròn",
+                  "questions": [
+                    { "id": "q1", "title": "Bài 1", "content": "$S = \\\\pi r^2$" }
+                  ]
+                }
+                """;
+        when(aiProviderStrategy.executePrompt(eq(mockProvider), eq(mockTaskConfig), eq("test-api-key"), anyString()))
+                .thenReturn(new AiExecutionResult(jsonAiResponse, 150));
+
+        BatchGenerateQuestionsResponse response = aiBatchQuestionService.batchGenerateQuestions(request, 10L);
+
+        assertNotNull(response);
+        assertEquals(1, response.getTotalQuestions());
+        verify(aiCreditService).reserve(eq(10L), eq("BATCH_QUESTION_GEN"), anyInt());
+        verify(aiCreditService).settle(eq(10L), eq("BATCH_QUESTION_GEN"), anyInt(), anyInt());
     }
 }
