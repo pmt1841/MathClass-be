@@ -88,6 +88,11 @@ public interface AssignmentService {
     AssignmentResponse cloneAssignmentFromLibrary(long assignmentId, long teacherId);
 
     /**
+     * Lấy chi tiết bài tập đơn lẻ công khai trong Thư viện
+     */
+    AssignmentResponse getPublicAssignmentDetail(long assignmentId);
+
+    /**
      * Cập nhật trạng thái Visibility (PRIVATE | PUBLIC) của bài tập.
      * Chỉ chủ sở hữu (teacher) mới được phép.
      */

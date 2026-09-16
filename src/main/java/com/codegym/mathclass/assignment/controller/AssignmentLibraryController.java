@@ -39,6 +39,14 @@ public class AssignmentLibraryController {
         return ResponseEntity.ok(assignments);
     }
 
+    @Operation(summary = "Xem chi tiết bài tập đơn lẻ công khai trong Thư viện")
+    @GetMapping("/assignments/{id}")
+    @PreAuthorize("hasAuthority('library:read')")
+    public ResponseEntity<AssignmentResponse> getPublicAssignmentDetail(@PathVariable long id) {
+        AssignmentResponse response = assignmentService.getPublicAssignmentDetail(id);
+        return ResponseEntity.ok(response);
+    }
+
     @Operation(summary = "Clone bài tập đơn lẻ từ Thư viện về kho cá nhân")
     @PostMapping("/assignments/{id}/clone")
     @PreAuthorize("hasAuthority('library:clone')")

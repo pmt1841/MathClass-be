@@ -662,5 +662,63 @@ class AssignmentServiceImplTest {
             verify(assignmentRepository, never()).save(any(Assignment.class));
         }
     }
+
+    @Nested
+    @DisplayName("getPublicAssignmentDetail Tests")
+    class GetPublicAssignmentDetailTests {
+
+        @Test
+        @DisplayName("Should return assignment detail when assignment is PUBLIC and classroom is NULL")
+        void getPublicAssignmentDetail_Success() {
+            Assignment assignment = new Assignment();
+            assignment.setId(100L);
+            assignment.setTitle("Public Assignment");
+            assignment.setVisibility(com.codegym.mathclass.assignment.entity.AssignmentVisibility.PUBLIC);
+            assignment.setStatus(AssignmentStatus.ARCHIVED);
+            assignment.setClassroom(null);
+
+            AssignmentResponse mockResponse = new AssignmentResponse();
+            mockResponse.setId(100L);
+            mockResponse.setTitle("Public Assignment");
+
+            when(assignmentRepository.findById(100L)).thenReturn(Optional.of(assignment));
+            when(assignmentMapper.toAssignmentResponse(assignment)).thenReturn(mockResponse);
+
+            AssignmentResponse result = assignmentService.getPublicAssignmentDetail(100L);
+
+            assertThat(result).isNotNull();
+            assertThat(result.getId()).isEqualTo(100L);
+            assertThat(result.getTitle()).isEqualTo("Public Assignment");
+        }
+
+        @Test
+        @DisplayName("Should throw ResourceNotFoundException when assignment belongs to classroom")
+        void getPublicAssignmentDetail_BelongsToClassroom_ThrowsException() {
+            Assignment assignment = new Assignment();
+            assignment.setId(101L);
+            assignment.setVisibility(com.codegym.mathclass.assignment.entity.AssignmentVisibility.PUBLIC);
+            assignment.setStatus(AssignmentStatus.PUBLISHED);
+            assignment.setClassroom(classroom);
+
+            when(assignmentRepository.findById(101L)).thenReturn(Optional.of(assignment));
+
+            assertThatThrownBy(() -> assignmentService.getPublicAssignmentDetail(101L))
+                    .isInstanceOf(com.codegym.mathclass.exception.ResourceNotFoundException.class);
+        }
+
+        @Test
+        @DisplayName("Should throw ResourceNotFoundException when assignment is PRIVATE or DELETED")
+        void getPublicAssignmentDetail_PrivateOrDeleted_ThrowsException() {
+            Assignment privateAss = new Assignment();
+            privateAss.setId(102L);
+            privateAss.setVisibility(com.codegym.mathclass.assignment.entity.AssignmentVisibility.PRIVATE);
+            privateAss.setStatus(AssignmentStatus.DRAFT);
+
+            when(assignmentRepository.findById(102L)).thenReturn(Optional.of(privateAss));
+
+            assertThatThrownBy(() -> assignmentService.getPublicAssignmentDetail(102L))
+                    .isInstanceOf(com.codegym.mathclass.exception.ResourceNotFoundException.class);
+        }
+    }
 }
 

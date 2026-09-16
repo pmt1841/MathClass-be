@@ -840,6 +840,21 @@ public class AssignmentServiceImpl implements AssignmentService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public AssignmentResponse getPublicAssignmentDetail(long assignmentId) {
+        Assignment assignment = assignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập công khai"));
+
+        if (assignment.getStatus() == AssignmentStatus.DELETED
+                || assignment.getVisibility() != AssignmentVisibility.PUBLIC
+                || assignment.getClassroom() != null) {
+            throw new ResourceNotFoundException("Không tìm thấy bài tập công khai");
+        }
+
+        return assignmentMapper.toAssignmentResponse(assignment);
+    }
+
+    @Override
     @Transactional
     public AssignmentResponse toggleAllowResubmit(long assignmentId, boolean allowResubmit, long teacherId) {
         Assignment assignment = assignmentRepository.findById(assignmentId)

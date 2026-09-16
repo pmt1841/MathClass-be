@@ -63,6 +63,7 @@ class AssignmentLibraryControllerTest {
         );
 
         mockMvc = MockMvcBuilders.standaloneSetup(assignmentLibraryController)
+                .setControllerAdvice(new com.codegym.mathclass.exception.GlobalExceptionHandler())
                 .setCustomArgumentResolvers(
                         new PageableHandlerMethodArgumentResolver(),
                         new HandlerMethodArgumentResolver() {
@@ -100,6 +101,40 @@ class AssignmentLibraryControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.content[0].id").value(10L))
                     .andExpect(jsonPath("$.content[0].title").value("Public Math Assignment"));
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /library/assignments/{id} Tests")
+    class GetPublicAssignmentDetailTests {
+
+        @Test
+        @DisplayName("Should return 200 OK with public assignment detail")
+        void getPublicAssignmentDetail_Success() throws Exception {
+            AssignmentResponse response = new AssignmentResponse();
+            response.setId(10L);
+            response.setTitle("Public Math Assignment Detail");
+            response.setContent("Content $x^2$");
+
+            when(assignmentService.getPublicAssignmentDetail(10L)).thenReturn(response);
+
+            mockMvc.perform(get("/library/assignments/10")
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(10L))
+                    .andExpect(jsonPath("$.title").value("Public Math Assignment Detail"))
+                    .andExpect(jsonPath("$.content").value("Content $x^2$"));
+        }
+
+        @Test
+        @DisplayName("Should return 404 Not Found when assignment is not public or not found")
+        void getPublicAssignmentDetail_NotFound() throws Exception {
+            when(assignmentService.getPublicAssignmentDetail(99L))
+                    .thenThrow(new com.codegym.mathclass.exception.ResourceNotFoundException("Không tìm thấy bài tập công khai"));
+
+            mockMvc.perform(get("/library/assignments/99")
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound());
         }
     }
 
