@@ -4,9 +4,12 @@ import com.codegym.mathclass.bugreport.dto.response.BugReportResponse;
 import com.codegym.mathclass.bugreport.dto.request.CreateBugReportRequest;
 import com.codegym.mathclass.bugreport.dto.request.SendOtpRequest;
 import com.codegym.mathclass.bugreport.dto.request.UpdateBugReportStatusRequest;
+import com.codegym.mathclass.bugreport.entity.BugErrorType;
 import com.codegym.mathclass.bugreport.entity.BugReportStatus;
 import com.codegym.mathclass.bugreport.service.BugReportService;
 import com.codegym.mathclass.common.annotation.ApiVersion;
+import org.springframework.format.annotation.DateTimeFormat;
+import java.time.LocalDateTime;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.codegym.mathclass.storage.service.StorageService;
 import com.codegym.mathclass.storage.dto.StoragePolicy;
@@ -94,15 +97,22 @@ public class BugReportController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Lấy danh sách báo cáo lỗi (Admin)", description = "Lấy danh sách báo cáo phân trang dành cho Quản trị viên")
+    @Operation(summary = "Lấy danh sách báo cáo lỗi (Admin)", description = "Lấy danh sách báo cáo phân trang dành cho Quản trị viên, hỗ trợ lọc theo loại lỗi, trạng thái và khoảng thời gian")
     @GetMapping("/admin/bug-reports")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Page<BugReportResponse>> getReports(
+            @RequestParam(required = false) BugErrorType errorType,
             @RequestParam(required = false) BugReportStatus status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<BugReportResponse> reports = bugReportService.getReports(status, pageable);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(
+                Sort.Order.asc("errorType"),
+                Sort.Order.asc("status"),
+                Sort.Order.desc("createdAt")
+        ));
+        Page<BugReportResponse> reports = bugReportService.getReports(errorType, status, startDate, endDate, pageable);
         return ResponseEntity.ok(reports);
     }
 

@@ -31,7 +31,7 @@ public class TaskConfigController {
 
     @Operation(summary = "Cập nhật cấu hình Task", description = "Gán Provider, Model và thiết lập tham số hoạt động cho tác vụ")
     @PutMapping("/{task}")
-    @AuditLog(action = "UPDATE_AI_TASK_CONFIG", resourceType = "AI_CONFIG")
+    @AuditLog(action = "Cập nhật cấu hình tác vụ AI", resourceType = "AI_CONFIG")
     public ResponseEntity<TaskConfigResponse> updateTaskConfig(@PathVariable String task, @Valid @RequestBody TaskConfigUpdateRequest request) {
         return ResponseEntity.ok(taskConfigService.updateTaskConfig(task, request));
     }

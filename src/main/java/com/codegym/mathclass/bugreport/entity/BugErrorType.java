@@ -5,5 +5,7 @@ public enum BugErrorType {
     UI_KATEX,
     SUBMISSION_PROBLEM,
     PERFORMANCE,
+    AI_ASSISTANT,
+    CREDIT_TRANSACTION,
     OTHER
 }

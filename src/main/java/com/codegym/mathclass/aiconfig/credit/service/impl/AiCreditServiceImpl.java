@@ -3,6 +3,7 @@ package com.codegym.mathclass.aiconfig.credit.service.impl;
 import com.codegym.mathclass.aiconfig.credit.dto.request.CreditPackageCreateRequest;
 import com.codegym.mathclass.aiconfig.credit.dto.request.CreditPackageUpdateRequest;
 import com.codegym.mathclass.aiconfig.credit.dto.response.AiCreditConfigResponse;
+import com.codegym.mathclass.aiconfig.credit.dto.response.BatchCreditAdjustResponse;
 import com.codegym.mathclass.aiconfig.credit.dto.response.CreditBalanceResponse;
 import com.codegym.mathclass.aiconfig.credit.dto.response.CreditBalanceResponse.CreditCostItemResponse;
 import com.codegym.mathclass.aiconfig.credit.dto.response.CreditPackageResponse;
@@ -233,6 +234,42 @@ public class AiCreditServiceImpl implements AiCreditService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void adjustByAdmin(Long userId, int amount, String reason) {
         distributedLockService.runWithLock("lock:ai:credit:" + userId, 5, 10, () -> doAdjustByAdmin(userId, amount, reason));
+    }
+
+    @Override
+    public BatchCreditAdjustResponse adjustBatchByAdmin(List<Long> userIds, int amount, String reason) {
+        if (userIds == null || userIds.isEmpty()) {
+            throw new BadRequestException("Danh sách người dùng không được để trống");
+        }
+        List<Long> distinctUserIds = userIds.stream().distinct().toList();
+        int successCount = 0;
+        List<String> errors = new java.util.ArrayList<>();
+
+        for (Long userId : distinctUserIds) {
+            try {
+                adjustByAdmin(userId, amount, reason);
+                successCount++;
+            } catch (Exception e) {
+                log.warn("Không thể điều chỉnh credit cho user {}: {}", userId, e.getMessage());
+                errors.add("User " + userId + ": " + e.getMessage());
+            }
+        }
+
+        int failureCount = distinctUserIds.size() - successCount;
+        String message = String.format("Điều chỉnh credit thành công cho %d/%d người dùng", successCount, distinctUserIds.size());
+        if (failureCount > 0 && successCount == 0) {
+            message = "Điều chỉnh credit thất bại cho toàn bộ người dùng đã chọn";
+        } else if (failureCount > 0) {
+            message = String.format("Điều chỉnh thành công %d người dùng, thất bại %d người dùng", successCount, failureCount);
+        }
+
+        return BatchCreditAdjustResponse.builder()
+                .total(distinctUserIds.size())
+                .successCount(successCount)
+                .failureCount(failureCount)
+                .errors(errors)
+                .message(message)
+                .build();
     }
 
     private void doAdjustByAdmin(Long userId, int amount, String reason) {

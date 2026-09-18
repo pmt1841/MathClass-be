@@ -267,6 +267,24 @@ class AiCreditServiceImplTest {
             assertThat(captor.getValue().getType()).isEqualTo(CreditTransactionType.ADMIN_ADJUST);
             assertThat(captor.getValue().getAmount()).isEqualTo(20);
         }
+
+        @Test
+        @DisplayName("Should adjust batch credits for multiple users")
+        void adjustBatchByAdmin_success() {
+            Long user2 = 200L;
+            UserAiAccount acc1 = account(50, 100, 0);
+            UserAiAccount acc2 = account(30, 80, 0);
+            when(userAiAccountRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(acc1));
+            when(userAiAccountRepository.findByUserIdForUpdate(user2)).thenReturn(Optional.of(acc2));
+
+            var res = aiCreditService.adjustBatchByAdmin(List.of(userId, user2), 25, "Thưởng sự kiện");
+
+            assertThat(res.getTotal()).isEqualTo(2);
+            assertThat(res.getSuccessCount()).isEqualTo(2);
+            assertThat(res.getFailureCount()).isEqualTo(0);
+            assertThat(acc1.getBalance()).isEqualTo(75);
+            assertThat(acc2.getBalance()).isEqualTo(55);
+        }
     }
 
     @Nested

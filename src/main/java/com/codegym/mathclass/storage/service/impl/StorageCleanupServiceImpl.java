@@ -21,6 +21,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.support.CronExpression;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,7 +46,7 @@ public class StorageCleanupServiceImpl implements StorageCleanupService {
     private final ObjectProvider<StorageCleanupScheduler> schedulerProvider;
     private final ObjectMapper objectMapper;
 
-    @Value("${app.storage.cleanup.enabled:true}")
+    @Value("${app.storage.cleanup.enabled:false}")
     private boolean defaultEnabled;
 
     @Value("${app.storage.cleanup.cron:0 0 3 * * SUN}")
@@ -192,16 +194,18 @@ public class StorageCleanupServiceImpl implements StorageCleanupService {
             log.warn("[Storage GC] Failed to persist cleanup result in DB: {}", e.getMessage());
         }
 
-        // 5. Ghi nhật ký hệ thống
-        try {
-            String logAction = dryRun ? "STORAGE_CLEANUP_DRY_RUN" : "STORAGE_CLEANUP_EXECUTE";
-            String logDesc = String.format("Storage GC %s: scanned=%d, orphans=%d, deleted=%d, time=%dms",
-                    dryRun ? "[DRY_RUN]" : "[REAL]",
-                    totalFilesScanned, totalOrphansDetected, totalDeletedSuccessfully, executionTimeMs);
+        // 5. Ghi nhật ký hệ thống (Chỉ ghi khi dọn dẹp thực tế, không ghi cho lần quét thử nghiệm dryRun)
+        if (!dryRun) {
+            try {
+                String actor = getCurrentActor();
+                double durationSec = executionTimeMs / 1000.0;
+                String logAction = String.format("Dọn dẹp bộ nhớ: Đã quét %d tệp, thu hồi thành công %d ảnh rác (Thời gian: %.1fs)",
+                        totalFilesScanned, totalDeletedSuccessfully, durationSec);
 
-            systemLogService.logInfo("SYSTEM_STORAGE_GC", logAction, "STORAGE", logDesc);
-        } catch (Exception e) {
-            log.warn("[Storage GC] Failed to log system audit event: {}", e.getMessage());
+                systemLogService.logInfo(actor, logAction, "STORAGE", "SUPABASE_STORAGE");
+            } catch (Exception e) {
+                log.warn("[Storage GC] Failed to log system audit event: {}", e.getMessage());
+            }
         }
 
         log.info("[Storage GC] Finished cleanup: scanned={}, orphans={}, deleted={}, duration={}ms",
@@ -257,10 +261,34 @@ public class StorageCleanupServiceImpl implements StorageCleanupService {
             scheduler.reschedule(savedConfig);
         }
 
+        // Ghi nhật ký kiểm toán hệ thống
+        try {
+            String actor = getCurrentActor();
+            String logAction = String.format("Cập nhật cấu hình dọn dẹp bộ nhớ: %s, chu kỳ '%s', thời gian chờ %dh",
+                    savedConfig.isEnabled() ? "Bật" : "Tắt",
+                    savedConfig.getCronExpression(),
+                    savedConfig.getGracePeriodHours());
+            systemLogService.logInfo(actor, logAction, "STORAGE", "STORAGE_CONFIG");
+        } catch (Exception e) {
+            log.warn("[Storage GC] Failed to log config update audit: {}", e.getMessage());
+        }
+
         log.info("[Storage GC] Updated storage cleanup config: enabled={}, cron='{}', gracePeriod={}h",
                 savedConfig.isEnabled(), savedConfig.getCronExpression(), savedConfig.getGracePeriodHours());
 
         return getCleanupStatus();
+    }
+
+    private String getCurrentActor() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null && authentication.isAuthenticated() && !"anonymousUser".equals(authentication.getPrincipal())) {
+                return authentication.getName();
+            }
+        } catch (Exception e) {
+            log.debug("Cannot resolve current user in security context: {}", e.getMessage());
+        }
+        return "Hệ thống";
     }
 
     private Set<String> extractNormalizedPaths(Set<String> urls) {

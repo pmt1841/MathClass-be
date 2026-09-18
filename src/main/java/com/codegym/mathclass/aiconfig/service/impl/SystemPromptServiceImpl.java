@@ -103,7 +103,7 @@ public class SystemPromptServiceImpl implements SystemPromptService {
         }
 
         // System Audit Log
-        systemLogService.log(adminEmail, "UPDATE_PROMPT",
+        systemLogService.log(adminEmail, "Cập nhật System Prompt: " + updatedPrompt.getCode(),
                 com.codegym.mathclass.systemlog.entity.SystemLogLevel.INFO,
                 "SYSTEM_PROMPT", updatedPrompt.getCode(), ipAddress, null, "SUCCESS");
 
@@ -125,7 +125,7 @@ public class SystemPromptServiceImpl implements SystemPromptService {
         saveHistory(updatedPrompt, nextVersion, updatedPrompt.getCurrentContent(), reason, adminEmail);
 
         // System Audit Log
-        systemLogService.log(adminEmail, "RESET_PROMPT",
+        systemLogService.log(adminEmail, "Khôi phục System Prompt về mặc định: " + updatedPrompt.getCode(),
                 com.codegym.mathclass.systemlog.entity.SystemLogLevel.WARNING,
                 "SYSTEM_PROMPT", updatedPrompt.getCode(), ipAddress, null, "SUCCESS");
 
@@ -162,7 +162,7 @@ public class SystemPromptServiceImpl implements SystemPromptService {
         saveHistory(updatedPrompt, nextVersion, updatedPrompt.getCurrentContent(), reason, adminEmail);
 
         // System Audit Log
-        systemLogService.log(adminEmail, "ROLLBACK_PROMPT",
+        systemLogService.log(adminEmail, "Hoàn tác System Prompt: " + updatedPrompt.getCode() + " về v" + history.getVersion(),
                 com.codegym.mathclass.systemlog.entity.SystemLogLevel.WARNING,
                 "SYSTEM_PROMPT", updatedPrompt.getCode(), ipAddress, null, "SUCCESS");
 

@@ -12,6 +12,9 @@ public class ResetPasswordRequest {
     private String token;
 
     @NotBlank(message = "Mật khẩu mới không được để trống")
-    @Pattern(regexp = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z]).{8,}$", message = "Mật khẩu không đủ độ mạnh theo quy định")
+    @Pattern(
+        regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,24}$",
+        message = "Mật khẩu mới phải có tối thiểu 8 ký tự, bao gồm ít nhất 1 chữ hoa, 1 chữ thường, 1 chữ số và 1 ký tự đặc biệt"
+    )
     private String newPassword;
 }

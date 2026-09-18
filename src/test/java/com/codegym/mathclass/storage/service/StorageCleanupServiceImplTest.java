@@ -138,7 +138,7 @@ class StorageCleanupServiceImplTest {
 
             verify(supabaseStorageService).deleteImages("avatar", List.of("images/orphan_old_avatar.png"));
             verify(supabaseStorageService).deleteImages("assignment_image", List.of("images/orphan_assign.png"));
-            verify(systemLogService).logInfo(eq("SYSTEM_STORAGE_GC"), eq("STORAGE_CLEANUP_EXECUTE"), eq("STORAGE"), anyString());
+            verify(systemLogService).logInfo(eq("Hệ thống"), contains("Dọn dẹp bộ nhớ:"), eq("STORAGE"), eq("SUPABASE_STORAGE"));
         }
 
         @Test
@@ -211,6 +211,7 @@ class StorageCleanupServiceImplTest {
 
             verify(configRepository).save(mockConfig);
             verify(storageCleanupScheduler).reschedule(mockConfig);
+            verify(systemLogService).logInfo(eq("Hệ thống"), contains("Cập nhật cấu hình dọn dẹp bộ nhớ:"), eq("STORAGE"), eq("STORAGE_CONFIG"));
         }
 
         @Test

@@ -77,6 +77,38 @@ class AdminCreditAdjustControllerTest {
 
             verify(aiCreditService).adjustByAdmin(100L, 50, "Admin granted monthly reward");
         }
+
+        @Test
+        @DisplayName("Should adjust batch credits successfully and return 200 OK")
+        void adjustBatchCredit_Success() throws Exception {
+            com.codegym.mathclass.aiconfig.credit.dto.request.BatchCreditAdjustRequest request =
+                    com.codegym.mathclass.aiconfig.credit.dto.request.BatchCreditAdjustRequest.builder()
+                            .userIds(List.of(100L, 101L))
+                            .amount(50)
+                            .reason("Thưởng thành tích học tập")
+                            .build();
+
+            com.codegym.mathclass.aiconfig.credit.dto.response.BatchCreditAdjustResponse response =
+                    com.codegym.mathclass.aiconfig.credit.dto.response.BatchCreditAdjustResponse.builder()
+                            .total(2)
+                            .successCount(2)
+                            .failureCount(0)
+                            .errors(List.of())
+                            .message("Điều chỉnh credit thành công cho 2/2 người dùng")
+                            .build();
+
+            when(aiCreditService.adjustBatchByAdmin(List.of(100L, 101L), 50, "Thưởng thành tích học tập"))
+                    .thenReturn(response);
+
+            mockMvc.perform(post("/admin/credits/adjust-batch")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.successCount").value(2))
+                    .andExpect(jsonPath("$.message").value("Điều chỉnh credit thành công cho 2/2 người dùng"));
+
+            verify(aiCreditService).adjustBatchByAdmin(List.of(100L, 101L), 50, "Thưởng thành tích học tập");
+        }
     }
 
     @Nested

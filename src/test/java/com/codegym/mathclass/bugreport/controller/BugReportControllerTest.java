@@ -137,7 +137,7 @@ class BugReportControllerTest {
     @DisplayName("Should get admin bug reports page directly returning Page DTO")
     void getReports_Success() throws Exception {
         Page<BugReportResponse> page = new PageImpl<>(Collections.singletonList(responseDto));
-        when(bugReportService.getReports(any(), any(Pageable.class))).thenReturn(page);
+        when(bugReportService.getReports(any(), any(), any(), any(), any(Pageable.class))).thenReturn(page);
 
         mockMvc.perform(get("/admin/bug-reports"))
                 .andExpect(status().isOk())

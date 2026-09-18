@@ -26,16 +26,16 @@ public class SubmissionDrawingServiceImpl implements SubmissionDrawingService {
     public SubmissionDrawingResponse saveOrUpdateDrawing(long submissionId, SubmissionDrawingRequest request,
             String currentUserUsername) {
         Submission submission = submissionRepository.findById(submissionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Submission not found with id: " + submissionId));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài nộp với mã: " + submissionId));
 
         // Check if current user is the owner of the submission
         if (!submission.getStudent().getEmail().equals(currentUserUsername)) {
-            throw new AccessDeniedException("You are not allowed to modify this submission");
+            throw new AccessDeniedException("Bạn không có quyền chỉnh sửa bài nộp này");
         }
 
         // Validate submission status
         if (submission.getStatus() == SubmissionStatus.SUBMITTED) {
-            throw new AccessDeniedException("Submission is already submitted. Please un-submit to edit your drawing.");
+            throw new AccessDeniedException("Bài nộp đã được gửi. Vui lòng hủy nộp bài để chỉnh sửa hình vẽ.");
         }
 
         SubmissionDrawing drawing = submissionDrawingRepository.findBySubmissionId(submissionId)
@@ -56,18 +56,18 @@ public class SubmissionDrawingServiceImpl implements SubmissionDrawingService {
     @Transactional(readOnly = true)
     public SubmissionDrawingResponse getDrawingBySubmissionId(long submissionId, String currentUserUsername) {
         Submission submission = submissionRepository.findById(submissionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Submission not found with id: " + submissionId));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài nộp với mã: " + submissionId));
 
         boolean isStudentOwner = submission.getStudent().getEmail().equals(currentUserUsername);
         boolean isTeacherOwner = submission.getAssignment().getTeacher().getEmail().equals(currentUserUsername);
 
         if (!isStudentOwner && !isTeacherOwner) {
-            throw new AccessDeniedException("You are not allowed to view this drawing");
+            throw new AccessDeniedException("Bạn không có quyền xem bản vẽ này");
         }
 
         SubmissionDrawing drawing = submissionDrawingRepository.findBySubmissionId(submission.getId())
                 .orElseThrow(
-                        () -> new ResourceNotFoundException("Drawing not found for submission id: " + submissionId));
+                        () -> new ResourceNotFoundException("Không tìm thấy bản vẽ của bài nộp mã: " + submissionId));
 
         return mapToResponse(drawing);
     }

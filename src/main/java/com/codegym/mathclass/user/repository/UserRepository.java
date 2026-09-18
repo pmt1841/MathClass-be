@@ -39,14 +39,16 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByIdWithLock(@Param("id") Long id);
 
     @Query("SELECT s FROM Classroom c JOIN c.students s WHERE c.classCode = :classCode AND " +
-           "(:keyword IS NULL OR LOWER(s.fullName) LIKE :keyword ESCAPE '\\' OR LOWER(s.email) LIKE :keyword ESCAPE '\\')")
+           "(:keyword IS NULL OR LOWER(s.fullName) LIKE :keyword ESCAPE '\\' OR LOWER(s.email) LIKE :keyword ESCAPE '\\' OR " +
+           "CAST(function('unaccent', LOWER(s.fullName)) AS String) LIKE CAST(function('unaccent', CAST(:keyword AS String)) AS String) ESCAPE '\\')")
     Page<User> findStudentsByClassCode(@Param("classCode") String classCode, @Param("keyword") String keyword, Pageable pageable);
 
     @Query("SELECT u FROM User u WHERE " +
         "(:role IS NULL OR u.role = :role) AND " +
         "(:excludeRole IS NULL OR u.role != :excludeRole) AND " +
         "(:isActive IS NULL OR u.isActive = :isActive) AND " +
-        "(:search IS NULL OR LOWER(u.email) LIKE :search ESCAPE '\\' OR LOWER(u.fullName) LIKE :search ESCAPE '\\')")
+        "(:search IS NULL OR LOWER(u.email) LIKE :search ESCAPE '\\' OR LOWER(u.fullName) LIKE :search ESCAPE '\\' OR " +
+        "CAST(function('unaccent', LOWER(u.fullName)) AS String) LIKE CAST(function('unaccent', CAST(:search AS String)) AS String) ESCAPE '\\')")
     Page<User> findAllForAdmin(@Param("role") Role role,
                                @Param("excludeRole") Role excludeRole,
                                @Param("isActive") Boolean isActive,

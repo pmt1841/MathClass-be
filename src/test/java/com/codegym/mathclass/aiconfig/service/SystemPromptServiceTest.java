@@ -96,7 +96,7 @@ class SystemPromptServiceTest {
 
         assertNotNull(response);
         verify(systemPromptHistoryRepository).save(any(SystemPromptHistory.class));
-        verify(systemLogService).log(eq("admin@mathclass.edu.vn"), eq("UPDATE_PROMPT"), any(), any(), eq("PROMPT_SOLVE_HINT"), any(), any(), any());
+        verify(systemLogService).log(eq("admin@mathclass.edu.vn"), eq("Cập nhật System Prompt: " + samplePrompt.getCode()), any(), any(), eq("PROMPT_SOLVE_HINT"), any(), any(), any());
     }
 
     @Test
@@ -112,7 +112,7 @@ class SystemPromptServiceTest {
 
         assertEquals(samplePrompt.getDefaultContent(), response.getCurrentContent());
         verify(systemPromptHistoryRepository).save(any(SystemPromptHistory.class));
-        verify(systemLogService).log(eq("admin@mathclass.edu.vn"), eq("RESET_PROMPT"), any(), any(), eq("PROMPT_SOLVE_HINT"), any(), any(), any());
+        verify(systemLogService).log(eq("admin@mathclass.edu.vn"), eq("Khôi phục System Prompt về mặc định: " + samplePrompt.getCode()), any(), any(), eq("PROMPT_SOLVE_HINT"), any(), any(), any());
     }
 
     @Test
@@ -133,7 +133,7 @@ class SystemPromptServiceTest {
         SystemPromptResponse response = systemPromptService.rollbackToVersion(1L, 10L, "admin@mathclass.edu.vn", "127.0.0.1");
 
         assertEquals("Nội dung phiên bản 1 chuẩn {{subject}}", response.getCurrentContent());
-        verify(systemLogService).log(eq("admin@mathclass.edu.vn"), eq("ROLLBACK_PROMPT"), any(), any(), eq("PROMPT_SOLVE_HINT"), any(), any(), any());
+        verify(systemLogService).log(eq("admin@mathclass.edu.vn"), eq("Hoàn tác System Prompt: " + samplePrompt.getCode() + " về v" + historyVersion1.getVersion()), any(), any(), eq("PROMPT_SOLVE_HINT"), any(), any(), any());
     }
 
     @Test

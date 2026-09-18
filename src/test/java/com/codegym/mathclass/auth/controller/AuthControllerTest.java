@@ -180,7 +180,7 @@ class AuthControllerTest {
         void register_ValidRequest_Returns200AndMessage() throws Exception {
             SignupRequest signupRequest = new SignupRequest();
             signupRequest.setEmail("newuser@test.com");
-            signupRequest.setPassword("Password123");
+            signupRequest.setPassword("Password123@");
             signupRequest.setFullName("New User");
             signupRequest.setPhoneNumber("0987654321");
             signupRequest.setRole(Role.STUDENT);

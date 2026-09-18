@@ -40,7 +40,7 @@ public class StorageCleanupScheduler {
         this.distributedLockService = distributedLockService;
     }
 
-    @Value("${app.storage.cleanup.enabled:true}")
+    @Value("${app.storage.cleanup.enabled:false}")
     private boolean defaultEnabled;
 
     @Value("${app.storage.cleanup.cron:0 0 3 * * SUN}")

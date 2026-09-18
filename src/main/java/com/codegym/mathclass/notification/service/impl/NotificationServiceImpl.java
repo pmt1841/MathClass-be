@@ -38,7 +38,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void saveAndSendNotification(Long userId, String message, String link) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
         Notification notification = Notification.builder()
                 .user(user)

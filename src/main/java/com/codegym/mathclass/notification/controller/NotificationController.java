@@ -31,7 +31,7 @@ public class NotificationController {
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream(@AuthenticationPrincipal CustomUserDetails userDetails) {
         if (userDetails == null) {
-            throw new AccessDeniedException("Not authenticated");
+            throw new AccessDeniedException("Người dùng chưa đăng nhập hoặc phiên làm việc đã hết hạn");
         }
         return notificationService.createEmitter(userDetails.getId());
     }

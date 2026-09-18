@@ -15,6 +15,7 @@ import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.ResourceNotFoundException;
 import com.codegym.mathclass.exception.TooManyRequestsException;
 import com.codegym.mathclass.notification.service.NotificationService;
+import com.codegym.mathclass.systemlog.service.SystemLogService;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
@@ -27,10 +28,15 @@ import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.criteria.Predicate;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -51,6 +57,7 @@ public class BugReportServiceImpl implements BugReportService {
     private final NotificationService notificationService;
     private final RateLimiterService rateLimiterService;
     private final RedissonClient redissonClient;
+    private final SystemLogService systemLogService;
 
     private void checkEmailRateLimit(String email) {
         long remainingSeconds = rateLimiterService.getRemainingCooldownSeconds(RATELIMIT_EMAIL_PREFIX + email);
@@ -294,14 +301,36 @@ public class BugReportServiceImpl implements BugReportService {
 
     @Override
     @Transactional(readOnly = true)
+    public Page<BugReportResponse> getReports(BugErrorType errorType, BugReportStatus status, LocalDateTime startDate, LocalDateTime endDate, Pageable pageable) {
+        Specification<BugReport> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (errorType != null) {
+                predicates.add(cb.equal(root.get("errorType"), errorType));
+            }
+
+            if (status != null) {
+                predicates.add(cb.equal(root.get("status"), status));
+            }
+
+            if (startDate != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), startDate));
+            }
+
+            if (endDate != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), endDate));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        return bugReportRepository.findAll(spec, pageable).map(this::mapToResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Page<BugReportResponse> getReports(BugReportStatus status, Pageable pageable) {
-        Page<BugReport> page;
-        if (status != null) {
-            page = bugReportRepository.findByStatus(status, pageable);
-        } else {
-            page = bugReportRepository.findAllByOrderByCreatedAtDesc(pageable);
-        }
-        return page.map(this::mapToResponse);
+        return getReports(null, status, null, null, pageable);
     }
 
     @Override
@@ -323,9 +352,21 @@ public class BugReportServiceImpl implements BugReportService {
         bugReport.setStatus(newStatus);
         BugReport updated = bugReportRepository.save(bugReport);
 
-        // Kích hoạt gửi thông báo nếu có sự thay đổi trạng thái
+        // Kích hoạt gửi thông báo và ghi nhật ký hệ thống nếu có sự thay đổi trạng thái
         if (oldStatus != newStatus) {
             sendNotificationsForStatusUpdate(updated, newStatus);
+
+            try {
+                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+                String actor = (authentication != null && authentication.isAuthenticated() && !"anonymousUser".equals(authentication.getPrincipal()))
+                        ? authentication.getName()
+                        : "Hệ thống";
+                String action = String.format("Cập nhật trạng thái báo cáo sự cố #%d: %s -> %s",
+                        id, getStatusLabel(oldStatus), getStatusLabel(newStatus));
+                systemLogService.logInfo(actor, action, "BUG_REPORT", String.valueOf(id));
+            } catch (Exception e) {
+                log.warn("[BugReport] Failed to log audit event: {}", e.getMessage());
+            }
         }
 
         return mapToResponse(updated);
@@ -386,7 +427,18 @@ public class BugReportServiceImpl implements BugReportService {
             case UI_KATEX -> "Lỗi hiển thị giao diện / KaTeX";
             case SUBMISSION_PROBLEM -> "Lỗi không nộp bài / không tải đề";
             case PERFORMANCE -> "Lỗi tốc độ / không phản hồi";
+            case AI_ASSISTANT -> "Lỗi trợ lý AI";
+            case CREDIT_TRANSACTION -> "Lỗi giao dịch Credit";
             case OTHER -> "Khác";
+        };
+    }
+
+    private String getStatusLabel(BugReportStatus status) {
+        if (status == null) return "Không xác định";
+        return switch (status) {
+            case PENDING -> "Chờ xử lý";
+            case IN_PROGRESS -> "Đang xử lý";
+            case RESOLVED -> "Đã giải quyết";
         };
     }
 

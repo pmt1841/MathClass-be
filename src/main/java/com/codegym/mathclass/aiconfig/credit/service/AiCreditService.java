@@ -3,6 +3,7 @@ package com.codegym.mathclass.aiconfig.credit.service;
 import com.codegym.mathclass.aiconfig.credit.dto.request.CreditPackageCreateRequest;
 import com.codegym.mathclass.aiconfig.credit.dto.request.CreditPackageUpdateRequest;
 import com.codegym.mathclass.aiconfig.credit.dto.response.AiCreditConfigResponse;
+import com.codegym.mathclass.aiconfig.credit.dto.response.BatchCreditAdjustResponse;
 import com.codegym.mathclass.aiconfig.credit.dto.response.CreditBalanceResponse;
 import com.codegym.mathclass.aiconfig.credit.dto.response.CreditPackageResponse;
 import com.codegym.mathclass.aiconfig.credit.dto.response.CreditTransactionResponse;
@@ -39,6 +40,8 @@ public interface AiCreditService {
     void settle(Long userId, String task, int reserved, int actual);
 
     void adjustByAdmin(Long userId, int amount, String reason);
+
+    BatchCreditAdjustResponse adjustBatchByAdmin(List<Long> userIds, int amount, String reason);
 
     // ---------- Cấu hình chi phí theo task ----------
     Optional<AiCreditConfig> getCreditConfig(String task);

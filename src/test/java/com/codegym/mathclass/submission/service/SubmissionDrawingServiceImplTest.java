@@ -110,7 +110,7 @@ class SubmissionDrawingServiceImplTest {
 
             assertThatThrownBy(() -> drawingService.saveOrUpdateDrawing(999L, request, "student@codegym.com"))
                     .isInstanceOf(ResourceNotFoundException.class)
-                    .hasMessageContaining("Submission not found with id");
+                    .hasMessageContaining("Không tìm thấy bài nộp với mã: ");
         }
 
         @Test
@@ -121,7 +121,7 @@ class SubmissionDrawingServiceImplTest {
 
             assertThatThrownBy(() -> drawingService.saveOrUpdateDrawing(submissionId, request, "other@codegym.com"))
                     .isInstanceOf(AccessDeniedException.class)
-                    .hasMessage("You are not allowed to modify this submission");
+                    .hasMessage("Bạn không có quyền chỉnh sửa bài nộp này");
         }
 
         @Test
@@ -134,7 +134,7 @@ class SubmissionDrawingServiceImplTest {
 
             assertThatThrownBy(() -> drawingService.saveOrUpdateDrawing(submissionId, request, "student@codegym.com"))
                     .isInstanceOf(AccessDeniedException.class)
-                    .hasMessage("Submission is already submitted. Please un-submit to edit your drawing.");
+                    .hasMessage("Bài nộp đã được gửi. Vui lòng hủy nộp bài để chỉnh sửa hình vẽ.");
         }
     }
 
@@ -173,7 +173,7 @@ class SubmissionDrawingServiceImplTest {
 
             assertThatThrownBy(() -> drawingService.getDrawingBySubmissionId(submissionId, "other@codegym.com"))
                     .isInstanceOf(AccessDeniedException.class)
-                    .hasMessage("You are not allowed to view this drawing");
+                    .hasMessage("Bạn không có quyền xem bản vẽ này");
         }
 
         @Test
@@ -184,7 +184,7 @@ class SubmissionDrawingServiceImplTest {
 
             assertThatThrownBy(() -> drawingService.getDrawingBySubmissionId(submissionId, "student@codegym.com"))
                     .isInstanceOf(ResourceNotFoundException.class)
-                    .hasMessageContaining("Drawing not found for submission id");
+                    .hasMessageContaining("Không tìm thấy bản vẽ của bài nộp mã: ");
         }
     }
 }

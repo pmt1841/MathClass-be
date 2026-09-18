@@ -11,6 +11,7 @@ import com.codegym.mathclass.bugreport.service.impl.BugReportServiceImpl;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.TooManyRequestsException;
 import com.codegym.mathclass.notification.service.NotificationService;
+import com.codegym.mathclass.systemlog.service.SystemLogService;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
@@ -59,6 +60,9 @@ class BugReportServiceImplTest {
 
     @Mock
     private RedissonClient redissonClient;
+
+    @Mock
+    private SystemLogService systemLogService;
 
     @Mock
     private RBucket<String> otpBucket;

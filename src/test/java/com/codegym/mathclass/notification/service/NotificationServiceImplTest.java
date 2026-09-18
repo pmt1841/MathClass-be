@@ -106,7 +106,7 @@ class NotificationServiceImplTest {
 
             assertThatThrownBy(() -> notificationService.saveAndSendNotification(1L, "Msg", "/"))
                     .isInstanceOf(ResourceNotFoundException.class)
-                    .hasMessage("User not found");
+                    .hasMessage("Không tìm thấy người dùng");
 
             verify(notificationRepository, never()).save(any());
             verify(compositeNotificationStrategy, never()).send(any());

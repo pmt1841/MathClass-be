@@ -9,6 +9,6 @@ import java.util.Map;
 public class AssignmentDrawingRequest {
     private String shapeCode;
 
-    @NotNull(message = "jsxGraphData cannot be null")
+    @NotNull(message = "Dữ liệu hình vẽ jsxGraphData không được để trống")
     private Map<String, Object> jsxGraphData;
 }
