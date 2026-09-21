@@ -172,6 +172,12 @@ public class GoogleOAuth2AuthStrategy implements AuthStrategy<GoogleAuthRequest>
                 httpResponse.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
                 httpResponse.addHeader(HttpHeaders.SET_COOKIE, jwtRefreshCookie.toString());
 
+                ResponseCookie cleanLoggedOutCookie = ResponseCookie.from("mathclass_logged_out", "")
+                        .path("/")
+                        .maxAge(0)
+                        .build();
+                httpResponse.addHeader(HttpHeaders.SET_COOKIE, cleanLoggedOutCookie.toString());
+
                 java.time.LocalDateTime now = java.time.LocalDateTime.now();
                 user.setLastActiveAt(now);
                 userRepository.save(user);

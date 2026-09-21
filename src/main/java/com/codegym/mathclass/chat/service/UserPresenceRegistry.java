@@ -11,6 +11,7 @@ import org.redisson.api.RSet;
 import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
+import org.redisson.codec.TypedJsonJacksonCodec;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -56,7 +57,7 @@ public class UserPresenceRegistry {
     @PostConstruct
     public void initSubscriber() {
         try {
-            RTopic topic = redissonClient.getTopic(PRESENCE_TOPIC_NAME);
+            RTopic topic = redissonClient.getTopic(PRESENCE_TOPIC_NAME, new TypedJsonJacksonCodec(PresenceMessage.class));
             presenceListenerId = topic.addListener(PresenceMessage.class, (channel, msg) -> {
                 if (msg != null && !instanceId.equals(msg.originInstanceId())) {
                     log.debug("Received presence event from cluster: userId={}, isOnline={}", msg.userId(), msg.isOnline());
@@ -73,7 +74,7 @@ public class UserPresenceRegistry {
     public void cleanup() {
         if (presenceListenerId != -1) {
             try {
-                redissonClient.getTopic(PRESENCE_TOPIC_NAME).removeListener(presenceListenerId);
+                redissonClient.getTopic(PRESENCE_TOPIC_NAME, new TypedJsonJacksonCodec(PresenceMessage.class)).removeListener(presenceListenerId);
                 log.info("Removed Redis presence topic listener for instanceId={}", instanceId);
             } catch (Exception ex) {
                 log.debug("Error removing presence listener on shutdown: {}", ex.getMessage());
@@ -183,7 +184,7 @@ public class UserPresenceRegistry {
         sendLocalPresence(userId, isOnline, lastActiveAtStr);
 
         try {
-            RTopic topic = redissonClient.getTopic(PRESENCE_TOPIC_NAME);
+            RTopic topic = redissonClient.getTopic(PRESENCE_TOPIC_NAME, new TypedJsonJacksonCodec(PresenceMessage.class));
             topic.publish(new PresenceMessage(instanceId, userId, isOnline, lastActiveAtStr));
         } catch (Exception ex) {
             log.warn("Failed to publish presence event to Redis topic: {}", ex.getMessage());

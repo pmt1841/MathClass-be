@@ -119,6 +119,12 @@ public class LocalPasswordAuthStrategy implements AuthStrategy<LoginRequest> {
         response.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE, jwtRefreshCookie.toString());
 
+        ResponseCookie cleanLoggedOutCookie = ResponseCookie.from("mathclass_logged_out", "")
+                .path("/")
+                .maxAge(0)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cleanLoggedOutCookie.toString());
+
         String jwtToken = jwtUtils.generateJwtToken(authentication);
         return userMapper.toUserInfoResponse(userDetails, jwtToken);
     }

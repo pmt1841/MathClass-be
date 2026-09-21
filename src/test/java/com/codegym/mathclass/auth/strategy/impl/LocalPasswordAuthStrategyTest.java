@@ -120,7 +120,7 @@ class LocalPasswordAuthStrategyTest {
 
         assertThat(response).isNotNull();
         assertThat(response.getEmail()).isEqualTo("student@test.com");
-        verify(mockResponse, times(2)).addHeader(eq(HttpHeaders.SET_COOKIE), anyString());
+        verify(mockResponse, times(3)).addHeader(eq(HttpHeaders.SET_COOKIE), anyString());
     }
 
     @Test

@@ -90,6 +90,7 @@ class UserPresenceRegistryTest {
         lenient().doReturn(onlineUsersSet).when(redissonClient).getSet(eq(UserPresenceRegistry.ONLINE_USERS_KEY), any(StringCodec.class));
         lenient().doReturn(sessionBucket).when(redissonClient).getBucket(anyString(), any(StringCodec.class));
         lenient().when(redissonClient.getTopic(UserPresenceRegistry.PRESENCE_TOPIC_NAME)).thenReturn(presenceTopic);
+        lenient().when(redissonClient.getTopic(eq(UserPresenceRegistry.PRESENCE_TOPIC_NAME), any())).thenReturn(presenceTopic);
 
         registry = new UserPresenceRegistry(messagingTemplate, userRepository, redissonClient);
         userDetails = mock(CustomUserDetails.class);

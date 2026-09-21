@@ -58,6 +58,7 @@ class ChatStompControllerTest {
     @BeforeEach
     void setUp() {
         lenient().when(redissonClient.getTopic(ChatStompController.CHAT_TOPIC_NAME)).thenReturn(chatTopic);
+        lenient().when(redissonClient.getTopic(org.mockito.ArgumentMatchers.eq(ChatStompController.CHAT_TOPIC_NAME), org.mockito.ArgumentMatchers.any())).thenReturn(chatTopic);
 
         mockUserDetails = new CustomUserDetails(
                 1L, "Teacher", "teacher@mathclass.edu.vn", "password", true, null,

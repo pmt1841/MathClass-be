@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
+import org.redisson.codec.TypedJsonJacksonCodec;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -39,7 +40,7 @@ public class ChatStompController {
     @PostConstruct
     public void initSubscriber() {
         try {
-            RTopic topic = redissonClient.getTopic(CHAT_TOPIC_NAME);
+            RTopic topic = redissonClient.getTopic(CHAT_TOPIC_NAME, new TypedJsonJacksonCodec(ChatBroadcastEvent.class));
             chatListenerId = topic.addListener(ChatBroadcastEvent.class, (channel, event) -> {
                 if (event != null && !instanceId.equals(event.originInstanceId())) {
                     log.debug("Received chat event from cluster: topic={}", event.destinationTopic());
@@ -56,7 +57,7 @@ public class ChatStompController {
     public void cleanup() {
         if (chatListenerId != -1) {
             try {
-                redissonClient.getTopic(CHAT_TOPIC_NAME).removeListener(chatListenerId);
+                redissonClient.getTopic(CHAT_TOPIC_NAME, new TypedJsonJacksonCodec(ChatBroadcastEvent.class)).removeListener(chatListenerId);
                 log.info("Removed Redis chat topic listener for instanceId={}", instanceId);
             } catch (Exception ex) {
                 log.debug("Error removing chat listener on shutdown: {}", ex.getMessage());
@@ -136,7 +137,7 @@ public class ChatStompController {
 
         // 2. Publish lên Redis cluster để các node khác nhận và gửi cho client của họ
         try {
-            RTopic topic = redissonClient.getTopic(CHAT_TOPIC_NAME);
+            RTopic topic = redissonClient.getTopic(CHAT_TOPIC_NAME, new TypedJsonJacksonCodec(ChatBroadcastEvent.class));
             topic.publish(new ChatBroadcastEvent(instanceId, destinationTopic, response));
         } catch (Exception ex) {
             log.warn("Failed to publish chat event to Redis cluster for topic {}: {}", destinationTopic, ex.getMessage());

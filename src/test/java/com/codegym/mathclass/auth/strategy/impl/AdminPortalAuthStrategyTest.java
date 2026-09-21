@@ -122,7 +122,7 @@ class AdminPortalAuthStrategyTest {
 
         assertThat(response).isNotNull();
         assertThat(response.getEmail()).isEqualTo("admin@test.com");
-        verify(mockResponse, times(2)).addHeader(eq(HttpHeaders.SET_COOKIE), anyString());
+        verify(mockResponse, times(3)).addHeader(eq(HttpHeaders.SET_COOKIE), anyString());
     }
 
     @Test
