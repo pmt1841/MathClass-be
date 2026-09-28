@@ -30,8 +30,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 
-import com.codegym.mathclass.user.repository.UserRepository;
-
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -83,6 +81,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 apiPrefix + "/auth/**",
                                 apiPrefix + "/bug-reports/public/**",
+                                apiPrefix + "/payment/webhook/**",
                                 "/ws-chat/**",
                                 "/error",
                                 "/v3/api-docs",

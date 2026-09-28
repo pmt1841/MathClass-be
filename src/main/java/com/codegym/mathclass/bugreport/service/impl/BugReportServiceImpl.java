@@ -39,6 +39,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 @Service
@@ -105,7 +106,7 @@ public class BugReportServiceImpl implements BugReportService {
                     + "' không tồn tại hoặc không thể nhận thư. Vui lòng kiểm tra lại địa chỉ email.");
         }
 
-        String otpCode = String.format("%06d", new java.util.Random().nextInt(1000000));
+        String otpCode = String.format("%06d", ThreadLocalRandom.current().nextInt(1000000));
         redissonClient.getBucket(OTP_PREFIX + email, StringCodec.INSTANCE).set(otpCode, Duration.ofMinutes(5));
         emailService.sendBugReportOtpEmail(email, otpCode);
         recordIpReport(clientIp);
@@ -130,8 +131,8 @@ public class BugReportServiceImpl implements BugReportService {
                     .reporterName(request.getReporterName())
                     .errorType(request.getErrorType())
                     .status(BugReportStatus.PENDING)
-                    .createdAt(java.time.LocalDateTime.now())
-                    .updatedAt(java.time.LocalDateTime.now())
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
                     .build();
         }
 
@@ -181,11 +182,19 @@ public class BugReportServiceImpl implements BugReportService {
 
         String safeName = request.getReporterName() != null ? request.getReporterName().trim() : null;
         String safeDescription = request.getDescription() != null ? request.getDescription().trim() : null;
+        String safeOrderCode = request.getOrderCode() != null ? request.getOrderCode().trim().toUpperCase() : null;
+        String safeBankCode = request.getBankCode() != null ? request.getBankCode().trim() : null;
+        String safeAccountNumber = request.getAccountNumber() != null ? request.getAccountNumber().trim() : null;
+        String safeAccountHolderName = request.getAccountHolderName() != null ? request.getAccountHolderName().trim().toUpperCase() : null;
 
         BugReport bugReport = BugReport.builder()
                 .reporterEmail(email)
                 .reporterName(safeName)
                 .errorType(request.getErrorType())
+                .orderCode(safeOrderCode)
+                .bankCode(safeBankCode)
+                .accountNumber(safeAccountNumber)
+                .accountHolderName(safeAccountHolderName)
                 .description(safeDescription)
                 .status(BugReportStatus.PENDING)
                 .build();
@@ -225,8 +234,8 @@ public class BugReportServiceImpl implements BugReportService {
                     .userId(user.getId())
                     .errorType(request.getErrorType())
                     .status(BugReportStatus.PENDING)
-                    .createdAt(java.time.LocalDateTime.now())
-                    .updatedAt(java.time.LocalDateTime.now())
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
                     .build();
         }
 
@@ -251,12 +260,20 @@ public class BugReportServiceImpl implements BugReportService {
         recordIpReport(clientIp);
 
         String safeDescription = request.getDescription() != null ? request.getDescription().trim() : null;
+        String safeOrderCode = request.getOrderCode() != null ? request.getOrderCode().trim().toUpperCase() : null;
+        String safeAuthBankCode = request.getBankCode() != null ? request.getBankCode().trim() : null;
+        String safeAuthAccountNumber = request.getAccountNumber() != null ? request.getAccountNumber().trim() : null;
+        String safeAuthAccountHolderName = request.getAccountHolderName() != null ? request.getAccountHolderName().trim().toUpperCase() : null;
 
         BugReport bugReport = BugReport.builder()
                 .reporterEmail(user.getEmail())
                 .reporterName(user.getFullName())
                 .userId(user.getId())
                 .errorType(request.getErrorType())
+                .orderCode(safeOrderCode)
+                .bankCode(safeAuthBankCode)
+                .accountNumber(safeAuthAccountNumber)
+                .accountHolderName(safeAuthAccountHolderName)
                 .description(safeDescription)
                 .status(BugReportStatus.PENDING)
                 .build();
@@ -427,6 +444,7 @@ public class BugReportServiceImpl implements BugReportService {
             case UI_KATEX -> "Lỗi hiển thị giao diện / KaTeX";
             case SUBMISSION_PROBLEM -> "Lỗi không nộp bài / không tải đề";
             case PERFORMANCE -> "Lỗi tốc độ / không phản hồi";
+            case PAYMENT_REFUND -> "Nạp credit / Yêu cầu hoàn tiền";
             case AI_ASSISTANT -> "Lỗi trợ lý AI";
             case CREDIT_TRANSACTION -> "Lỗi giao dịch Credit";
             case OTHER -> "Khác";
@@ -453,6 +471,10 @@ public class BugReportServiceImpl implements BugReportService {
                 .reporterName(entity.getReporterName())
                 .userId(entity.getUserId())
                 .errorType(entity.getErrorType())
+                .orderCode(entity.getOrderCode())
+                .bankCode(entity.getBankCode())
+                .accountNumber(entity.getAccountNumber())
+                .accountHolderName(entity.getAccountHolderName())
                 .description(entity.getDescription())
                 .status(entity.getStatus())
                 .imageUrls(imageUrls)

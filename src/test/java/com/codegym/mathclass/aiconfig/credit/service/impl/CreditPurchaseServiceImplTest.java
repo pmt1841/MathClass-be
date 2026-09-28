@@ -1,11 +1,13 @@
 package com.codegym.mathclass.aiconfig.credit.service.impl;
 
 import com.codegym.mathclass.aiconfig.credit.dto.request.CreditPurchaseRequest;
+import com.codegym.mathclass.aiconfig.credit.dto.response.CreditOrderStatusResponse;
 import com.codegym.mathclass.aiconfig.credit.dto.response.CreditPurchaseResponse;
 import com.codegym.mathclass.aiconfig.credit.entity.CreditPackage;
 import com.codegym.mathclass.aiconfig.credit.entity.CreditPurchaseOrder;
 import com.codegym.mathclass.aiconfig.credit.entity.CreditPurchaseOrderStatus;
 import com.codegym.mathclass.aiconfig.credit.entity.CreditTransactionType;
+import com.codegym.mathclass.aiconfig.credit.entity.PaymentConfig;
 import com.codegym.mathclass.aiconfig.credit.entity.UserAiAccount;
 import com.codegym.mathclass.aiconfig.credit.gateway.PaymentGateway;
 import com.codegym.mathclass.aiconfig.credit.gateway.PaymentGatewayFactory;
@@ -15,8 +17,11 @@ import com.codegym.mathclass.aiconfig.credit.repository.CreditPackageRepository;
 import com.codegym.mathclass.aiconfig.credit.repository.CreditPurchaseOrderRepository;
 import com.codegym.mathclass.aiconfig.credit.repository.UserAiAccountRepository;
 import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
-import com.codegym.mathclass.exception.AccessDeniedException;
+import com.codegym.mathclass.aiconfig.credit.service.PaymentConfigService;
+import com.codegym.mathclass.aiconfig.credit.gateway.SepayPaymentGateway;
 import com.codegym.mathclass.common.lock.DistributedLockService;
+import com.codegym.mathclass.exception.AccessDeniedException;
+import com.codegym.mathclass.exception.BadRequestException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -63,6 +68,9 @@ class CreditPurchaseServiceImplTest {
     private PaymentGateway paymentGateway;
 
     @Mock
+    private PaymentConfigService paymentConfigService;
+
+    @Mock
     private DistributedLockService distributedLockService;
 
     @InjectMocks
@@ -76,6 +84,17 @@ class CreditPurchaseServiceImplTest {
             ((Runnable) inv.getArgument(3)).run();
             return null;
         }).when(distributedLockService).runWithLock(anyString(), anyLong(), anyLong(), any());
+
+        lenient().when(paymentConfigService.getPaymentConfig()).thenReturn(
+                PaymentConfig.builder()
+                        .bankCode("MB")
+                        .accountNumber("0348714099")
+                        .accountHolderName("MATHCLASS ADMIN")
+                        .transferSyntaxPrefix("MAT")
+                        .qrTemplate("compact2")
+                        .isActive(true)
+                        .build()
+        );
     }
 
     private CreditPackage package_() {
@@ -98,10 +117,10 @@ class CreditPurchaseServiceImplTest {
     class CreatePurchaseTests {
 
         @Test
-        @DisplayName("Should create PENDING order and init payment via gateway")
+        @DisplayName("Should create PENDING order and init payment via Sepay gateway when active")
         void createPurchase_shouldCreatePendingOrder() {
             when(creditPackageRepository.findById(1L)).thenReturn(Optional.of(package_()));
-            when(paymentGatewayFactory.getGateway("MOCK")).thenReturn(paymentGateway);
+            when(paymentGatewayFactory.getGateway(SepayPaymentGateway.GATEWAY_CODE)).thenReturn(paymentGateway);
             when(creditPurchaseOrderRepository.save(any(CreditPurchaseOrder.class)))
                     .thenAnswer(inv -> {
                         CreditPurchaseOrder o = inv.getArgument(0);
@@ -114,10 +133,29 @@ class CreditPurchaseServiceImplTest {
             CreditPurchaseResponse response = creditPurchaseService.createPurchase(42L, new CreditPurchaseRequest(1L));
 
             assertThat(response.getOrderId()).isEqualTo(501L);
+            assertThat(response.getOrderCode()).matches("^\\d{6}0501$");
             assertThat(response.getStatus()).isEqualTo("PENDING");
-            assertThat(response.getGatewayCode()).isEqualTo("MOCK");
+            assertThat(response.getGatewayCode()).isEqualTo(SepayPaymentGateway.GATEWAY_CODE);
             assertThat(response.getCredits()).isEqualTo(100);
             assertThat(response.getPrice()).isEqualTo(20000);
+        }
+
+        @Test
+        @DisplayName("Should throw BadRequestException when payment gateway is inactive (maintenance)")
+        void createPurchase_inactive_shouldThrowBadRequest() {
+            when(creditPackageRepository.findById(1L)).thenReturn(Optional.of(package_()));
+            when(paymentConfigService.getPaymentConfig()).thenReturn(
+                    PaymentConfig.builder()
+                            .bankCode("MB")
+                            .accountNumber("0348714099")
+                            .accountHolderName("MATHCLASS ADMIN")
+                            .isActive(false)
+                            .build()
+            );
+
+            assertThatThrownBy(() -> creditPurchaseService.createPurchase(42L, new CreditPurchaseRequest(1L)))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("bảo trì");
         }
     }
 
@@ -164,6 +202,23 @@ class CreditPurchaseServiceImplTest {
         }
 
         @Test
+        @DisplayName("Should throw BadRequestException when attempting to complete SEPAY_VIETQR order directly")
+        void completePurchase_sepayVietqr_shouldThrowBadRequest() {
+            CreditPurchaseOrder order = CreditPurchaseOrder.builder()
+                    .userId(42L).packageId(1L).credits(100).price(20000)
+                    .gatewayCode(SepayPaymentGateway.GATEWAY_CODE).status(CreditPurchaseOrderStatus.PENDING).build();
+            order.setId(502L);
+
+            when(creditPurchaseOrderRepository.findByIdForUpdate(502L)).thenReturn(Optional.of(order));
+
+            assertThatThrownBy(() -> creditPurchaseService.completePurchase(42L, 502L))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("VietQR");
+
+            assertThat(order.getStatus()).isEqualTo(CreditPurchaseOrderStatus.PENDING);
+        }
+
+        @Test
         @DisplayName("Should throw AccessDeniedException for order of another user")
         void completePurchase_otherUser_shouldThrowAccessDenied() {
             CreditPurchaseOrder order = order(501L, 99L, CreditPurchaseOrderStatus.PENDING);
@@ -171,6 +226,27 @@ class CreditPurchaseServiceImplTest {
 
             assertThatThrownBy(() -> creditPurchaseService.completePurchase(42L, 501L))
                     .isInstanceOf(AccessDeniedException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("getOrderStatus Tests")
+    class GetOrderStatusTests {
+
+        @Test
+        @DisplayName("Should return order status and current user balance")
+        void getOrderStatus_success() {
+            CreditPurchaseOrder order = order(501L, 42L, CreditPurchaseOrderStatus.PENDING);
+            UserAiAccount account = UserAiAccount.builder().userId(42L).balance(150).build();
+
+            when(creditPurchaseOrderRepository.findById(501L)).thenReturn(Optional.of(order));
+            when(userAiAccountRepository.findByUserId(42L)).thenReturn(Optional.of(account));
+
+            CreditOrderStatusResponse res = creditPurchaseService.getOrderStatus(42L, 501L);
+
+            assertThat(res.getOrderId()).isEqualTo(501L);
+            assertThat(res.getStatus()).isEqualTo(CreditPurchaseOrderStatus.PENDING);
+            assertThat(res.getNewBalance()).isEqualTo(150);
         }
     }
 }

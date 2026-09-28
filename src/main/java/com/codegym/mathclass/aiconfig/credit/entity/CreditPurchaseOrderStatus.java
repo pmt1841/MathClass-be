@@ -4,5 +4,8 @@ public enum CreditPurchaseOrderStatus {
     PENDING,
     SUCCESS,
     FAILED,
-    CANCELLED
+    CANCELLED,
+    EXPIRED_PAID,
+    DUPLICATE_PAYMENT,
+    REFUNDED
 }

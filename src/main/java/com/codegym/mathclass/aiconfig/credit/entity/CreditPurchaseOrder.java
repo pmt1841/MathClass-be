@@ -23,6 +23,9 @@ import java.time.LocalDateTime;
 @Builder
 public class CreditPurchaseOrder extends BaseEntity {
 
+    @Column(name = "order_code", nullable = false, unique = true, length = 30)
+    private String orderCode;
+
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
@@ -40,7 +43,7 @@ public class CreditPurchaseOrder extends BaseEntity {
     private String gatewayCode = "MOCK";
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
+    @Column(name = "status", nullable = false, length = 30)
     @Builder.Default
     private CreditPurchaseOrderStatus status = CreditPurchaseOrderStatus.PENDING;
 
@@ -49,4 +52,19 @@ public class CreditPurchaseOrder extends BaseEntity {
 
     @Column(name = "paid_at")
     private LocalDateTime paidAt;
+
+    @Column(name = "refund_reason")
+    private String refundReason;
+
+    @Column(name = "refunded_at")
+    private LocalDateTime refundedAt;
+
+    @Column(name = "refund_bank_code", length = 20)
+    private String refundBankCode;
+
+    @Column(name = "refund_account_number", length = 50)
+    private String refundAccountNumber;
+
+    @Column(name = "refund_account_name", length = 150)
+    private String refundAccountName;
 }

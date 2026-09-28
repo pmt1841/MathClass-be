@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface BugReportRepository extends JpaRepository<BugReport, Long>, JpaSpecificationExecutor<BugReport> {
@@ -23,4 +24,8 @@ public interface BugReportRepository extends JpaRepository<BugReport, Long>, Jpa
     long countByStatusAndCreatedAtLessThan(BugReportStatus status, LocalDateTime endDate);
 
     List<BugReport> findTop5ByOrderByCreatedAtDesc();
+
+    List<BugReport> findByOrderCodeIn(List<String> orderCodes);
+
+    Optional<BugReport> findFirstByOrderCodeOrderByCreatedAtDesc(String orderCode);
 }

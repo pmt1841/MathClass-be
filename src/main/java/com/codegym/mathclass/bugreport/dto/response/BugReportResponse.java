@@ -18,6 +18,10 @@ public class BugReportResponse {
     private String reporterName;
     private Long userId;
     private BugErrorType errorType;
+    private String orderCode;
+    private String bankCode;
+    private String accountNumber;
+    private String accountHolderName;
     private String description;
     private BugReportStatus status;
     private List<String> imageUrls;

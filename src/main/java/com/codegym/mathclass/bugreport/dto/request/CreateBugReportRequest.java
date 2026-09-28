@@ -22,6 +22,14 @@ public class CreateBugReportRequest {
     @NotNull(message = "Loại lỗi không được để trống")
     private BugErrorType errorType;
 
+    private String orderCode;
+
+    private String bankCode;
+
+    private String accountNumber;
+
+    private String accountHolderName;
+
     private String description;
 
     @Size(max = 3, message = "Chỉ được gửi tối đa 3 ảnh đính kèm")
