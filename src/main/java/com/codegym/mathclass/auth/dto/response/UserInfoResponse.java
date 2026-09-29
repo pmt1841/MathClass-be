@@ -22,6 +22,7 @@ public class UserInfoResponse {
     private String avatarUrl;
     private List<String> permissions;
     private String token;
+    private String language;
 
     // 2FA Fields
     private Boolean is2faRequired;

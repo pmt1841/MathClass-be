@@ -40,10 +40,16 @@ public class CustomUserDetails implements UserDetails {
 
     private LocalDateTime lockedAt;
 
+    private String language;
+
     private Collection<? extends GrantedAuthority> authorities;
 
     public CustomUserDetails(long id, String fullName, String email, String password, boolean isActive, String avatarUrl, Collection<? extends GrantedAuthority> authorities) {
-        this(id, fullName, email, password, isActive, avatarUrl, null, null, authorities);
+        this(id, fullName, email, password, isActive, avatarUrl, null, null, "vi", authorities);
+    }
+
+    public CustomUserDetails(long id, String fullName, String email, String password, boolean isActive, String avatarUrl, String lockReason, LocalDateTime lockedAt, Collection<? extends GrantedAuthority> authorities) {
+        this(id, fullName, email, password, isActive, avatarUrl, lockReason, lockedAt, "vi", authorities);
     }
 
     public static CustomUserDetails build(User user, List<String> permissions) {
@@ -55,6 +61,8 @@ public class CustomUserDetails implements UserDetails {
             permissions.forEach(p -> authorities.add(new SimpleGrantedAuthority(p)));
         }
 
+        String userLanguage = user.getLanguage() != null ? user.getLanguage() : "vi";
+
         return new CustomUserDetails(
                 user.getId(),
                 user.getFullName(),
@@ -64,8 +72,10 @@ public class CustomUserDetails implements UserDetails {
                 user.getAvatarUrl(),
                 user.getLockReason(),
                 user.getLockedAt(),
+                userLanguage,
                 authorities);
     }
+
 
 
     /**

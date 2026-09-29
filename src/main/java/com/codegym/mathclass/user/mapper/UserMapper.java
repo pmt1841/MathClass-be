@@ -47,6 +47,7 @@ public class UserMapper {
                 .lockedBy(user.getLockedBy())
                 .lastActiveAt(user.getLastActiveAt())
                 .isOnline(isOnline)
+                .language(user.getLanguage() != null ? user.getLanguage() : "vi")
                 .permissions(permissionCacheService.getPermissionsByRole(user.getRole()))
                 .build();
     }
@@ -68,13 +69,15 @@ public class UserMapper {
                 .filter(a -> !a.startsWith("ROLE_"))
                 .toList();
 
-        return new UserInfoResponse(
-                userDetails.getId(),
-                userDetails.getEmail(),
-                userDetails.getFullName(),
-                role,
-                userDetails.getAvatarUrl(),
-                permissions);
+        return UserInfoResponse.builder()
+                .id(userDetails.getId())
+                .email(userDetails.getEmail())
+                .fullName(userDetails.getFullName())
+                .userRole(role)
+                .avatarUrl(userDetails.getAvatarUrl())
+                .permissions(permissions)
+                .language(userDetails.getLanguage() != null ? userDetails.getLanguage() : "vi")
+                .build();
     }
 
     public UserInfoResponse toUserInfoResponse(CustomUserDetails userDetails, String token) {
@@ -93,15 +96,18 @@ public class UserMapper {
                 .filter(a -> !a.startsWith("ROLE_"))
                 .toList();
 
-        return new UserInfoResponse(
-                userDetails.getId(),
-                userDetails.getEmail(),
-                userDetails.getFullName(),
-                role,
-                userDetails.getAvatarUrl(),
-                permissions,
-                token);
+        return UserInfoResponse.builder()
+                .id(userDetails.getId())
+                .email(userDetails.getEmail())
+                .fullName(userDetails.getFullName())
+                .userRole(role)
+                .avatarUrl(userDetails.getAvatarUrl())
+                .permissions(permissions)
+                .token(token)
+                .language(userDetails.getLanguage() != null ? userDetails.getLanguage() : "vi")
+                .build();
     }
+
 
     public void updateUserFromRequest(User user, UpdateProfileRequest request) {
         if (user == null || request == null) {

@@ -16,4 +16,6 @@ public interface UserService {
     void changePassword(Long userId, ChangePasswordRequest request);
     void sendSetPasswordOtp(Long userId);
     void setPassword(Long userId, SetPasswordRequest request);
+    UserResponse updateLanguage(Long userId, com.codegym.mathclass.user.dto.request.UpdateUserLanguageRequest request);
 }
+

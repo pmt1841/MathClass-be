@@ -1,7 +1,9 @@
 package com.codegym.mathclass.user.service.impl;
 
 import com.codegym.mathclass.exception.BadRequestException;
+import com.codegym.mathclass.exception.ResourceNotFoundException;
 import com.codegym.mathclass.user.dto.request.UpdateProfileRequest;
+import com.codegym.mathclass.user.dto.request.UpdateUserLanguageRequest;
 import com.codegym.mathclass.user.dto.response.UserResponse;
 import com.codegym.mathclass.user.entity.Gender;
 import com.codegym.mathclass.user.entity.Provider;
@@ -571,6 +573,58 @@ class UserServiceImplTest {
             userService.updateLastActiveAt(userId);
 
             verify(userRepository, times(1)).updateLastActiveAt(eq(userId), any(LocalDateTime.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("updateLanguage Tests")
+    class UpdateLanguageTests {
+
+        @Test
+        @DisplayName("User tồn tại và ngôn ngữ hợp lệ -> Cập nhật thành công và trả về UserResponse")
+        void updateLanguage_Success() {
+            Long userId = 1L;
+            UpdateUserLanguageRequest request = new UpdateUserLanguageRequest("en");
+
+            User existingUser = User.builder()
+                    .fullName("Nguyễn Văn A")
+                    .email("vana@example.com")
+                    .language("vi")
+                    .role(Role.STUDENT)
+                    .build();
+            existingUser.setId(userId);
+
+            UserResponse expectedResponse = UserResponse.builder()
+                    .id(userId)
+                    .fullName("Nguyễn Văn A")
+                    .language("en")
+                    .build();
+
+            when(userRepository.findById(userId)).thenReturn(Optional.of(existingUser));
+            when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+            when(userMapper.toUserResponse(any(User.class))).thenReturn(expectedResponse);
+
+            UserResponse actual = userService.updateLanguage(userId, request);
+
+            assertThat(actual).isNotNull();
+            assertThat(actual.getLanguage()).isEqualTo("en");
+            verify(userRepository, times(1)).save(argThat(u -> "en".equals(u.getLanguage())));
+            verify(userMapper, times(1)).toUserResponse(any(User.class));
+        }
+
+        @Test
+        @DisplayName("User không tồn tại -> Ném ResourceNotFoundException")
+        void updateLanguage_UserNotFound_ThrowsException() {
+            Long userId = 999L;
+            UpdateUserLanguageRequest request = new UpdateUserLanguageRequest("en");
+
+            when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> userService.updateLanguage(userId, request))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("999");
+
+            verify(userRepository, never()).save(any());
         }
     }
 }

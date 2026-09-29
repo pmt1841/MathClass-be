@@ -6,9 +6,11 @@ import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.TooManyRequestsException;
 import com.codegym.mathclass.storage.dto.StoragePolicy;
 import com.codegym.mathclass.storage.service.StorageService;
+import com.codegym.mathclass.exception.ResourceNotFoundException;
 import com.codegym.mathclass.user.dto.request.ChangePasswordRequest;
 import com.codegym.mathclass.user.dto.request.SetPasswordRequest;
 import com.codegym.mathclass.user.dto.request.UpdateProfileRequest;
+import com.codegym.mathclass.user.dto.request.UpdateUserLanguageRequest;
 import com.codegym.mathclass.user.dto.response.UserResponse;
 import com.codegym.mathclass.user.entity.PasswordHistory;
 import com.codegym.mathclass.user.entity.Provider;
@@ -254,4 +256,17 @@ public class UserServiceImpl implements UserService {
         // Send Security Alert Email
         emailService.sendSecurityAlertEmail(user.getEmail(), user.getFullName(), LocalDateTime.now());
     }
+
+    @Override
+    @Transactional
+    public UserResponse updateLanguage(Long userId, UpdateUserLanguageRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng với ID: " + userId));
+
+        user.setLanguage(request.getLanguage().trim().toLowerCase());
+        User updatedUser = userRepository.save(user);
+        return userMapper.toUserResponse(updatedUser);
+    }
 }
+
+

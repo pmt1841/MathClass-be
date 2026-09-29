@@ -73,5 +73,9 @@ public class User extends BaseEntity {
 
     @Column(name = "last_active_at")
     private LocalDateTime lastActiveAt;
+
+    @Builder.Default
+    @Column(name = "language", nullable = false, length = 10, columnDefinition = "varchar(10) default 'vi'")
+    private String language = "vi";
 }
 

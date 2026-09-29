@@ -36,6 +36,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -165,6 +166,54 @@ class UserControllerTest {
                     .andExpect(jsonPath("$.avatarUrl").value(expectedUrl));
 
             verify(userService, times(1)).uploadAvatar(eq(1L), any());
+        }
+    }
+
+    @Nested
+    @DisplayName("PATCH /users/me/language Tests")
+    class UpdateLanguageEndpointTests {
+
+        @Test
+        @DisplayName("Gửi language hợp lệ -> Trả về 200 OK và thông tin ngôn ngữ cập nhật")
+        void updateLanguage_ValidLanguage_ReturnsOk() throws Exception {
+            String requestJson = "{\"language\":\"en\"}";
+            mockUserResponse.setLanguage("en");
+
+            when(userService.updateLanguage(eq(1L), any())).thenReturn(mockUserResponse);
+
+            mockMvc.perform(patch("/users/me/language")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(requestJson))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.language").value("en"));
+
+            verify(userService, times(1)).updateLanguage(eq(1L), any());
+        }
+
+        @Test
+        @DisplayName("Gửi body rỗng -> Trả về 400 Bad Request")
+        void updateLanguage_EmptyLanguage_Returns400BadRequest() throws Exception {
+            String requestJson = "{}";
+
+            mockMvc.perform(patch("/users/me/language")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(requestJson))
+                    .andExpect(status().isBadRequest());
+
+            verify(userService, never()).updateLanguage(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("Gửi language không được hỗ trợ ('fr') -> Trả về 400 Bad Request")
+        void updateLanguage_UnsupportedLanguage_Returns400BadRequest() throws Exception {
+            String requestJson = "{\"language\":\"fr\"}";
+
+            mockMvc.perform(patch("/users/me/language")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(requestJson))
+                    .andExpect(status().isBadRequest());
+
+            verify(userService, never()).updateLanguage(anyLong(), any());
         }
     }
 }

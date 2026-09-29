@@ -158,7 +158,7 @@ class AuthTokenFilterTest {
         request.addHeader("Authorization", "Bearer locked.jwt.token");
 
         CustomUserDetails lockedUser = new CustomUserDetails(
-                3L, "Locked User", "locked@example.com", "password", false, null, "Vi phạm quy chế", null,
+                3L, "Locked User", "locked@example.com", "password", false, null, "Vi phạm quy chế", null, "vi",
                 List.of(new SimpleGrantedAuthority("ROLE_STUDENT"))
         );
 

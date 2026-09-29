@@ -39,5 +39,6 @@ public class UserResponse {
     private LocalDateTime lastActiveAt;
     @JsonProperty("isOnline")
     private boolean isOnline;
+    private String language;
 }
 

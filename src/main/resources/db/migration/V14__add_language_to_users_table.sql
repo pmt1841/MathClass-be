@@ -1,0 +1,4 @@
+ALTER TABLE users ADD COLUMN IF NOT EXISTS language VARCHAR(10);
+ALTER TABLE users ALTER COLUMN language SET DEFAULT 'vi';
+UPDATE users SET language = 'vi' WHERE language IS NULL;
+ALTER TABLE users ALTER COLUMN language SET NOT NULL;

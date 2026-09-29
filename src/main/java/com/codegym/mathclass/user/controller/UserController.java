@@ -25,6 +25,8 @@ import com.codegym.mathclass.user.dto.request.ChangePasswordRequest;
 import com.codegym.mathclass.common.dto.ApiResponse;
 
 import com.codegym.mathclass.user.dto.request.SetPasswordRequest;
+import com.codegym.mathclass.user.dto.request.UpdateUserLanguageRequest;
+import org.springframework.web.bind.annotation.PatchMapping;
 
 @Tag(name = "User Profile", description = "APIs quản lý thông tin cá nhân và ảnh đại diện của người dùng")
 @RestController
@@ -90,4 +92,13 @@ public class UserController {
                 .message("Thiết lập mật khẩu thành công. Vui lòng đăng nhập lại.")
                 .build());
     }
+
+    @Operation(summary = "Cập nhật ngôn ngữ giao diện ưa thích", description = "Cập nhật ngôn ngữ được chọn của người dùng vào cơ sở dữ liệu")
+    @PatchMapping("/me/language")
+    public ResponseEntity<UserResponse> updateLanguage(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody UpdateUserLanguageRequest request) {
+        return ResponseEntity.ok(userService.updateLanguage(userDetails.getId(), request));
+    }
 }
+
