@@ -5,21 +5,18 @@ import com.codegym.mathclass.auth.dto.request.TwoFactorVerifyRequest;
 import com.codegym.mathclass.auth.dto.response.TwoFactorConfirmResponse;
 import com.codegym.mathclass.auth.dto.response.TwoFactorSetupResponse;
 import com.codegym.mathclass.auth.dto.response.UserInfoResponse;
-import com.codegym.mathclass.auth.entity.RefreshToken;
 import com.codegym.mathclass.auth.entity.UserBackupCode;
 import com.codegym.mathclass.auth.entity.UserTwoFactorAuth;
 import com.codegym.mathclass.auth.repository.UserBackupCodeRepository;
 import com.codegym.mathclass.auth.repository.UserTwoFactorAuthRepository;
-import com.codegym.mathclass.auth.service.RefreshTokenService;
+import com.codegym.mathclass.auth.service.AuthSessionService;
 import com.codegym.mathclass.auth.service.TotpService;
+import com.codegym.mathclass.auth.service.TwoFactorLockoutService;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.TooManyRequestsException;
 import com.codegym.mathclass.security.jwt.JwtUtils;
-import com.codegym.mathclass.security.services.CustomUserDetails;
-import com.codegym.mathclass.security.services.CustomUserDetailsService;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
-import com.codegym.mathclass.user.mapper.UserMapper;
 import com.codegym.mathclass.user.repository.UserRepository;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,19 +27,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -69,19 +62,15 @@ class TwoFactorAuthServiceImplTest {
     private PasswordEncoder passwordEncoder;
 
     @Mock
-    private RefreshTokenService refreshTokenService;
+    private TwoFactorLockoutService twoFactorLockoutService;
 
     @Mock
-    private UserMapper userMapper;
-
-    @Mock
-    private CustomUserDetailsService customUserDetailsService;
+    private AuthSessionService authSessionService;
 
     @InjectMocks
     private TwoFactorAuthServiceImpl twoFactorAuthService;
 
     private User adminUser;
-    private CustomUserDetails adminUserDetails;
     private HttpServletResponse mockResponse;
     private final String validAuthHeader = "Bearer valid-pre-auth-token";
 
@@ -96,16 +85,6 @@ class TwoFactorAuthServiceImplTest {
                 .build();
         adminUser.setId(10L);
 
-        adminUserDetails = new CustomUserDetails(
-                10L,
-                "Admin User",
-                "admin@test.com",
-                "encodedPassword",
-                true,
-                null,
-                Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN"))
-        );
-
         mockResponse = mock(HttpServletResponse.class);
     }
 
@@ -114,14 +93,14 @@ class TwoFactorAuthServiceImplTest {
     class InitiateSetupTests {
 
         @Test
-        @DisplayName("Should generate temp secret and return QR code Data URL when pre-auth token is valid")
-        void initiateSetup_ValidPreAuthToken_Success() {
+        @DisplayName("Should return secretKey and QR code data URL successfully")
+        void initiateSetup_ValidHeader_Success() {
             when(jwtUtils.validatePreAuthToken("valid-pre-auth-token")).thenReturn(true);
             when(jwtUtils.getUserIdFromPreAuthToken("valid-pre-auth-token")).thenReturn(10L);
             when(userRepository.findByIdWithLock(10L)).thenReturn(Optional.of(adminUser));
             when(userTwoFactorAuthRepository.findByUserId(10L)).thenReturn(Optional.empty());
             when(totpService.generateSecretKey()).thenReturn("JBSWY3DPEHPK3PXP");
-            when(totpService.generateQrCodeDataUrl("admin@test.com", "JBSWY3DPEHPK3PXP"))
+            when(totpService.generateQrCodeDataUrl(eq("admin@test.com"), eq("JBSWY3DPEHPK3PXP")))
                     .thenReturn("data:image/png;base64,mockQrCode");
 
             TwoFactorSetupResponse response = twoFactorAuthService.initiateSetup(validAuthHeader);
@@ -129,18 +108,25 @@ class TwoFactorAuthServiceImplTest {
             assertThat(response).isNotNull();
             assertThat(response.getSecretKey()).isEqualTo("JBSWY3DPEHPK3PXP");
             assertThat(response.getQrCodeDataUrl()).isEqualTo("data:image/png;base64,mockQrCode");
-            assertThat(response.getManualEntryKey()).isEqualTo("JBSW Y3DP EHPK 3PXP");
             verify(userTwoFactorAuthRepository).save(any(UserTwoFactorAuth.class));
         }
 
         @Test
-        @DisplayName("Should throw BadRequestException when token is invalid or expired")
+        @DisplayName("Should throw BadRequestException when Authorization header is missing Bearer")
+        void initiateSetup_MissingBearerHeader_ThrowsBadRequestException() {
+            assertThatThrownBy(() -> twoFactorAuthService.initiateSetup("InvalidHeader"))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("Thiếu token xác thực Pre-Auth");
+        }
+
+        @Test
+        @DisplayName("Should throw BadRequestException when PreAuth token is invalid or expired")
         void initiateSetup_InvalidToken_ThrowsBadRequestException() {
             when(jwtUtils.validatePreAuthToken("valid-pre-auth-token")).thenReturn(false);
 
             assertThatThrownBy(() -> twoFactorAuthService.initiateSetup(validAuthHeader))
                     .isInstanceOf(BadRequestException.class)
-                    .hasMessageContaining("Phiên xác thực không hợp lệ hoặc đã hết hạn");
+                    .hasMessageContaining("Phiên xác thực không hợp lệ");
         }
     }
 
@@ -158,6 +144,8 @@ class TwoFactorAuthServiceImplTest {
                     .isEnabled(false)
                     .build();
 
+            UserInfoResponse expectedUserInfo = new UserInfoResponse(10L, "admin@test.com", "Admin User", "ADMIN", null, List.of());
+
             when(jwtUtils.validatePreAuthToken("valid-pre-auth-token")).thenReturn(true);
             when(jwtUtils.getUserIdFromPreAuthToken("valid-pre-auth-token")).thenReturn(10L);
             when(userRepository.findById(10L)).thenReturn(Optional.of(adminUser));
@@ -165,16 +153,7 @@ class TwoFactorAuthServiceImplTest {
             when(totpService.verifyCode("JBSWY3DPEHPK3PXP", 123456)).thenReturn(true);
             when(totpService.generateBackupCodes(8)).thenReturn(List.of("CODE-0001", "CODE-0002"));
             when(passwordEncoder.encode(anyString())).thenReturn("hashed-backup-code");
-            when(customUserDetailsService.loadUserByUsername("admin@test.com")).thenReturn(adminUserDetails);
-            when(jwtUtils.generateJwtCookie(any(CustomUserDetails.class), anyBoolean()))
-                    .thenReturn(ResponseCookie.from("mathclass_jwt", "jwt").build());
-            when(refreshTokenService.createRefreshToken(10L))
-                    .thenReturn(RefreshToken.builder().id(1L).token("refresh-token").build());
-            when(jwtUtils.generateRefreshJwtCookie(anyString(), anyBoolean()))
-                    .thenReturn(ResponseCookie.from("mathclass_refresh", "refresh-token").build());
-            when(jwtUtils.generateJwtToken("admin@test.com", "ADMIN")).thenReturn("jwt-token");
-            when(userMapper.toUserInfoResponse(eq(adminUserDetails), anyString()))
-                    .thenReturn(new UserInfoResponse(10L, "admin@test.com", "Admin User", "ADMIN", null, List.of()));
+            when(authSessionService.issueAuthSession(eq(adminUser), anyBoolean(), eq(mockResponse))).thenReturn(expectedUserInfo);
 
             TwoFactorConfirmResponse response = twoFactorAuthService.confirmSetup(request, validAuthHeader, mockResponse);
 
@@ -184,7 +163,7 @@ class TwoFactorAuthServiceImplTest {
             assertThat(auth2fa.getSecretKey()).isEqualTo("JBSWY3DPEHPK3PXP");
             assertThat(auth2fa.getTempSecretKey()).isNull();
             verify(userBackupCodeRepository).saveAll(any());
-            verify(mockResponse, times(2)).addHeader(eq(HttpHeaders.SET_COOKIE), anyString());
+            verify(authSessionService).issueAuthSession(adminUser, true, mockResponse);
         }
 
         @Test
@@ -229,27 +208,21 @@ class TwoFactorAuthServiceImplTest {
                     .failedAttempts(2)
                     .build();
 
+            UserInfoResponse expectedUserInfo = new UserInfoResponse(10L, "admin@test.com", "Admin User", "ADMIN", null, List.of());
+
             when(jwtUtils.validatePreAuthToken("valid-pre-auth-token")).thenReturn(true);
             when(jwtUtils.getUserIdFromPreAuthToken("valid-pre-auth-token")).thenReturn(10L);
             when(userRepository.findById(10L)).thenReturn(Optional.of(adminUser));
             when(userTwoFactorAuthRepository.findByUserId(10L)).thenReturn(Optional.of(auth2fa));
             when(totpService.verifyCode("JBSWY3DPEHPK3PXP", 654321)).thenReturn(true);
-            when(customUserDetailsService.loadUserByUsername("admin@test.com")).thenReturn(adminUserDetails);
-            when(jwtUtils.generateJwtCookie(any(CustomUserDetails.class), anyBoolean()))
-                    .thenReturn(ResponseCookie.from("mathclass_jwt", "jwt").build());
-            when(refreshTokenService.createRefreshToken(10L))
-                    .thenReturn(RefreshToken.builder().id(1L).token("refresh-token").build());
-            when(jwtUtils.generateRefreshJwtCookie(anyString(), anyBoolean()))
-                    .thenReturn(ResponseCookie.from("mathclass_refresh", "refresh-token").build());
-            when(jwtUtils.generateJwtToken("admin@test.com", "ADMIN")).thenReturn("jwt-token");
-            when(userMapper.toUserInfoResponse(eq(adminUserDetails), anyString()))
-                    .thenReturn(new UserInfoResponse(10L, "admin@test.com", "Admin User", "ADMIN", null, List.of()));
+            when(authSessionService.issueAuthSession(eq(adminUser), anyBoolean(), eq(mockResponse))).thenReturn(expectedUserInfo);
 
             UserInfoResponse response = twoFactorAuthService.verifyLogin(request, validAuthHeader, mockResponse);
 
             assertThat(response).isNotNull();
-            assertThat(auth2fa.getFailedAttempts()).isEqualTo(0);
-            verify(mockResponse, times(2)).addHeader(eq(HttpHeaders.SET_COOKIE), anyString());
+            verify(twoFactorLockoutService).validateNotLocked(auth2fa);
+            verify(twoFactorLockoutService).resetLockout(auth2fa);
+            verify(authSessionService).issueAuthSession(adminUser, true, mockResponse);
         }
 
         @Test
@@ -272,22 +245,15 @@ class TwoFactorAuthServiceImplTest {
                     .isUsed(false)
                     .build();
 
+            UserInfoResponse expectedUserInfo = new UserInfoResponse(10L, "admin@test.com", "Admin User", "ADMIN", null, List.of());
+
             when(jwtUtils.validatePreAuthToken("valid-pre-auth-token")).thenReturn(true);
             when(jwtUtils.getUserIdFromPreAuthToken("valid-pre-auth-token")).thenReturn(10L);
             when(userRepository.findById(10L)).thenReturn(Optional.of(adminUser));
             when(userTwoFactorAuthRepository.findByUserId(10L)).thenReturn(Optional.of(auth2fa));
             when(userBackupCodeRepository.findByUserIdAndIsUsedFalse(10L)).thenReturn(List.of(backupCodeEntity));
             when(passwordEncoder.matches("CODE-1234", "hashed-code-1234")).thenReturn(true);
-            when(customUserDetailsService.loadUserByUsername("admin@test.com")).thenReturn(adminUserDetails);
-            when(jwtUtils.generateJwtCookie(any(CustomUserDetails.class), anyBoolean()))
-                    .thenReturn(ResponseCookie.from("mathclass_jwt", "jwt").build());
-            when(refreshTokenService.createRefreshToken(10L))
-                    .thenReturn(RefreshToken.builder().id(1L).token("refresh-token").build());
-            when(jwtUtils.generateRefreshJwtCookie(anyString(), anyBoolean()))
-                    .thenReturn(ResponseCookie.from("mathclass_refresh", "refresh-token").build());
-            when(jwtUtils.generateJwtToken("admin@test.com", "ADMIN")).thenReturn("jwt-token");
-            when(userMapper.toUserInfoResponse(eq(adminUserDetails), anyString()))
-                    .thenReturn(new UserInfoResponse(10L, "admin@test.com", "Admin User", "ADMIN", null, List.of()));
+            when(authSessionService.issueAuthSession(eq(adminUser), anyBoolean(), eq(mockResponse))).thenReturn(expectedUserInfo);
 
             UserInfoResponse response = twoFactorAuthService.verifyLogin(request, validAuthHeader, mockResponse);
 
@@ -295,11 +261,14 @@ class TwoFactorAuthServiceImplTest {
             assertThat(backupCodeEntity.isUsed()).isTrue();
             assertThat(backupCodeEntity.getUsedAt()).isNotNull();
             verify(userBackupCodeRepository).save(backupCodeEntity);
+            verify(twoFactorLockoutService).validateNotLocked(auth2fa);
+            verify(twoFactorLockoutService).resetLockout(auth2fa);
+            verify(authSessionService).issueAuthSession(adminUser, false, mockResponse);
         }
 
         @Test
-        @DisplayName("Should lock account and throw TooManyRequestsException after 5 consecutive failed attempts")
-        void verifyLogin_ExceedMaxFailedAttempts_LocksAccount() {
+        @DisplayName("Should lock account when lockout service throws exception")
+        void verifyLogin_LockedAccount_ThrowsTooManyRequestsException() {
             TwoFactorVerifyRequest request = TwoFactorVerifyRequest.builder()
                     .code("000000")
                     .isBackupCode(false)
@@ -309,22 +278,15 @@ class TwoFactorAuthServiceImplTest {
                     .userId(10L)
                     .secretKey("JBSWY3DPEHPK3PXP")
                     .isEnabled(true)
-                    .failedAttempts(4)
                     .build();
 
             when(jwtUtils.validatePreAuthToken("valid-pre-auth-token")).thenReturn(true);
             when(jwtUtils.getUserIdFromPreAuthToken("valid-pre-auth-token")).thenReturn(10L);
             when(userRepository.findById(10L)).thenReturn(Optional.of(adminUser));
             when(userTwoFactorAuthRepository.findByUserId(10L)).thenReturn(Optional.of(auth2fa));
-            when(totpService.verifyCode("JBSWY3DPEHPK3PXP", 0)).thenReturn(false);
+            doThrow(new TooManyRequestsException("Bạn đã nhập sai mã xác thực quá 5 lần liên tiếp."))
+                    .when(twoFactorLockoutService).validateNotLocked(auth2fa);
 
-            assertThatThrownBy(() -> twoFactorAuthService.verifyLogin(request, validAuthHeader, mockResponse))
-                    .isInstanceOf(BadRequestException.class);
-
-            assertThat(auth2fa.getFailedAttempts()).isEqualTo(5);
-            assertThat(auth2fa.getLockedUntil()).isNotNull();
-
-            // Next attempt should throw TooManyRequestsException
             assertThatThrownBy(() -> twoFactorAuthService.verifyLogin(request, validAuthHeader, mockResponse))
                     .isInstanceOf(TooManyRequestsException.class)
                     .hasMessageContaining("quá 5 lần liên tiếp");

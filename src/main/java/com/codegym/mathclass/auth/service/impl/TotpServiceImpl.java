@@ -8,31 +8,27 @@ import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.warrenstrange.googleauth.GoogleAuthenticator;
-import com.warrenstrange.googleauth.GoogleAuthenticatorConfig;
 import com.warrenstrange.googleauth.GoogleAuthenticatorKey;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 import java.security.SecureRandom;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class TotpServiceImpl implements TotpService {
 
     private final GoogleAuthenticator gAuth;
     private final SecureRandom secureRandom = new SecureRandom();
     private static final String CODE_CHARS = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
-
-    public TotpServiceImpl() {
-        GoogleAuthenticatorConfig config = new GoogleAuthenticatorConfig.GoogleAuthenticatorConfigBuilder()
-                .setTimeStepSizeInMillis(TimeUnit.SECONDS.toMillis(30))
-                .setWindowSize(3) // Current step, +1, -1 window tolerance
-                .build();
-        this.gAuth = new GoogleAuthenticator(config);
-    }
 
     @Override
     public String generateSecretKey() {

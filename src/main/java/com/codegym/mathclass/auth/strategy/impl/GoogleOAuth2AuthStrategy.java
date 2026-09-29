@@ -1,31 +1,24 @@
 package com.codegym.mathclass.auth.strategy.impl;
 
-import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
-import com.codegym.mathclass.auth.entity.AuthType;
 import com.codegym.mathclass.auth.dto.request.GoogleAuthRequest;
 import com.codegym.mathclass.auth.dto.response.UserInfoResponse;
-import com.codegym.mathclass.auth.entity.RefreshToken;
-import com.codegym.mathclass.auth.service.RefreshTokenService;
+import com.codegym.mathclass.auth.entity.AuthType;
+import com.codegym.mathclass.auth.service.AuthSessionService;
+import com.codegym.mathclass.auth.service.UserRegistrationService;
 import com.codegym.mathclass.auth.strategy.AuthStrategy;
 import com.codegym.mathclass.exception.BadRequestException;
-import com.codegym.mathclass.notification.entity.NotificationSettings;
-import com.codegym.mathclass.notification.repository.NotificationSettingsRepository;
-import com.codegym.mathclass.security.jwt.JwtUtils;
 import com.codegym.mathclass.security.services.CustomUserDetails;
-import com.codegym.mathclass.user.entity.Provider;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
-import com.codegym.mathclass.user.mapper.UserMapper;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.user.service.PermissionCacheService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -41,34 +34,22 @@ import java.util.Optional;
 public class GoogleOAuth2AuthStrategy implements AuthStrategy<GoogleAuthRequest> {
 
     private final UserRepository userRepository;
-    private final NotificationSettingsRepository notificationSettingsRepository;
     private final PermissionCacheService permissionCacheService;
-    private final JwtUtils jwtUtils;
-    private final RefreshTokenService refreshTokenService;
-    private final UserMapper userMapper;
-    private final AiCreditService aiCreditService;
+    private final UserRegistrationService userRegistrationService;
+    private final AuthSessionService authSessionService;
     private final RestTemplate restTemplate;
 
     public GoogleOAuth2AuthStrategy(
             UserRepository userRepository,
-            NotificationSettingsRepository notificationSettingsRepository,
             PermissionCacheService permissionCacheService,
-            JwtUtils jwtUtils,
-            RefreshTokenService refreshTokenService,
-            UserMapper userMapper,
-            AiCreditService aiCreditService) {
+            UserRegistrationService userRegistrationService,
+            AuthSessionService authSessionService,
+            @Qualifier("authRestTemplate") RestTemplate restTemplate) {
         this.userRepository = userRepository;
-        this.notificationSettingsRepository = notificationSettingsRepository;
         this.permissionCacheService = permissionCacheService;
-        this.jwtUtils = jwtUtils;
-        this.refreshTokenService = refreshTokenService;
-        this.userMapper = userMapper;
-        this.aiCreditService = aiCreditService;
-
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(5000);
-        factory.setReadTimeout(10000);
-        this.restTemplate = new RestTemplate(factory);
+        this.userRegistrationService = userRegistrationService;
+        this.authSessionService = authSessionService;
+        this.restTemplate = restTemplate;
     }
 
     @Override
@@ -136,25 +117,7 @@ public class GoogleOAuth2AuthStrategy implements AuthStrategy<GoogleAuthRequest>
                         }
                     }
 
-                    user = User.builder()
-                            .email(email)
-                            .fullName(name)
-                            .avatarUrl(pictureUrl)
-                            .isActive(true)
-                            .role(role)
-                            .provider(Provider.GOOGLE)
-                            .password(null)
-                            .phoneNumber("")
-                            .build();
-
-                    userRepository.save(user);
-
-                    aiCreditService.grantDefaultForNewUser(user.getId(), user.getRole());
-
-                    NotificationSettings settings = NotificationSettings.builder()
-                            .userId(user.getId())
-                            .build();
-                    notificationSettingsRepository.save(settings);
+                    user = userRegistrationService.registerOAuth2User(email, name, pictureUrl, role);
                 }
 
                 List<String> permissions = permissionCacheService.getPermissionsByRole(user.getRole());
@@ -164,26 +127,7 @@ public class GoogleOAuth2AuthStrategy implements AuthStrategy<GoogleAuthRequest>
                         userDetails, null, userDetails.getAuthorities());
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails, request.isRememberMe());
-                RefreshToken refreshToken = refreshTokenService.createRefreshToken(userDetails.getId());
-                ResponseCookie jwtRefreshCookie = jwtUtils.generateRefreshJwtCookie(refreshToken.getToken(),
-                        request.isRememberMe());
-
-                httpResponse.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
-                httpResponse.addHeader(HttpHeaders.SET_COOKIE, jwtRefreshCookie.toString());
-
-                ResponseCookie cleanLoggedOutCookie = ResponseCookie.from("mathclass_logged_out", "")
-                        .path("/")
-                        .maxAge(0)
-                        .build();
-                httpResponse.addHeader(HttpHeaders.SET_COOKIE, cleanLoggedOutCookie.toString());
-
-                java.time.LocalDateTime now = java.time.LocalDateTime.now();
-                user.setLastActiveAt(now);
-                userRepository.save(user);
-
-                String jwtToken = jwtUtils.generateJwtToken(authentication);
-                return userMapper.toUserInfoResponse(userDetails, jwtToken);
+                return authSessionService.issueAuthSession(user, request.isRememberMe(), httpResponse);
 
             } else {
                 throw new BadRequestException("Token xác thực Google không hợp lệ.");

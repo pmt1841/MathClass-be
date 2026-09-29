@@ -12,7 +12,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 public interface AuthService {
-    UserInfoResponse authenticateUser(LoginRequest loginRequest, HttpServletResponse response);
+    UserInfoResponse authenticateUser(LoginRequest loginRequest, HttpServletRequest httpRequest, HttpServletResponse response);
 
     UserInfoResponse authenticateAdmin2Fa(Admin2FaLoginRequest request, HttpServletRequest httpRequest, HttpServletResponse response);
 
@@ -26,7 +26,7 @@ public interface AuthService {
 
     MessageResponse resetPassword(ResetPasswordRequest request);
 
-    UserInfoResponse authenticateWithGoogle(GoogleAuthRequest request, HttpServletResponse response);
+    UserInfoResponse authenticateWithGoogle(GoogleAuthRequest request, HttpServletRequest httpRequest, HttpServletResponse response);
 
     MessageResponse refreshToken(HttpServletRequest request, HttpServletResponse response);
 }

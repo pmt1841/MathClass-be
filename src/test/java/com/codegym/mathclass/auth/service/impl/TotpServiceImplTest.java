@@ -15,7 +15,7 @@ class TotpServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        totpService = new TotpServiceImpl();
+        totpService = new TotpServiceImpl(new GoogleAuthenticator());
     }
 
     @Test

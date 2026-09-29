@@ -35,14 +35,20 @@ public class AuthController {
 
     @Operation(summary = "Đăng nhập bằng Email và Password", description = "Xác thực người dùng và trả về JWT Token")
     @PostMapping("/login")
-    public ResponseEntity<UserInfoResponse> login(@Valid @RequestBody LoginRequest loginRequest, HttpServletResponse response) {
-        return ResponseEntity.ok(authService.authenticateUser(loginRequest, response));
+    public ResponseEntity<UserInfoResponse> login(
+            @Valid @RequestBody LoginRequest loginRequest,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        return ResponseEntity.ok(authService.authenticateUser(loginRequest, request, response));
     }
 
     @Operation(summary = "Đăng nhập / Đăng ký qua Google OAuth2", description = "Xác thực người dùng bằng Google ID Token")
     @PostMapping("/google")
-    public ResponseEntity<UserInfoResponse> googleAuth(@Valid @RequestBody GoogleAuthRequest request, HttpServletResponse response) {
-        return ResponseEntity.ok(authService.authenticateWithGoogle(request, response));
+    public ResponseEntity<UserInfoResponse> googleAuth(
+            @Valid @RequestBody GoogleAuthRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse response) {
+        return ResponseEntity.ok(authService.authenticateWithGoogle(request, httpRequest, response));
     }
 
     @Operation(summary = "Đăng xuất", description = "Xóa Cookie JWT và phiên làm việc của người dùng")

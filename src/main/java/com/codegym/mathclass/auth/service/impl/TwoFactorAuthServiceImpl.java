@@ -5,29 +5,22 @@ import com.codegym.mathclass.auth.dto.request.TwoFactorVerifyRequest;
 import com.codegym.mathclass.auth.dto.response.TwoFactorConfirmResponse;
 import com.codegym.mathclass.auth.dto.response.TwoFactorSetupResponse;
 import com.codegym.mathclass.auth.dto.response.UserInfoResponse;
-import com.codegym.mathclass.auth.entity.RefreshToken;
 import com.codegym.mathclass.auth.entity.UserBackupCode;
 import com.codegym.mathclass.auth.entity.UserTwoFactorAuth;
 import com.codegym.mathclass.auth.repository.UserBackupCodeRepository;
 import com.codegym.mathclass.auth.repository.UserTwoFactorAuthRepository;
-import com.codegym.mathclass.auth.service.RefreshTokenService;
+import com.codegym.mathclass.auth.service.AuthSessionService;
 import com.codegym.mathclass.auth.service.TotpService;
 import com.codegym.mathclass.auth.service.TwoFactorAuthService;
+import com.codegym.mathclass.auth.service.TwoFactorLockoutService;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.ResourceNotFoundException;
-import com.codegym.mathclass.exception.TooManyRequestsException;
 import com.codegym.mathclass.security.jwt.JwtUtils;
-import com.codegym.mathclass.security.services.CustomUserDetails;
-import com.codegym.mathclass.security.services.CustomUserDetailsService;
 import com.codegym.mathclass.user.entity.User;
-import com.codegym.mathclass.user.mapper.UserMapper;
 import com.codegym.mathclass.user.repository.UserRepository;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,12 +41,8 @@ public class TwoFactorAuthServiceImpl implements TwoFactorAuthService {
     private final UserRepository userRepository;
     private final JwtUtils jwtUtils;
     private final PasswordEncoder passwordEncoder;
-    private final RefreshTokenService refreshTokenService;
-    private final UserMapper userMapper;
-    private final CustomUserDetailsService customUserDetailsService;
-
-    private static final int MAX_FAILED_ATTEMPTS = 5;
-    private static final int LOCKOUT_MINUTES = 15;
+    private final TwoFactorLockoutService twoFactorLockoutService;
+    private final AuthSessionService authSessionService;
 
     @Override
     @Transactional
@@ -136,8 +125,8 @@ public class TwoFactorAuthServiceImpl implements TwoFactorAuthService {
         }
         userBackupCodeRepository.saveAll(backupEntities);
 
-        // Cấp phiên đăng nhập hoàn chỉnh
-        UserInfoResponse userInfo = issueAuthSession(user, true, response);
+        // Cấp phiên đăng nhập hoàn chỉnh qua AuthSessionService
+        UserInfoResponse userInfo = authSessionService.issueAuthSession(user, true, response);
 
         return TwoFactorConfirmResponse.builder()
                 .userInfo(userInfo)
@@ -164,9 +153,7 @@ public class TwoFactorAuthServiceImpl implements TwoFactorAuthService {
         }
 
         // Kiểm tra khóa thử sai (Lockout)
-        if (auth2fa.getLockedUntil() != null && auth2fa.getLockedUntil().isAfter(LocalDateTime.now())) {
-            throw new TooManyRequestsException("Bạn đã nhập sai mã xác thực quá " + MAX_FAILED_ATTEMPTS + " lần liên tiếp. Vui lòng thử lại sau " + LOCKOUT_MINUTES + " phút.");
-        }
+        twoFactorLockoutService.validateNotLocked(auth2fa);
 
         if (!request.isBackupCode()) {
             // Xác thực mã OTP 6 số từ ứng dụng Google Authenticator
@@ -174,13 +161,13 @@ public class TwoFactorAuthServiceImpl implements TwoFactorAuthService {
             try {
                 codeInt = Integer.parseInt(request.getCode().trim());
             } catch (NumberFormatException e) {
-                handleFailedAttempt(auth2fa);
+                twoFactorLockoutService.recordFailedAttempt(auth2fa);
                 throw new BadRequestException("Mã xác thực phải bao gồm 6 chữ số.");
             }
 
             boolean isValid = totpService.verifyCode(auth2fa.getSecretKey(), codeInt);
             if (!isValid) {
-                handleFailedAttempt(auth2fa);
+                twoFactorLockoutService.recordFailedAttempt(auth2fa);
                 throw new BadRequestException("Mã xác thực 6 số không đúng hoặc đã hết hạn.");
             }
         } else {
@@ -192,8 +179,8 @@ public class TwoFactorAuthServiceImpl implements TwoFactorAuthService {
                     .filter(bc -> passwordEncoder.matches(inputCode, bc.getCodeHash()))
                     .findFirst();
 
-            if (!matchedBackupCode.isPresent()) {
-                handleFailedAttempt(auth2fa);
+            if (matchedBackupCode.isEmpty()) {
+                twoFactorLockoutService.recordFailedAttempt(auth2fa);
                 throw new BadRequestException("Mã dự phòng không hợp lệ hoặc đã được sử dụng.");
             }
 
@@ -205,37 +192,9 @@ public class TwoFactorAuthServiceImpl implements TwoFactorAuthService {
         }
 
         // Đăng nhập thành công -> Reset số lần sai
-        auth2fa.setFailedAttempts(0);
-        auth2fa.setLockedUntil(null);
-        userTwoFactorAuthRepository.save(auth2fa);
+        twoFactorLockoutService.resetLockout(auth2fa);
 
-        return issueAuthSession(user, request.isRememberMe(), response);
-    }
-
-    private void handleFailedAttempt(UserTwoFactorAuth auth2fa) {
-        int attempts = auth2fa.getFailedAttempts() + 1;
-        auth2fa.setFailedAttempts(attempts);
-        if (attempts >= MAX_FAILED_ATTEMPTS) {
-            auth2fa.setLockedUntil(LocalDateTime.now().plusMinutes(LOCKOUT_MINUTES));
-            log.warn("Tài khoản userId [{}] bị khóa 2FA trong {} phút do nhập sai quá {} lần.",
-                    auth2fa.getUserId(), LOCKOUT_MINUTES, MAX_FAILED_ATTEMPTS);
-        }
-        userTwoFactorAuthRepository.save(auth2fa);
-    }
-
-    private UserInfoResponse issueAuthSession(User user, boolean rememberMe, HttpServletResponse response) {
-        UserDetails userDetails = customUserDetailsService.loadUserByUsername(user.getEmail());
-        CustomUserDetails customUserDetails = (CustomUserDetails) userDetails;
-
-        ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(customUserDetails, rememberMe);
-        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getId());
-        ResponseCookie jwtRefreshCookie = jwtUtils.generateRefreshJwtCookie(refreshToken.getToken(), rememberMe);
-
-        response.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
-        response.addHeader(HttpHeaders.SET_COOKIE, jwtRefreshCookie.toString());
-
-        String jwtToken = jwtUtils.generateJwtToken(customUserDetails.getUsername(), user.getRole().name());
-        return userMapper.toUserInfoResponse(customUserDetails, jwtToken);
+        return authSessionService.issueAuthSession(user, request.isRememberMe(), response);
     }
 
     private String extractToken(String authHeader) {

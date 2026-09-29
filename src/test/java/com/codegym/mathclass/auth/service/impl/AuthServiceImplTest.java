@@ -1,6 +1,5 @@
 package com.codegym.mathclass.auth.service.impl;
 
-import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
 import com.codegym.mathclass.auth.audit.AuthAuditLogger;
 import com.codegym.mathclass.auth.dto.request.Admin2FaLoginRequest;
 import com.codegym.mathclass.auth.dto.request.ForgotPasswordRequest;
@@ -12,23 +11,19 @@ import com.codegym.mathclass.auth.dto.response.MessageResponse;
 import com.codegym.mathclass.auth.dto.response.UserInfoResponse;
 import com.codegym.mathclass.auth.entity.AuthType;
 import com.codegym.mathclass.auth.entity.RefreshToken;
+import com.codegym.mathclass.auth.service.AuthSessionService;
+import com.codegym.mathclass.auth.service.PasswordRecoveryService;
 import com.codegym.mathclass.auth.service.RefreshTokenService;
+import com.codegym.mathclass.auth.service.UserRegistrationService;
 import com.codegym.mathclass.auth.strategy.AuthStrategy;
 import com.codegym.mathclass.auth.strategy.AuthStrategyFactory;
 import com.codegym.mathclass.chat.service.UserPresenceRegistry;
-import com.codegym.mathclass.common.ratelimit.RateLimiterService;
 import com.codegym.mathclass.exception.BadRequestException;
-import com.codegym.mathclass.exception.TooManyRequestsException;
-import com.codegym.mathclass.notification.entity.NotificationSettings;
-import com.codegym.mathclass.notification.repository.NotificationSettingsRepository;
 import com.codegym.mathclass.security.jwt.JwtUtils;
 import com.codegym.mathclass.security.jwt.TokenBlacklistService;
-import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
-import com.codegym.mathclass.user.service.PermissionCacheService;
-import com.codegym.mathclass.utils.EmailService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,24 +34,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.redisson.api.RBucket;
-import org.redisson.api.RedissonClient;
-import org.redisson.client.codec.StringCodec;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.util.ReflectionTestUtils;
-import org.thymeleaf.context.Context;
 
-import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -70,43 +56,28 @@ class AuthServiceImplTest {
     private AuthAuditLogger authAuditLogger;
 
     @Mock
-    private UserRepository userRepository;
+    private UserRegistrationService userRegistrationService;
 
     @Mock
-    private NotificationSettingsRepository notificationSettingsRepository;
+    private PasswordRecoveryService passwordRecoveryService;
 
     @Mock
-    private PermissionCacheService permissionCacheService;
-
-    @Mock
-    private JwtUtils jwtUtils;
-
-    @Mock
-    private PasswordEncoder encoder;
-
-    @Mock
-    private EmailService emailService;
+    private AuthSessionService authSessionService;
 
     @Mock
     private RefreshTokenService refreshTokenService;
 
     @Mock
-    private AiCreditService aiCreditService;
-
-    @Mock
-    private UserPresenceRegistry userPresenceRegistry;
-
-    @Mock
-    private RateLimiterService rateLimiterService;
+    private UserRepository userRepository;
 
     @Mock
     private TokenBlacklistService tokenBlacklistService;
 
     @Mock
-    private RedissonClient redissonClient;
+    private UserPresenceRegistry userPresenceRegistry;
 
     @Mock
-    private RBucket<String> resetBucket;
+    private JwtUtils jwtUtils;
 
     @Mock
     private AuthStrategy<LoginRequest> localAuthStrategy;
@@ -126,8 +97,6 @@ class AuthServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(authService, "frontendUrl", "http://localhost:3000");
-
         mockUser = User.builder()
                 .email("student@test.com")
                 .fullName("Test Student")
@@ -152,18 +121,19 @@ class AuthServiceImplTest {
             loginRequest.setEmail("student@test.com");
             loginRequest.setPassword("password");
 
-            UserInfoResponse expectedUserInfo = new UserInfoResponse(1L, "student@test.com", "Test Student", "STUDENT",
-                    null, List.of());
+            UserInfoResponse expectedUserInfo = new UserInfoResponse(1L, "student@test.com", "Test Student", "STUDENT", null, List.of());
 
+            when(authAuditLogger.extractClientIp(mockRequest)).thenReturn("127.0.0.1");
+            when(authAuditLogger.extractUserAgent(mockRequest)).thenReturn("Mozilla/5.0");
             when(authStrategyFactory.<LoginRequest>getStrategy(AuthType.LOCAL)).thenReturn(localAuthStrategy);
             when(localAuthStrategy.authenticate(loginRequest, mockResponse)).thenReturn(expectedUserInfo);
 
-            UserInfoResponse response = authService.authenticateUser(loginRequest, mockResponse);
+            UserInfoResponse response = authService.authenticateUser(loginRequest, mockRequest, mockResponse);
 
             assertThat(response).isNotNull();
             assertThat(response.getEmail()).isEqualTo("student@test.com");
             verify(authAuditLogger, times(1)).logSuccess(eq(1L), eq("student@test.com"), eq(AuthType.LOCAL),
-                    anyString(), anyString());
+                    eq("127.0.0.1"), eq("Mozilla/5.0"));
         }
 
         @Test
@@ -173,16 +143,18 @@ class AuthServiceImplTest {
             loginRequest.setEmail("student@test.com");
             loginRequest.setPassword("wrong");
 
+            when(authAuditLogger.extractClientIp(mockRequest)).thenReturn("127.0.0.1");
+            when(authAuditLogger.extractUserAgent(mockRequest)).thenReturn("Mozilla/5.0");
             when(authStrategyFactory.<LoginRequest>getStrategy(AuthType.LOCAL)).thenReturn(localAuthStrategy);
             when(localAuthStrategy.authenticate(loginRequest, mockResponse))
                     .thenThrow(new BadRequestException("Email hoặc mật khẩu không đúng. Vui lòng thử lại."));
 
-            assertThatThrownBy(() -> authService.authenticateUser(loginRequest, mockResponse))
+            assertThatThrownBy(() -> authService.authenticateUser(loginRequest, mockRequest, mockResponse))
                     .isInstanceOf(BadRequestException.class)
                     .hasMessageContaining("Email hoặc mật khẩu không đúng");
 
-            verify(authAuditLogger, times(1)).logFailure(eq("student@test.com"), eq(AuthType.LOCAL), anyString(),
-                    anyString(), anyString());
+            verify(authAuditLogger, times(1)).logFailure(eq("student@test.com"), eq(AuthType.LOCAL),
+                    anyString(), eq("127.0.0.1"), eq("Mozilla/5.0"));
         }
     }
 
@@ -192,22 +164,43 @@ class AuthServiceImplTest {
 
         @Test
         @DisplayName("Should delegate to GoogleOAuth2AuthStrategy and log audit success")
-        void authenticateWithGoogle_Success() {
+        void authenticateWithGoogle_ValidToken_Success() {
             GoogleAuthRequest googleRequest = new GoogleAuthRequest();
-            googleRequest.setCredential("google-token-123");
+            googleRequest.setCredential("valid-google-id-token");
 
-            UserInfoResponse expectedUserInfo = new UserInfoResponse(1L, "student@test.com", "Test Student", "STUDENT",
-                    null, List.of());
+            UserInfoResponse expectedUserInfo = new UserInfoResponse(2L, "google@test.com", "Google User", "STUDENT", null, List.of());
 
+            when(authAuditLogger.extractClientIp(mockRequest)).thenReturn("127.0.0.1");
+            when(authAuditLogger.extractUserAgent(mockRequest)).thenReturn("Mozilla/5.0");
             when(authStrategyFactory.<GoogleAuthRequest>getStrategy(AuthType.GOOGLE)).thenReturn(googleAuthStrategy);
             when(googleAuthStrategy.authenticate(googleRequest, mockResponse)).thenReturn(expectedUserInfo);
 
-            UserInfoResponse response = authService.authenticateWithGoogle(googleRequest, mockResponse);
+            UserInfoResponse response = authService.authenticateWithGoogle(googleRequest, mockRequest, mockResponse);
 
             assertThat(response).isNotNull();
-            assertThat(response.getEmail()).isEqualTo("student@test.com");
-            verify(authAuditLogger, times(1)).logSuccess(eq(1L), eq("student@test.com"), eq(AuthType.GOOGLE),
-                    anyString(), anyString());
+            assertThat(response.getEmail()).isEqualTo("google@test.com");
+            verify(authAuditLogger, times(1)).logSuccess(eq(2L), eq("google@test.com"), eq(AuthType.GOOGLE),
+                    eq("127.0.0.1"), eq("Mozilla/5.0"));
+        }
+
+        @Test
+        @DisplayName("Should log audit failure and rethrow on Google auth error")
+        void authenticateWithGoogle_StrategyFailure_LogsAndRethrows() {
+            GoogleAuthRequest googleRequest = new GoogleAuthRequest();
+            googleRequest.setCredential("invalid-token");
+
+            when(authAuditLogger.extractClientIp(mockRequest)).thenReturn("127.0.0.1");
+            when(authAuditLogger.extractUserAgent(mockRequest)).thenReturn("Mozilla/5.0");
+            when(authStrategyFactory.<GoogleAuthRequest>getStrategy(AuthType.GOOGLE)).thenReturn(googleAuthStrategy);
+            when(googleAuthStrategy.authenticate(googleRequest, mockResponse))
+                    .thenThrow(new BadRequestException("Token xác thực Google không hợp lệ."));
+
+            assertThatThrownBy(() -> authService.authenticateWithGoogle(googleRequest, mockRequest, mockResponse))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("Token xác thực Google không hợp lệ");
+
+            verify(authAuditLogger, times(1)).logFailure(isNull(), eq(AuthType.GOOGLE), anyString(),
+                    eq("127.0.0.1"), eq("Mozilla/5.0"));
         }
     }
 
@@ -216,210 +209,53 @@ class AuthServiceImplTest {
     class AuthenticateAdmin2FaTests {
 
         @Test
-        @DisplayName("Should delegate to AdminPortalAuthStrategy and log audit success")
-        void authenticateAdmin2Fa_Success() {
-            Admin2FaLoginRequest adminRequest = new Admin2FaLoginRequest("admin@test.com", "AdminPass123!", "123456");
-            UserInfoResponse expectedUserInfo = new UserInfoResponse(99L, "admin@test.com", "Admin User", "ADMIN", null,
-                    List.of());
+        @DisplayName("Should delegate to AdminPortalAuthStrategy and log audit success with IP/Agent")
+        void authenticateAdmin2Fa_ValidCredentials_Success() {
+            Admin2FaLoginRequest request = new Admin2FaLoginRequest("admin@test.com", "password", "123456");
 
-            when(authStrategyFactory.<Admin2FaLoginRequest>getStrategy(AuthType.ADMIN_2FA))
-                    .thenReturn(admin2FaAuthStrategy);
-            when(admin2FaAuthStrategy.authenticate(adminRequest, mockResponse)).thenReturn(expectedUserInfo);
+            UserInfoResponse expectedUserInfo = new UserInfoResponse(3L, "admin@test.com", "Admin User", "ADMIN", null, List.of());
 
-            UserInfoResponse response = authService.authenticateAdmin2Fa(adminRequest, mockRequest, mockResponse);
+            when(authAuditLogger.extractClientIp(mockRequest)).thenReturn("127.0.0.1");
+            when(authAuditLogger.extractUserAgent(mockRequest)).thenReturn("Mozilla/5.0");
+            when(authStrategyFactory.<Admin2FaLoginRequest>getStrategy(AuthType.ADMIN_2FA)).thenReturn(admin2FaAuthStrategy);
+            when(admin2FaAuthStrategy.authenticate(request, mockResponse)).thenReturn(expectedUserInfo);
+
+            UserInfoResponse response = authService.authenticateAdmin2Fa(request, mockRequest, mockResponse);
 
             assertThat(response).isNotNull();
             assertThat(response.getEmail()).isEqualTo("admin@test.com");
-            verify(authAuditLogger, times(1)).logSuccess(eq(99L), eq("admin@test.com"), eq(AuthType.ADMIN_2FA), any(),
-                    any());
+            verify(authAuditLogger, times(1)).logSuccess(eq(3L), eq("admin@test.com"), eq(AuthType.ADMIN_2FA),
+                    eq("127.0.0.1"), eq("Mozilla/5.0"));
         }
     }
 
     @Nested
-    @DisplayName("registerUser Tests")
-    class RegisterUserTests {
+    @DisplayName("logoutUser Tests")
+    class LogoutUserTests {
 
         @Test
-        @DisplayName("Should register new user and send verification email")
-        void registerUser_ValidRequest_Success() {
-            SignupRequest signupRequest = new SignupRequest();
-            signupRequest.setEmail("newuser@test.com");
-            signupRequest.setPassword("Password123");
-            signupRequest.setFullName("New User");
-            signupRequest.setPhoneNumber("0987654321");
-            signupRequest.setRole(Role.STUDENT);
+        @DisplayName("Should blacklist token, delete refresh token, update last active, and clear cookies")
+        void logoutUser_FullCleanup_Success() {
+            RefreshToken refreshToken = RefreshToken.builder()
+                    .id(1L)
+                    .token("mock-refresh-token")
+                    .user(mockUser)
+                    .build();
 
-            when(userRepository.existsByEmail("newuser@test.com")).thenReturn(false);
-            when(encoder.encode("Password123")).thenReturn("encodedPassword");
+            when(jwtUtils.getJwtFromCookies(mockRequest)).thenReturn("mock-access-token");
+            when(jwtUtils.validateJwtToken("mock-access-token")).thenReturn(true);
+            when(jwtUtils.getJwtRefreshFromCookies(mockRequest)).thenReturn("mock-refresh-token");
+            when(refreshTokenService.findByToken("mock-refresh-token")).thenReturn(Optional.of(refreshToken));
 
-            MessageResponse response = authService.registerUser(signupRequest);
+            MessageResponse response = authService.logoutUser(mockRequest, mockResponse);
 
             assertThat(response).isNotNull();
-            assertThat(response.getMessage()).contains("Đăng ký tài khoản thành công");
-            verify(userRepository, times(1)).save(any(User.class));
-            verify(notificationSettingsRepository, times(1)).save(any(NotificationSettings.class));
-            verify(emailService, times(1)).sendHtmlMailAsync(eq("newuser@test.com"),
-                    eq("Xác nhận đăng ký tài khoản MathClass"), eq("auth-verify"), any(Context.class));
-        }
-
-        @Test
-        @DisplayName("Should throw BadRequestException if email already exists")
-        void registerUser_ExistingEmail_ThrowsException() {
-            SignupRequest signupRequest = new SignupRequest();
-            signupRequest.setEmail("student@test.com");
-
-            when(userRepository.existsByEmail("student@test.com")).thenReturn(true);
-
-            assertThatThrownBy(() -> authService.registerUser(signupRequest))
-                    .isInstanceOf(BadRequestException.class)
-                    .hasMessageContaining("Lỗi: Email đã tồn tại!");
-
-            verify(userRepository, never()).save(any());
-        }
-
-        @Test
-        @DisplayName("Should throw BadRequestException if registration role is ADMIN")
-        void registerUser_AdminRole_ThrowsException() {
-            SignupRequest signupRequest = new SignupRequest();
-            signupRequest.setEmail("admin@test.com");
-            signupRequest.setRole(Role.ADMIN);
-
-            when(userRepository.existsByEmail("admin@test.com")).thenReturn(false);
-
-            assertThatThrownBy(() -> authService.registerUser(signupRequest))
-                    .isInstanceOf(BadRequestException.class)
-                    .hasMessageContaining("Lỗi đăng ký tài khoản");
-        }
-    }
-
-    @Nested
-    @DisplayName("verifyUser Tests")
-    class VerifyUserTests {
-
-        @Test
-        @DisplayName("Should activate user and send welcome email for valid token")
-        void verifyUser_ValidToken_Success() {
-            String token = "valid-uuid-token";
-            mockUser.setVerificationCode(token);
-            mockUser.setActive(false);
-
-            when(userRepository.findByVerificationCode(token)).thenReturn(Optional.of(mockUser));
-
-            MessageResponse response = authService.verifyUser(token);
-
-            assertThat(response).isNotNull();
-            assertThat(response.getMessage()).contains("Tài khoản đã được kích hoạt thành công!");
-            assertThat(mockUser.isActive()).isTrue();
-            assertThat(mockUser.getVerificationCode()).isNull();
-            verify(userRepository, times(1)).save(mockUser);
-            verify(emailService, times(1)).sendHtmlMailAsync(eq("student@test.com"),
-                    eq("Kích hoạt tài khoản thành công"), eq("auth-welcome"), any(Context.class));
-        }
-
-        @Test
-        @DisplayName("Should throw BadRequestException when token is invalid")
-        void verifyUser_InvalidToken_ThrowsException() {
-            when(userRepository.findByVerificationCode("invalid-token")).thenReturn(Optional.empty());
-
-            assertThatThrownBy(() -> authService.verifyUser("invalid-token"))
-                    .isInstanceOf(BadRequestException.class)
-                    .hasMessageContaining("Mã xác nhận không hợp lệ!");
-        }
-    }
-
-    @Nested
-    @DisplayName("forgotPassword Tests")
-    class ForgotPasswordTests {
-
-        @Test
-        @DisplayName("Should create reset token in Redis and send email for valid user email")
-        void forgotPassword_ValidUser_Success() {
-            ForgotPasswordRequest request = new ForgotPasswordRequest();
-            request.setEmail("student@test.com");
-
-            when(rateLimiterService.tryAcquire(eq("auth:forgot:student@test.com"), any(Duration.class)))
-                    .thenReturn(true);
-            when(userRepository.findByEmail("student@test.com")).thenReturn(Optional.of(mockUser));
-            doReturn(resetBucket).when(redissonClient).getBucket(startsWith("auth:reset:"), any(StringCodec.class));
-
-            MessageResponse response = authService.forgotPassword(request);
-
-            assertThat(response).isNotNull();
-            assertThat(response.getMessage()).contains("Nếu email của bạn hợp lệ");
-            verify(resetBucket, times(1)).set(eq("1"), eq(Duration.ofMinutes(15)));
-            verify(emailService, times(1)).sendHtmlMailAsync(eq("student@test.com"),
-                    eq("Yêu cầu khôi phục mật khẩu MathClass"), eq("forgot-password"), any(Context.class));
-        }
-
-        @Test
-        @DisplayName("Should return generic success response without sending email if email is not found")
-        void forgotPassword_EmailNotFound_ReturnsGenericMessage() {
-            ForgotPasswordRequest request = new ForgotPasswordRequest();
-            request.setEmail("nonexistent@test.com");
-
-            when(rateLimiterService.tryAcquire(eq("auth:forgot:nonexistent@test.com"), any(Duration.class)))
-                    .thenReturn(true);
-            when(userRepository.findByEmail("nonexistent@test.com")).thenReturn(Optional.empty());
-
-            MessageResponse response = authService.forgotPassword(request);
-
-            assertThat(response).isNotNull();
-            assertThat(response.getMessage()).contains("Nếu email của bạn hợp lệ");
-            verify(emailService, never()).sendHtmlMailAsync(any(), any(), any(), any());
-        }
-
-        @Test
-        @DisplayName("Should throw TooManyRequestsException if request is made again within 60 seconds")
-        void forgotPassword_RateLimited_ThrowsException() {
-            ForgotPasswordRequest request = new ForgotPasswordRequest();
-            request.setEmail("rate@test.com");
-
-            when(rateLimiterService.tryAcquire(eq("auth:forgot:rate@test.com"), any(Duration.class))).thenReturn(false);
-
-            assertThatThrownBy(() -> authService.forgotPassword(request))
-                    .isInstanceOf(TooManyRequestsException.class)
-                    .hasMessageContaining("Bạn đã gửi yêu cầu quá nhanh");
-        }
-    }
-
-    @Nested
-    @DisplayName("resetPassword Tests")
-    class ResetPasswordTests {
-
-        @Test
-        @DisplayName("Should update password and delete token from Redis when token is valid")
-        void resetPassword_ValidToken_Success() {
-            ResetPasswordRequest request = new ResetPasswordRequest();
-            request.setToken("rawToken123");
-            request.setNewPassword("NewPassword123!");
-
-            doReturn(resetBucket).when(redissonClient).getBucket(startsWith("auth:reset:"), any(StringCodec.class));
-            when(resetBucket.get()).thenReturn("1");
-            when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser));
-            when(encoder.encode("NewPassword123!")).thenReturn("encodedNewPassword");
-
-            MessageResponse response = authService.resetPassword(request);
-
-            assertThat(response).isNotNull();
-            assertThat(response.getMessage()).contains("Mật khẩu của bạn đã được cập nhật thành công");
-            assertThat(mockUser.getPassword()).isEqualTo("encodedNewPassword");
-            verify(userRepository, times(1)).save(mockUser);
-            verify(resetBucket, times(1)).delete();
-        }
-
-        @Test
-        @DisplayName("Should throw BadRequestException if token is invalid or expired in Redis")
-        void resetPassword_InvalidOrExpiredToken_ThrowsException() {
-            ResetPasswordRequest request = new ResetPasswordRequest();
-            request.setToken("invalidToken");
-            request.setNewPassword("NewPassword123!");
-
-            doReturn(resetBucket).when(redissonClient).getBucket(startsWith("auth:reset:"), any(StringCodec.class));
-            when(resetBucket.get()).thenReturn(null);
-
-            assertThatThrownBy(() -> authService.resetPassword(request))
-                    .isInstanceOf(BadRequestException.class)
-                    .hasMessageContaining("không hợp lệ hoặc đã hết hạn");
+            assertThat(response.getMessage()).isEqualTo("Đăng xuất thành công!");
+            verify(tokenBlacklistService, times(1)).blacklistToken("mock-access-token");
+            verify(refreshTokenService, times(1)).deleteToken(refreshToken);
+            verify(userRepository, times(1)).updateLastActiveAt(eq(1L), any());
+            verify(userPresenceRegistry, times(1)).markLoggedOut(1L);
+            verify(authSessionService, times(1)).clearSessionCookies(mockResponse);
         }
     }
 
@@ -440,98 +276,81 @@ class AuthServiceImplTest {
             when(jwtUtils.getJwtRefreshFromCookies(mockRequest)).thenReturn("valid-refresh-token");
             when(refreshTokenService.findByToken("valid-refresh-token")).thenReturn(Optional.of(refreshToken));
             when(refreshTokenService.verifyExpiration(refreshToken)).thenReturn(refreshToken);
-            when(permissionCacheService.getPermissionsByRole(Role.STUDENT)).thenReturn(List.of("READ_COURSE"));
-            when(jwtUtils.generateJwtCookie(any(CustomUserDetails.class)))
-                    .thenReturn(ResponseCookie.from("mathclass_jwt", "new-jwt-token").build());
 
             MessageResponse response = authService.refreshToken(mockRequest, mockResponse);
 
             assertThat(response).isNotNull();
             assertThat(response.getMessage()).isEqualTo("Token is refreshed successfully!");
-            verify(mockResponse, times(1)).addHeader(eq(HttpHeaders.SET_COOKIE), anyString());
+            verify(authSessionService).setRefreshAccessCookie(mockUser, mockResponse);
         }
 
         @Test
-        @DisplayName("Should throw BadRequestException when refresh token cookie is empty")
-        void refreshToken_EmptyCookie_ThrowsException() {
-            when(jwtUtils.getJwtRefreshFromCookies(mockRequest)).thenReturn("");
+        @DisplayName("Should throw BadRequestException and clean cookies if refresh token is revoked or not found")
+        void refreshToken_InvalidToken_ThrowsExceptionAndCleansCookies() {
+            when(jwtUtils.getJwtRefreshFromCookies(mockRequest)).thenReturn("invalid-refresh-token");
+            when(refreshTokenService.findByToken("invalid-refresh-token")).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> authService.refreshToken(mockRequest, mockResponse))
                     .isInstanceOf(BadRequestException.class)
-                    .hasMessageContaining("Refresh Token bị trống!");
-        }
+                    .hasMessageContaining("Refresh token không hợp lệ");
 
-        @Test
-        @DisplayName("Should throw BadRequestException when refresh token is not found")
-        void refreshToken_TokenNotFound_ThrowsException() {
-            when(jwtUtils.getJwtRefreshFromCookies(mockRequest)).thenReturn("not-found-token");
-            when(refreshTokenService.findByToken("not-found-token")).thenReturn(Optional.empty());
-            when(jwtUtils.getCleanJwtCookie()).thenReturn(ResponseCookie.from("mathclass_jwt", "").build());
-            when(jwtUtils.getCleanJwtRefreshCookie()).thenReturn(ResponseCookie.from("mathclass_refresh", "").build());
-
-            assertThatThrownBy(() -> authService.refreshToken(mockRequest, mockResponse))
-                    .isInstanceOf(BadRequestException.class)
-                    .hasMessageContaining("Refresh token không hợp lệ hoặc đã bị thu hồi!");
+            verify(authSessionService).clearSessionCookies(mockResponse);
         }
     }
 
     @Nested
-    @DisplayName("logoutUser Tests")
-    class LogoutUserTests {
+    @DisplayName("Facade Delegation Tests")
+    class FacadeDelegationTests {
 
         @Test
-        @DisplayName("Should delete refresh token and clear cookies on logout")
-        void logoutUser_WithRefreshToken_DeletesTokenAndClearsCookies() {
-            RefreshToken refreshToken = RefreshToken.builder().id(1L).user(mockUser).build();
+        @DisplayName("registerUser should delegate to UserRegistrationService")
+        void registerUser_Delegates() {
+            SignupRequest request = new SignupRequest();
+            MessageResponse expected = new MessageResponse("Đăng ký thành công!");
+            when(userRegistrationService.registerUser(request)).thenReturn(expected);
 
-            when(jwtUtils.getJwtRefreshFromCookies(mockRequest)).thenReturn("cookie-token");
-            when(refreshTokenService.findByToken("cookie-token")).thenReturn(Optional.of(refreshToken));
-            when(jwtUtils.getCleanJwtCookie()).thenReturn(ResponseCookie.from("mathclass_jwt", "").build());
-            when(jwtUtils.getCleanJwtRefreshCookie()).thenReturn(ResponseCookie.from("mathclass_refresh", "").build());
+            MessageResponse actual = authService.registerUser(request);
 
-            MessageResponse response = authService.logoutUser(mockRequest, mockResponse);
-
-            assertThat(response).isNotNull();
-            assertThat(response.getMessage()).isEqualTo("Đăng xuất thành công!");
-
-            verify(refreshTokenService, times(1)).deleteToken(refreshToken);
-            verify(mockResponse, times(2)).addHeader(eq(HttpHeaders.SET_COOKIE), anyString());
+            assertThat(actual).isEqualTo(expected);
+            verify(userRegistrationService).registerUser(request);
         }
 
         @Test
-        @DisplayName("Should return success message even if refresh token cookie is null")
-        void logoutUser_WithoutRefreshToken_ClearsCookies() {
-            when(jwtUtils.getJwtRefreshFromCookies(mockRequest)).thenReturn(null);
-            when(jwtUtils.getCleanJwtCookie()).thenReturn(ResponseCookie.from("mathclass_jwt", "").build());
-            when(jwtUtils.getCleanJwtRefreshCookie()).thenReturn(ResponseCookie.from("mathclass_refresh", "").build());
+        @DisplayName("verifyUser should delegate to UserRegistrationService")
+        void verifyUser_Delegates() {
+            MessageResponse expected = new MessageResponse("Kích hoạt thành công!");
+            when(userRegistrationService.verifyUser("test-token")).thenReturn(expected);
 
-            MessageResponse response = authService.logoutUser(mockRequest, mockResponse);
+            MessageResponse actual = authService.verifyUser("test-token");
 
-            assertThat(response).isNotNull();
-            assertThat(response.getMessage()).isEqualTo("Đăng xuất thành công!");
-
-            verify(refreshTokenService, never()).deleteToken(any());
-            verify(refreshTokenService, never()).deleteByUserId(any());
-            verify(mockResponse, times(2)).addHeader(eq(HttpHeaders.SET_COOKIE), anyString());
+            assertThat(actual).isEqualTo(expected);
+            verify(userRegistrationService).verifyUser("test-token");
         }
 
         @Test
-        @DisplayName("Should blacklist JWT token and clear cookies on logout")
-        void logoutUser_WithValidJwtToken_BlacklistsTokenAndClearsCookies() {
-            String token = "sample.jwt.token";
-            when(jwtUtils.getJwtFromCookies(mockRequest)).thenReturn(token);
-            when(jwtUtils.validateJwtToken(token)).thenReturn(true);
-            when(jwtUtils.getUserNameFromJwtToken(token)).thenReturn("student@test.com");
-            when(userRepository.findByEmail("student@test.com")).thenReturn(Optional.of(mockUser));
-            when(jwtUtils.getCleanJwtCookie()).thenReturn(ResponseCookie.from("mathclass_jwt", "").build());
-            when(jwtUtils.getCleanJwtRefreshCookie()).thenReturn(ResponseCookie.from("mathclass_jwt_refresh", "").build());
+        @DisplayName("forgotPassword should delegate to PasswordRecoveryService")
+        void forgotPassword_Delegates() {
+            ForgotPasswordRequest request = new ForgotPasswordRequest();
+            MessageResponse expected = new MessageResponse("Đã gửi email!");
+            when(passwordRecoveryService.forgotPassword(request)).thenReturn(expected);
 
-            MessageResponse response = authService.logoutUser(mockRequest, mockResponse);
+            MessageResponse actual = authService.forgotPassword(request);
 
-            assertThat(response).isNotNull();
-            assertThat(response.getMessage()).isEqualTo("Đăng xuất thành công!");
-            verify(tokenBlacklistService, times(1)).blacklistToken(token);
-            verify(userPresenceRegistry, times(1)).markLoggedOut(1L);
+            assertThat(actual).isEqualTo(expected);
+            verify(passwordRecoveryService).forgotPassword(request);
+        }
+
+        @Test
+        @DisplayName("resetPassword should delegate to PasswordRecoveryService")
+        void resetPassword_Delegates() {
+            ResetPasswordRequest request = new ResetPasswordRequest();
+            MessageResponse expected = new MessageResponse("Mật khẩu đã được cập nhật!");
+            when(passwordRecoveryService.resetPassword(request)).thenReturn(expected);
+
+            MessageResponse actual = authService.resetPassword(request);
+
+            assertThat(actual).isEqualTo(expected);
+            verify(passwordRecoveryService).resetPassword(request);
         }
     }
 }

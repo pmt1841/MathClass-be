@@ -1,25 +1,19 @@
 package com.codegym.mathclass.auth.strategy.impl;
 
-import com.codegym.mathclass.auth.entity.AuthType;
 import com.codegym.mathclass.auth.dto.request.LoginRequest;
 import com.codegym.mathclass.auth.dto.response.UserInfoResponse;
-import com.codegym.mathclass.auth.entity.RefreshToken;
-
+import com.codegym.mathclass.auth.entity.AuthType;
 import com.codegym.mathclass.auth.entity.UserTwoFactorAuth;
 import com.codegym.mathclass.auth.repository.UserTwoFactorAuthRepository;
-import com.codegym.mathclass.auth.service.RefreshTokenService;
+import com.codegym.mathclass.auth.service.AuthSessionService;
 import com.codegym.mathclass.auth.strategy.AuthStrategy;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.security.jwt.JwtUtils;
-import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
-import com.codegym.mathclass.user.mapper.UserMapper;
 import com.codegym.mathclass.user.repository.UserRepository;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -27,7 +21,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Component
@@ -37,8 +30,7 @@ public class LocalPasswordAuthStrategy implements AuthStrategy<LoginRequest> {
     private final UserRepository userRepository;
     private final AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
-    private final RefreshTokenService refreshTokenService;
-    private final UserMapper userMapper;
+    private final AuthSessionService authSessionService;
     private final UserTwoFactorAuthRepository userTwoFactorAuthRepository;
 
     @Override
@@ -85,7 +77,6 @@ public class LocalPasswordAuthStrategy implements AuthStrategy<LoginRequest> {
         }
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
 
         if (user.getRole() == Role.ADMIN) {
             Optional<UserTwoFactorAuth> auth2faOpt = userTwoFactorAuthRepository.findByUserId(user.getId());
@@ -107,25 +98,6 @@ public class LocalPasswordAuthStrategy implements AuthStrategy<LoginRequest> {
                     .build();
         }
 
-        LocalDateTime now = LocalDateTime.now();
-        user.setLastActiveAt(now);
-        userRepository.save(user);
-
-        ResponseCookie jwtCookie = jwtUtils.generateJwtCookie(userDetails, loginRequest.isRememberMe());
-        RefreshToken refreshToken = refreshTokenService.createRefreshToken(userDetails.getId());
-        ResponseCookie jwtRefreshCookie = jwtUtils.generateRefreshJwtCookie(refreshToken.getToken(),
-                loginRequest.isRememberMe());
-
-        response.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
-        response.addHeader(HttpHeaders.SET_COOKIE, jwtRefreshCookie.toString());
-
-        ResponseCookie cleanLoggedOutCookie = ResponseCookie.from("mathclass_logged_out", "")
-                .path("/")
-                .maxAge(0)
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, cleanLoggedOutCookie.toString());
-
-        String jwtToken = jwtUtils.generateJwtToken(authentication);
-        return userMapper.toUserInfoResponse(userDetails, jwtToken);
+        return authSessionService.issueAuthSession(user, loginRequest.isRememberMe(), response);
     }
 }

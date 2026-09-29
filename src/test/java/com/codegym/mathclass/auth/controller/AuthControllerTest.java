@@ -71,7 +71,7 @@ class AuthControllerTest {
                     1L, "test@test.com", "Test User", "STUDENT", null, List.of()
             );
 
-            when(authService.authenticateUser(any(LoginRequest.class), any())).thenReturn(mockUserInfoResponse);
+            when(authService.authenticateUser(any(LoginRequest.class), any(), any())).thenReturn(mockUserInfoResponse);
 
             mockMvc.perform(post("/auth/login")
                     .contentType(MediaType.APPLICATION_JSON)
@@ -81,7 +81,7 @@ class AuthControllerTest {
                     .andExpect(jsonPath("$.email").value("test@test.com"))
                     .andExpect(jsonPath("$.userRole").value("STUDENT"));
 
-            verify(authService, times(1)).authenticateUser(any(LoginRequest.class), any());
+            verify(authService, times(1)).authenticateUser(any(LoginRequest.class), any(), any());
         }
 
         @Test
@@ -96,7 +96,7 @@ class AuthControllerTest {
                     .content(objectMapper.writeValueAsString(loginRequest)))
                     .andExpect(status().isBadRequest());
 
-            verify(authService, never()).authenticateUser(any(), any());
+            verify(authService, never()).authenticateUser(any(), any(), any());
         }
 
         @Test
@@ -111,7 +111,7 @@ class AuthControllerTest {
                     .content(objectMapper.writeValueAsString(loginRequest)))
                     .andExpect(status().isBadRequest());
 
-            verify(authService, never()).authenticateUser(any(), any());
+            verify(authService, never()).authenticateUser(any(), any(), any());
         }
 
         @Test
@@ -126,7 +126,7 @@ class AuthControllerTest {
                     .content(objectMapper.writeValueAsString(loginRequest)))
                     .andExpect(status().isBadRequest());
 
-            verify(authService, never()).authenticateUser(any(), any());
+            verify(authService, never()).authenticateUser(any(), any(), any());
         }
     }
 
@@ -145,7 +145,7 @@ class AuthControllerTest {
                     1L, "google@test.com", "Google User", "STUDENT", "http://avatar.url", List.of()
             );
 
-            when(authService.authenticateWithGoogle(any(GoogleAuthRequest.class), any())).thenReturn(mockUserInfoResponse);
+            when(authService.authenticateWithGoogle(any(GoogleAuthRequest.class), any(), any())).thenReturn(mockUserInfoResponse);
 
             mockMvc.perform(post("/auth/google")
                     .contentType(MediaType.APPLICATION_JSON)
@@ -153,7 +153,7 @@ class AuthControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.email").value("google@test.com"));
 
-            verify(authService, times(1)).authenticateWithGoogle(any(GoogleAuthRequest.class), any());
+            verify(authService, times(1)).authenticateWithGoogle(any(GoogleAuthRequest.class), any(), any());
         }
 
         @Test
@@ -167,7 +167,7 @@ class AuthControllerTest {
                     .content(objectMapper.writeValueAsString(googleRequest)))
                     .andExpect(status().isBadRequest());
 
-            verify(authService, never()).authenticateWithGoogle(any(), any());
+            verify(authService, never()).authenticateWithGoogle(any(), any(), any());
         }
     }
 

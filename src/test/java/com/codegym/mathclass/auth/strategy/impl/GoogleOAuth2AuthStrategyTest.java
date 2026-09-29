@@ -1,18 +1,14 @@
 package com.codegym.mathclass.auth.strategy.impl;
 
-import com.codegym.mathclass.aiconfig.credit.service.AiCreditService;
 import com.codegym.mathclass.auth.dto.request.GoogleAuthRequest;
 import com.codegym.mathclass.auth.dto.response.UserInfoResponse;
 import com.codegym.mathclass.auth.entity.AuthType;
-import com.codegym.mathclass.auth.entity.RefreshToken;
-import com.codegym.mathclass.auth.service.RefreshTokenService;
+import com.codegym.mathclass.auth.service.AuthSessionService;
+import com.codegym.mathclass.auth.service.UserRegistrationService;
 import com.codegym.mathclass.exception.BadRequestException;
-import com.codegym.mathclass.notification.repository.NotificationSettingsRepository;
-import com.codegym.mathclass.security.jwt.JwtUtils;
 import com.codegym.mathclass.user.entity.Provider;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
-import com.codegym.mathclass.user.mapper.UserMapper;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.user.service.PermissionCacheService;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,11 +19,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.security.core.Authentication;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Collections;
@@ -46,22 +39,13 @@ class GoogleOAuth2AuthStrategyTest {
     private UserRepository userRepository;
 
     @Mock
-    private NotificationSettingsRepository notificationSettingsRepository;
-
-    @Mock
     private PermissionCacheService permissionCacheService;
 
     @Mock
-    private JwtUtils jwtUtils;
+    private UserRegistrationService userRegistrationService;
 
     @Mock
-    private RefreshTokenService refreshTokenService;
-
-    @Mock
-    private UserMapper userMapper;
-
-    @Mock
-    private AiCreditService aiCreditService;
+    private AuthSessionService authSessionService;
 
     @Mock
     private RestTemplate mockRestTemplate;
@@ -72,14 +56,11 @@ class GoogleOAuth2AuthStrategyTest {
     void setUp() {
         strategy = new GoogleOAuth2AuthStrategy(
                 userRepository,
-                notificationSettingsRepository,
                 permissionCacheService,
-                jwtUtils,
-                refreshTokenService,
-                userMapper,
-                aiCreditService
+                userRegistrationService,
+                authSessionService,
+                mockRestTemplate
         );
-        ReflectionTestUtils.setField(strategy, "restTemplate", mockRestTemplate);
     }
 
     @Test
@@ -110,7 +91,6 @@ class GoogleOAuth2AuthStrategyTest {
                 .isActive(true)
                 .build();
         existingUser.setId(10L);
-
         existingUser.setAvatarUrl("https://avatar.com/pic.jpg");
 
         when(mockRestTemplate.exchange(
@@ -122,18 +102,14 @@ class GoogleOAuth2AuthStrategyTest {
 
         when(userRepository.findByEmail("student@gmail.com")).thenReturn(Optional.of(existingUser));
         when(permissionCacheService.getPermissionsByRole(Role.STUDENT)).thenReturn(Collections.emptyList());
-        when(jwtUtils.generateJwtCookie(any(), anyBoolean())).thenReturn(ResponseCookie.from("mathclass_jwt", "jwt").build());
-        when(refreshTokenService.createRefreshToken(anyLong())).thenReturn(RefreshToken.builder().token("refresh-token").build());
-        when(jwtUtils.generateRefreshJwtCookie(anyString(), anyBoolean())).thenReturn(ResponseCookie.from("mathclass_refresh", "refresh").build());
-        when(jwtUtils.generateJwtToken(any(Authentication.class))).thenReturn("signed-jwt");
 
         UserInfoResponse expectedResponse = new UserInfoResponse();
-        when(userMapper.toUserInfoResponse(any(), eq("signed-jwt"))).thenReturn(expectedResponse);
+        when(authSessionService.issueAuthSession(eq(existingUser), anyBoolean(), eq(response))).thenReturn(expectedResponse);
 
         UserInfoResponse actual = strategy.authenticate(request, response);
 
         assertNotNull(actual);
-        verify(userRepository, times(1)).save(any(User.class));
+        verify(authSessionService).issueAuthSession(existingUser, false, response);
     }
 
     @Test
@@ -157,27 +133,34 @@ class GoogleOAuth2AuthStrategyTest {
         )).thenReturn(ResponseEntity.ok(googleProfile));
 
         when(userRepository.findByEmail("newteacher@gmail.com")).thenReturn(Optional.empty());
-        doAnswer(invocation -> {
-            User u = invocation.getArgument(0);
-            u.setId(99L);
-            return u;
-        }).when(userRepository).save(any(User.class));
+        User newUser = User.builder()
+                .email("newteacher@gmail.com")
+                .fullName("New Teacher")
+                .avatarUrl("https://avatar.com/teacher.jpg")
+                .role(Role.TEACHER)
+                .isActive(true)
+                .provider(Provider.GOOGLE)
+                .build();
+        newUser.setId(99L);
+
+        when(userRegistrationService.registerOAuth2User(
+                eq("newteacher@gmail.com"),
+                eq("New Teacher"),
+                eq("https://avatar.com/teacher.jpg"),
+                eq(Role.TEACHER)
+        )).thenReturn(newUser);
 
         when(permissionCacheService.getPermissionsByRole(Role.TEACHER)).thenReturn(Collections.emptyList());
-        when(jwtUtils.generateJwtCookie(any(), anyBoolean())).thenReturn(ResponseCookie.from("mathclass_jwt", "jwt").build());
-        when(refreshTokenService.createRefreshToken(anyLong())).thenReturn(RefreshToken.builder().token("refresh-token").build());
-        when(jwtUtils.generateRefreshJwtCookie(anyString(), anyBoolean())).thenReturn(ResponseCookie.from("mathclass_refresh", "refresh").build());
-        when(jwtUtils.generateJwtToken(any(Authentication.class))).thenReturn("signed-jwt");
 
         UserInfoResponse expectedResponse = new UserInfoResponse();
-        when(userMapper.toUserInfoResponse(any(), eq("signed-jwt"))).thenReturn(expectedResponse);
+        when(authSessionService.issueAuthSession(eq(newUser), anyBoolean(), eq(response))).thenReturn(expectedResponse);
 
         UserInfoResponse actual = strategy.authenticate(request, response);
 
         assertNotNull(actual);
-        verify(userRepository, times(2)).save(any(User.class));
-        verify(aiCreditService).grantDefaultForNewUser(eq(99L), eq(Role.TEACHER));
-        verify(notificationSettingsRepository).save(any());
+        verify(userRegistrationService, times(1)).registerOAuth2User(
+                "newteacher@gmail.com", "New Teacher", "https://avatar.com/teacher.jpg", Role.TEACHER);
+        verify(authSessionService).issueAuthSession(eq(newUser), eq(false), eq(response));
     }
 
     @Test
