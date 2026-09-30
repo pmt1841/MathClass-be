@@ -37,7 +37,6 @@ import java.time.LocalDateTime;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class AuthServiceImpl implements AuthService {
 
     private final AuthStrategyFactory authStrategyFactory;

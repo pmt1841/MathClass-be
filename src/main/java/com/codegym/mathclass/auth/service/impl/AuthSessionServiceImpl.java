@@ -34,7 +34,7 @@ public class AuthSessionServiceImpl implements AuthSessionService {
     private final UserMapper userMapper;
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public UserInfoResponse issueAuthSession(User user, boolean rememberMe, HttpServletResponse response) {
         LocalDateTime now = LocalDateTime.now();
         user.setLastActiveAt(now);
@@ -61,7 +61,7 @@ public class AuthSessionServiceImpl implements AuthSessionService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public UserInfoResponse issueAuthSession(CustomUserDetails userDetails, boolean rememberMe, HttpServletResponse response) {
         User user = userRepository.findById(userDetails.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thông tin người dùng với ID: " + userDetails.getId()));
