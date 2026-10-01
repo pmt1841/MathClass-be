@@ -11,7 +11,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -56,11 +55,7 @@ public class ClassroomAssignmentController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         long userId = userDetails.getId();
-        String role = userDetails.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .map(r -> r.replace("ROLE_", ""))
-                .findFirst()
-                .orElse("");
+        String role = userDetails.getRoleName();
 
         AssignmentResponse response = assignmentService.getAssignmentById(id, userId, role);
 

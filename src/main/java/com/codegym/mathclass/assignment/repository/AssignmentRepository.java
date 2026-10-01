@@ -4,37 +4,37 @@ import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.entity.AssignmentStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
 import java.time.LocalDateTime;
-
-import org.springframework.data.jpa.repository.EntityGraph;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public interface AssignmentRepository extends JpaRepository<Assignment, Long>, JpaSpecificationExecutor<Assignment> {
 
     @Override
-    @EntityGraph(attributePaths = {"assignmentTags", "assignmentTags.tag"})
+    @EntityGraph(attributePaths = {"assignmentTags", "assignmentTags.tag", "teacher"})
     Optional<Assignment> findById(Long id);
 
     @Override
-    @EntityGraph(attributePaths = {"assignmentTags", "assignmentTags.tag"})
-    Page<Assignment> findAll(org.springframework.data.jpa.domain.Specification<Assignment> spec, Pageable pageable);
+    @EntityGraph(attributePaths = {"assignmentTags", "assignmentTags.tag", "teacher"})
+    Page<Assignment> findAll(Specification<Assignment> spec, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"assignmentTags", "assignmentTags.tag"})
+    @EntityGraph(attributePaths = {"assignmentTags", "assignmentTags.tag", "teacher"})
     List<Assignment> findByTeacherId(long teacherId);
 
     /**
      * Lấy assignments theo danh sách IDs, chỉ trả về những bài thuộc về teacherId.
      * Dùng để validate ownership trong publishAssignmentSheet.
      */
-    @EntityGraph(attributePaths = {"assignmentTags", "assignmentTags.tag"})
+    @EntityGraph(attributePaths = {"assignmentTags", "assignmentTags.tag", "teacher"})
     List<Assignment> findAllByIdInAndTeacherId(List<Long> ids, long teacherId);
-
 
     List<Assignment> findByDeadlineBetweenAndIsReminderSentFalseAndStatus(LocalDateTime start, LocalDateTime end, AssignmentStatus status);
 
@@ -45,7 +45,7 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long>, J
     List<Assignment> findByParentId(Long parentId);
 
     @EntityGraph(attributePaths = {"classroom"})
-    List<Assignment> findByParentIdIn(java.util.Collection<Long> parentIds);
+    List<Assignment> findByParentIdIn(Collection<Long> parentIds);
 
     List<Assignment> findByAssignmentSheetId(Long assignmentSheetId);
 

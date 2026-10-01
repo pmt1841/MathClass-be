@@ -2,8 +2,7 @@ package com.codegym.mathclass.assignment.controller;
 
 import com.codegym.mathclass.assignment.dto.response.AssignmentResponse;
 import com.codegym.mathclass.assignment.dto.response.AssignmentSheetResponse;
-import com.codegym.mathclass.assignment.service.AssignmentService;
-import com.codegym.mathclass.assignment.service.AssignmentSheetService;
+import com.codegym.mathclass.assignment.service.AssignmentLibraryService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -45,10 +44,7 @@ class AssignmentLibraryControllerTest {
     private MockMvc mockMvc;
 
     @Mock
-    private AssignmentService assignmentService;
-
-    @Mock
-    private AssignmentSheetService assignmentSheetService;
+    private AssignmentLibraryService assignmentLibraryService;
 
     @InjectMocks
     private AssignmentLibraryController assignmentLibraryController;
@@ -93,7 +89,7 @@ class AssignmentLibraryControllerTest {
             response.setTitle("Public Math Assignment");
 
             Page<AssignmentResponse> page = new PageImpl<>(List.of(response), PageRequest.of(0, 10), 1);
-            when(assignmentService.getPublicAssignments(eq("Math"), any(Pageable.class))).thenReturn(page);
+            when(assignmentLibraryService.getPublicAssignments(eq("Math"), any(Pageable.class))).thenReturn(page);
 
             mockMvc.perform(get("/library/assignments")
                             .param("keyword", "Math")
@@ -116,7 +112,7 @@ class AssignmentLibraryControllerTest {
             response.setTitle("Public Math Assignment Detail");
             response.setContent("Content $x^2$");
 
-            when(assignmentService.getPublicAssignmentDetail(10L)).thenReturn(response);
+            when(assignmentLibraryService.getPublicAssignmentDetail(10L)).thenReturn(response);
 
             mockMvc.perform(get("/library/assignments/10")
                             .contentType(MediaType.APPLICATION_JSON))
@@ -129,7 +125,7 @@ class AssignmentLibraryControllerTest {
         @Test
         @DisplayName("Should return 404 Not Found when assignment is not public or not found")
         void getPublicAssignmentDetail_NotFound() throws Exception {
-            when(assignmentService.getPublicAssignmentDetail(99L))
+            when(assignmentLibraryService.getPublicAssignmentDetail(99L))
                     .thenThrow(new com.codegym.mathclass.exception.ResourceNotFoundException("Không tìm thấy bài tập công khai"));
 
             mockMvc.perform(get("/library/assignments/99")
@@ -149,7 +145,7 @@ class AssignmentLibraryControllerTest {
             response.setId(20L);
             response.setTitle("Cloned Assignment");
 
-            when(assignmentService.cloneAssignmentFromLibrary(eq(10L), eq(1L))).thenReturn(response);
+            when(assignmentLibraryService.cloneAssignmentFromLibrary(eq(10L), eq(1L))).thenReturn(response);
 
             mockMvc.perform(post("/library/assignments/10/clone")
                             .contentType(MediaType.APPLICATION_JSON))
@@ -171,7 +167,7 @@ class AssignmentLibraryControllerTest {
             response.setTitle("Public Sheet 1");
 
             Page<AssignmentSheetResponse> page = new PageImpl<>(List.of(response), PageRequest.of(0, 10), 1);
-            when(assignmentSheetService.getPublicAssignmentSheets(eq("Sheet"), any(Pageable.class))).thenReturn(page);
+            when(assignmentLibraryService.getPublicAssignmentSheets(eq("Sheet"), any(Pageable.class))).thenReturn(page);
 
             mockMvc.perform(get("/library/assignment-sheets")
                             .param("keyword", "Sheet")
@@ -193,7 +189,7 @@ class AssignmentLibraryControllerTest {
             response.setId(40L);
             response.setTitle("Cloned Sheet");
 
-            when(assignmentSheetService.cloneAssignmentSheetFromLibrary(eq(30L), eq(1L))).thenReturn(response);
+            when(assignmentLibraryService.cloneAssignmentSheetFromLibrary(eq(30L), eq(1L))).thenReturn(response);
 
             mockMvc.perform(post("/library/assignment-sheets/30/clone")
                             .contentType(MediaType.APPLICATION_JSON))

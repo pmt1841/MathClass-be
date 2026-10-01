@@ -23,7 +23,7 @@ import com.codegym.mathclass.assignment.dto.response.BatchGenerateQuestionsRespo
 import com.codegym.mathclass.assignment.dto.response.BatchQuestionItemResponse;
 import com.codegym.mathclass.assignment.exception.AiGenerationException;
 import com.codegym.mathclass.assignment.service.AiBatchQuestionService;
-import com.codegym.mathclass.assignment.service.AssignmentService;
+import com.codegym.mathclass.assignment.service.AssignmentDocumentService;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.repository.UserRepository;
@@ -48,7 +48,7 @@ public class AiBatchQuestionServiceImpl implements AiBatchQuestionService {
     private static final String TASK_QUESTION_GEN_FALLBACK = "QUESTION_GEN";
     private static final String PROMPT_CODE = "PROMPT_BATCH_QUESTION_GEN";
 
-    private final AssignmentService assignmentService;
+    private final AssignmentDocumentService assignmentDocumentService;
     private final KeySelectionService keySelectionService;
     private final TaskConfigRepository taskConfigRepository;
     private final AiProviderStrategyFactory aiProviderStrategyFactory;
@@ -70,7 +70,7 @@ public class AiBatchQuestionServiceImpl implements AiBatchQuestionService {
 
         if (request.getFile() != null && !request.getFile().isEmpty()) {
             try {
-                Map<String, Object> extracted = assignmentService.extractTextFromFile(request.getFile());
+                Map<String, Object> extracted = assignmentDocumentService.extractTextFromFile(request.getFile());
                 documentContent = (String) extracted.getOrDefault("content", "");
                 Object imagesObj = extracted.get("images");
                 if (imagesObj instanceof List<?>) {
@@ -229,7 +229,7 @@ public class AiBatchQuestionServiceImpl implements AiBatchQuestionService {
     private boolean isAdmin(Long userId) {
         if (userId == null) return false;
         return userRepository.findById(userId)
-                .map(user -> user.getRole() == Role.ADMIN)
+                .map(user -> Role.ADMIN.equals(user.getRole()))
                 .orElse(false);
     }
 
@@ -285,7 +285,7 @@ public class AiBatchQuestionServiceImpl implements AiBatchQuestionService {
 
         if (request.getFile() != null && !request.getFile().isEmpty()) {
             try {
-                Map<String, Object> extracted = assignmentService.extractTextFromFile(request.getFile());
+                Map<String, Object> extracted = assignmentDocumentService.extractTextFromFile(request.getFile());
                 textContent = (String) extracted.getOrDefault("content", "");
                 Object imagesObj = extracted.get("images");
                 if (imagesObj instanceof List<?>) {

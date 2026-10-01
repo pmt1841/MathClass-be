@@ -34,7 +34,6 @@ import java.util.Optional;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class AiQuestionServiceImpl implements AiQuestionService {
 
     private static final String TASK_QUESTION_GEN = "QUESTION_GEN";
@@ -45,10 +44,26 @@ public class AiQuestionServiceImpl implements AiQuestionService {
     private final PromptRenderService promptRenderService;
     private final AiCreditService aiCreditService;
     private final UserRepository userRepository;
-    private final ObjectMapper objectMapper = new ObjectMapper()
-            .configure(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS.mappedFeature(), true)
-            .configure(JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER.mappedFeature(), true)
-            .configure(JsonReadFeature.ALLOW_TRAILING_COMMA.mappedFeature(), true);
+    private final ObjectMapper objectMapper;
+
+    public AiQuestionServiceImpl(KeySelectionService keySelectionService,
+                                TaskConfigRepository taskConfigRepository,
+                                AiProviderStrategyFactory aiProviderStrategyFactory,
+                                PromptRenderService promptRenderService,
+                                AiCreditService aiCreditService,
+                                UserRepository userRepository,
+                                ObjectMapper objectMapper) {
+        this.keySelectionService = keySelectionService;
+        this.taskConfigRepository = taskConfigRepository;
+        this.aiProviderStrategyFactory = aiProviderStrategyFactory;
+        this.promptRenderService = promptRenderService;
+        this.aiCreditService = aiCreditService;
+        this.userRepository = userRepository;
+        this.objectMapper = objectMapper.copy()
+                .configure(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS.mappedFeature(), true)
+                .configure(JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER.mappedFeature(), true)
+                .configure(JsonReadFeature.ALLOW_TRAILING_COMMA.mappedFeature(), true);
+    }
 
     @Override
     public AiGeneratedQuestionResponse generateQuestion(GenerateQuestionRequest request, Long userId) {
@@ -225,7 +240,7 @@ public class AiQuestionServiceImpl implements AiQuestionService {
             return false;
         }
         return userRepository.findById(userId)
-                .map(user -> user.getRole() == Role.ADMIN)
+                .map(user -> Role.ADMIN.equals(user.getRole()))
                 .orElse(false);
     }
 

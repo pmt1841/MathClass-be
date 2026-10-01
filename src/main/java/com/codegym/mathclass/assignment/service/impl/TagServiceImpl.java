@@ -13,8 +13,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import jakarta.persistence.EntityManager;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -69,7 +72,7 @@ public class TagServiceImpl implements TagService {
             return;
         }
         // Deduplicate input tag names case-insensitively
-        java.util.Map<String, String> normalizedNamesMap = new java.util.LinkedHashMap<>();
+        Map<String, String> normalizedNamesMap = new LinkedHashMap<>();
         for (String name : tagNames) {
             if (name != null && !name.trim().isEmpty()) {
                 String trimmed = name.trim();
@@ -85,7 +88,7 @@ public class TagServiceImpl implements TagService {
 
         // Batch query existing tags to eliminate N+1 queries
         List<Tag> existingTags = tagRepository.findByNameInIgnoreCase(normalizedNamesMap.values());
-        java.util.Map<String, Tag> tagMap = new java.util.HashMap<>();
+        Map<String, Tag> tagMap = new HashMap<>();
         for (Tag tag : existingTags) {
             tagMap.put(tag.getName().toLowerCase(), tag);
         }

@@ -8,11 +8,7 @@ import com.codegym.mathclass.assignment.dto.request.UpdateVisibilityRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import com.codegym.mathclass.assignment.entity.AssignmentStatus;
-import com.codegym.mathclass.assignment.dto.response.AssignmentImageResponse;
-import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
-import java.util.Map;
-import java.io.IOException;
 
 public interface AssignmentService {
 
@@ -69,13 +65,6 @@ public interface AssignmentService {
      * Bật/Tắt quyền cho phép nộp lại bài tập
      */
     AssignmentResponse toggleAllowResubmit(long assignmentId, boolean allowResubmit, long teacherId);
-
-    AssignmentImageResponse uploadImageForAssignment(MultipartFile file) throws IOException;
-
-    /**
-     * Upload file (.txt, .docx, ...) và trích xuất nội dung văn bản
-     */
-    Map<String, Object> extractTextFromFile(MultipartFile file) throws Exception;
 
     /**
      * Lấy danh sách các bài tập công khai (PUBLIC) trong Thư viện

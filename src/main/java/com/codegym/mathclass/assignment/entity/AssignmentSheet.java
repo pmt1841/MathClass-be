@@ -1,28 +1,44 @@
 package com.codegym.mathclass.assignment.entity;
 
 import com.codegym.mathclass.classroom.entity.Classroom;
+import com.codegym.mathclass.common.entity.BaseEntity;
 import com.codegym.mathclass.user.entity.User;
-import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Builder;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.codegym.mathclass.common.entity.BaseEntity;
-import lombok.Builder;
-
 @Entity
 @Table(name = "assignment_sheets")
-@Data
-@EqualsAndHashCode(callSuper = true)
+@Getter
+@Setter
+@EqualsAndHashCode(callSuper = false, onlyExplicitlyIncluded = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class AssignmentSheet extends BaseEntity {
+
+    @EqualsAndHashCode.Include
+    @Override
+    public long getId() {
+        return super.getId();
+    }
 
     @Column(nullable = false)
     private String title;
@@ -38,7 +54,7 @@ public class AssignmentSheet extends BaseEntity {
     @Column(nullable = false)
     private AssignmentVisibility visibility = AssignmentVisibility.PRIVATE;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "teacher_id", nullable = false)
     private User teacher;
 
@@ -49,6 +65,7 @@ public class AssignmentSheet extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "classroom_id")
     private Classroom classroom;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "master_sheet_id")
     private AssignmentSheet masterSheet;

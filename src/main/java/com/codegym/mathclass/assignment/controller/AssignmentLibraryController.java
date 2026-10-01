@@ -3,8 +3,7 @@ package com.codegym.mathclass.assignment.controller;
 import com.codegym.mathclass.common.annotation.ApiVersion;
 import com.codegym.mathclass.assignment.dto.response.AssignmentResponse;
 import com.codegym.mathclass.assignment.dto.response.AssignmentSheetResponse;
-import com.codegym.mathclass.assignment.service.AssignmentService;
-import com.codegym.mathclass.assignment.service.AssignmentSheetService;
+import com.codegym.mathclass.assignment.service.AssignmentLibraryService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -17,7 +16,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "Assignment Library", description = "APIs Thư viện bài tập dùng chung (Tìm kiếm và Clone bài tập/phiếu bài tập công khai)")
 @RestController
@@ -26,8 +30,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class AssignmentLibraryController {
 
-    private final AssignmentService assignmentService;
-    private final AssignmentSheetService assignmentSheetService;
+    private final AssignmentLibraryService assignmentLibraryService;
 
     @Operation(summary = "Tìm kiếm bài tập đơn lẻ công khai trong Thư viện")
     @GetMapping("/assignments")
@@ -35,7 +38,7 @@ public class AssignmentLibraryController {
     public ResponseEntity<Page<AssignmentResponse>> getPublicAssignments(
             @RequestParam(required = false) String keyword,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<AssignmentResponse> assignments = assignmentService.getPublicAssignments(keyword, pageable);
+        Page<AssignmentResponse> assignments = assignmentLibraryService.getPublicAssignments(keyword, pageable);
         return ResponseEntity.ok(assignments);
     }
 
@@ -43,7 +46,7 @@ public class AssignmentLibraryController {
     @GetMapping("/assignments/{id}")
     @PreAuthorize("hasAuthority('library:read')")
     public ResponseEntity<AssignmentResponse> getPublicAssignmentDetail(@PathVariable long id) {
-        AssignmentResponse response = assignmentService.getPublicAssignmentDetail(id);
+        AssignmentResponse response = assignmentLibraryService.getPublicAssignmentDetail(id);
         return ResponseEntity.ok(response);
     }
 
@@ -53,7 +56,7 @@ public class AssignmentLibraryController {
     public ResponseEntity<AssignmentResponse> cloneAssignmentFromLibrary(
             @PathVariable long id,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        AssignmentResponse response = assignmentService.cloneAssignmentFromLibrary(id, userDetails.getId());
+        AssignmentResponse response = assignmentLibraryService.cloneAssignmentFromLibrary(id, userDetails.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -63,7 +66,7 @@ public class AssignmentLibraryController {
     public ResponseEntity<Page<AssignmentSheetResponse>> getPublicAssignmentSheets(
             @RequestParam(required = false) String keyword,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<AssignmentSheetResponse> sheets = assignmentSheetService.getPublicAssignmentSheets(keyword, pageable);
+        Page<AssignmentSheetResponse> sheets = assignmentLibraryService.getPublicAssignmentSheets(keyword, pageable);
         return ResponseEntity.ok(sheets);
     }
 
@@ -73,7 +76,7 @@ public class AssignmentLibraryController {
     public ResponseEntity<AssignmentSheetResponse> cloneAssignmentSheetFromLibrary(
             @PathVariable long id,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        AssignmentSheetResponse response = assignmentSheetService.cloneAssignmentSheetFromLibrary(id, userDetails.getId());
+        AssignmentSheetResponse response = assignmentLibraryService.cloneAssignmentSheetFromLibrary(id, userDetails.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }

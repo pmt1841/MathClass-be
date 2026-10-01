@@ -16,6 +16,7 @@ import com.codegym.mathclass.submission.entity.Submission;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import jakarta.persistence.criteria.Predicate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class AssignmentSpecification {
 
@@ -35,6 +36,22 @@ public class AssignmentSpecification {
             }
             Join<Assignment, Classroom> classroomJoin = root.join("classroom", JoinType.INNER);
             return cb.equal(classroomJoin.get("classCode"), classCode);
+        };
+    }
+
+    public static Specification<Assignment> hasClassCodeOrTeacherDraft(String classCode, boolean isTeacher, long userId) {
+        return (root, query, cb) -> {
+            Join<Assignment, Classroom> classroomJoin = root.join("classroom", JoinType.LEFT);
+            Predicate isClassCode = cb.equal(classroomJoin.get("classCode"), classCode);
+
+            if (isTeacher) {
+                Predicate isDraftAndMyTeacher = cb.and(
+                        cb.equal(root.get("status"), AssignmentStatus.DRAFT),
+                        cb.equal(root.get("teacher").get("id"), userId));
+                return cb.or(isClassCode, isDraftAndMyTeacher);
+            } else {
+                return isClassCode;
+            }
         };
     }
 
@@ -80,10 +97,10 @@ public class AssignmentSpecification {
         };
     }
 
-    public static Specification<Assignment> hasTagNames(java.util.List<String> tagNames) {
+    public static Specification<Assignment> hasTagNames(List<String> tagNames) {
         return (root, query, cb) -> {
             if (tagNames == null || tagNames.isEmpty()) return null;
-            java.util.List<String> cleanNames = tagNames.stream()
+            List<String> cleanNames = tagNames.stream()
                     .filter(name -> name != null && !name.trim().isEmpty())
                     .map(name -> name.trim().toLowerCase())
                     .toList();

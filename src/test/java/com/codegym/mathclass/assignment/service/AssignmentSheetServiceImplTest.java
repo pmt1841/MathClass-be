@@ -6,8 +6,12 @@ import com.codegym.mathclass.assignment.dto.request.UpdateAssignmentSheetRequest
 import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.entity.AssignmentSheet;
 import com.codegym.mathclass.assignment.entity.AssignmentStatus;
+import com.codegym.mathclass.assignment.mapper.AssignmentMapper;
+import com.codegym.mathclass.assignment.mapper.AssignmentSheetMapper;
 import com.codegym.mathclass.assignment.repository.AssignmentRepository;
 import com.codegym.mathclass.assignment.repository.AssignmentSheetRepository;
+import com.codegym.mathclass.assignment.service.helper.AssignmentCloneHelper;
+import com.codegym.mathclass.assignment.service.helper.SheetEnrichmentHelper;
 import com.codegym.mathclass.assignment.service.impl.AssignmentSheetServiceImpl;
 import com.codegym.mathclass.classroom.entity.Classroom;
 import com.codegym.mathclass.classroom.repository.ClassroomRepository;
@@ -24,7 +28,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.access.AccessDeniedException;
+import com.codegym.mathclass.exception.AccessDeniedException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,6 +55,21 @@ class AssignmentSheetServiceImplTest {
 
     @Mock
     private SubmissionRepository submissionRepository;
+
+    @Mock
+    private SheetEnrichmentHelper sheetEnrichmentHelper;
+
+    @Mock
+    private AssignmentCloneHelper assignmentCloneHelper;
+
+    @Mock
+    private AssignmentSheetMapper assignmentSheetMapper;
+
+    @Mock
+    private AssignmentMapper assignmentMapper;
+
+    @Mock
+    private com.codegym.mathclass.assignment.service.AssignmentLibraryService assignmentLibraryService;
 
     @InjectMocks
     private AssignmentSheetServiceImpl assignmentSheetService;
@@ -128,6 +147,36 @@ class AssignmentSheetServiceImplTest {
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("Không tìm thấy bài tập nào để giao");
         }
+
+        @Test
+        @DisplayName("Should publish assignment sheet successfully")
+        void publishAssignmentSheet_ValidRequest_Success() {
+            PublishAssignmentSheetRequest request = new PublishAssignmentSheetRequest();
+            request.setTitle("Phiếu bài tập số 1");
+            request.setAssignmentIds(List.of(100L));
+            PublishAssignmentSheetRequest.TargetClass target = new PublishAssignmentSheetRequest.TargetClass();
+            target.setClassCode("MATH101");
+            target.setDeadline(java.time.LocalDateTime.now().plusDays(3));
+            request.setTargets(List.of(target));
+
+            Assignment original = Assignment.builder().title("Bài 1").teacher(teacher).status(AssignmentStatus.DRAFT).build();
+            original.setId(100L);
+            Assignment clone = Assignment.builder().title("Bài 1").teacher(teacher).classroom(classroom).build();
+            clone.setId(101L);
+
+            when(userRepository.findById(teacherId)).thenReturn(Optional.of(teacher));
+            when(assignmentRepository.findAllByIdInAndTeacherId(List.of(100L), teacherId)).thenReturn(List.of(original));
+            when(assignmentSheetRepository.save(any(AssignmentSheet.class))).thenAnswer(i -> i.getArgument(0));
+            when(classroomRepository.findByClassCode("MATH101")).thenReturn(Optional.of(classroom));
+            when(assignmentCloneHelper.cloneForSheet(eq(original), eq(teacher), any(), any(), any()))
+                    .thenReturn(clone);
+            when(assignmentRepository.saveAll(any())).thenReturn(List.of(clone));
+
+            assignmentSheetService.publishAssignmentSheet(request, teacherId);
+
+            verify(assignmentCloneHelper, atLeastOnce()).cloneForSheet(eq(original), eq(teacher), any(), any(), any());
+            verify(assignmentRepository, atLeastOnce()).saveAll(any());
+        }
     }
 
     @Nested
@@ -169,6 +218,7 @@ class AssignmentSheetServiceImplTest {
 
             when(assignmentSheetRepository.findById(sheetId)).thenReturn(Optional.of(masterSheet));
             when(assignmentSheetRepository.save(masterSheet)).thenReturn(masterSheet);
+            when(assignmentSheetMapper.toResponse(masterSheet)).thenReturn(new AssignmentSheetResponse());
 
             AssignmentSheetResponse response = assignmentSheetService.updateAssignmentSheet(sheetId, request, teacherId);
 

@@ -41,14 +41,14 @@ public class AiQuestionController {
     @Operation(summary = "Sinh câu hỏi Toán học tự động bằng AI", description = "Nhận Prompt + Bộ lọc (Khối lớp, Mức độ, Chủ đề), gọi Gemini 2.0 để sinh bài toán chuẩn KaTeX và Canvas 2D Data. Hỗ trợ tham số async=true để đưa vào hàng đợi Redis")
     @PostMapping("/generate-question")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN') or hasAuthority('assignment:create')")
-    public ResponseEntity<?> generateQuestion(
+    public ResponseEntity<Object> generateQuestion(
             @Valid @RequestBody GenerateQuestionRequest request,
             @RequestParam(name = "async", defaultValue = "false") boolean async,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         Long userId = userDetails != null ? userDetails.getId() : null;
         if (async) {
-            return enqueueQuestionJob(request, userId);
+            return ResponseEntity.accepted().body(enqueueQuestionJob(request, userId).getBody());
         }
 
         AiGeneratedQuestionResponse result = aiQuestionService.generateQuestion(request, userId);
@@ -69,14 +69,14 @@ public class AiQuestionController {
     @Operation(summary = "Tạo hàng loạt bài tập từ tài liệu/Word bằng AI", description = "Tải file Word/PDF/TXT hoặc gửi text đề thi, AI bóc tách thành danh sách bài tập chuẩn KaTeX. Hỗ trợ async=true để đưa vào hàng đợi Redis")
     @PostMapping(value = "/batch-generate-questions", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN') or hasAuthority('assignment:create')")
-    public ResponseEntity<?> batchGenerateQuestions(
+    public ResponseEntity<Object> batchGenerateQuestions(
             @ModelAttribute BatchGenerateQuestionsRequest request,
             @RequestParam(name = "async", defaultValue = "false") boolean async,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         Long userId = userDetails != null ? userDetails.getId() : null;
         if (async) {
-            return enqueueBatchJob(request, userId);
+            return ResponseEntity.accepted().body(enqueueBatchJob(request, userId).getBody());
         }
 
         BatchGenerateQuestionsResponse result = aiBatchQuestionService.batchGenerateQuestions(request, userId);

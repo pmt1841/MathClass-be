@@ -10,7 +10,6 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Component
 public class AssignmentMapper {
@@ -63,7 +62,7 @@ public class AssignmentMapper {
         if (assignment.getAssignmentTags() != null) {
             response.setTags(assignment.getAssignmentTags().stream()
                     .map(assignmentTag -> TagResponse.fromEntity(assignmentTag.getTag()))
-                    .collect(Collectors.toList()));
+                    .toList());
         }
 
         if (assignment.getDrawings() != null && !assignment.getDrawings().isEmpty()) {
@@ -73,7 +72,7 @@ public class AssignmentMapper {
                 dr.setShapeCode(drawing.getShapeCode());
                 dr.setJsxGraphData(drawing.getJsxGraphData());
                 return dr;
-            }).collect(Collectors.toList());
+            }).toList();
             response.setDrawings(drawingResponses);
         }
 
@@ -83,7 +82,7 @@ public class AssignmentMapper {
                 img.setImageCode(image.getImageCode());
                 img.setImageUrl(image.getImageUrl());
                 return img;
-            }).collect(Collectors.toList());
+            }).toList();
             response.setImages(imageResponses);
         }
 

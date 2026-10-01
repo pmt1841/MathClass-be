@@ -17,9 +17,10 @@ import com.codegym.mathclass.submission.repository.SubmissionRepository;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
-import com.codegym.mathclass.utils.EmailService;
-import com.codegym.mathclass.storage.service.StorageService;
-import com.codegym.mathclass.assignment.strategy.parser.DocumentParserFactory;
+import com.codegym.mathclass.assignment.event.AssignmentPublishedEvent;
+import com.codegym.mathclass.assignment.service.helper.AssignmentCloneHelper;
+import org.springframework.context.ApplicationEventPublisher;
+import com.codegym.mathclass.assignment.service.AssignmentDocumentService;
 import com.codegym.mathclass.assignment.repository.AssignmentImageRepository;
 import com.codegym.mathclass.assignment.entity.AssignmentImage;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,19 +61,22 @@ class AssignmentServiceImplTest {
     private AssignmentMapper assignmentMapper;
 
     @Mock
-    private StorageService storageService;
-
-    @Mock
-    private DocumentParserFactory documentParserFactory;
+    private AssignmentDocumentService assignmentDocumentService;
 
     @Mock
     private SubmissionRepository submissionRepository;
 
     @Mock
-    private EmailService emailService;
+    private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private AssignmentCloneHelper assignmentCloneHelper;
 
     @Mock
     private TagService tagService;
+
+    @Mock
+    private AssignmentLibraryService assignmentLibraryService;
 
     @InjectMocks
     private AssignmentServiceImpl assignmentService;
@@ -249,6 +253,19 @@ class AssignmentServiceImplTest {
         void publishAssignment_ValidRequest_Success() {
             when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(draftAssignment));
             when(classroomRepository.findByClassCode("MATH2024")).thenReturn(Optional.of(classroom));
+            when(assignmentCloneHelper.cloneForClassroom(any(), any(), any()))
+                    .thenAnswer(invocation -> {
+                        Assignment orig = invocation.getArgument(0);
+                        Classroom cls = invocation.getArgument(1);
+                        LocalDateTime dl = invocation.getArgument(2);
+                        return Assignment.builder()
+                                .title(orig.getTitle())
+                                .classroom(cls)
+                                .deadline(dl)
+                                .status(AssignmentStatus.PUBLISHED)
+                                .teacher(orig.getTeacher())
+                                .build();
+                    });
 
             assignmentService.publishAssignment(assignmentId, publishRequest, teacherId);
 
@@ -265,6 +282,14 @@ class AssignmentServiceImplTest {
             assertThat(clone.getStatus()).isEqualTo(AssignmentStatus.PUBLISHED);
             assertThat(clone.getClassroom().getClassCode()).isEqualTo("MATH2024");
             assertThat(clone.getDeadline()).isNotNull();
+
+            org.mockito.ArgumentCaptor<AssignmentPublishedEvent> eventCaptor = org.mockito.ArgumentCaptor.forClass(AssignmentPublishedEvent.class);
+            verify(eventPublisher, times(1)).publishEvent(eventCaptor.capture());
+            AssignmentPublishedEvent publishedEvent = eventCaptor.getValue();
+            assertThat(publishedEvent.originalAssignmentId()).isEqualTo(assignmentId);
+            assertThat(publishedEvent.teacherId()).isEqualTo(teacherId);
+            assertThat(publishedEvent.targets()).hasSize(1);
+            assertThat(publishedEvent.targets().get(0).classCode()).isEqualTo("MATH2024");
         }
 
         @Test
@@ -286,6 +311,19 @@ class AssignmentServiceImplTest {
             when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(draftAssignment));
             when(classroomRepository.findByClassCode("MATH2024")).thenReturn(Optional.of(classroom));
             when(classroomRepository.findByClassCode("MATH2025")).thenReturn(Optional.of(classroom2));
+            when(assignmentCloneHelper.cloneForClassroom(any(), any(), any()))
+                    .thenAnswer(invocation -> {
+                        Assignment orig = invocation.getArgument(0);
+                        Classroom cls = invocation.getArgument(1);
+                        LocalDateTime dl = invocation.getArgument(2);
+                        return Assignment.builder()
+                                .title(orig.getTitle())
+                                .classroom(cls)
+                                .deadline(dl)
+                                .status(AssignmentStatus.PUBLISHED)
+                                .teacher(orig.getTeacher())
+                                .build();
+                    });
 
             assignmentService.publishAssignment(assignmentId, publishRequest, teacherId);
 
@@ -296,6 +334,10 @@ class AssignmentServiceImplTest {
             assertThat(savedClones).hasSize(2);
             assertThat(savedClones).anyMatch(c -> c.getClassroom().getClassCode().equals("MATH2024"));
             assertThat(savedClones).anyMatch(c -> c.getClassroom().getClassCode().equals("MATH2025"));
+
+            org.mockito.ArgumentCaptor<AssignmentPublishedEvent> eventCaptor = org.mockito.ArgumentCaptor.forClass(AssignmentPublishedEvent.class);
+            verify(eventPublisher, times(1)).publishEvent(eventCaptor.capture());
+            assertThat(eventCaptor.getValue().targets()).hasSize(2);
         }
 
         @Test
@@ -493,8 +535,7 @@ class AssignmentServiceImplTest {
             assignmentService.deleteAssignment(assignmentId, teacherId);
 
             verify(assignmentRepository).delete(draftAssignment);
-            verify(storageService).delete(image1.getImageUrl());
-            verify(storageService, never()).delete(image2.getImageUrl());
+            verify(assignmentDocumentService).deleteImages(List.of(image1.getImageUrl()));
         }
 
         @Test
@@ -668,56 +709,16 @@ class AssignmentServiceImplTest {
     class GetPublicAssignmentDetailTests {
 
         @Test
-        @DisplayName("Should return assignment detail when assignment is PUBLIC and classroom is NULL")
-        void getPublicAssignmentDetail_Success() {
-            Assignment assignment = new Assignment();
-            assignment.setId(100L);
-            assignment.setTitle("Public Assignment");
-            assignment.setVisibility(com.codegym.mathclass.assignment.entity.AssignmentVisibility.PUBLIC);
-            assignment.setStatus(AssignmentStatus.ARCHIVED);
-            assignment.setClassroom(null);
-
+        @DisplayName("Should delegate to assignmentLibraryService")
+        void getPublicAssignmentDetail_DelegatesToLibraryService() {
             AssignmentResponse mockResponse = new AssignmentResponse();
             mockResponse.setId(100L);
-            mockResponse.setTitle("Public Assignment");
-
-            when(assignmentRepository.findById(100L)).thenReturn(Optional.of(assignment));
-            when(assignmentMapper.toAssignmentResponse(assignment)).thenReturn(mockResponse);
+            when(assignmentLibraryService.getPublicAssignmentDetail(100L)).thenReturn(mockResponse);
 
             AssignmentResponse result = assignmentService.getPublicAssignmentDetail(100L);
 
-            assertThat(result).isNotNull();
-            assertThat(result.getId()).isEqualTo(100L);
-            assertThat(result.getTitle()).isEqualTo("Public Assignment");
-        }
-
-        @Test
-        @DisplayName("Should throw ResourceNotFoundException when assignment belongs to classroom")
-        void getPublicAssignmentDetail_BelongsToClassroom_ThrowsException() {
-            Assignment assignment = new Assignment();
-            assignment.setId(101L);
-            assignment.setVisibility(com.codegym.mathclass.assignment.entity.AssignmentVisibility.PUBLIC);
-            assignment.setStatus(AssignmentStatus.PUBLISHED);
-            assignment.setClassroom(classroom);
-
-            when(assignmentRepository.findById(101L)).thenReturn(Optional.of(assignment));
-
-            assertThatThrownBy(() -> assignmentService.getPublicAssignmentDetail(101L))
-                    .isInstanceOf(com.codegym.mathclass.exception.ResourceNotFoundException.class);
-        }
-
-        @Test
-        @DisplayName("Should throw ResourceNotFoundException when assignment is PRIVATE or DELETED")
-        void getPublicAssignmentDetail_PrivateOrDeleted_ThrowsException() {
-            Assignment privateAss = new Assignment();
-            privateAss.setId(102L);
-            privateAss.setVisibility(com.codegym.mathclass.assignment.entity.AssignmentVisibility.PRIVATE);
-            privateAss.setStatus(AssignmentStatus.DRAFT);
-
-            when(assignmentRepository.findById(102L)).thenReturn(Optional.of(privateAss));
-
-            assertThatThrownBy(() -> assignmentService.getPublicAssignmentDetail(102L))
-                    .isInstanceOf(com.codegym.mathclass.exception.ResourceNotFoundException.class);
+            assertThat(result).isSameAs(mockResponse);
+            verify(assignmentLibraryService).getPublicAssignmentDetail(100L);
         }
     }
 }

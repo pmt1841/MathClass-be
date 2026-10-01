@@ -1,12 +1,10 @@
 package com.codegym.mathclass.assignment.dto.response;
 
-import com.codegym.mathclass.assignment.entity.AssignmentSheet;
-import com.codegym.mathclass.assignment.entity.AssignmentStatus;
 import com.codegym.mathclass.assignment.entity.AssignmentVisibility;
 import lombok.Data;
+
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Data
 public class AssignmentSheetResponse {
@@ -18,7 +16,7 @@ public class AssignmentSheetResponse {
     private AssignmentVisibility visibility;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    
+
     private long teacherId;
     private String teacherName;
     private Long originalAuthorId;
@@ -33,48 +31,4 @@ public class AssignmentSheetResponse {
     private LocalDateTime submissionUpdatedAt;
     private boolean hasSubmissions;
     private List<String> publishedClassCodes;
-
-    public static AssignmentSheetResponse fromEntity(AssignmentSheet sheet) {
-        if (sheet == null) return null;
-        
-        AssignmentSheetResponse res = new AssignmentSheetResponse();
-        res.setId(sheet.getId());
-        res.setTitle(sheet.getTitle());
-        res.setDescription(sheet.getDescription());
-        res.setDeadline(sheet.getDeadline());
-        res.setVisibility(sheet.getVisibility());
-        res.setCreatedAt(sheet.getCreatedAt());
-        res.setUpdatedAt(sheet.getUpdatedAt());
-        
-        if (sheet.getTeacher() != null) {
-            res.setTeacherId(sheet.getTeacher().getId());
-            res.setTeacherName(sheet.getTeacher().getFullName());
-        }
-
-        if (sheet.getOriginalAuthor() != null) {
-            res.setOriginalAuthorId(sheet.getOriginalAuthor().getId());
-            res.setOriginalAuthorName(sheet.getOriginalAuthor().getFullName());
-        }
-        
-        if (sheet.getClassroom() != null) {
-            res.setClassCode(sheet.getClassroom().getClassCode());
-            res.setClassName(sheet.getClassroom().getClassName());
-        }
-        
-        if (sheet.getMasterSheet() != null) {
-            res.setMasterSheetId(sheet.getMasterSheet().getId());
-        }
-        
-        if (sheet.getItems() != null) {
-            res.setItems(sheet.getItems().stream()
-                .filter(asgn -> asgn != null && asgn.getStatus() != AssignmentStatus.DELETED)
-                .map(asgn -> {
-                    AssignmentResponse ar = AssignmentResponse.fromEntityWithoutContent(asgn);
-                    ar.setMaxScore(asgn.getMaxScore() != null ? asgn.getMaxScore() : 10.0);
-                    return ar;
-                })
-                .collect(Collectors.toList()));
-        }
-        return res;
-    }
 }

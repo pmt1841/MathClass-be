@@ -7,6 +7,7 @@ import com.codegym.mathclass.assignment.dto.request.PublishAssignmentRequest;
 import com.codegym.mathclass.assignment.dto.request.UpdateAssignmentRequest;
 import com.codegym.mathclass.assignment.dto.response.AssignmentImageResponse;
 import com.codegym.mathclass.assignment.dto.response.TextExtractionResponse;
+import com.codegym.mathclass.assignment.service.AssignmentDocumentService;
 import com.codegym.mathclass.assignment.service.AssignmentService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import org.springframework.web.multipart.MultipartFile;
@@ -46,6 +47,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class AssignmentController {
 
     private final AssignmentService assignmentService;
+    private final AssignmentDocumentService assignmentDocumentService;
 
     @Operation(summary = "Tạo bài tập mới (DRAFT)", description = "Giáo viên tạo bài tập nháp mới, hỗ trợ công thức toán LaTeX")
     @PostMapping
@@ -111,11 +113,7 @@ public class AssignmentController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         long userId = userDetails.getId();
-        String role = userDetails.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .map(r -> r.replace("ROLE_", ""))
-                .findFirst()
-                .orElse("");
+        String role = userDetails.getRoleName();
 
         Page<AssignmentResponse> assignments = assignmentService.getAssignmentsForCurrentUser(
                 userId, role, keyword, classCode, status, gradeTagId, subjectTagId, difficultyTagId, tagNames, studentStatus, pageable);
@@ -130,11 +128,7 @@ public class AssignmentController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         long userId = userDetails.getId();
-        String role = userDetails.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .map(r -> r.replace("ROLE_", ""))
-                .findFirst()
-                .orElse("");
+        String role = userDetails.getRoleName();
 
         AssignmentResponse response = assignmentService.getAssignmentById(id, userId, role);
         return ResponseEntity.ok(response);
@@ -184,7 +178,7 @@ public class AssignmentController {
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal CustomUserDetails userDetails) throws Exception {
 
-        AssignmentImageResponse imageDto = assignmentService.uploadImageForAssignment(file);
+        AssignmentImageResponse imageDto = assignmentDocumentService.uploadImageForAssignment(file);
         return ResponseEntity.ok(imageDto);
     }
 
@@ -195,7 +189,7 @@ public class AssignmentController {
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal CustomUserDetails userDetails) throws Exception {
 
-        Map<String, Object> result = assignmentService.extractTextFromFile(file);
+        Map<String, Object> result = assignmentDocumentService.extractTextFromFile(file);
         return ResponseEntity.ok(TextExtractionResponse.builder().data(result).build());
     }
 }

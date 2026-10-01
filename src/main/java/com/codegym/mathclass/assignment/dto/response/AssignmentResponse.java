@@ -1,6 +1,5 @@
 package com.codegym.mathclass.assignment.dto.response;
 
-import com.codegym.mathclass.assignment.entity.Assignment;
 import com.codegym.mathclass.assignment.entity.AssignmentStatus;
 import com.codegym.mathclass.assignment.entity.AssignmentVisibility;
 import lombok.AllArgsConstructor;
@@ -9,7 +8,6 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Data
 @NoArgsConstructor
@@ -61,79 +59,4 @@ public class AssignmentResponse {
     private Long sheetId;
     private String sheetTitle;
     private List<SheetSiblingResponse> sheetSiblings;
-
-    public static AssignmentResponse fromEntity(Assignment assignment) {
-        if (assignment == null) {
-            return null;
-        }
-
-        AssignmentResponse response = new AssignmentResponse();
-        response.setId(assignment.getId());
-        response.setTitle(assignment.getTitle());
-        response.setDescription(assignment.getDescription());
-        response.setContent(assignment.getContent());
-        response.setDeadline(assignment.getDeadline());
-        response.setStatus(assignment.getStatus());
-        response.setVisibility(assignment.getVisibility());
-        response.setAllowResubmit(assignment.isAllowResubmit());
-        response.setCreatedAt(assignment.getCreatedAt());
-        response.setUpdatedAt(assignment.getUpdatedAt());
-
-        if (assignment.getOriginalAuthor() != null) {
-            response.setOriginalAuthorId(assignment.getOriginalAuthor().getId());
-            response.setOriginalAuthorName(assignment.getOriginalAuthor().getFullName());
-        }
-
-
-        if (assignment.getAssignmentSheet() != null) {
-            response.setSheetId(assignment.getAssignmentSheet().getId());
-            response.setSheetTitle(assignment.getAssignmentSheet().getTitle());
-        }
-        response.setMaxScore(assignment.getMaxScore() != null ? assignment.getMaxScore() : 10.0);
-        if (assignment.getAssignmentTags() != null) {
-            response.setTags(assignment.getAssignmentTags().stream()
-                    .map(link -> TagResponse.fromEntity(link.getTag()))
-                    .collect(Collectors.toList()));
-        }
-
-        // Tính isOpen tự động: chỉ mở khi PUBLISHED và chưa quá deadline
-        boolean open = assignment.getStatus() == AssignmentStatus.PUBLISHED
-                && assignment.getDeadline() != null
-                && LocalDateTime.now().isBefore(assignment.getDeadline());
-        response.setOpen(open);
-
-        // Giả lập: Nếu là PUBLISHED thì mặc định là đã có người nộp (true)
-        response.setHasSubmissions(assignment.getStatus() == AssignmentStatus.PUBLISHED);
-
-        if (assignment.getTeacher() != null) {
-            response.setTeacherId(assignment.getTeacher().getId());
-            response.setTeacherName(assignment.getTeacher().getFullName());
-        }
-
-        if (assignment.getClassroom() != null) {
-            response.setClassCode(assignment.getClassroom().getClassCode());
-            response.setClassName(assignment.getClassroom().getClassName());
-        }
-
-        if (assignment.getDrawings() != null && !assignment.getDrawings().isEmpty()) {
-            List<AssignmentDrawingResponse> drawingResponses = assignment.getDrawings().stream().map(drawing -> {
-                AssignmentDrawingResponse dr = new AssignmentDrawingResponse();
-                dr.setId(drawing.getId());
-                dr.setShapeCode(drawing.getShapeCode());
-                dr.setJsxGraphData(drawing.getJsxGraphData());
-                return dr;
-            }).collect(Collectors.toList());
-            response.setDrawings(drawingResponses);
-        }
-
-        return response;
-    }
-
-    public static AssignmentResponse fromEntityWithoutContent(Assignment assignment) {
-        AssignmentResponse response = fromEntity(assignment);
-        if (response != null) {
-            response.setContent(null);
-        }
-        return response;
-    }
 }

@@ -1,5 +1,6 @@
 package com.codegym.mathclass.assignment.service.impl;
 
+import com.codegym.mathclass.assignment.service.AssignmentLibraryService;
 import com.codegym.mathclass.assignment.service.AssignmentService;
 import com.codegym.mathclass.assignment.service.TagService;
 import com.codegym.mathclass.assignment.dto.response.AssignmentResponse;
@@ -27,16 +28,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.PageRequest;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.JoinType;
-import jakarta.persistence.criteria.Predicate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
+import com.codegym.mathclass.submission.entity.Submission;
 import com.codegym.mathclass.assignment.repository.AssignmentImageRepository;
 import com.codegym.mathclass.assignment.entity.AssignmentVisibility;
 import com.codegym.mathclass.assignment.dto.response.SheetSiblingResponse;
@@ -44,24 +44,13 @@ import com.codegym.mathclass.assignment.dto.request.UpdateVisibilityRequest;
 
 import com.codegym.mathclass.assignment.mapper.AssignmentMapper;
 import com.codegym.mathclass.assignment.entity.AssignmentImage;
-import com.codegym.mathclass.storage.service.StorageService;
-import com.codegym.mathclass.storage.dto.StoragePolicy;
-import com.codegym.mathclass.assignment.strategy.parser.DocumentParserFactory;
-import com.codegym.mathclass.assignment.strategy.parser.DocumentParserStrategy;
-import com.codegym.mathclass.assignment.strategy.parser.DocumentParseResult;
-import com.codegym.mathclass.assignment.dto.response.AssignmentImageResponse;
-import org.springframework.web.multipart.MultipartFile;
-import java.io.IOException;
-import java.util.Map;
-import java.util.UUID;
-import com.codegym.mathclass.assignment.strategy.parser.DocumentParseResult;
-import com.codegym.mathclass.assignment.dto.response.AssignmentImageResponse;
+import com.codegym.mathclass.assignment.service.AssignmentDocumentService;
 import com.codegym.mathclass.assignment.dto.request.AssignmentDrawingRequest;
 import com.codegym.mathclass.assignment.dto.request.AssignmentImageRequest;
-import com.codegym.mathclass.utils.EmailService;
-import org.thymeleaf.context.Context;
-import org.springframework.beans.factory.annotation.Value;
-
+import com.codegym.mathclass.assignment.event.AssignmentPublishedEvent;
+import com.codegym.mathclass.assignment.service.helper.AssignmentCloneHelper;
+import com.codegym.mathclass.utils.DateTimeUtils;
+import org.springframework.context.ApplicationEventPublisher;
 
 @Service
 @RequiredArgsConstructor
@@ -73,13 +62,11 @@ public class AssignmentServiceImpl implements AssignmentService {
     private final ClassroomRepository classroomRepository;
     private final SubmissionRepository submissionRepository;
     private final AssignmentMapper assignmentMapper;
-    private final StorageService storageService;
-    private final DocumentParserFactory documentParserFactory;
-    private final EmailService emailService;
+    private final AssignmentDocumentService assignmentDocumentService;
+    private final AssignmentCloneHelper assignmentCloneHelper;
+    private final AssignmentLibraryService assignmentLibraryService;
+    private final ApplicationEventPublisher eventPublisher;
     private final TagService tagService;
-
-    @Value("${FRONTEND_URL}")
-    private String frontendUrl;
 
     @Override
     @Transactional
@@ -174,17 +161,16 @@ public class AssignmentServiceImpl implements AssignmentService {
                         "Bạn không có quyền giao bài tập cho lớp: " + classCode);
             }
 
-            Assignment clone = cloneAssignmentForClassroom(originalAssignment, classroom, target.getDeadline() != null ? target.getDeadline().minusHours(7) : null);
+            Assignment clone = assignmentCloneHelper.cloneForClassroom(originalAssignment, classroom,
+                    DateTimeUtils.convertVietnamLocalToUtc(target.getDeadline()));
             clones.add(clone);
         }
 
         // 5. Lưu tất cả bản clone
         assignmentRepository.saveAll(clones);
 
-        // Gửi email cho từng học sinh trong lớp học
-        for (Assignment clone : clones) {
-            sendAssignmentNotificationToClassroom(clone, clone.getClassroom());
-        }
+        // Phát sự kiện xuất bản bài tập để gửi thông báo bất đồng bộ sau khi commit
+        publishNotificationEvent(originalAssignment.getId(), teacherId, clones);
 
         // 6. Cập nhật trạng thái bản nháp thành ARCHIVED nếu như đang là DRAFT
         if (originalAssignment.getStatus() == AssignmentStatus.DRAFT) {
@@ -208,25 +194,8 @@ public class AssignmentServiceImpl implements AssignmentService {
         if (!isTeacher && !isStudent) {
             throw new AccessDeniedException("Bạn không có quyền xem bài tập của lớp này");
         }
-
-        Specification<Assignment> spec = (root, query, cb) -> {
-            Join<Assignment, Classroom> classroomJoin = root.join("classroom",
-                    JoinType.LEFT);
-            // Lấy các bài tập của lớp này
-            Predicate isClassCode = cb.equal(classroomJoin.get("classCode"), classCode);
-
-            if (isTeacher) {
-                // Giáo viên thấy bài tập của lớp HOẶC các bản nháp của chính họ
-                Predicate isDraftAndMyTeacher = cb.and(
-                        cb.equal(root.get("status"), AssignmentStatus.DRAFT),
-                        cb.equal(root.get("teacher").get("id"), userId));
-                return cb.or(isClassCode, isDraftAndMyTeacher);
-            } else {
-                // Học sinh chỉ thấy bài tập của lớp đó
-                return isClassCode;
-            }
-        };
-        
+        Specification<Assignment> spec = AssignmentSpecification.hasClassCodeOrTeacherDraft(classCode, isTeacher,
+                userId);
         spec = spec.and(AssignmentSpecification.isNotInSheet());
 
         // Lọc theo keyword (tiêu đề)
@@ -261,16 +230,30 @@ public class AssignmentServiceImpl implements AssignmentService {
                 pageable.getPageSize(), sort);
 
         Page<Assignment> assignments = assignmentRepository.findAll(spec, sortedPageable);
+        if (assignments.isEmpty()) {
+            return Page.empty(sortedPageable);
+        }
+
+        // Batch pre-fetch submissions for STUDENT to eliminate N+1 queries
+        Map<Long, Submission> submissionMap = new HashMap<>();
+        if (isStudent) {
+            List<Long> assignmentIds = assignments.getContent().stream().map(Assignment::getId).toList();
+            List<Submission> submissions = submissionRepository.findAllByAssignmentIdInAndStudentId(assignmentIds, userId);
+            for (Submission sub : submissions) {
+                submissionMap.putIfAbsent(sub.getAssignment().getId(), sub);
+            }
+        }
+
         return assignments.map(assignment -> {
             AssignmentResponse response = assignmentMapper.toAssignmentResponseWithoutContent(assignment);
             if (isStudent) {
-                submissionRepository.findFirstByAssignmentIdAndStudentId(assignment.getId(), userId)
-                        .ifPresent(sub -> {
-                            response.setSubmissionStatus(sub.getStatus().name());
-                            response.setSubmissionCreatedAt(sub.getCreatedAt());
-                            response.setSubmissionUpdatedAt(sub.getUpdatedAt());
-                            response.setSubmissionScore(sub.getScore());
-                        });
+                Submission sub = submissionMap.get(assignment.getId());
+                if (sub != null) {
+                    response.setSubmissionStatus(sub.getStatus().name());
+                    response.setSubmissionCreatedAt(sub.getCreatedAt());
+                    response.setSubmissionUpdatedAt(sub.getUpdatedAt());
+                    response.setSubmissionScore(sub.getScore());
+                }
             }
             return response;
         });
@@ -279,9 +262,10 @@ public class AssignmentServiceImpl implements AssignmentService {
     @Override
     @Transactional(readOnly = true)
     public Page<AssignmentResponse> getAssignmentsForCurrentUser(long userId, String role, String keyword,
-            String classCode, AssignmentStatus status, Long gradeTagId, Long subjectTagId, Long difficultyTagId, List<String> tagNames, String studentStatus, Pageable pageable) {
+            String classCode, AssignmentStatus status, Long gradeTagId, Long subjectTagId, Long difficultyTagId,
+            List<String> tagNames, String studentStatus, Pageable pageable) {
         Specification<Assignment> spec = (root, query, cb) -> cb.conjunction();
-        
+
         // Loại bỏ những bài tập đã nằm trong phiếu bài tập
         spec = spec.and(AssignmentSpecification.isNotInSheet());
 
@@ -312,7 +296,8 @@ public class AssignmentServiceImpl implements AssignmentService {
         if (classCode != null && !classCode.trim().isEmpty()) {
             spec = spec.and(AssignmentSpecification.hasClassCode(classCode));
         } else if (Role.TEACHER.name().equals(role)) {
-            // Trong Kho bài tập (không filter theo classCode), chỉ lấy các bản gốc (không thuộc lớp nào)
+            // Trong Kho bài tập (không filter theo classCode), chỉ lấy các bản gốc (không
+            // thuộc lớp nào)
             spec = spec.and((root, query, cb) -> cb.isNull(root.get("classroom")));
         }
 
@@ -324,9 +309,12 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         tagService.validateTagFilters(gradeTagId, subjectTagId, difficultyTagId);
 
-        if (gradeTagId != null) spec = spec.and(AssignmentSpecification.hasTag(gradeTagId));
-        if (subjectTagId != null) spec = spec.and(AssignmentSpecification.hasTag(subjectTagId));
-        if (difficultyTagId != null) spec = spec.and(AssignmentSpecification.hasTag(difficultyTagId));
+        if (gradeTagId != null)
+            spec = spec.and(AssignmentSpecification.hasTag(gradeTagId));
+        if (subjectTagId != null)
+            spec = spec.and(AssignmentSpecification.hasTag(subjectTagId));
+        if (difficultyTagId != null)
+            spec = spec.and(AssignmentSpecification.hasTag(difficultyTagId));
         if (tagNames != null && !tagNames.isEmpty()) {
             spec = spec.and(AssignmentSpecification.hasTagNames(tagNames));
         }
@@ -347,24 +335,25 @@ public class AssignmentServiceImpl implements AssignmentService {
         }
 
         // Batch pre-fetch clones for TEACHER to eliminate N+1 queries
-        java.util.Map<Long, List<String>> cloneClassCodesMap = new java.util.HashMap<>();
+        Map<Long, List<String>> cloneClassCodesMap = new HashMap<>();
         if (Role.TEACHER.name().equals(role)) {
             List<Long> parentIds = assignments.getContent().stream().map(Assignment::getId).toList();
             List<Assignment> clones = assignmentRepository.findByParentIdIn(parentIds);
             for (Assignment clone : clones) {
                 if (clone.getParentId() != null && clone.getClassroom() != null) {
-                    cloneClassCodesMap.computeIfAbsent(clone.getParentId(), k -> new java.util.ArrayList<>())
+                    cloneClassCodesMap.computeIfAbsent(clone.getParentId(), k -> new ArrayList<>())
                             .add(clone.getClassroom().getClassCode());
                 }
             }
         }
 
         // Batch pre-fetch submissions for STUDENT to eliminate N+1 queries
-        java.util.Map<Long, com.codegym.mathclass.submission.entity.Submission> submissionMap = new java.util.HashMap<>();
+        Map<Long, Submission> submissionMap = new HashMap<>();
         if (Role.STUDENT.name().equals(role)) {
             List<Long> assignmentIds = assignments.getContent().stream().map(Assignment::getId).toList();
-            List<com.codegym.mathclass.submission.entity.Submission> submissions = submissionRepository.findAllByAssignmentIdInAndStudentId(assignmentIds, userId);
-            for (com.codegym.mathclass.submission.entity.Submission sub : submissions) {
+            List<Submission> submissions = submissionRepository
+                    .findAllByAssignmentIdInAndStudentId(assignmentIds, userId);
+            for (Submission sub : submissions) {
                 submissionMap.putIfAbsent(sub.getAssignment().getId(), sub);
             }
         }
@@ -372,15 +361,17 @@ public class AssignmentServiceImpl implements AssignmentService {
         return assignments.map(assignment -> {
             AssignmentResponse response = assignmentMapper.toAssignmentResponseWithoutContent(assignment);
             if (Role.TEACHER.name().equals(role)) {
-                List<String> rawCodes = cloneClassCodesMap.getOrDefault(assignment.getId(), java.util.Collections.emptyList());
-                List<String> publishedCodes = new java.util.ArrayList<>(rawCodes.stream().distinct().toList());
-                if (assignment.getClassroom() != null && !publishedCodes.contains(assignment.getClassroom().getClassCode())) {
+                List<String> rawCodes = cloneClassCodesMap.getOrDefault(assignment.getId(),
+                        Collections.emptyList());
+                List<String> publishedCodes = new ArrayList<>(rawCodes.stream().distinct().toList());
+                if (assignment.getClassroom() != null
+                        && !publishedCodes.contains(assignment.getClassroom().getClassCode())) {
                     publishedCodes.add(assignment.getClassroom().getClassCode());
                 }
                 response.setPublishedClassCodes(publishedCodes);
             }
             if (Role.STUDENT.name().equals(role)) {
-                com.codegym.mathclass.submission.entity.Submission sub = submissionMap.get(assignment.getId());
+                Submission sub = submissionMap.get(assignment.getId());
                 if (sub != null) {
                     response.setSubmissionStatus(sub.getStatus().name());
                     response.setSubmissionCreatedAt(sub.getCreatedAt());
@@ -409,14 +400,14 @@ public class AssignmentServiceImpl implements AssignmentService {
             throw new BadRequestException("Đã có học sinh nộp bài, không thể xóa bài tập này");
         }
 
-
         // 3. Xử lý theo trạng thái
         if (assignment.getStatus() == AssignmentStatus.DRAFT) {
             // Thu thập các URL ảnh cần xóa nếu không bị bài tập khác dùng chung
             List<String> imageUrlsToDelete = new ArrayList<>();
             if (assignment.getImages() != null) {
                 for (AssignmentImage img : assignment.getImages()) {
-                    if (img.getImageUrl() != null && !assignmentImageRepository.existsByImageUrlAndAssignmentIdNot(img.getImageUrl(), assignmentId)) {
+                    if (img.getImageUrl() != null && !assignmentImageRepository
+                            .existsByImageUrlAndAssignmentIdNot(img.getImageUrl(), assignmentId)) {
                         imageUrlsToDelete.add(img.getImageUrl());
                     }
                 }
@@ -426,13 +417,7 @@ public class AssignmentServiceImpl implements AssignmentService {
             assignmentRepository.delete(assignment);
 
             // Dọn dẹp ảnh mồ côi trên dịch vụ lưu trữ
-            for (String url : imageUrlsToDelete) {
-                try {
-                    storageService.delete(url);
-                } catch (Exception e) {
-                    // Bắt lỗi an toàn, không gián đoạn luồng
-                }
-            }
+            assignmentDocumentService.deleteImages(imageUrlsToDelete);
         } else {
             // Không phải nháp -> xóa mềm
             // Nếu là bài gốc (ARCHIVED), các bản clone không bị xóa/ẩn mà đổi parentId =
@@ -513,20 +498,7 @@ public class AssignmentServiceImpl implements AssignmentService {
         return assignmentMapper.toAssignmentResponse(assignment);
     }
 
-    @Override
-    public AssignmentImageResponse uploadImageForAssignment(MultipartFile file) throws IOException {
-        String publicUrl = storageService.upload(file, StoragePolicy.ASSIGNMENT_IMAGE);
-        String imageCode = "[IMAGE_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase() + "]";
-        return new AssignmentImageResponse(imageCode, publicUrl);
-    }
 
-    @Override
-    public Map<String, Object> extractTextFromFile(MultipartFile file) throws Exception {
-        String filename = file != null ? file.getOriginalFilename() : null;
-        DocumentParserStrategy parser = documentParserFactory.getParser(filename);
-        DocumentParseResult result = parser.parse(file);
-        return Map.of("content", result.content(), "images", result.images());
-    }
 
     @Override
     @Transactional(readOnly = true)
@@ -679,54 +651,18 @@ public class AssignmentServiceImpl implements AssignmentService {
                 throw new BadRequestException("Bài tập đã có học sinh nộp bài, bạn chỉ có thể thay đổi hạn nộp");
             }
             if (request.getDeadline() != null) {
-                assignment.setDeadline(request.getDeadline().minusHours(7));
+                assignment.setDeadline(DateTimeUtils.convertVietnamLocalToUtc(request.getDeadline()));
             }
         } else {
             assignment.setTitle(request.getTitle());
             assignment.setDescription(request.getDescription());
             assignment.setContent(request.getContent());
             if (request.getDeadline() != null) {
-                assignment.setDeadline(request.getDeadline().minusHours(7));
+                assignment.setDeadline(DateTimeUtils.convertVietnamLocalToUtc(request.getDeadline()));
             }
             updateDrawings(assignment, request.getDrawings());
             updateImages(assignment, request.getImages());
         }
-    }
-
-    private Assignment cloneAssignmentForClassroom(Assignment original, Classroom classroom,
-            java.time.LocalDateTime deadline) {
-        Assignment clone = new Assignment();
-        clone.setTitle(original.getTitle());
-        clone.setDescription(original.getDescription());
-        clone.setContent(original.getContent());
-        clone.setTeacher(original.getTeacher());
-        clone.setParentId(original.getId());
-        clone.setClassroom(classroom);
-        clone.setDeadline(deadline);
-        clone.setStatus(AssignmentStatus.PUBLISHED);
-        clone.setAllowResubmit(original.isAllowResubmit());
-        tagService.copyTags(original, clone);
-
-        if (original.getDrawings() != null) {
-            for (AssignmentDrawing originalDrawing : original.getDrawings()) {
-                AssignmentDrawing drawing = new AssignmentDrawing();
-                drawing.setShapeCode(originalDrawing.getShapeCode());
-                drawing.setJsxGraphData(originalDrawing.getJsxGraphData());
-                drawing.setAssignment(clone);
-                clone.getDrawings().add(drawing);
-            }
-        }
-
-        if (original.getImages() != null) {
-            for (AssignmentImage originalImage : original.getImages()) {
-                AssignmentImage image = new AssignmentImage();
-                image.setImageCode(originalImage.getImageCode());
-                image.setImageUrl(originalImage.getImageUrl());
-                image.setAssignment(clone);
-                clone.getImages().add(image);
-            }
-        }
-        return clone;
     }
 
     private void validatePublicTags(Assignment assignment) {
@@ -735,95 +671,48 @@ public class AssignmentServiceImpl implements AssignmentService {
         }
     }
 
-    private void sendAssignmentNotificationToClassroom(Assignment clone, Classroom classroom) {
-        if (classroom != null && classroom.getStudents() != null) {
-            for (User student : classroom.getStudents()) {
-                Context context = new Context();
-                context.setVariable("studentName", student.getFullName());
-                context.setVariable("assignmentName", clone.getTitle());
-                context.setVariable("link", frontendUrl + "/assignments/" + clone.getId());
-
-                emailService.sendHtmlMailAsync(
-                        student.getEmail(),
-                        "Bài tập mới: " + clone.getTitle(),
-                        "assignment-notification",
-                        context);
+    private void publishNotificationEvent(Long originalAssignmentId, long teacherId, List<Assignment> clones) {
+        List<AssignmentPublishedEvent.PublishedTarget> eventTargets = new ArrayList<>();
+        for (Assignment clone : clones) {
+            Classroom classroom = clone.getClassroom();
+            List<AssignmentPublishedEvent.StudentRecipient> recipients = new ArrayList<>();
+            if (classroom != null && classroom.getStudents() != null) {
+                for (User student : classroom.getStudents()) {
+                    recipients.add(new AssignmentPublishedEvent.StudentRecipient(
+                            student.getId(),
+                            student.getEmail(),
+                            student.getFullName()));
+                }
             }
+            eventTargets.add(new AssignmentPublishedEvent.PublishedTarget(
+                    clone.getId(),
+                    clone.getTitle(),
+                    classroom != null ? classroom.getClassCode() : null,
+                    classroom != null ? classroom.getClassName() : null,
+                    recipients));
         }
+        eventPublisher.publishEvent(new AssignmentPublishedEvent(
+                originalAssignmentId,
+                teacherId,
+                eventTargets));
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<AssignmentResponse> getPublicAssignments(String keyword, Pageable pageable) {
-        Specification<Assignment> spec = (root, query, cb) -> cb.and(
-                cb.equal(root.get("visibility"), AssignmentVisibility.PUBLIC),
-                cb.isNull(root.get("classroom")),
-                cb.notEqual(root.get("status"), AssignmentStatus.DELETED)
-        );
-
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            spec = spec.and((root, query, cb) -> cb.like(cb.lower(root.get("title")), "%" + keyword.toLowerCase() + "%"));
-        }
-
-        Page<Assignment> assignments = assignmentRepository.findAll(spec, pageable);
-        return assignments.map(assignmentMapper::toAssignmentResponseWithoutContent);
+        return assignmentLibraryService.getPublicAssignments(keyword, pageable);
     }
 
     @Override
     @Transactional
     public AssignmentResponse cloneAssignmentFromLibrary(long assignmentId, long teacherId) {
-        User teacher = userRepository.findById(teacherId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
-
-        Assignment original = assignmentRepository.findById(assignmentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập"));
-
-        if (original.getVisibility() != AssignmentVisibility.PUBLIC
-                || original.getStatus() == AssignmentStatus.DELETED) {
-            throw new BadRequestException("Bài tập này không ở trạng thái công khai trong Thư viện");
-        }
-
-        User originalAuthor = original.getOriginalAuthor() != null ? original.getOriginalAuthor() : original.getTeacher();
-
-        Assignment clone = Assignment.builder()
-                .title(original.getTitle())
-                .description(original.getDescription())
-                .content(original.getContent())
-                .status(AssignmentStatus.DRAFT)
-                .visibility(AssignmentVisibility.PRIVATE)
-                .teacher(teacher)
-                .originalAuthor(originalAuthor)
-                .classroom(null)
-                .build();
-        tagService.copyTags(original, clone);
-
-        if (original.getDrawings() != null) {
-            for (AssignmentDrawing originalDrawing : original.getDrawings()) {
-                AssignmentDrawing drawing = new AssignmentDrawing();
-                drawing.setShapeCode(originalDrawing.getShapeCode());
-                drawing.setJsxGraphData(originalDrawing.getJsxGraphData());
-                drawing.setAssignment(clone);
-                clone.getDrawings().add(drawing);
-            }
-        }
-
-        if (original.getImages() != null) {
-            for (AssignmentImage originalImage : original.getImages()) {
-                AssignmentImage image = new AssignmentImage();
-                image.setImageCode(originalImage.getImageCode());
-                image.setImageUrl(originalImage.getImageUrl());
-                image.setAssignment(clone);
-                clone.getImages().add(image);
-            }
-        }
-
-        Assignment saved = assignmentRepository.save(clone);
-        return assignmentMapper.toAssignmentResponse(saved);
+        return assignmentLibraryService.cloneAssignmentFromLibrary(assignmentId, teacherId);
     }
 
     @Override
     @Transactional
-    public AssignmentResponse updateAssignmentVisibility(long assignmentId, UpdateVisibilityRequest request, long teacherId) {
+    public AssignmentResponse updateAssignmentVisibility(long assignmentId, UpdateVisibilityRequest request,
+            long teacherId) {
         Assignment assignment = assignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập"));
 
@@ -842,16 +731,7 @@ public class AssignmentServiceImpl implements AssignmentService {
     @Override
     @Transactional(readOnly = true)
     public AssignmentResponse getPublicAssignmentDetail(long assignmentId) {
-        Assignment assignment = assignmentRepository.findById(assignmentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập công khai"));
-
-        if (assignment.getStatus() == AssignmentStatus.DELETED
-                || assignment.getVisibility() != AssignmentVisibility.PUBLIC
-                || assignment.getClassroom() != null) {
-            throw new ResourceNotFoundException("Không tìm thấy bài tập công khai");
-        }
-
-        return assignmentMapper.toAssignmentResponse(assignment);
+        return assignmentLibraryService.getPublicAssignmentDetail(assignmentId);
     }
 
     @Override

@@ -16,6 +16,7 @@ import com.codegym.mathclass.aiconfig.strategy.AiProviderStrategyFactory;
 import com.codegym.mathclass.assignment.dto.request.BatchGenerateQuestionsRequest;
 import com.codegym.mathclass.assignment.dto.response.BatchGenerateQuestionsResponse;
 import com.codegym.mathclass.assignment.exception.AiGenerationException;
+import com.codegym.mathclass.assignment.service.AssignmentDocumentService;
 import com.codegym.mathclass.assignment.service.impl.AiBatchQuestionServiceImpl;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.user.entity.Role;
@@ -49,7 +50,7 @@ import static org.mockito.Mockito.*;
 class AiBatchQuestionServiceImplTest {
 
     @Mock
-    private AssignmentService assignmentService;
+    private AssignmentDocumentService assignmentDocumentService;
 
     @Mock
     private TaskConfigRepository taskConfigRepository;
@@ -185,7 +186,7 @@ class AiBatchQuestionServiceImplTest {
                 .includeExplanation(true)
                 .build();
 
-        when(assignmentService.extractTextFromFile(file)).thenReturn(
+        when(assignmentDocumentService.extractTextFromFile(file)).thenReturn(
                 Map.of("content", "Nội dung trích xuất từ file docx", "images", Collections.emptyList())
         );
         when(taskConfigRepository.findByTask("BATCH_QUESTION_GEN")).thenReturn(Optional.of(mockTaskConfig));
@@ -462,7 +463,7 @@ class AiBatchQuestionServiceImplTest {
                 .build();
 
         String extractedText = "Bài 1: Giải phương trình 2x + 4 = 10. Bài 2: Tìm nghiệm của x^2 - 4 = 0.";
-        when(assignmentService.extractTextFromFile(mockFile))
+        when(assignmentDocumentService.extractTextFromFile(mockFile))
                 .thenReturn(Map.of("content", extractedText, "images", Collections.emptyList()));
 
         User teacher = User.builder().role(Role.TEACHER).build();

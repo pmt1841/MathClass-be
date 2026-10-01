@@ -117,6 +117,27 @@ public class CustomUserDetails implements UserDetails {
         return email;
     }
 
+    /**
+     * Trích xuất role chính dạng "ROLE_XXX" của người dùng. Fallback về "ROLE_STUDENT" nếu không có.
+     */
+    public String getPrimaryRole() {
+        if (authorities == null) {
+            return "ROLE_STUDENT";
+        }
+        return authorities.stream()
+                .map(GrantedAuthority::getAuthority)
+                .filter(auth -> auth.startsWith("ROLE_"))
+                .findFirst()
+                .orElse("ROLE_STUDENT");
+    }
+
+    /**
+     * Trích xuất tên role dạng đơn giản không có tiền tố "ROLE_" (ví dụ: "TEACHER", "STUDENT", "ADMIN").
+     */
+    public String getRoleName() {
+        return getPrimaryRole().replace("ROLE_", "");
+    }
+
     // So sánh đối tượng
     @Override
     public boolean equals(Object o) {

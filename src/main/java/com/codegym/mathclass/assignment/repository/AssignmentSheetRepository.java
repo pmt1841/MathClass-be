@@ -1,43 +1,52 @@
 package com.codegym.mathclass.assignment.repository;
 
 import com.codegym.mathclass.assignment.entity.AssignmentSheet;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
-@Repository
-public interface AssignmentSheetRepository extends JpaRepository<AssignmentSheet, Long>, JpaSpecificationExecutor<AssignmentSheet> {
+public interface AssignmentSheetRepository
+                extends JpaRepository<AssignmentSheet, Long>, JpaSpecificationExecutor<AssignmentSheet> {
 
-    Optional<AssignmentSheet> findFirstByTeacherIdAndTitleAndClassroomIsNull(long teacherId, String title);
-    
-    Optional<AssignmentSheet> findFirstByTeacherIdAndTitleAndClassroomClassCode(long teacherId, String title, String classCode);
+        @Override
+        @EntityGraph(attributePaths = { "teacher", "classroom" })
+        Page<AssignmentSheet> findAll(Specification<AssignmentSheet> spec, Pageable pageable);
 
-    int countByTeacherIdAndClassroomIsNull(long teacherId);
+        Optional<AssignmentSheet> findFirstByTeacherIdAndTitleAndClassroomIsNull(long teacherId, String title);
 
-    List<AssignmentSheet> findByTeacherIdAndTitle(long teacherId, String title);
+        Optional<AssignmentSheet> findFirstByTeacherIdAndTitleAndClassroomClassCode(long teacherId, String title,
+                        String classCode);
 
-    List<AssignmentSheet> findByMasterSheetId(long masterSheetId);
+        int countByTeacherIdAndClassroomIsNull(long teacherId);
 
-    /**
-     * Batch query: lấy cặp (title, classCode) của tất cả sheet đã publish vào lớp
-     * cho một giáo viên với danh sách tiêu đề cho trước — tránh N+1 trong TEACHER path.
-     *
-     * @return danh sách Object[]{title (String), classCode (String)}
-     */
-    @Query("""
-            SELECT s.title, c.classCode
-            FROM AssignmentSheet s
-            JOIN s.classroom c
-            WHERE s.teacher.id = :teacherId
-            AND s.title IN :titles
-            """)
-    List<Object[]> findTitleAndClassCodeByTeacherIdAndTitlesIn(
-            @Param("teacherId") long teacherId,
-            @Param("titles") List<String> titles
-    );
+        List<AssignmentSheet> findByTeacherIdAndTitle(long teacherId, String title);
+
+        List<AssignmentSheet> findByMasterSheetId(long masterSheetId);
+
+        /**
+         * Batch query: lấy cặp (title, classCode) của tất cả sheet đã publish vào lớp
+         * cho một giáo viên với danh sách tiêu đề cho trước — tránh N+1 trong TEACHER
+         * path.
+         * Sử dụng Projection type-safe thay cho raw Object[].
+         *
+         * @return danh sách SheetPublishedClassProjection
+         */
+        @Query("""
+                        SELECT s.title AS title, c.classCode AS classCode
+                        FROM AssignmentSheet s
+                        JOIN s.classroom c
+                        WHERE s.teacher.id = :teacherId
+                        AND s.title IN :titles
+                        """)
+        List<SheetPublishedClassProjection> findTitleAndClassCodeByTeacherIdAndTitlesIn(
+                        @Param("teacherId") long teacherId,
+                        @Param("titles") List<String> titles);
 }

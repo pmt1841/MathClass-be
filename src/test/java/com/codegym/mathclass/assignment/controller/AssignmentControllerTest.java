@@ -5,6 +5,7 @@ import com.codegym.mathclass.assignment.dto.response.AssignmentResponse;
 import com.codegym.mathclass.assignment.dto.request.CreateAssignmentRequest;
 import com.codegym.mathclass.assignment.dto.request.PublishAssignmentRequest;
 import com.codegym.mathclass.assignment.dto.request.UpdateAssignmentRequest;
+import com.codegym.mathclass.assignment.service.AssignmentDocumentService;
 import com.codegym.mathclass.assignment.service.AssignmentService;
 import com.codegym.mathclass.security.services.CustomUserDetails;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -50,6 +51,9 @@ class AssignmentControllerTest {
 
     @Mock
     private AssignmentService assignmentService;
+
+    @Mock
+    private AssignmentDocumentService assignmentDocumentService;
 
     @InjectMocks
     private AssignmentController assignmentController;
@@ -235,7 +239,7 @@ class AssignmentControllerTest {
             MockMultipartFile file = new MockMultipartFile("file", "image.png", "image/png", "content".getBytes());
             AssignmentImageResponse response = new AssignmentImageResponse("code123", "url");
 
-            when(assignmentService.uploadImageForAssignment(any(MultipartFile.class))).thenReturn(response);
+            when(assignmentDocumentService.uploadImageForAssignment(any(MultipartFile.class))).thenReturn(response);
 
             mockMvc.perform(multipart("/assignments/images")
                             .file(file))
@@ -243,7 +247,7 @@ class AssignmentControllerTest {
                     .andExpect(jsonPath("$.imageCode").value("code123"))
                     .andExpect(jsonPath("$.imageUrl").value("url"));
 
-            verify(assignmentService, times(1)).uploadImageForAssignment(any(MultipartFile.class));
+            verify(assignmentDocumentService, times(1)).uploadImageForAssignment(any(MultipartFile.class));
         }
     }
 
