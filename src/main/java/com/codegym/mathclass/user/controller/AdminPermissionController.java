@@ -1,24 +1,29 @@
 package com.codegym.mathclass.user.controller;
 
 import com.codegym.mathclass.common.annotation.ApiVersion;
+import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.user.dto.request.UpdateRolePermissionsRequest;
 import com.codegym.mathclass.user.dto.response.PermissionResponse;
+import com.codegym.mathclass.user.dto.response.UserMessageResponse;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.service.RolePermissionService;
-import com.codegym.mathclass.systemlog.service.SystemLogService;
-import com.codegym.mathclass.exception.BadRequestException;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "Admin - Role Permissions", description = "APIs quản trị viên: Xem và gán quyền (Permissions) theo vai trò (Roles)")
 @RestController
@@ -29,7 +34,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class AdminPermissionController {
 
     private final RolePermissionService rolePermissionService;
-    private final SystemLogService systemLogService;
 
     @Operation(summary = "Lấy tất cả các Quyền hệ thống", description = "Danh sách tất cả các permission có sẵn")
     @GetMapping("/permissions")
@@ -46,33 +50,27 @@ public class AdminPermissionController {
 
     @Operation(summary = "Cập nhật Quyền cho Vai trò", description = "Gán lại danh sách quyền (Permission IDs) cho một vai trò")
     @PutMapping("/{roleName}/permissions")
-    public ResponseEntity<Map<String, String>> updateRolePermissions(
+    public ResponseEntity<UserMessageResponse> updateRolePermissions(
             @PathVariable String roleName,
             @Valid @RequestBody UpdateRolePermissionsRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         
         Role role = parseRole(roleName);
-        rolePermissionService.updateRolePermissions(role, request.getPermissionIds());
-        
-        systemLogService.logWarning(userDetails.getUsername(), 
-            "Cập nhật danh sách phân quyền cho nhóm " + role.name(), null);
+        rolePermissionService.updateRolePermissions(role, request.getPermissionIds(), userDetails.getUsername());
             
-        return ResponseEntity.ok(Map.of("message", "Cập nhật phân quyền thành công."));
+        return ResponseEntity.ok(new UserMessageResponse("Cập nhật phân quyền thành công."));
     }
 
     @Operation(summary = "Khôi phục Quyền mặc định cho Vai trò", description = "Đặt lại danh sách quyền của vai trò về cài đặt mặc định ban đầu")
     @PostMapping("/{roleName}/reset-permissions")
-    public ResponseEntity<Map<String, String>> resetRolePermissions(
+    public ResponseEntity<UserMessageResponse> resetRolePermissions(
             @PathVariable String roleName,
             @AuthenticationPrincipal UserDetails userDetails) {
         
         Role role = parseRole(roleName);
-        rolePermissionService.resetRolePermissionsToDefault(role);
-        
-        systemLogService.logWarning(userDetails.getUsername(), 
-            "Khôi phục cài đặt phân quyền mặc định cho nhóm " + role.name(), null);
+        rolePermissionService.resetRolePermissionsToDefault(role, userDetails.getUsername());
             
-        return ResponseEntity.ok(Map.of("message", "Khôi phục phân quyền mặc định thành công."));
+        return ResponseEntity.ok(new UserMessageResponse("Khôi phục phân quyền mặc định thành công."));
     }
 
     private Role parseRole(String roleName) {

@@ -6,24 +6,23 @@ import com.codegym.mathclass.user.dto.request.UpdateProfileRequest;
 import com.codegym.mathclass.user.dto.response.UserResponse;
 import com.codegym.mathclass.user.entity.Provider;
 import com.codegym.mathclass.user.entity.User;
-import com.codegym.mathclass.user.service.PermissionCacheService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 @Component
-@RequiredArgsConstructor
 public class UserMapper {
 
-    private final PermissionCacheService permissionCacheService;
-
     public UserResponse toUserResponse(User user) {
-        return toUserResponse(user, false);
+        return toUserResponse(user, false, null);
     }
 
     public UserResponse toUserResponse(User user, boolean isOnline) {
+        return toUserResponse(user, isOnline, null);
+    }
+
+    public UserResponse toUserResponse(User user, boolean isOnline, List<String> permissions) {
         if (user == null) {
             return null;
         }
@@ -48,35 +47,7 @@ public class UserMapper {
                 .lastActiveAt(user.getLastActiveAt())
                 .isOnline(isOnline)
                 .language(user.getLanguage() != null ? user.getLanguage() : "vi")
-                .permissions(permissionCacheService.getPermissionsByRole(user.getRole()))
-                .build();
-    }
-
-
-    public UserInfoResponse toUserInfoResponse(CustomUserDetails userDetails) {
-        if (userDetails == null) {
-            return null;
-        }
-        String role = userDetails.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .filter(a -> a.startsWith("ROLE_"))
-                .findFirst()
-                .map(r -> r.replace("ROLE_", ""))
-                .orElse("");
-
-        List<String> permissions = userDetails.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .filter(a -> !a.startsWith("ROLE_"))
-                .toList();
-
-        return UserInfoResponse.builder()
-                .id(userDetails.getId())
-                .email(userDetails.getEmail())
-                .fullName(userDetails.getFullName())
-                .userRole(role)
-                .avatarUrl(userDetails.getAvatarUrl())
                 .permissions(permissions)
-                .language(userDetails.getLanguage() != null ? userDetails.getLanguage() : "vi")
                 .build();
     }
 
@@ -108,7 +79,6 @@ public class UserMapper {
                 .build();
     }
 
-
     public void updateUserFromRequest(User user, UpdateProfileRequest request) {
         if (user == null || request == null) {
             return;
@@ -124,4 +94,3 @@ public class UserMapper {
         user.setGender(request.getGender());
     }
 }
-

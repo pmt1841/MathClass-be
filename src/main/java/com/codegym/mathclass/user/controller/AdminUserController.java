@@ -1,11 +1,13 @@
 package com.codegym.mathclass.user.controller;
 
 import com.codegym.mathclass.common.annotation.ApiVersion;
-import com.codegym.mathclass.auth.dto.response.MessageResponse;
 import com.codegym.mathclass.user.dto.request.UpdateUserStatusRequest;
+import com.codegym.mathclass.user.dto.response.UserMessageResponse;
 import com.codegym.mathclass.user.dto.response.UserResponse;
 import com.codegym.mathclass.user.entity.Role;
 import com.codegym.mathclass.user.service.AdminUserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -22,8 +24,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "Admin - Users", description = "APIs quản trị viên: Tìm kiếm, phân trang và quản lý trạng thái tài khoản")
 @RestController
@@ -50,13 +50,13 @@ public class AdminUserController {
 
     @Operation(summary = "Khóa / Mở khóa tài khoản", description = "Cập nhật trạng thái isActive (hoạt động / bị khóa) của người dùng")
     @PatchMapping("/{id}/status")
-    public ResponseEntity<MessageResponse> updateStatus(
+    public ResponseEntity<UserMessageResponse> updateStatus(
             @PathVariable Long id,
             @Valid @RequestBody UpdateUserStatusRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         
         adminUserService.updateUserStatus(id, request, userDetails.getUsername());
-        return ResponseEntity.ok(new MessageResponse("Trạng thái tài khoản đã được cập nhật thành công."));
+        return ResponseEntity.ok(new UserMessageResponse("Trạng thái tài khoản đã được cập nhật thành công."));
     }
 }
 

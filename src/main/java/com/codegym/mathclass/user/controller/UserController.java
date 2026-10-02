@@ -1,32 +1,30 @@
 package com.codegym.mathclass.user.controller;
 
 import com.codegym.mathclass.common.annotation.ApiVersion;
+import com.codegym.mathclass.security.services.CustomUserDetails;
+import com.codegym.mathclass.user.dto.request.ChangePasswordRequest;
+import com.codegym.mathclass.user.dto.request.SetPasswordRequest;
+import com.codegym.mathclass.user.dto.request.UpdateProfileRequest;
+import com.codegym.mathclass.user.dto.request.UpdateUserLanguageRequest;
+import com.codegym.mathclass.user.dto.response.AvatarUploadResponse;
+import com.codegym.mathclass.user.dto.response.UserMessageResponse;
 import com.codegym.mathclass.user.dto.response.UserResponse;
 import com.codegym.mathclass.user.service.UserService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import com.codegym.mathclass.security.services.CustomUserDetails;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import jakarta.validation.Valid;
-import com.codegym.mathclass.user.dto.request.UpdateProfileRequest;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.multipart.MultipartFile;
-import java.util.Map;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-
-import com.codegym.mathclass.user.dto.request.ChangePasswordRequest;
-import com.codegym.mathclass.common.dto.ApiResponse;
-
-import com.codegym.mathclass.user.dto.request.SetPasswordRequest;
-import com.codegym.mathclass.user.dto.request.UpdateUserLanguageRequest;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @Tag(name = "User Profile", description = "APIs quản lý thông tin cá nhân và ảnh đại diện của người dùng")
 @RestController
@@ -54,43 +52,37 @@ public class UserController {
 
     @Operation(summary = "Tải lên ảnh đại diện (Avatar)", description = "Upload file ảnh đại diện và lưu đường dẫn ảnh")
     @PostMapping("/me/avatar")
-    public ResponseEntity<Map<String, String>> uploadAvatar(
+    public ResponseEntity<AvatarUploadResponse> uploadAvatar(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam("file") MultipartFile file) {
         String avatarUrl = userService.uploadAvatar(userDetails.getId(), file);
-        return ResponseEntity.ok(Map.of("avatarUrl", avatarUrl));
+        return ResponseEntity.ok(new AvatarUploadResponse(avatarUrl));
     }
 
     @Operation(summary = "Đổi mật khẩu tài khoản cá nhân", description = "Thay đổi mật khẩu đăng nhập của người dùng đang đăng nhập")
     @PutMapping("/me/password")
-    public ResponseEntity<ApiResponse<String>> changePassword(
+    public ResponseEntity<UserMessageResponse> changePassword(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody ChangePasswordRequest request) {
         userService.changePassword(userDetails.getId(), request);
-        return ResponseEntity.ok(ApiResponse.<String>builder()
-                .message("Đổi mật khẩu thành công. Vui lòng đăng nhập lại.")
-                .build());
+        return ResponseEntity.ok(new UserMessageResponse("Đổi mật khẩu thành công. Vui lòng đăng nhập lại."));
     }
 
     @Operation(summary = "Gửi mã OTP xác thực thiết lập mật khẩu lần đầu", description = "Gửi mã OTP 6 số về email của người dùng đang đăng nhập")
     @PostMapping("/me/set-password/send-otp")
-    public ResponseEntity<ApiResponse<String>> sendSetPasswordOtp(
+    public ResponseEntity<UserMessageResponse> sendSetPasswordOtp(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         userService.sendSetPasswordOtp(userDetails.getId());
-        return ResponseEntity.ok(ApiResponse.<String>builder()
-                .message("Mã OTP xác thực đã được gửi về email của bạn.")
-                .build());
+        return ResponseEntity.ok(new UserMessageResponse("Mã OTP xác thực đã được gửi về email của bạn."));
     }
 
     @Operation(summary = "Thiết lập mật khẩu đăng nhập lần đầu", description = "Xác thực OTP và đặt mật khẩu đăng nhập cho người dùng chưa có mật khẩu local")
     @PutMapping("/me/set-password")
-    public ResponseEntity<ApiResponse<String>> setPassword(
+    public ResponseEntity<UserMessageResponse> setPassword(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody SetPasswordRequest request) {
         userService.setPassword(userDetails.getId(), request);
-        return ResponseEntity.ok(ApiResponse.<String>builder()
-                .message("Thiết lập mật khẩu thành công. Vui lòng đăng nhập lại.")
-                .build());
+        return ResponseEntity.ok(new UserMessageResponse("Thiết lập mật khẩu thành công. Vui lòng đăng nhập lại."));
     }
 
     @Operation(summary = "Cập nhật ngôn ngữ giao diện ưa thích", description = "Cập nhật ngôn ngữ được chọn của người dùng vào cơ sở dữ liệu")
@@ -101,4 +93,3 @@ public class UserController {
         return ResponseEntity.ok(userService.updateLanguage(userDetails.getId(), request));
     }
 }
-

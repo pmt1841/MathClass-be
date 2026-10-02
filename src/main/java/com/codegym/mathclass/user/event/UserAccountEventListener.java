@@ -4,9 +4,10 @@ import com.codegym.mathclass.systemlog.service.SystemLogService;
 import com.codegym.mathclass.utils.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 @Component
 @RequiredArgsConstructor
@@ -17,7 +18,7 @@ public class UserAccountEventListener {
     private final SystemLogService systemLogService;
 
     @Async
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleUserAccountLocked(UserAccountLockedEvent event) {
         try {
             emailService.sendAccountLockedEmail(
@@ -38,7 +39,7 @@ public class UserAccountEventListener {
     }
 
     @Async
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleUserAccountUnlocked(UserAccountUnlockedEvent event) {
         try {
             emailService.sendAccountUnlockedEmail(

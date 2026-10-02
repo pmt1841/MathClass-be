@@ -1,7 +1,6 @@
 package com.codegym.mathclass.user.controller;
 
 import com.codegym.mathclass.exception.GlobalExceptionHandler;
-import com.codegym.mathclass.systemlog.service.SystemLogService;
 import com.codegym.mathclass.user.dto.request.UpdateRolePermissionsRequest;
 import com.codegym.mathclass.user.dto.response.PermissionResponse;
 import com.codegym.mathclass.user.entity.Role;
@@ -29,9 +28,7 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -50,9 +47,6 @@ class AdminPermissionControllerTest {
 
     @Mock
     private RolePermissionService rolePermissionService;
-
-    @Mock
-    private SystemLogService systemLogService;
 
     @InjectMocks
     private AdminPermissionController adminPermissionController;
@@ -86,7 +80,7 @@ class AdminPermissionControllerTest {
 
                     @Override
                     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
-                                                  NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
+                            NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
                         return mockAdminDetails;
                     }
                 })
@@ -98,7 +92,7 @@ class AdminPermissionControllerTest {
     class GetAllPermissionsEndpointTests {
 
         @Test
-        @DisplayName("Should return all permissions list and 200 OK")
+        @DisplayName("Should return all permissions and 200 OK")
         void getAllPermissions_ReturnsOk() throws Exception {
             when(rolePermissionService.getAllPermissions()).thenReturn(List.of(mockPermissionResponse));
 
@@ -116,7 +110,7 @@ class AdminPermissionControllerTest {
     class GetPermissionsByRoleEndpointTests {
 
         @Test
-        @DisplayName("Should return permissions for valid roleName and 200 OK")
+        @DisplayName("Should return permissions for role and 200 OK")
         void getPermissionsByRole_ValidRole_ReturnsOk() throws Exception {
             when(rolePermissionService.getPermissionsByRole(Role.TEACHER)).thenReturn(List.of(mockPermissionResponse));
 
@@ -149,16 +143,17 @@ class AdminPermissionControllerTest {
             UpdateRolePermissionsRequest request = new UpdateRolePermissionsRequest();
             request.setPermissionIds(List.of(1L, 2L));
 
-            doNothing().when(rolePermissionService).updateRolePermissions(eq(Role.TEACHER), eq(List.of(1L, 2L)));
+            doNothing().when(rolePermissionService).updateRolePermissions(eq(Role.TEACHER), eq(List.of(1L, 2L)),
+                    eq("admin@test.com"));
 
             mockMvc.perform(put("/admin/roles/teacher/permissions")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.message").value("Cập nhật phân quyền thành công."));
 
-            verify(rolePermissionService, times(1)).updateRolePermissions(eq(Role.TEACHER), eq(List.of(1L, 2L)));
-            verify(systemLogService, times(1)).logWarning(eq("admin@test.com"), anyString(), isNull());
+            verify(rolePermissionService, times(1)).updateRolePermissions(eq(Role.TEACHER), eq(List.of(1L, 2L)),
+                    eq("admin@test.com"));
         }
 
         @Test
@@ -168,12 +163,12 @@ class AdminPermissionControllerTest {
             request.setPermissionIds(List.of(1L, 2L));
 
             mockMvc.perform(put("/admin/roles/invalid_role/permissions")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.error").value("Role không hợp lệ: invalid_role"));
 
-            verify(rolePermissionService, never()).updateRolePermissions(any(), any());
+            verify(rolePermissionService, never()).updateRolePermissions(any(), any(), any());
         }
     }
 
@@ -184,14 +179,13 @@ class AdminPermissionControllerTest {
         @Test
         @DisplayName("Should reset role permissions to default and return 200 OK")
         void resetRolePermissions_ValidRole_ReturnsOk() throws Exception {
-            doNothing().when(rolePermissionService).resetRolePermissionsToDefault(Role.TEACHER);
+            doNothing().when(rolePermissionService).resetRolePermissionsToDefault(Role.TEACHER, "admin@test.com");
 
             mockMvc.perform(post("/admin/roles/teacher/reset-permissions"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.message").value("Khôi phục phân quyền mặc định thành công."));
 
-            verify(rolePermissionService, times(1)).resetRolePermissionsToDefault(Role.TEACHER);
-            verify(systemLogService, times(1)).logWarning(eq("admin@test.com"), eq("Khôi phục cài đặt phân quyền mặc định cho nhóm TEACHER"), isNull());
+            verify(rolePermissionService, times(1)).resetRolePermissionsToDefault(Role.TEACHER, "admin@test.com");
         }
 
         @Test
@@ -201,7 +195,7 @@ class AdminPermissionControllerTest {
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.error").value("Role không hợp lệ: invalid_role"));
 
-            verify(rolePermissionService, never()).resetRolePermissionsToDefault(any());
+            verify(rolePermissionService, never()).resetRolePermissionsToDefault(any(), any());
         }
     }
 }

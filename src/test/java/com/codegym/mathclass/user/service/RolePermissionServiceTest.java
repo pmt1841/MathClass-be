@@ -37,6 +37,9 @@ class RolePermissionServiceTest {
     @Mock
     private PermissionCacheService permissionCacheService;
 
+    @Mock
+    private com.codegym.mathclass.systemlog.service.SystemLogService systemLogService;
+
     @InjectMocks
     private RolePermissionServiceImpl rolePermissionService;
 
@@ -72,13 +75,13 @@ class RolePermissionServiceTest {
         @Test
         @DisplayName("Should return permission DTOs for a given role")
         void getPermissionsByRole_ValidRole_ReturnsList() {
-            when(rolePermissionRepository.findByRole(Role.TEACHER)).thenReturn(List.of(rolePermission1));
+            when(rolePermissionRepository.findByRoleWithPermission(Role.TEACHER)).thenReturn(List.of(rolePermission1));
 
             List<PermissionResponse> result = rolePermissionService.getPermissionsByRole(Role.TEACHER);
 
             assertThat(result).isNotNull().hasSize(1);
             assertThat(result.get(0).getName()).isEqualTo("user:read");
-            verify(rolePermissionRepository, times(1)).findByRole(Role.TEACHER);
+            verify(rolePermissionRepository, times(1)).findByRoleWithPermission(Role.TEACHER);
         }
     }
 

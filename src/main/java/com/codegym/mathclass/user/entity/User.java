@@ -1,25 +1,25 @@
 package com.codegym.mathclass.user.entity;
 
+import com.codegym.mathclass.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-import com.codegym.mathclass.common.entity.BaseEntity;
-import lombok.EqualsAndHashCode;
-
-import lombok.Builder;
-
 @Entity
 @Table(name = "users")
-@Data
+@Getter
+@Setter
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor

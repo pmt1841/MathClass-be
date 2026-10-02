@@ -13,5 +13,9 @@ public interface RolePermissionService {
 
     void updateRolePermissions(Role role, List<Long> permissionIds);
 
+    void updateRolePermissions(Role role, List<Long> permissionIds, String adminEmail);
+
     void resetRolePermissionsToDefault(Role role);
+
+    void resetRolePermissionsToDefault(Role role, String adminEmail);
 }

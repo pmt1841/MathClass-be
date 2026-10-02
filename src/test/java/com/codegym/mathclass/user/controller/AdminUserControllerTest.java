@@ -1,6 +1,5 @@
 package com.codegym.mathclass.user.controller;
 
-import com.codegym.mathclass.auth.dto.response.MessageResponse;
 import com.codegym.mathclass.user.dto.request.UpdateUserStatusRequest;
 import com.codegym.mathclass.user.dto.response.UserResponse;
 import com.codegym.mathclass.user.entity.Role;

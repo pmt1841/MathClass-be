@@ -37,6 +37,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -214,6 +215,57 @@ class UserControllerTest {
                     .andExpect(status().isBadRequest());
 
             verify(userService, never()).updateLanguage(anyLong(), any());
+        }
+    }
+
+    @Nested
+    @DisplayName("Password & OTP Endpoint Tests")
+    class PasswordOtpEndpointTests {
+
+        @Test
+        @DisplayName("PUT /users/me/password -> Trả về 200 OK và message")
+        void changePassword_valid_returnsOk() throws Exception {
+            String requestJson = "{" +
+                    "\"currentPassword\":\"oldPass123\"," +
+                    "\"newPassword\":\"NewPass123!\"," +
+                    "\"confirmPassword\":\"NewPass123!\"" +
+                    "}";
+
+            mockMvc.perform(put("/users/me/password")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(requestJson))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.message").value("Đổi mật khẩu thành công. Vui lòng đăng nhập lại."));
+
+            verify(userService, times(1)).changePassword(eq(1L), any());
+        }
+
+        @Test
+        @DisplayName("POST /users/me/set-password/send-otp -> Trả về 200 OK và message")
+        void sendSetPasswordOtp_returnsOk() throws Exception {
+            mockMvc.perform(post("/users/me/set-password/send-otp"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.message").value("Mã OTP xác thực đã được gửi về email của bạn."));
+
+            verify(userService, times(1)).sendSetPasswordOtp(1L);
+        }
+
+        @Test
+        @DisplayName("PUT /users/me/set-password -> Trả về 200 OK và message")
+        void setPassword_valid_returnsOk() throws Exception {
+            String requestJson = "{" +
+                    "\"otpCode\":\"123456\"," +
+                    "\"newPassword\":\"NewPass123!\"," +
+                    "\"confirmPassword\":\"NewPass123!\"" +
+                    "}";
+
+            mockMvc.perform(put("/users/me/set-password")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(requestJson))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.message").value("Thiết lập mật khẩu thành công. Vui lòng đăng nhập lại."));
+
+            verify(userService, times(1)).setPassword(eq(1L), any());
         }
     }
 }
