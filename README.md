@@ -64,16 +64,19 @@
 src/main/java/com/codegym/mathclass/
  ├── auth/         # Xác thực: Đăng nhập/Đăng ký, 2FA TOTP, OTP Email, Google OAuth2, Reset Password
  ├── user/         # Quản lý thông tin cá nhân, Avatar, Admin User & Phân quyền Roles/Permissions
- ├── classroom/    # Quản lý lớp học, duyệt yêu cầu gia nhập (Join Requests) & thành viên lớp
- ├── assignment/   # Tạo đề bài tập Toán, AI Sinh đề, giao bài tập cho lớp & bóc tách file DOCX/PDF
+ ├── classroom/    # Quản lý lớp học, duyệt yêu cầu gia nhập (Join Requests), nhận xét học sinh & thành viên lớp
+ ├── assignment/   # Tạo đề bài tập Toán, AI Sinh đề, giao bài tập cho lớp, Thư viện chia sẻ đề & Tags
  ├── submission/   # Học sinh nộp bài, bản vẽ Canvas, AI Hints, AI OCR, chấm điểm & bình luận
  ├── dashboard/    # Thống kê hiệu suất làm bài tập, bài nộp chờ chấm & học sinh nguy cơ học yếu
  ├── notification/ # Hệ thống thông báo thời gian thực (SSE Stream) & Cấu hình nhận thông báo
- ├── aiconfig/     # Quản trị AI Providers, API Keys (AES-256), Task Routing, Prompts, Credit Quota
+ ├── chat/         # Hệ thống tin nhắn thời gian thực WebSocket STOMP (Lớp học & 1-1)
+ ├── aiconfig/     # Quản trị AI Providers, API Keys (AES-256), Task Routing, Prompts, Credit & VietQR SePay
+ ├── aiqueue/      # Hàng đợi xử lý tác vụ AI bất đồng bộ với Redisson Blocking Queue
  ├── bugreport/    # Hệ thống tiếp nhận và xử lý báo cáo sự cố từ người dùng
  ├── systemlog/    # Nhật ký hoạt động hệ thống (System Audit Logs) dành cho Admin
+ ├── storage/      # Quản lý tệp tin và dọn dẹp Supabase Cloud Storage
  ├── security/     # Cấu hình Spring Security, JWT Filter, CustomUserDetails
- ├── config/       # Nạp biến môi trường Dotenv, CORS, Cache, Async, JPA
+ ├── config/       # Nạp biến môi trường Dotenv, CORS, Cache, Async, JPA, Redis
  ├── exception/    # Custom Exceptions & Global Exception Handler
  └── utils/        # Các tiện ích (LaTeXSanitizer, Supabase Storage Util, File Parsers, Encryption)
 ```
@@ -214,3 +217,6 @@ docker-compose up --build
 - 🔐 [Two-Factor Authentication (2FA TOTP Guide)](docs/06-two-factor-authentication.md)
 - 🤖 [AI Subsystem & Credit Quota Guide](docs/07-ai-subsystem.md)
 - 🔑 [Infisical Secret Management Guide (MAT-289)](docs/08-infisical-secrets-guide.md)
+- 💬 [Realtime Chat Architecture Guide](docs/09-realtime-chat-guide.md)
+- 💳 [VietQR & SePay Payment Gateway Guide](docs/10-payment-gateway-sepay-guide.md)
+- ⚡ [Redisson Distributed AI Task Queue Guide](docs/11-ai-async-queue-guide.md)

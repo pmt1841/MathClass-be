@@ -42,6 +42,7 @@ Môi trường chạy mặc định: `http://localhost:8080`.
 | `PUT` | `/api/v1/users/me/password` | Authenticated | Đổi mật khẩu tài khoản cá nhân. |
 | `POST` | `/api/v1/users/me/set-password/send-otp` | Authenticated | Gửi mã OTP xác thực thiết lập mật khẩu lần đầu (cho tài khoản Google). |
 | `POST` | `/api/v1/users/me/set-password` | Authenticated | Thiết lập mật khẩu lần đầu qua OTP. |
+| `PATCH` | `/api/v1/users/me/language` | Authenticated | Cập nhật ngôn ngữ giao diện ưa thích (`vi` / `en`). |
 | `GET` | `/api/v1/admin/users` | `ADMIN` | Phân trang, lọc & tìm kiếm danh sách người dùng. |
 | `PATCH` | `/api/v1/admin/users/{id}/status` | `ADMIN` | Khóa (kèm lý do) hoặc mở khóa tài khoản người dùng. |
 | `GET` | `/api/v1/admin/roles/permissions` | `ADMIN` | Danh sách toàn bộ Permissions trong hệ thống. |
@@ -67,6 +68,10 @@ Môi trường chạy mặc định: `http://localhost:8080`.
 | `POST` | `/api/v1/classrooms/{classCode}/students` | `TEACHER` | Thêm trực tiếp học sinh vào lớp qua Email. |
 | `GET` | `/api/v1/classrooms/{classCode}/students` | Authenticated | Lấy danh sách học sinh thành viên trong lớp (hỗ trợ phân trang & online status). |
 | `DELETE` | `/api/v1/classrooms/{classCode}/students/{studentId}` | `TEACHER` | Xóa học sinh ra khỏi lớp học (`204 NO CONTENT`). |
+| `GET` | `/api/v1/classrooms/{classCode}/students/{studentId}/remarks` | Authenticated | Lấy danh sách lịch sử nhận xét & đánh giá điểm mạnh/yếu của học sinh. |
+| `POST` | `/api/v1/classrooms/{classCode}/students/{studentId}/remarks` | `TEACHER` | Thêm nhận xét thủ công cho học sinh (`201 CREATED`). |
+| `POST` | `/api/v1/classrooms/{classCode}/students/{studentId}/remarks/ai-evaluate` | `TEACHER` | Yêu cầu AI tự động phân tích tiến độ & sinh nhận xét học sinh (hỗ trợ sync/async queue). |
+| `DELETE` | `/api/v1/classrooms/{classCode}/students/{studentId}/remarks/{remarkId}` | `TEACHER` | Xóa nhận xét học sinh (`204 NO CONTENT`). |
 
 ---
 
@@ -213,5 +218,69 @@ Môi trường chạy mặc định: `http://localhost:8080`.
 | `POST` | `/api/v1/bug-reports` | Authenticated | Người dùng gửi báo cáo lỗi/sự cố kèm ảnh chụp màn hình. |
 | `GET` | `/api/v1/admin/bug-reports` | `ADMIN` | Quản trị viên xem & lọc danh sách báo cáo sự cố (phân trang). |
 | `PATCH` | `/api/v1/admin/bug-reports/{id}/status` | `ADMIN` | Cập nhật trạng thái xử lý lỗi (`PENDING`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`). |
+
+---
+
+## 14. Tin Nhắn & Chat Thời Gian Thực (Chat - `/api/v1/classrooms/{classCode}/chat`)
+
+| Method | Endpoint | Quyền | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/classrooms/{classCode}/chat/messages` | Authenticated (Thành viên) | Lấy lịch sử chat chung hoặc chat trực tiếp trong lớp (phân trang). |
+| `PUT` | `/api/v1/classrooms/{classCode}/chat/messages/read` | Authenticated (Thành viên) | Đánh dấu các tin nhắn là đã đọc. |
+| `GET` | `/api/v1/classrooms/{classCode}/chat/online-users` | Authenticated (Thành viên) | Lấy danh sách ID người dùng đang trực tuyến (online) trong phòng chat. |
+| `GET` | `/api/v1/classrooms/{classCode}/chat/unread-students` | `TEACHER` | Danh sách học sinh có tin nhắn chưa đọc gửi cho giáo viên. |
+| `GET` | `/api/v1/classrooms/{classCode}/chat/unread-summary` | Authenticated (Thành viên) | Thống kê số lượng tin nhắn chưa đọc của lớp học. |
+| `GET` | `/api/v1/classrooms/{classCode}/chat/group/messages` | Authenticated (Thành viên) | Lấy lịch sử chat nhóm chung của toàn bộ lớp học (phân trang). |
+| `PUT` | `/api/v1/classrooms/{classCode}/chat/group/read` | Authenticated (Thành viên) | Đánh dấu đã đọc toàn bộ tin nhắn chat nhóm lớp. |
+| `GET` | `/api/v1/classrooms/{classCode}/chat/direct/{otherUserId}/messages` | Authenticated (Thành viên) | Lấy lịch sử chat riêng 1-1 với một thành viên cụ thể trong lớp. |
+| `PUT` | `/api/v1/classrooms/{classCode}/chat/direct/{otherUserId}/read` | Authenticated (Thành viên) | Đánh dấu đã đọc các tin nhắn riêng với người dùng cụ thể. |
+
+> 💡 **Kết nối Real-time:** Hỗ trợ giao thức WebSocket STOMP tại `/ws-chat` để gửi/nhận tin nhắn tức thì (xem chi tiết tại [09-realtime-chat-guide.md](09-realtime-chat-guide.md)).
+
+---
+
+## 15. Thanh Toán & Cổng Nạp Credit (VietQR / SePay - `/api/v1/credits`, `/api/v1/payment`)
+
+| Method | Endpoint | Quyền | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/credits/me` | Authenticated | Xem chi tiết số dư credit, hạn ngạch hôm nay & bảng giá của tôi. |
+| `GET` | `/api/v1/credits/payment-config` | Authenticated | Lấy thông tin tài khoản ngân hàng thụ hưởng nhận tiền công khai. |
+| `GET` | `/api/v1/credits/transactions` | Authenticated | Lịch sử biến động số dư credit cá nhân (lọc theo loại & phân trang). |
+| `POST` | `/api/v1/credits/purchase` | Authenticated | Tạo đơn nạp credit & khởi tạo giao dịch VietQR (trả về mã QR thanh toán). |
+| `GET` | `/api/v1/credits/purchase/orders/{orderId}/status` | Authenticated | Kiểm tra trạng thái đơn nạp credit (dùng cho frontend polling). |
+| `POST` | `/api/v1/credits/purchase/{orderId}/complete` | Authenticated | Xác nhận thủ công hoàn tất đơn mua credit. |
+| `POST` | `/api/v1/credits/refund-task` | Authenticated | Hoàn lại số credit đã tạm giữ khi người dùng bấm Hủy tiến trình AI. |
+| `GET` | `/api/v1/admin/credits/orders` | `ADMIN` | Quản lý danh sách toàn bộ đơn hàng nạp credit trên hệ thống. |
+| `GET` | `/api/v1/admin/payment/config` | `ADMIN` | Xem cấu hình API SePay & tài khoản ngân hàng nhận tiền. |
+| `PUT` | `/api/v1/admin/payment/config` | `ADMIN` | Cập nhật cấu hình SePay API Key & thông tin ngân hàng thụ hưởng. |
+| `POST` | `/api/v1/payment/webhook/sepay` | Public (SePay Key Header) | Webhook nhận biến động số dư ngân hàng tự động từ SePay. |
+
+> 📖 Hướng dẫn cấu hình Webhook và đối soát giao dịch VietQR xem tại: [10-payment-gateway-sepay-guide.md](10-payment-gateway-sepay-guide.md).
+
+---
+
+## 16. Hàng Đợi Tác Vụ AI Bất Đồng Bộ (AI Job Queue - `/api/v1/ai/jobs`)
+
+| Method | Endpoint | Quyền | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/ai/jobs/{jobId}` | Authenticated | Kiểm tra trạng thái và kết quả xử lý của tác vụ AI nền (`QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`). |
+| `POST` | `/api/v1/ai/jobs/{jobId}/cancel` | Authenticated | Hủy tác vụ AI đang chờ xử lý trong hàng đợi Redis (tự động hoàn cọc Credit). |
+
+> 📖 Chi tiết kiến trúc hàng đợi Redis Queue & Redisson xem tại: [11-ai-async-queue-guide.md](11-ai-async-queue-guide.md).
+
+---
+
+## 17. Thư Viện Đề Thi & Quản Lý Thẻ Phân Loại (Library & Tags - `/api/v1/library`, `/api/v1/tags`)
+
+| Method | Endpoint | Quyền | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/tags` | Public / Authenticated | Tra cứu danh sách thẻ phân loại đang hoạt động theo loại (`GRADE`, `TOPIC`, `DIFFICULTY`) hoặc tìm kiếm. |
+| `GET` | `/api/v1/library/assignments` | `library:read` | Tìm kiếm bài tập đơn lẻ công khai trong Thư viện chung (hỗ trợ từ khóa & phân trang). |
+| `GET` | `/api/v1/library/assignments/{id}` | `library:read` | Xem chi tiết nội dung đề bài tập công khai trong Thư viện. |
+| `POST` | `/api/v1/library/assignments/{id}/clone` | `library:clone` | Sao chép bài tập từ Thư viện cộng đồng về kho cá nhân của giáo viên (`201 CREATED`). |
+| `GET` | `/api/v1/library/sheets` | `library:read` | Tìm kiếm phiếu bài tập (Assignment Sheets) công khai trong Thư viện. |
+| `GET` | `/api/v1/library/sheets/{id}` | `library:read` | Xem chi tiết phiếu bài tập công khai trong Thư viện. |
+| `POST` | `/api/v1/library/sheets/{id}/clone` | `library:clone` | Sao chép phiếu bài tập từ Thư viện về kho cá nhân (`201 CREATED`). |
+
 
 

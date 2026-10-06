@@ -13,9 +13,13 @@ Backend chịu trách nhiệm cung cấp toàn bộ RESTful API, xử lý logic 
 - **Quản lý Bài tập (Assignment):** Tạo bài tập (tự luận & trắc nghiệm, hỗ trợ LaTeX), đính kèm hình vẽ JSXGraph/Canvas, bóc tách đề bài từ file DOCX/PDF, giao bài tập theo lớp và quản lý lịch xuất bản.
 - **Nộp bài & Chấm điểm (Submission & Drawing):** Học sinh nộp bài tập (văn bản LaTeX & hình vẽ Canvas tương tác), chấm điểm tự luận/trắc nghiệm, nhận xét câu hỏi, lịch sử nộp và chức năng hủy nộp (Unsubmit).
 - **Thống kê & Phân tích (Dashboard):** Tổng quan tình hình giảng dạy của giáo viên, danh sách bài tập chờ chấm, cảnh báo học sinh có nguy cơ học kém (At-risk students), thống kê kết quả học tập của từng học sinh.
-- **Hệ Thống Trợ Lý AI & Quản Trị Hạn Ngạch (AI Subsystem & Credit Quota):** Multi-Provider AI Gateway (OpenAI, Gemini, Claude, DeepSeek, Groq), Task Routing, quản lý Prompt templates có Versioning & Preview, ví Credit cá nhân hóa với cơ chế tính phí token Reserve-then-Refund, và 4 công cụ AI Toán học (Sinh đề bài, Gợi ý tư duy, OCR chữ viết tay, Chấm điểm tự động).
+- **Hệ Thống Trợ Lý AI & Quản Trị Hạn Ngạch (AI Subsystem & Credit Quota):** Multi-Provider AI, Task Routing, quản lý Prompt templates có Versioning & Preview, ví Credit cá nhân hóa với cơ chế tính phí token Reserve-then-Refund, và 4 công cụ AI Toán học (Sinh đề bài, Gợi ý tư duy, OCR chữ viết tay, Chấm điểm tự động).
 - **Thông báo Realtime (Notification & Settings):** Nhận thông báo thời gian thực qua Server-Sent Events (SSE), quản lý cấu hình thông báo (Email, Hệ thống).
-- **Nhật ký Hệ thống (System Logs):** Lưu vết audit log các thao tác quan trọng dành cho Quản trị viên.
+- **Nhật ký Hệ thống & Báo cáo Lỗi (System Logs & Bug Reports):** Lưu vết audit log các thao tác quan trọng dành cho Quản trị viên và tiếp nhận báo cáo lỗi sự cố từ người dùng.
+- **Hệ Thống Chat Thời Gian Thực (Realtime Chat):** Chat nhóm theo lớp học và chat riêng 1-1 (học sinh - giáo viên, học sinh - học sinh) qua WebSocket STOMP.
+- **Cổng Thanh Toán Tự Động VietQR & SePay (Payment Gateway):** Nạp AI Credit tự động qua chuyển khoản VietQR với webhook xử lý Idempotency an toàn.
+- **Hàng Đợi AI Bất Đồng Bộ (AI Job Queue):** Xử lý tác vụ AI nặng (đánh giá học sinh, chấm điểm hàng loạt) qua Redisson Blocking Queue với cơ chế hoàn cọc tự động.
+- **Thư Viện Bài Tập Dùng Chung (Assignment Library & Tags):** Khám phá kho đề thi mẫu và sao chép về lớp học.
 
 ## 2. Kiến trúc & Công nghệ (Architecture & Tech Stack)
 
@@ -23,13 +27,14 @@ Dự án được xây dựng theo kiến trúc phân tầng (Layered Architectu
 
 - **Core Framework:** Java 21, Spring Boot 4.1.0.
 - **Cơ sở dữ liệu:** PostgreSQL 16 (Dữ liệu quan hệ & kiểu `jsonb` cho tọa độ vẽ hình Canvas / JSXGraph).
+- **Database Migration:** Flyway (14 migration scripts từ V1 đến V14 quản lý schema nhất quán).
 - **ORM & Data Access:** Spring Data JPA / Hibernate.
 - **Bảo mật:** Spring Security & JJWT (Json Web Token), Google Authenticator TOTP (RFC 6238), Mã hóa AES-256-GCM cho AI API Keys.
-- **Real-time Engine:** Spring SSE (Server-Sent Events).
+- **Real-time Engine:** Spring WebSocket (STOMP) cho Chat & Spring SSE (Server-Sent Events) cho Thông báo.
 - **Document Parsing:** Apache POI (DOCX) & Apache PDFBox (PDF).
 - **File Storage:** Supabase Cloud Storage API.
 - **Email Service:** Spring Mail (SMTP Gmail) kết hợp Thymeleaf HTML templates.
-- **Caching & Trạng thái phân tán:** Spring Cache, Redis & Redisson (Distributed cache cho Task Routing, Prompts, Role Permissions, AI Configs, Rate Limiting & Locking).
+- **Caching & Trạng thái phân tán:** Spring Cache, Redis & Redisson (Distributed cache cho Task Routing, Prompts, Role Permissions, AI Configs, Rate Limiting & Distributed Locking).
 
 ## 3. Các Tài Liệu Chi Tiết
 
@@ -41,7 +46,7 @@ Hãy đọc các tài liệu hướng dẫn tiếp theo để bắt tay vào ph�
 4. [Hướng dẫn Sử dụng Docker (Docker Guide)](05-docker-guide.md)
 5. [Hướng dẫn Xác thực Hai Yếu Tố 2FA (Two-Factor Authentication Guide)](06-two-factor-authentication.md)
 6. [Hướng dẫn Kiến trúc Hệ thống AI & Credit Quota (AI Subsystem Guide)](07-ai-subsystem.md)
-
-
-
-
+7. [Hướng dẫn Quản lý Bí mật Infisical (Infisical Secrets Guide)](08-infisical-secrets-guide.md)
+8. [Hướng dẫn Hệ thống Chat Thời gian thực (Realtime Chat Guide)](09-realtime-chat-guide.md)
+9. [Hướng dẫn Cổng Thanh toán VietQR & SePay (Payment Gateway Guide)](10-payment-gateway-sepay-guide.md)
+10. [Hướng dẫn Hàng đợi Tác vụ AI Phân tán Redisson (AI Async Queue Guide)](11-ai-async-queue-guide.md)

@@ -6,28 +6,36 @@ Dự án được cấu trúc theo hướng Domain-driven kết hợp Layered Ar
 
 ```
 src/main/java/com/codegym/mathclass/
- ├── auth/         # Module Đăng nhập, Đăng ký, OAuth2, Email OTP, Reset Password
- ├── user/         # Quản lý User profile, Avatar, Admin user & phân quyền
- ├── classroom/    # Quản lý Lớp học, Thành viên & Yêu cầu gia nhập (Join Requests)
- ├── assignment/   # Quản lý Bài tập, Giao bài cho lớp & Bóc tách tài liệu DOCX/PDF
- ├── submission/   # Bài nộp sinh viên, Chấm điểm, Nhận xét & Bản vẽ Canvas (Drawing)
+ ├── auth/         # Module Đăng nhập, Đăng ký, 2FA TOTP, OAuth2, Email OTP, Reset Password
+ ├── user/         # Quản lý User profile, Avatar, Admin user & phân quyền Roles/Permissions
+ ├── classroom/    # Quản lý Lớp học, Thành viên, Nhận xét học sinh & Yêu cầu gia nhập (Join Requests)
+ ├── assignment/   # Quản lý Bài tập, Phiếu bài tập, Thư viện chia sẻ, Tags & Bóc tách DOCX/PDF
+ ├── submission/   # Bài nộp học sinh, Chấm điểm, Nhận xét câu hỏi & Bản vẽ Canvas (Drawing)
  ├── dashboard/    # Báo cáo thống kê cho Giáo viên & Học sinh (Stats & At-risk analytics)
- ├── notification/ # Hệ thống thông báo thời gian thực (SSE Stream) & Settings
+ ├── notification/ # Hệ thống thông báo thời gian thực (SSE Stream) & Cấu hình Settings
+ ├── chat/         # Hệ thống tin nhắn thời gian thực WebSocket STOMP (Lớp học & 1-1)
+ ├── aiconfig/     # Quản trị AI Providers, API Keys (AES-256), Task Routing, Prompts, Credit & Thanh toán VietQR
+ ├── aiqueue/      # Hàng đợi xử lý tác vụ AI bất đồng bộ với Redisson Blocking Queue
+ ├── bugreport/    # Tiếp nhận và xử lý báo cáo sự cố từ người dùng
  ├── systemlog/    # Nhật ký hoạt động hệ thống cho Quản trị viên (Admin Audit Logs)
- ├── common/       # Cấu trúc Response chuẩn (`ApiResponse`, `PageResponse`)
- ├── config/       # Các Cấu hình hệ thống (Security, CORS, Cache, Async, Dotenv)
- ├── security/     # Xử lý JWT (Cookie & Header), CustomUserDetails, Security Filter
+ ├── storage/      # Quản lý tệp tin và dọn dẹp Supabase Cloud Storage
+ ├── common/       # Cấu trúc chung (`BaseEntity`, `ApiResponse`, `PageResponse`, Annotations)
+ ├── config/       # Cấu hình hệ thống (Security, CORS, Cache, Async, Dotenv, Redis)
+ ├── security/     # Xử lý JWT (Cookie & Header), CustomUserDetails, Security Filter, Interceptor
  ├── exception/    # Custom Exceptions & Global Exception Handler
- └── utils/        # Các tiện ích (LaTeXSanitizer, Supabase Storage Util, File Parsers)
+ └── utils/        # Các tiện ích (LaTeXSanitizer, Supabase Storage Util, File Parsers, Mã hóa AES)
 ```
 
 **Chi tiết cấu trúc bên trong mỗi Domain Module:**
 
-- `entity/`: Các Java class ánh xạ bảng Database (`@Entity`).
-- `dto/`: Lớp chứa dữ liệu chuyển đổi Request/Response (`*RequestDTO`, `*ResponseDTO`).
-- `repository/`: Các Interface truy vấn dữ liệu kế thừa `JpaRepository`.
-- `service/`: Interface định nghĩa nghiệp vụ và lớp `impl/` thực thi logic.
-- `controller/`: REST APIs (`@RestController`) xử lý HTTP Requests.
+- `entity/`: Các Java class ánh xạ bảng Database (`@Entity`), kế thừa từ `BaseEntity`.
+- `dto/`: Phân tách tường minh thành 2 package con:
+  - `dto/request/`: Chứa các Request DTO có hậu tố `*Request` (ví dụ: `CreateAssignmentRequest`, `LoginRequest`).
+  - `dto/response/`: Chứa các Response DTO có hậu tố `*Response` (ví dụ: `AssignmentResponse`, `UserResponse`).
+  - *Tuyệt đối KHÔNG sử dụng hậu tố `*DTO` hoặc `*Dto`*.
+- `repository/`: Các Interface truy vấn dữ liệu kế thừa `JpaRepository` / `JpaSpecificationExecutor`.
+- `service/`: Interface định nghĩa nghiệp vụ và lớp `impl/` thực thi logic (`@Transactional` cho các hàm ghi).
+- `controller/`: REST APIs (`@RestController`) xử lý HTTP Requests và validate bằng `@Valid`.
 
 ## 2. Quy tắc Lập trình (Coding Conventions)
 
@@ -39,8 +47,9 @@ src/main/java/com/codegym/mathclass/
 ### 2.2 Quy định về DTO và API Response
 
 - Lớp Entity CHỈ dùng cho giao tiếp DB và lớp Service, KHÔNG trả Entity trực tiếp về Client.
-- Mọi API thành công trả về wrapper chuẩn `ApiResponse<T>` hoặc `PageResponse<T>`.
+- Dữ liệu trả về Client được map qua DTO Response (trả về trực tiếp trong `ResponseEntity<T>` hoặc bọc `ResponseEntity<ApiResponse<T>>` tùy theo quy định module).
 - Mọi dữ liệu nhận từ Client phải bọc trong Request DTO kèm validation annotations (`@NotBlank`, `@NotNull`, `@Min`, ...).
+
 
 ### 2.3 Quản lý Ngoại lệ (Exception Handling)
 
