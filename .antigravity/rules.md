@@ -69,7 +69,12 @@
   - Luôn sử dụng `@ManyToOne(fetch = FetchType.LAZY)` thay vì để mặc định (EAGER) để tránh lỗi n+1 query và tối ưu hiệu năng PostgreSQL.
 
 - **Quy tắc Transaction:**
-  - Lớp `ServiceImpl` thao tác dữ liệu nên đánh `@Transactional(readOnly = true)` ở cấp độ Class và đánh `@Transactional` trên các method ghi/sửa dữ liệu (`create`, `update`, `delete`).
+  - **Service thuần nghiệp vụ CSDL (CRUD, Business Logic thông thường):**
+    - Đánh `@Transactional(readOnly = true)` ở cấp độ Class.
+    - Đánh `@Transactional` trên các method ghi/sửa dữ liệu (`create`, `update`, `delete`).
+  - **Service tích hợp AI, bên thứ ba hoặc tác vụ mạng tốn thời gian (Network I/O):**
+    - **TUYỆT ĐỐI KHÔNG** đánh `@Transactional` ở cấp độ Class (để tránh việc mượn và giữ kết nối Database trong suốt thời gian chờ API bên ngoài phản hồi 3s-15s, gây cạn kiệt HikariCP Connection Pool).
+    - Không bao bọc các lời gọi LLM / External API trong transaction. Nếu cần lưu kết quả vào CSDL, chỉ mở transaction ở phạm vi hẹp sau khi đã nhận được dữ liệu phản hồi (hoặc gọi qua một Service/Method ghi dữ liệu riêng biệt).
 
 - **Quy tắc Query:**
   - Ưu tiên sử dụng Derived Query Methods của Spring Data JPA. Nếu query phức tạp (Join nhiều bảng), bắt buộc phải dùng `@Query` viết JPQL hoặc Native Query.

@@ -14,24 +14,25 @@ import com.codegym.mathclass.submission.service.SubmissionCommentService;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.LaTeXSanitizer;
+import com.codegym.mathclass.submission.mapper.SubmissionMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class SubmissionCommentServiceImpl implements SubmissionCommentService {
 
     private final SubmissionCommentRepository submissionCommentRepository;
     private final SubmissionRepository submissionRepository;
     private final SubmissionVersionRepository submissionVersionRepository;
     private final UserRepository userRepository;
+    private final SubmissionMapper submissionMapper;
 
     @Override
-    @Transactional(readOnly = true)
     public List<SubmissionCommentResponse> getCommentsBySubmissionId(Long submissionId, Integer versionNumber, String currentUserEmail) {
         Submission submission = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài nộp với ID: " + submissionId));
@@ -48,8 +49,8 @@ public class SubmissionCommentServiceImpl implements SubmissionCommentService {
                 : submissionCommentRepository.findBySubmissionIdOrderByCreatedAtAsc(submissionId);
 
         return comments.stream()
-                .map(SubmissionCommentResponse::fromEntity)
-                .collect(Collectors.toList());
+                .map(submissionMapper::toSubmissionCommentResponse)
+                .toList();
     }
 
     @Override
@@ -90,7 +91,7 @@ public class SubmissionCommentServiceImpl implements SubmissionCommentService {
 
         comment = submissionCommentRepository.save(comment);
 
-        return SubmissionCommentResponse.fromEntity(comment);
+        return submissionMapper.toSubmissionCommentResponse(comment);
     }
 
     @Override

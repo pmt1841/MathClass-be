@@ -17,7 +17,6 @@ import com.codegym.mathclass.exception.ResourceNotFoundException;
 import com.codegym.mathclass.submission.dto.request.StudentHintRequest;
 import com.codegym.mathclass.submission.dto.response.HintHistoryResponse;
 import com.codegym.mathclass.submission.dto.response.StudentHintResponse;
-import com.codegym.mathclass.submission.dto.response.SubmissionHintItemResponse;
 import com.codegym.mathclass.submission.entity.Submission;
 import com.codegym.mathclass.submission.entity.SubmissionHint;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
@@ -28,6 +27,7 @@ import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
 import com.codegym.mathclass.utils.AiResponseUtils;
 import com.codegym.mathclass.utils.LaTeXSanitizer;
+import com.codegym.mathclass.submission.mapper.SubmissionMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -37,12 +37,15 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AiHintServiceImpl implements AiHintService {
+
+    private static final Pattern DRAWINGS_BLOCK_PATTERN =
+            Pattern.compile("(?s)<!-- DRAWINGS_DATA_START.*?DRAWINGS_DATA_END -->");
 
     private final SubmissionHintRepository submissionHintRepository;
     private final SubmissionRepository submissionRepository;
@@ -51,15 +54,15 @@ public class AiHintServiceImpl implements AiHintService {
     private final AiPromptExecutionService aiPromptExecutionService;
     private final PromptRenderService promptRenderService;
     private final AiResponseParserFactory aiResponseParserFactory;
+    private final SubmissionMapper submissionMapper;
 
     private static final int MAX_HINTS = 3;
 
     @Override
     @Transactional
     public StudentHintResponse requestHint(Long assignmentId, StudentHintRequest request, String studentEmail) {
-        try {
-            User student = userRepository.findByEmail(studentEmail)
-                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy học sinh với email: " + studentEmail));
+        User student = userRepository.findByEmail(studentEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy học sinh với email: " + studentEmail));
 
             Assignment assignment = assignmentRepository.findById(assignmentId)
                     .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập với ID: " + assignmentId));
@@ -113,9 +116,6 @@ public class AiHintServiceImpl implements AiHintService {
                     .hintContent(aiHintContent)
                     .createdAt(saved.getCreatedAt() != null ? saved.getCreatedAt() : LocalDateTime.now())
                     .build();
-        } catch (BadRequestException | ResourceNotFoundException | AccessDeniedException e) {
-            throw e;
-        }
     }
 
     @Override
@@ -135,30 +135,12 @@ public class AiHintServiceImpl implements AiHintService {
         }
 
         List<SubmissionHint> hints = submissionHintRepository.findBySubmissionIdOrderByHintNumberAsc(submissionId);
-        int totalUsed = hints.size();
-
-        List<SubmissionHintItemResponse> items = hints.stream()
-                .map(h -> SubmissionHintItemResponse.builder()
-                        .id(h.getId())
-                        .hintNumber(h.getHintNumber())
-                        .studentSnapshotContent(h.getStudentSnapshotContent())
-                        .aiHintContent(h.getAiHintContent())
-                        .createdAt(h.getCreatedAt())
-                        .build())
-                .collect(Collectors.toList());
-
-        return HintHistoryResponse.builder()
-                .submissionId(submissionId)
-                .totalUsed(totalUsed)
-                .maxHints(MAX_HINTS)
-                .remainingHints(Math.max(0, MAX_HINTS - totalUsed))
-                .hints(items)
-                .build();
+        return submissionMapper.toHintHistoryResponse(submissionId, hints, MAX_HINTS);
     }
 
     private String sanitizeContent(String content) {
         if (content == null) return "";
-        String sanitized = content.replaceAll("(?s)<!-- DRAWINGS_DATA_START.*?DRAWINGS_DATA_END -->", "").trim();
+        String sanitized = DRAWINGS_BLOCK_PATTERN.matcher(content).replaceAll("").trim();
         if (sanitized.length() > 3000) {
             sanitized = sanitized.substring(sanitized.length() - 3000);
         }

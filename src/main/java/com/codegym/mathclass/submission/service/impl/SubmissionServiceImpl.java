@@ -1,8 +1,8 @@
 package com.codegym.mathclass.submission.service.impl;
 
 import com.codegym.mathclass.assignment.entity.Assignment;
-import com.codegym.mathclass.assignment.entity.AssignmentSheet;
 import com.codegym.mathclass.assignment.repository.AssignmentRepository;
+import com.codegym.mathclass.common.lock.DistributedLockService;
 import com.codegym.mathclass.exception.AccessDeniedException;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.ResourceNotFoundException;
@@ -13,26 +13,22 @@ import com.codegym.mathclass.submission.dto.response.SubmissionVersionResponse;
 import com.codegym.mathclass.submission.entity.Submission;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import com.codegym.mathclass.submission.entity.SubmissionVersion;
+import com.codegym.mathclass.submission.helper.SubmissionNotificationHelper;
+import com.codegym.mathclass.submission.mapper.SubmissionMapper;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
 import com.codegym.mathclass.submission.repository.SubmissionVersionRepository;
 import com.codegym.mathclass.submission.service.SubmissionService;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
-import com.codegym.mathclass.utils.EmailService;
 import com.codegym.mathclass.utils.LaTeXSanitizer;
-import com.codegym.mathclass.notification.service.NotificationService;
-import com.codegym.mathclass.common.lock.DistributedLockService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.thymeleaf.context.Context;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -40,6 +36,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class SubmissionServiceImpl implements SubmissionService {
 
     private static final int MAX_SUBMISSION_VERSIONS = 3;
@@ -48,25 +45,22 @@ public class SubmissionServiceImpl implements SubmissionService {
     private final SubmissionVersionRepository submissionVersionRepository;
     private final AssignmentRepository assignmentRepository;
     private final UserRepository userRepository;
-    private final EmailService emailService;
-    private final NotificationService notificationService;
     private final DistributedLockService distributedLockService;
-
-    @Value("${FRONTEND_URL}")
-    private String frontendUrl;
+    private final SubmissionMapper submissionMapper;
+    private final SubmissionNotificationHelper submissionNotificationHelper;
 
     @Override
     @Transactional
-    public SubmissionResponse createSubmission(long studentId, SubmissionRequest requestDto) {
-        if (requestDto.getAssignmentId() == null) {
+    public SubmissionResponse createSubmission(long studentId, SubmissionRequest request) {
+        if (request.getAssignmentId() == null) {
             throw new BadRequestException("Thiếu assignmentId");
         }
-        String lockKey = String.format("lock:submission:assignment:%d:student:%d", requestDto.getAssignmentId(), studentId);
-        return distributedLockService.executeWithLock(lockKey, 5, 10, () -> doCreateSubmission(studentId, requestDto));
+        String lockKey = String.format("lock:submission:assignment:%d:student:%d", request.getAssignmentId(), studentId);
+        return distributedLockService.executeWithLock(lockKey, 5, 10, () -> doCreateSubmission(studentId, request));
     }
 
-    private SubmissionResponse doCreateSubmission(long studentId, SubmissionRequest requestDto) {
-        Assignment assignment = assignmentRepository.findById(requestDto.getAssignmentId())
+    private SubmissionResponse doCreateSubmission(long studentId, SubmissionRequest request) {
+        Assignment assignment = assignmentRepository.findById(request.getAssignmentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập"));
 
         if (assignment.getDeadline() != null && LocalDateTime.now().isAfter(assignment.getDeadline())) {
@@ -84,54 +78,17 @@ public class SubmissionServiceImpl implements SubmissionService {
                         .content("")
                         .build());
 
-        boolean isNewlySubmitted = (submission.getStatus() != SubmissionStatus.SUBMITTED
-                && requestDto.getStatus() == SubmissionStatus.SUBMITTED);
-
-        String content = Objects.requireNonNullElse(requestDto.getContent(), "");
-
-        if (content != null && !LaTeXSanitizer.isSafe(content)) {
-            String dangerous = LaTeXSanitizer.findDangerousCommand(content);
-            throw new BadRequestException("Nội dung bài làm chứa lệnh LaTeX không hợp lệ: " + dangerous);
-        }
-
-        if (requestDto.getStatus() == SubmissionStatus.SUBMITTED) {
-            if (content.trim().isEmpty()) {
-                throw new BadRequestException("Nội dung bài làm không được để trống khi nộp bài");
-            }
-            if (submission.getSubmittedAt() == null) {
-                submission.setSubmittedAt(LocalDateTime.now());
-            }
-        }
-
-        submission.setContent(content);
-        submission.setStatus(requestDto.getStatus());
-
-        Submission savedSubmission = submissionRepository.save(submission);
-
-        if (isNewlySubmitted) {
-            if (submissionVersionRepository.findMaxVersionNumberBySubmissionId(savedSubmission.getId()) == 0) {
-                SubmissionVersion v1 = SubmissionVersion.builder()
-                        .submission(savedSubmission)
-                        .versionNumber(1)
-                        .content(savedSubmission.getContent())
-                        .submittedAt(savedSubmission.getSubmittedAt())
-                        .build();
-                submissionVersionRepository.save(v1);
-            }
-            sendSubmissionNotificationToTeacher(savedSubmission, assignment, 1);
-        }
-
-        return mapToDto(savedSubmission);
+        return applySubmissionChanges(submission, assignment, request);
     }
 
     @Override
     @Transactional
-    public SubmissionResponse updateSubmission(long submissionId, long studentId, SubmissionRequest requestDto) {
+    public SubmissionResponse updateSubmission(long submissionId, long studentId, SubmissionRequest request) {
         String lockKey = "lock:submission:" + submissionId;
-        return distributedLockService.executeWithLock(lockKey, 5, 10, () -> doUpdateSubmission(submissionId, studentId, requestDto));
+        return distributedLockService.executeWithLock(lockKey, 5, 10, () -> doUpdateSubmission(submissionId, studentId, request));
     }
 
-    private SubmissionResponse doUpdateSubmission(long submissionId, long studentId, SubmissionRequest requestDto) {
+    private SubmissionResponse doUpdateSubmission(long submissionId, long studentId, SubmissionRequest request) {
         Submission submission = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài nộp"));
 
@@ -139,30 +96,29 @@ public class SubmissionServiceImpl implements SubmissionService {
             throw new AccessDeniedException("Bạn không có quyền sửa bài nộp này");
         }
 
-        if (submission.getStatus() == SubmissionStatus.SUBMITTED && requestDto.getStatus() == SubmissionStatus.DRAFT) {
-            requestDto.setStatus(SubmissionStatus.SUBMITTED);
+        if (submission.getStatus() == SubmissionStatus.SUBMITTED && request.getStatus() == SubmissionStatus.DRAFT) {
+            request.setStatus(SubmissionStatus.SUBMITTED);
         }
 
-        boolean isNewlySubmitted = (submission.getStatus() != SubmissionStatus.SUBMITTED
-                && requestDto.getStatus() == SubmissionStatus.SUBMITTED);
+        return applySubmissionChanges(submission, submission.getAssignment(), request);
+    }
 
-        Assignment assignment = submission.getAssignment();
+    private SubmissionResponse applySubmissionChanges(Submission submission, Assignment assignment, SubmissionRequest request) {
         if (assignment.getDeadline() != null && LocalDateTime.now().isAfter(assignment.getDeadline())) {
             throw new BadRequestException("Đã hết hạn nộp bài tập");
         }
 
-        if (submission.getScore() != null) {
+        if (submission.getId() > 0 && submission.getScore() != null) {
             throw new BadRequestException("Giáo viên đã chấm điểm, không thể sửa bài");
         }
 
-        String content = requestDto.getContent() == null ? "" : requestDto.getContent();
+        boolean isNewlySubmitted = (submission.getStatus() != SubmissionStatus.SUBMITTED
+                && request.getStatus() == SubmissionStatus.SUBMITTED);
 
-        if (content != null && !LaTeXSanitizer.isSafe(content)) {
-            String dangerous = LaTeXSanitizer.findDangerousCommand(content);
-            throw new BadRequestException("Nội dung bài làm chứa lệnh LaTeX không hợp lệ: " + dangerous);
-        }
+        String content = Objects.requireNonNullElse(request.getContent(), "");
+        validateLatexContent(content, "Nội dung bài làm");
 
-        if (requestDto.getStatus() == SubmissionStatus.SUBMITTED) {
+        if (request.getStatus() == SubmissionStatus.SUBMITTED) {
             if (content.trim().isEmpty()) {
                 throw new BadRequestException("Nội dung bài làm không được để trống khi nộp bài");
             }
@@ -172,21 +128,13 @@ public class SubmissionServiceImpl implements SubmissionService {
         }
 
         submission.setContent(content);
-        submission.setStatus(requestDto.getStatus());
+        submission.setStatus(request.getStatus());
 
         Submission savedSubmission = submissionRepository.save(submission);
 
         if (isNewlySubmitted) {
-            if (submissionVersionRepository.findMaxVersionNumberBySubmissionId(savedSubmission.getId()) == 0) {
-                SubmissionVersion v1 = SubmissionVersion.builder()
-                        .submission(savedSubmission)
-                        .versionNumber(1)
-                        .content(savedSubmission.getContent())
-                        .submittedAt(savedSubmission.getSubmittedAt())
-                        .build();
-                submissionVersionRepository.save(v1);
-            }
-            sendSubmissionNotificationToTeacher(savedSubmission, assignment, 1);
+            ensureInitialVersionCreated(savedSubmission);
+            submissionNotificationHelper.sendSubmissionNotification(savedSubmission, assignment, 1);
         }
 
         return mapToDto(savedSubmission);
@@ -230,12 +178,12 @@ public class SubmissionServiceImpl implements SubmissionService {
 
     @Override
     @Transactional
-    public SubmissionResponse gradeSubmission(long submissionId, long teacherId, GradeRequest requestDto) {
+    public SubmissionResponse gradeSubmission(long submissionId, long teacherId, GradeRequest request) {
         String lockKey = "lock:submission:" + submissionId;
-        return distributedLockService.executeWithLock(lockKey, 5, 10, () -> doGradeSubmission(submissionId, teacherId, requestDto));
+        return distributedLockService.executeWithLock(lockKey, 5, 10, () -> doGradeSubmission(submissionId, teacherId, request));
     }
 
-    private SubmissionResponse doGradeSubmission(long submissionId, long teacherId, GradeRequest requestDto) {
+    private SubmissionResponse doGradeSubmission(long submissionId, long teacherId, GradeRequest request) {
         Submission submission = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài nộp"));
 
@@ -249,17 +197,14 @@ public class SubmissionServiceImpl implements SubmissionService {
         }
 
         Double maxScore = assignment.getMaxScore() != null ? assignment.getMaxScore() : 10.0;
-        if (requestDto.getScore() != null && requestDto.getScore() > maxScore) {
+        if (request.getScore() != null && request.getScore() > maxScore) {
             throw new BadRequestException("Điểm số không được vượt quá điểm tối đa (" + maxScore + ")");
         }
 
-        if (requestDto.getTeacherFeedback() != null && !LaTeXSanitizer.isSafe(requestDto.getTeacherFeedback())) {
-            String dangerous = LaTeXSanitizer.findDangerousCommand(requestDto.getTeacherFeedback());
-            throw new BadRequestException("Nội dung phản hồi chứa lệnh LaTeX không hợp lệ: " + dangerous);
-        }
+        validateLatexContent(request.getTeacherFeedback(), "Nội dung phản hồi");
 
-        submission.setScore(requestDto.getScore());
-        submission.setTeacherFeedback(requestDto.getTeacherFeedback());
+        submission.setScore(request.getScore());
+        submission.setTeacherFeedback(request.getTeacherFeedback());
         submission.setStatus(SubmissionStatus.GRADED);
 
         Submission savedSubmission = submissionRepository.save(submission);
@@ -271,34 +216,19 @@ public class SubmissionServiceImpl implements SubmissionService {
                     submissionVersionRepository.save(v);
                 });
 
-        if (assignment.getAssignmentSheet() != null) {
-            checkAndProcessSheetNotification(assignment, submission, true);
-        } else {
-            String subject = "Giáo viên đã chấm điểm bài tập: " + assignment.getTitle();
-            String classCodeParam = assignment.getClassroom() != null ? "?classCode=" + assignment.getClassroom().getClassCode() : "";
-            String relativeLink = "/assignments/" + assignment.getId() + classCodeParam;
-            
-            String link = frontendUrl + relativeLink;
-            Context context = new Context();
-            context.setVariable("studentName", submission.getStudent().getFullName());
-            context.setVariable("assignmentName", assignment.getTitle());
-            context.setVariable("link", link);
-            
-            emailService.sendHtmlMailAsync(submission.getStudent().getEmail(), subject, "submission-graded", context);
-            notificationService.saveAndSendNotification(submission.getStudent().getId(), subject, relativeLink);
-        }
+        submissionNotificationHelper.sendGradingNotification(savedSubmission, assignment);
 
         return mapToDto(savedSubmission);
     }
 
     @Override
     @Transactional
-    public SubmissionResponse resubmitSubmission(long submissionId, long studentId, SubmissionRequest requestDto) {
+    public SubmissionResponse resubmitSubmission(long submissionId, long studentId, SubmissionRequest request) {
         String lockKey = "lock:submission:" + submissionId;
-        return distributedLockService.executeWithLock(lockKey, 5, 10, () -> doResubmitSubmission(submissionId, studentId, requestDto));
+        return distributedLockService.executeWithLock(lockKey, 5, 10, () -> doResubmitSubmission(submissionId, studentId, request));
     }
 
-    private SubmissionResponse doResubmitSubmission(long submissionId, long studentId, SubmissionRequest requestDto) {
+    private SubmissionResponse doResubmitSubmission(long submissionId, long studentId, SubmissionRequest request) {
         Submission submission = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài nộp"));
 
@@ -315,15 +245,12 @@ public class SubmissionServiceImpl implements SubmissionService {
             throw new BadRequestException("Đã hết hạn nộp bài tập, không thể nộp lại");
         }
 
-        String content = requestDto.getContent() == null ? "" : requestDto.getContent().trim();
+        String content = request.getContent() == null ? "" : request.getContent().trim();
         if (content.isEmpty()) {
             throw new BadRequestException("Nội dung bài làm không được để trống khi nộp bài");
         }
 
-        if (!LaTeXSanitizer.isSafe(content)) {
-            String dangerous = LaTeXSanitizer.findDangerousCommand(content);
-            throw new BadRequestException("Nội dung bài làm chứa lệnh LaTeX không hợp lệ: " + dangerous);
-        }
+        validateLatexContent(content, "Nội dung bài làm");
 
         int maxVer = submissionVersionRepository.findMaxVersionNumberBySubmissionId(submission.getId());
         if (maxVer >= MAX_SUBMISSION_VERSIONS) {
@@ -371,7 +298,7 @@ public class SubmissionServiceImpl implements SubmissionService {
 
         Submission savedSubmission = submissionRepository.save(submission);
 
-        sendSubmissionNotificationToTeacher(savedSubmission, assignment, nextVer);
+        submissionNotificationHelper.sendSubmissionNotification(savedSubmission, assignment, nextVer);
 
         return mapToDto(savedSubmission);
     }
@@ -406,7 +333,7 @@ public class SubmissionServiceImpl implements SubmissionService {
         }
 
         return versions.stream()
-                .map(SubmissionVersionResponse::fromEntity)
+                .map(submissionMapper::toSubmissionVersionResponse)
                 .toList();
     }
 
@@ -447,7 +374,7 @@ public class SubmissionServiceImpl implements SubmissionService {
                                 row -> ((Number) row[1]).intValue()
                         ));
 
-        return submissionPage.map(sub -> mapToDto(sub, maxVersionMap.getOrDefault(sub.getId(), 0)));
+        return submissionMapper.toSubmissionResponsePage(submissionPage, maxVersionMap);
     }
 
     @Override
@@ -466,122 +393,25 @@ public class SubmissionServiceImpl implements SubmissionService {
 
     private SubmissionResponse mapToDto(Submission submission) {
         int totalVersions = submissionVersionRepository.findMaxVersionNumberBySubmissionId(submission.getId());
-        return mapToDto(submission, totalVersions);
+        return submissionMapper.toSubmissionResponse(submission, totalVersions);
     }
 
-    private SubmissionResponse mapToDto(Submission submission, int maxVer) {
-        int totalVersions = maxVer;
-        if (totalVersions == 0 && submission.getStatus() != SubmissionStatus.DRAFT) {
-            totalVersions = 1;
-        }
-
-        return SubmissionResponse.builder()
-                .id(submission.getId())
-                .assignmentId(submission.getAssignment().getId())
-                .studentId(submission.getStudent().getId())
-                .studentName(submission.getStudent().getFullName())
-                .content(submission.getContent())
-                .teacherFeedback(submission.getTeacherFeedback())
-                .status(submission.getStatus())
-                .score(submission.getScore())
-                .submittedAt(submission.getSubmittedAt())
-                .updatedAt(submission.getUpdatedAt())
-                .allowResubmit(submission.getAssignment() != null ? submission.getAssignment().isAllowResubmit() : false)
-                .versionNumber(totalVersions > 0 ? totalVersions : 1)
-                .totalVersions(totalVersions)
-                .build();
-    }
-
-    private void sendSubmissionNotificationToTeacher(Submission submission, Assignment assignment, int versionNumber) {
-        User teacher = assignment.getTeacher();
-        User student = submission.getStudent();
-
-        if (assignment.getAssignmentSheet() != null) {
-            checkAndProcessSheetNotification(assignment, submission, false);
-        } else {
-            String subject = (versionNumber > 1)
-                    ? "Học sinh " + student.getFullName() + " đã làm lại bài tập (Lần " + versionNumber + "): " + assignment.getTitle()
-                    : "Học sinh " + student.getFullName() + " đã nộp bài tập: " + assignment.getTitle();
-            String relativeLink = "/assignments/" + assignment.getId() + "/submissions/" + submission.getId();
-            
-            String link = frontendUrl + relativeLink;
-
-            Context context = new Context();
-            context.setVariable("teacherName", teacher.getFullName());
-            context.setVariable("studentName", student.getFullName());
-            context.setVariable("assignmentName", assignment.getTitle());
-            context.setVariable("link", link);
-            context.setVariable("versionNumber", versionNumber);
-
-            emailService.sendHtmlMailAsync(teacher.getEmail(), subject, "submission-submitted", context);
-            notificationService.saveAndSendNotification(teacher.getId(), subject, relativeLink);
+    private void validateLatexContent(String content, String fieldDesc) {
+        if (content != null && !LaTeXSanitizer.isSafe(content)) {
+            String dangerous = LaTeXSanitizer.findDangerousCommand(content);
+            throw new BadRequestException(fieldDesc + " chứa lệnh LaTeX không hợp lệ: " + dangerous);
         }
     }
 
-    private void checkAndProcessSheetNotification(Assignment assignment, Submission currentSubmission, boolean isGrading) {
-        AssignmentSheet sheet = assignment.getAssignmentSheet();
-        List<Assignment> sheetAssignments = assignmentRepository.findByAssignmentSheetId(sheet.getId());
-        if (sheetAssignments.isEmpty()) return;
-        
-        List<Long> assignmentIds = sheetAssignments.stream().map(Assignment::getId).toList();
-        List<Submission> submissions = submissionRepository.findAllByAssignmentIdInAndStudentId(assignmentIds, currentSubmission.getStudent().getId());
-        
-        long processedCount = submissions.stream()
-                .filter(s -> isGrading ? s.getStatus() == SubmissionStatus.GRADED : s.getStatus() != SubmissionStatus.DRAFT)
-                .map(s -> s.getAssignment().getId())
-                .distinct()
-                .count();
-                
-        if (processedCount == sheetAssignments.size()) {
-            sheetAssignments.sort(Comparator.comparing(Assignment::getId));
-            Assignment firstAssignment = sheetAssignments.get(0);
-            
-            User student = currentSubmission.getStudent();
-            Context context = new Context();
-            context.setVariable("studentName", student.getFullName());
-            context.setVariable("assignmentName", sheet.getTitle());
-            
-            String relativeLink;
-            String subject;
-            String templateName;
-            String emailTo;
-            Long notificationUserId;
-            
-            if (isGrading) {
-                subject = "Giáo viên đã chấm điểm phiếu bài tập: " + sheet.getTitle();
-                String classCodeParam = firstAssignment.getClassroom() != null ? "?classCode=" + firstAssignment.getClassroom().getClassCode() : "";
-                relativeLink = "/assignments/" + firstAssignment.getId() + classCodeParam;
-                String delimiter = relativeLink.contains("?") ? "&" : "?";
-                relativeLink += delimiter + "sheetId=" + sheet.getId();
-                
-                templateName = "submission-graded";
-                emailTo = student.getEmail();
-                notificationUserId = student.getId();
-            } else {
-                User teacher = assignment.getTeacher();
-                subject = "Học sinh " + student.getFullName() + " đã hoàn thành phiếu bài tập: " + sheet.getTitle();
-                
-                Submission firstSub = submissions.stream()
-                        .filter(s -> s.getAssignment().getId() == firstAssignment.getId())
-                        .findFirst()
-                        .orElse(null);
-                        
-                relativeLink = "/assignments/" + firstAssignment.getId();
-                if (firstSub != null) {
-                    relativeLink += "/submissions/" + firstSub.getId() + "?sheetId=" + sheet.getId();
-                } else {
-                    relativeLink += "?sheetId=" + sheet.getId();
-                }
-                
-                context.setVariable("teacherName", teacher.getFullName());
-                templateName = "submission-submitted";
-                emailTo = teacher.getEmail();
-                notificationUserId = teacher.getId();
-            }
-            
-            context.setVariable("link", frontendUrl + relativeLink);
-            emailService.sendHtmlMailAsync(emailTo, subject, templateName, context);
-            notificationService.saveAndSendNotification(notificationUserId, subject, relativeLink);
+    private void ensureInitialVersionCreated(Submission submission) {
+        if (submissionVersionRepository.findMaxVersionNumberBySubmissionId(submission.getId()) == 0) {
+            SubmissionVersion v1 = SubmissionVersion.builder()
+                    .submission(submission)
+                    .versionNumber(1)
+                    .content(submission.getContent())
+                    .submittedAt(submission.getSubmittedAt())
+                    .build();
+            submissionVersionRepository.save(v1);
         }
     }
 }

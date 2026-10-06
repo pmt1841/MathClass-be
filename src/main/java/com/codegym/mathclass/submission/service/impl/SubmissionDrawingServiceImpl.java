@@ -10,16 +10,19 @@ import com.codegym.mathclass.submission.entity.SubmissionStatus;
 import com.codegym.mathclass.submission.repository.SubmissionDrawingRepository;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
 import com.codegym.mathclass.submission.service.SubmissionDrawingService;
+import com.codegym.mathclass.submission.mapper.SubmissionMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class SubmissionDrawingServiceImpl implements SubmissionDrawingService {
 
     private final SubmissionRepository submissionRepository;
     private final SubmissionDrawingRepository submissionDrawingRepository;
+    private final SubmissionMapper submissionMapper;
 
     @Override
     @Transactional
@@ -49,7 +52,7 @@ public class SubmissionDrawingServiceImpl implements SubmissionDrawingService {
 
         SubmissionDrawing savedDrawing = submissionDrawingRepository.save(drawing);
 
-        return mapToResponse(savedDrawing);
+        return submissionMapper.toSubmissionDrawingResponse(savedDrawing);
     }
 
     @Override
@@ -69,18 +72,6 @@ public class SubmissionDrawingServiceImpl implements SubmissionDrawingService {
                 .orElseThrow(
                         () -> new ResourceNotFoundException("Không tìm thấy bản vẽ của bài nộp mã: " + submissionId));
 
-        return mapToResponse(drawing);
-    }
-
-    private SubmissionDrawingResponse mapToResponse(SubmissionDrawing drawing) {
-        return SubmissionDrawingResponse.builder()
-                .id(drawing.getId())
-                .submissionId(drawing.getSubmission().getId())
-                .shapeCode(drawing.getShapeCode())
-                .jsxGraphData(drawing.getJsxGraphData())
-                .metadata(drawing.getMetadata())
-                .createdAt(drawing.getCreatedAt())
-                .updatedAt(drawing.getUpdatedAt())
-                .build();
+        return submissionMapper.toSubmissionDrawingResponse(drawing);
     }
 }

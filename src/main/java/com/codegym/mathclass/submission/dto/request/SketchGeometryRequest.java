@@ -1,6 +1,7 @@
 package com.codegym.mathclass.submission.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,7 +14,7 @@ import lombok.NoArgsConstructor;
 public class SketchGeometryRequest {
 
     @NotBlank(message = "Dữ liệu hình vẽ không được để trống")
-    @jakarta.validation.constraints.Size(max = 10_000_000, message = "Dữ liệu ảnh không được vượt quá 10MB")
+    @Size(max = 10_000_000, message = "Dữ liệu ảnh không được vượt quá 10MB")
     private String canvasImageData;
 
     private String mimeType;

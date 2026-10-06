@@ -207,7 +207,7 @@ public class AiGradingServiceImpl implements AiGradingService {
     private String buildContentWithDrawings(String content) {
         if (content == null) return "[Không có nội dung]";
         String drawingsBlock = extractDrawingsBlock(content);
-        String clean = content.replaceAll("(?s)<!-- DRAWINGS_DATA_START\\n.*?\\nDRAWINGS_DATA_END -->", "").trim();
+        String clean = DRAWINGS_BLOCK_PATTERN.matcher(content).replaceAll("").trim();
 
         StringBuilder sb = new StringBuilder();
         if (clean.isBlank()) {

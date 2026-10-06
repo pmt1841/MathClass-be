@@ -12,7 +12,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -36,11 +43,11 @@ public class SubmissionController {
     @PostMapping
     @PreAuthorize("hasAuthority('submission:submit')")
     public ResponseEntity<SubmissionResponse> createSubmission(
-            @Valid @RequestBody SubmissionRequest requestDto,
+            @Valid @RequestBody SubmissionRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         long studentId = userDetails.getId();
-        SubmissionResponse response = submissionService.createSubmission(studentId, requestDto);
+        SubmissionResponse response = submissionService.createSubmission(studentId, request);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
@@ -49,11 +56,11 @@ public class SubmissionController {
     @PreAuthorize("hasAuthority('submission:submit')")
     public ResponseEntity<SubmissionResponse> updateSubmission(
             @PathVariable long submissionId,
-            @Valid @RequestBody SubmissionRequest requestDto,
+            @Valid @RequestBody SubmissionRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         long studentId = userDetails.getId();
-        SubmissionResponse response = submissionService.updateSubmission(submissionId, studentId, requestDto);
+        SubmissionResponse response = submissionService.updateSubmission(submissionId, studentId, request);
         return ResponseEntity.ok(response);
     }
 
@@ -74,11 +81,11 @@ public class SubmissionController {
     @PreAuthorize("hasAuthority('submission:grade')")
     public ResponseEntity<SubmissionResponse> gradeSubmission(
             @PathVariable long submissionId,
-            @Valid @RequestBody GradeRequest requestDto,
+            @Valid @RequestBody GradeRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         long teacherId = userDetails.getId();
-        SubmissionResponse response = submissionService.gradeSubmission(submissionId, teacherId, requestDto);
+        SubmissionResponse response = submissionService.gradeSubmission(submissionId, teacherId, request);
         return ResponseEntity.ok(response);
     }
 
@@ -131,11 +138,11 @@ public class SubmissionController {
     @PreAuthorize("hasAuthority('submission:submit')")
     public ResponseEntity<SubmissionResponse> resubmitSubmission(
             @PathVariable long submissionId,
-            @Valid @RequestBody SubmissionRequest requestDto,
+            @Valid @RequestBody SubmissionRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         long studentId = userDetails.getId();
-        SubmissionResponse response = submissionService.resubmitSubmission(submissionId, studentId, requestDto);
+        SubmissionResponse response = submissionService.resubmitSubmission(submissionId, studentId, request);
         return ResponseEntity.ok(response);
     }
 

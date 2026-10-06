@@ -1,6 +1,5 @@
 package com.codegym.mathclass.submission.dto.response;
 
-import com.codegym.mathclass.submission.entity.SubmissionComment;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -25,24 +24,4 @@ public class SubmissionCommentResponse {
     private String content;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-
-    public static SubmissionCommentResponse fromEntity(SubmissionComment comment) {
-        if (comment == null) {
-            return null;
-        }
-
-        return SubmissionCommentResponse.builder()
-                .id(comment.getId())
-                .submissionId(comment.getSubmission().getId())
-                .versionNumber(comment.getVersionNumber() != null ? comment.getVersionNumber() : 1)
-                .teacherId(comment.getTeacher().getId())
-                .teacherName(comment.getTeacher().getFullName())
-                .quoteText(comment.getQuoteText())
-                .occurrenceIndex(comment.getOccurrenceIndex())
-                .imageCode(comment.getImageCode())
-                .content(comment.getContent())
-                .createdAt(comment.getCreatedAt())
-                .updatedAt(comment.getUpdatedAt())
-                .build();
-    }
 }

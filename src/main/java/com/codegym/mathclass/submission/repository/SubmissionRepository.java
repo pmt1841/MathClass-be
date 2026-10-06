@@ -87,7 +87,6 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
             """)
     Page<CompletedStudentProjection> findCompletedStudentsForSheet(
             @Param("assignmentIds") List<Long> assignmentIds,
-            @Param("totalExercises") long totalExercises,
             Pageable pageable
     );
 

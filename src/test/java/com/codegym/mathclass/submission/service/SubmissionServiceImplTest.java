@@ -5,32 +5,32 @@ import com.codegym.mathclass.assignment.repository.AssignmentRepository;
 import com.codegym.mathclass.exception.AccessDeniedException;
 import com.codegym.mathclass.exception.BadRequestException;
 import com.codegym.mathclass.exception.ResourceNotFoundException;
-import com.codegym.mathclass.notification.service.NotificationService;
 import com.codegym.mathclass.submission.dto.request.GradeRequest;
 import com.codegym.mathclass.submission.dto.request.SubmissionRequest;
 import com.codegym.mathclass.submission.dto.response.SubmissionResponse;
 import com.codegym.mathclass.submission.entity.Submission;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
+import com.codegym.mathclass.submission.helper.SubmissionNotificationHelper;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
 import com.codegym.mathclass.submission.repository.SubmissionVersionRepository;
 import com.codegym.mathclass.submission.service.impl.SubmissionServiceImpl;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
-import com.codegym.mathclass.utils.EmailService;
 import com.codegym.mathclass.common.lock.DistributedLockService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import com.codegym.mathclass.submission.mapper.SubmissionMapper;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -58,13 +58,13 @@ class SubmissionServiceImplTest {
     private UserRepository userRepository;
 
     @Mock
-    private EmailService emailService;
-
-    @Mock
-    private NotificationService notificationService;
+    private SubmissionNotificationHelper submissionNotificationHelper;
 
     @Mock
     private DistributedLockService distributedLockService;
+
+    @Spy
+    private SubmissionMapper submissionMapper = new SubmissionMapper();
 
     @InjectMocks
     private SubmissionServiceImpl submissionService;
@@ -87,8 +87,6 @@ class SubmissionServiceImplTest {
             ((Runnable) inv.getArgument(3)).run();
             return null;
         }).when(distributedLockService).runWithLock(anyString(), anyLong(), anyLong(), any());
-
-        ReflectionTestUtils.setField(submissionService, "frontendUrl", "http://localhost:3000");
 
         teacher = new User();
         teacher.setId(teacherId);
@@ -142,7 +140,7 @@ class SubmissionServiceImplTest {
             assertThat(response).isNotNull();
             assertThat(response.getStatus()).isEqualTo(SubmissionStatus.DRAFT);
             verify(submissionRepository, times(1)).save(any(Submission.class));
-            verify(notificationService, never()).saveAndSendNotification(anyLong(), anyString(), anyString());
+            verify(submissionNotificationHelper, never()).sendSubmissionNotification(any(), any(), anyInt());
         }
 
         @Test
@@ -168,8 +166,7 @@ class SubmissionServiceImplTest {
             assertThat(response).isNotNull();
             assertThat(response.getStatus()).isEqualTo(SubmissionStatus.SUBMITTED);
             verify(submissionRepository, times(1)).save(any(Submission.class));
-            verify(emailService, times(1)).sendHtmlMailAsync(eq("teacher@codegym.com"), anyString(), eq("submission-submitted"), any());
-            verify(notificationService, times(1)).saveAndSendNotification(eq(teacherId), anyString(), anyString());
+            verify(submissionNotificationHelper, times(1)).sendSubmissionNotification(any(Submission.class), eq(assignment), eq(1));
         }
 
         @Test
@@ -408,8 +405,7 @@ class SubmissionServiceImplTest {
             assertThat(response).isNotNull();
             assertThat(response.getScore()).isEqualTo(9.5);
             assertThat(response.getStatus()).isEqualTo(SubmissionStatus.GRADED);
-            verify(emailService, times(1)).sendHtmlMailAsync(eq("student@codegym.com"), anyString(), eq("submission-graded"), any());
-            verify(notificationService, times(1)).saveAndSendNotification(eq(studentId), anyString(), anyString());
+            verify(submissionNotificationHelper, times(1)).sendGradingNotification(any(Submission.class), eq(assignment));
         }
 
         @Test

@@ -12,6 +12,7 @@ import com.codegym.mathclass.submission.repository.SubmissionDrawingRepository;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
 import com.codegym.mathclass.submission.service.impl.SubmissionDrawingServiceImpl;
 import com.codegym.mathclass.user.entity.User;
+import com.codegym.mathclass.submission.mapper.SubmissionMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Map;
@@ -37,6 +39,9 @@ class SubmissionDrawingServiceImplTest {
 
     @Mock
     private SubmissionDrawingRepository submissionDrawingRepository;
+
+    @Spy
+    private SubmissionMapper submissionMapper = new SubmissionMapper();
 
     @InjectMocks
     private SubmissionDrawingServiceImpl drawingService;

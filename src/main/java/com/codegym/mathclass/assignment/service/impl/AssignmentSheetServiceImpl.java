@@ -694,7 +694,7 @@ public class AssignmentSheetServiceImpl implements AssignmentSheetService {
 
         long totalExercises = assignmentIds.size();
         Page<CompletedStudentProjection> projections = submissionRepository.findCompletedStudentsForSheet(assignmentIds,
-                totalExercises, pageable);
+                pageable);
 
         long defaultFirstAssignmentId = targetSheet.getItems().get(0).getId();
 

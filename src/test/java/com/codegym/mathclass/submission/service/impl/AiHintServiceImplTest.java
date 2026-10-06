@@ -14,6 +14,7 @@ import com.codegym.mathclass.submission.dto.response.StudentHintResponse;
 import com.codegym.mathclass.submission.entity.Submission;
 import com.codegym.mathclass.submission.entity.SubmissionHint;
 import com.codegym.mathclass.submission.entity.SubmissionStatus;
+import com.codegym.mathclass.submission.mapper.SubmissionMapper;
 import com.codegym.mathclass.submission.repository.SubmissionHintRepository;
 import com.codegym.mathclass.submission.repository.SubmissionRepository;
 import com.codegym.mathclass.user.entity.User;
@@ -26,11 +27,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -62,6 +63,9 @@ class AiHintServiceImplTest {
 
     @Mock
     private PromptRenderService promptRenderService;
+
+    @Spy
+    private SubmissionMapper submissionMapper = new SubmissionMapper();
 
     @InjectMocks
     private AiHintServiceImpl aiHintService;
@@ -300,7 +304,8 @@ class AiHintServiceImplTest {
             StudentHintResponse response = aiHintService.requestHint(assignmentId, request, studentEmail);
 
             assertThat(response).isNotNull();
-            verify(aiPromptExecutionService).executePrompt(eq("STUDENT_HINT"), contains("[Học sinh chưa bắt đầu làm bài / Bài làm trống]"), anyLong());
+            verify(aiPromptExecutionService).executePrompt(eq("STUDENT_HINT"),
+                    contains("[Học sinh chưa bắt đầu làm bài / Bài làm trống]"), anyLong());
         }
 
         @Test

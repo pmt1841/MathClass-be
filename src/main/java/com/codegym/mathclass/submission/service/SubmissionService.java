@@ -10,14 +10,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 public interface SubmissionService {
-    SubmissionResponse createSubmission(long studentId, SubmissionRequest requestDto);
+    SubmissionResponse createSubmission(long studentId, SubmissionRequest request);
 
-    SubmissionResponse updateSubmission(long submissionId, long studentId, SubmissionRequest requestDto);
+    SubmissionResponse updateSubmission(long submissionId, long studentId, SubmissionRequest request);
 
     SubmissionResponse unsubmitSubmission(long submissionId, long studentId);
 
     SubmissionResponse gradeSubmission(long submissionId, long teacherId,
-            GradeRequest requestDto);
+            GradeRequest request);
 
     SubmissionResponse getMySubmission(long assignmentId, long studentId);
 
@@ -27,7 +27,7 @@ public interface SubmissionService {
 
     SubmissionResponse getSubmissionDetail(long submissionId, long teacherId);
 
-    SubmissionResponse resubmitSubmission(long submissionId, long studentId, SubmissionRequest requestDto);
+    SubmissionResponse resubmitSubmission(long submissionId, long studentId, SubmissionRequest request);
 
     List<SubmissionVersionResponse> getSubmissionVersions(long submissionId, long userId);
 }

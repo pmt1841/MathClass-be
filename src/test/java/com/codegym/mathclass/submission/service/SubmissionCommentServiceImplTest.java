@@ -14,6 +14,7 @@ import com.codegym.mathclass.submission.repository.SubmissionVersionRepository;
 import com.codegym.mathclass.submission.service.impl.SubmissionCommentServiceImpl;
 import com.codegym.mathclass.user.entity.User;
 import com.codegym.mathclass.user.repository.UserRepository;
+import com.codegym.mathclass.submission.mapper.SubmissionMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
@@ -45,6 +47,9 @@ class SubmissionCommentServiceImplTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Spy
+    private SubmissionMapper submissionMapper = new SubmissionMapper();
 
     @InjectMocks
     private SubmissionCommentServiceImpl commentService;
